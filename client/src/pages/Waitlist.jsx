@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ShoppingCart } from "lucide-react";
 import { waitlistService } from "../services/api";
 
 export default function WaitlistPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -19,6 +19,8 @@ export default function WaitlistPage() {
     setIsSuccess(false);
     setStatusMessage("");
     setStatusError(false);
+    setName("");
+    setEmail("");
   };
 
   const triggerCelebration = () => {
@@ -36,6 +38,12 @@ export default function WaitlistPage() {
     if (isSubmitting) return;
     setStatusError(false);
 
+    if (!name.trim()) {
+      setStatusError(true);
+      setStatusMessage("Please enter your name.");
+      return;
+    }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setStatusError(true);
       setStatusMessage("Please enter a valid email address.");
@@ -45,7 +53,8 @@ export default function WaitlistPage() {
     setIsSubmitting(true);
     setStatusMessage("");
     try {
-      await waitlistService.join(email.trim());
+      await waitlistService.join(name.trim(), email.trim());
+      setName("");
       setEmail("");
       setIsSuccess(true);
       triggerCelebration();
@@ -92,9 +101,18 @@ export default function WaitlistPage() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center justify-center rounded-[18px] border border-[#5d6cff] bg-gradient-to-r from-[#243b8f] via-[#2f4fc1] to-[#5a4bd6] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.17em] text-white shadow-[0_18px_40px_rgba(64,87,255,0.45)] transition-transform hover:scale-[1.02] sm:px-7 sm:py-3 sm:text-sm"
+                style={{
+                  borderRadius: "173.517px",
+                  background: "linear-gradient(90deg, #080277 0%, #4F46E5 50%, #080277 100%)",
+                }}
+                className="inline-flex flex-col items-center justify-center px-8 py-3 text-white shadow-[0_18px_40px_rgba(64,87,255,0.45)] transition-transform hover:scale-[1.02] sm:px-10 sm:py-4"
               >
-                TAKE YOUR SPOT
+                <span className="text-[9px] font-bold uppercase tracking-[0.17em] sm:text-[11px]">
+                  Be Among The First
+                </span>
+                <span className="text-lg font-bold uppercase tracking-wide sm:text-2xl">
+                  TAKE YOUR SPOT
+                </span>
               </button>
               <div
                 className="text-center text-[rgba(255,255,255,0.80)] text-[13px] not-italic font-medium leading-[160%] sm:text-lg lg:text-[24px]"
@@ -109,61 +127,28 @@ export default function WaitlistPage() {
             {/* Next meal — food photo */}
             <div className="relative h-[338px] w-[260px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-white/10 ">
               <img
-                src="/waitlist/waitlist_1.png"
+                src="/waitlist/wait_1.png"
                 alt="Recommended lunch: paneer, roti and seasonal salad"
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-              <div className="absolute inset-x-3 bottom-3 rounded-[18px] border border-white/10 bg-black/30 p-2.5 backdrop-blur-md lg:p-3.5">
-                <div className="mb-1.5 flex items-center justify-between text-[7px] font-semibold uppercase tracking-[0.2em] text-white/70 lg:text-[9px]">
-                  <span>Next meal</span>
-                  <span>520 kcal</span>
-                </div>
-                <div className="font-landing-title text-sm font-medium leading-tight text-white lg:text-lg">Lunch</div>
-                <div className="mt-0.5 text-[9px] text-white/70 lg:text-[11px]">Paneer · Roti · Seasonal Salad</div>
-                <div className="mt-2 inline-flex items-center rounded-full bg-emerald-400/15 px-2.5 py-1 text-[7px] font-semibold text-emerald-300 lg:text-[9px]">
-                  Recommended from your Health Plan
-                </div>
-              </div>
             </div>
 
             {/* App download — phone mockup */}
             <div className="relative flex h-[468px] w-[372px] shrink-0 snap-start items-center justify-end overflow-hidden rounded-[24px] border border-white/10 bg-[#05070c] ">
               <img
-                src="/waitlist/waitlist_2.png"
+                src="/waitlist/wait_2.png"
                 alt="Take Health app dashboard on a phone"
                 className="absolute inset-0 h-full w-full object-cover object-top"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-              <div className="relative z-10 mr-3 flex items-center gap-2 rounded-full border border-white/25 bg-white/10 py-1.5 pl-4 pr-1.5 shadow-lg backdrop-blur-md">
-                <span className="text-[8px] font-semibold text-white lg:text-[15px]">Get The App on</span>
-                <img src="/waitlist/play_store.png" alt="" className="h-6 w-6 rounded-full" />
-              </div>
             </div>
 
             {/* Lab markers — man portrait */}
             <div className="relative h-[310px] w-[277px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-white/10">
               <img
-                src="/waitlist/waitlist_3.jpg"
+                src="/waitlist/wait_3.png"
                 alt="Full body health check portrait"
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-              <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/40 backdrop-blur-sm">
-                <Activity className="h-4 w-4 text-emerald-300" />
-              </div>
-              <div className="absolute inset-x-3 bottom-3 rounded-[18px] border border-white/10 bg-black/30 p-2.5 backdrop-blur-md lg:p-3.5">
-                <div className="mb-1.5 text-[7px] font-semibold uppercase tracking-[0.2em] text-white/70 lg:text-[9px]">Health data</div>
-                <div className="font-landing-title text-[11px] font-medium leading-tight text-white lg:text-[15px]">3 markers worth checking</div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {["Vit D", "B12", "HbA1c"].map((m) => (
-                    <span key={m} className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[7px] text-white/85 lg:text-[9px]">
-                      {m}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-2 text-[7px] text-white/50 lg:text-[9px]">Uploaded 18 Aug 2026 · Labcorp Systems</div>
-              </div>
             </div>
 
             {/* TAKE Noticed — insight card, no photo */}
@@ -204,36 +189,27 @@ export default function WaitlistPage() {
             {/* Supplement recommendation — woman portrait */}
             <div className="relative h-[471px] w-[283px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-white/10 shadow-[0_35px_70px_rgba(0,0,0,0.35)]">
               <img
-                src="/waitlist/wailist_4.jpg"
+                src="/waitlist/wait_5.png"
                 alt="Supplement recommended from lab results"
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-              <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[7px] font-semibold text-white/85 backdrop-blur-sm lg:text-[9px]">
-                <ShoppingCart className="h-3 w-3" />
-                Take Shop
-              </div>
-              <div className="absolute inset-x-3 bottom-3 rounded-[18px] border border-white/10 bg-black/30 p-2.5 backdrop-blur-md lg:p-3.5">
-                <div className="mb-1.5 inline-flex items-center rounded-full bg-emerald-400/15 px-2.5 py-1 text-[7px] font-semibold text-emerald-300 lg:text-[9px]">
-                  From your labs
-                </div>
-                <div className="font-landing-title text-[11px] font-medium leading-tight text-white lg:text-[15px]">Recommended for you</div>
-                <div className="mt-1 text-[9px] text-white/70 lg:text-[11px]">
-                  Your vitamin D came back low. D3 + K2 helps restore healthy levels.
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
         <div className="mt-10 flex items-center justify-center gap-4 text-[11px] text-white/70 sm:mt-16 sm:gap-8 sm:text-sm lg:gap-12">
-          <span>Privacy Policy</span>
-          <span>Terms of Use</span>
-          <span>Cookie Policy</span>
+          <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+          <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms of Use</Link>
         </div>
 
         <div className="mt-6 flex items-center justify-center gap-6 text-white/70">
-          <div className="h-6 w-6 rounded-full sm:h-7 sm:w-7">
+          <a
+            href="https://www.instagram.com/takehealth_?utm_source=qr&igsi=MnhpZG5ocG9nbG5q"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Take Health on Instagram"
+            className="h-6 w-6 rounded-full sm:h-7 sm:w-7"
+          >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
             <g opacity="0.6" clip-path="url(#clip0_2878_8279)">
               <path d="M9.74146 0C7.09606 0 6.76408 0.0115672 5.72507 0.05885C4.6881 0.106336 3.98028 0.270506 3.36093 0.511385C2.72028 0.760177 2.17683 1.09298 1.63541 1.6346C1.09359 2.17602 0.760786 2.71947 0.511181 3.35992C0.269695 3.97947 0.105321 4.68748 0.0586467 5.72406C0.0121757 6.76306 0 7.09525 0 9.74066C0 12.3861 0.0117701 12.717 0.0588499 13.7561C0.106539 14.793 0.270709 15.5009 0.511385 16.1202C0.760379 16.7609 1.09319 17.3043 1.63481 17.8457C2.17602 18.3875 2.71947 18.7211 3.35971 18.9699C3.97947 19.2109 4.68748 19.375 5.72426 19.4224C6.76327 19.4697 7.09506 19.4814 9.74025 19.4814C12.3859 19.4814 12.7168 19.4697 13.7558 19.4224C14.7928 19.375 15.5014 19.2109 16.1211 18.9699C16.7617 18.7211 17.3043 18.3875 17.8455 17.8457C18.3873 17.3043 18.7201 16.7609 18.9697 16.1203C19.2092 15.5009 19.3736 14.7928 19.4223 13.7562C19.4689 12.7172 19.4811 12.3861 19.4811 9.74066C19.4811 7.09525 19.4689 6.76327 19.4223 5.72426C19.3736 4.68729 19.2092 3.97947 18.9697 3.36012C18.7201 2.71947 18.3873 2.17602 17.8455 1.6346C17.3037 1.09278 16.7618 0.759974 16.1206 0.511385C15.4996 0.270506 14.7913 0.106336 13.7544 0.05885C12.7154 0.0115672 12.3846 0 9.73842 0H9.74146ZM8.86765 1.75535C9.12699 1.75494 9.41638 1.75535 9.74146 1.75535C12.3422 1.75535 12.6505 1.76468 13.6775 1.81135C14.6272 1.85479 15.1427 2.01348 15.486 2.1468C15.9405 2.32334 16.2646 2.5344 16.6054 2.87532C16.9463 3.21624 17.1573 3.54094 17.3344 3.9955C17.4677 4.33845 17.6265 4.85389 17.6698 5.80361C17.7164 6.83043 17.7266 7.13888 17.7266 9.73843C17.7266 12.338 17.7164 12.6464 17.6698 13.6732C17.6263 14.6229 17.4677 15.1384 17.3344 15.4814C17.1577 15.936 16.9463 16.2596 16.6054 16.6003C16.2645 16.9412 15.9408 17.1522 15.486 17.3289C15.1431 17.4628 14.6272 17.6211 13.6775 17.6644C12.6507 17.7112 12.3422 17.7213 9.74146 17.7213C7.1405 17.7213 6.83226 17.7112 5.80543 17.6644C4.85572 17.6207 4.34028 17.4619 3.99671 17.3286C3.54215 17.1521 3.21746 16.9411 2.87654 16.6002C2.53561 16.2592 2.32457 15.9353 2.14761 15.4806C2.01429 15.1376 1.85539 14.6221 1.81216 13.6724C1.76549 12.6456 1.75616 12.3372 1.75616 9.73599C1.75616 7.13483 1.76549 6.828 1.81216 5.80117C1.8556 4.85146 2.01429 4.33602 2.14761 3.99265C2.32416 3.53809 2.53561 3.21341 2.87654 2.87248C3.21746 2.53156 3.54215 2.32051 3.99671 2.14355C4.34007 2.00961 4.85572 1.85134 5.80543 1.80771C6.70401 1.76712 7.05224 1.75494 8.86765 1.75291V1.75535ZM14.9409 3.3727C14.2956 3.3727 13.772 3.89566 13.772 4.54118C13.772 5.1865 14.2956 5.71005 14.9409 5.71005C15.5863 5.71005 16.1098 5.1865 16.1098 4.54118C16.1098 3.89585 15.5863 3.3727 14.9409 3.3727ZM9.74146 4.73843C6.97897 4.73843 4.73924 6.97816 4.73924 9.74066C4.73924 12.5032 6.97897 14.7419 9.74146 14.7419C12.504 14.7419 14.7429 12.5032 14.7429 9.74066C14.7429 6.97816 12.504 4.73843 9.74146 4.73843ZM9.74146 6.49377C11.5346 6.49377 12.9883 7.94737 12.9883 9.74066C12.9883 11.5337 11.5346 12.9875 9.74146 12.9875C7.94817 12.9875 6.49458 11.5337 6.49458 9.74066C6.49458 7.94737 7.94817 6.49377 9.74146 6.49377Z" fill="white"/>
@@ -244,8 +220,14 @@ export default function WaitlistPage() {
               </clipPath>
             </defs>
           </svg>
-          </div>
-          <div className="h-6 w-6 rounded-full  sm:h-7 sm:w-7" >
+          </a>
+          <a
+            href="https://x.com/Take_Limited"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Take Health on X"
+            className="h-6 w-6 rounded-full sm:h-7 sm:w-7"
+          >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
             <g opacity="0.6" clip-path="url(#clip0_2878_8282)">
               <path d="M15.3425 0.65332H18.3298L11.8035 8.11236L19.4811 18.2625H13.4696L8.76121 12.1065L3.37372 18.2625H0.384692L7.36513 10.2841L0 0.65332H6.1641L10.4201 6.28011L15.3425 0.65332ZM14.2941 16.4744H15.9493L5.26468 2.34741H3.48841L14.2941 16.4744Z" fill="white"/>
@@ -256,8 +238,14 @@ export default function WaitlistPage() {
               </clipPath>
             </defs>
           </svg>
-          </div>
-          <div className="h-6 w-6 rounded-full  sm:h-7 sm:w-7" >
+          </a>
+          <a
+            href="https://www.linkedin.com/company/take-ltd/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Take Health on LinkedIn"
+            className="h-6 w-6 rounded-full sm:h-7 sm:w-7"
+          >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
             <g opacity="0.6" clip-path="url(#clip0_2878_8285)">
               <path d="M18.0896 0C18.8288 0 19.4811 0.65227 19.4811 1.43499V18.0896C19.4811 18.8723 18.8288 19.4811 18.0896 19.4811H1.34802C0.608785 19.4811 0 18.8723 0 18.0896V1.43499C0 0.65227 0.608785 0 1.34802 0H18.0896ZM5.87042 16.6982V7.43587H3.00043V16.6982H5.87042ZM4.43543 6.13132C5.34861 6.13132 6.08785 5.39209 6.08785 4.47891C6.08785 3.56574 5.34861 2.78302 4.43543 2.78302C3.47876 2.78302 2.73953 3.56574 2.73953 4.47891C2.73953 5.39209 3.47876 6.13132 4.43543 6.13132ZM16.6982 16.6982V11.6104C16.6982 9.13177 16.1328 7.17496 13.2193 7.17496C11.8278 7.17496 10.8712 7.95768 10.4798 8.69693H10.4363V7.43587H7.69678V16.6982H10.5668V12.1322C10.5668 10.9146 10.7842 9.74055 12.3061 9.74055C13.7847 9.74055 13.7847 11.1321 13.7847 12.1757V16.6982H16.6982Z" fill="white"/>
@@ -268,7 +256,7 @@ export default function WaitlistPage() {
               </clipPath>
             </defs>
           </svg>
-          </div>
+          </a>
         </div>
 
         <div className="mt-6 pb-4 text-center text-[11px] text-white/60 sm:text-sm">
@@ -278,7 +266,7 @@ export default function WaitlistPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop ">
-          <div className="relative w-full max-w-[440px] overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,#0B1528_0%,#213153_100%)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:p-8">
+          <div className="relative w-full max-w-[440px] overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,#1C2C4C_0%,#3A4D78_100%)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:p-8">
             <button
               type="button"
               aria-label="Close waitlist modal"
@@ -332,13 +320,26 @@ export default function WaitlistPage() {
                   Understand your health better. Make better choices every day. Join the waitlist.
                 </p>
 
-                <div className="mt-6 flex items-center gap-1.5 rounded-full bg-black/30 p-1.5">
+                <div className="mt-6 flex items-center rounded-full bg-black/30 p-1.5">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoinWaitlist()}
+                    placeholder="Your Name"
+                    autoComplete="off"
+                    style={{ WebkitTextFillColor: "#fff", WebkitBoxShadow: "0 0 0px 1000px transparent inset", transition: "background-color 9999s ease-in-out 0s" }}
+                    className="min-w-0 flex-1 appearance-none border-0 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none autofill:bg-transparent"
+                  />
+                </div>
+
+                <div className="mt-3 flex items-center gap-1.5 rounded-full bg-black/30 p-1.5">
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleJoinWaitlist()}
-                    placeholder="Your email address"
+                    placeholder="Your Email Address"
                     autoComplete="off"
                     style={{ WebkitTextFillColor: "#fff", WebkitBoxShadow: "0 0 0px 1000px transparent inset", transition: "background-color 9999s ease-in-out 0s" }}
                     className="min-w-0 flex-1 appearance-none border-0 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none autofill:bg-transparent"

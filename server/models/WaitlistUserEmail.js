@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const waitlistUserEmailSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        trim: true
+    },
     email: {
         type: String,
         required: true,

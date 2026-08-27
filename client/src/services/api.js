@@ -187,7 +187,7 @@ export const authService = {
 };
 
 export const waitlistService = {
-  join: (email) => api.post('waitlist', { email })
+  join: (name, email) => api.post('waitlist', { name, email })
 };
 
 export const notificationService = {
@@ -359,6 +359,18 @@ export const nutritionService = {
   updateGoals: (goals) => api.put('nutrition/goals', goals),
   deleteNutritionLog: (id) => api.delete(`nutrition/logs/${id}`),
   updateNutritionLog: (id, data) => api.put(`nutrition/logs/${id}`, data)
+};
+
+export const exerciseService = {
+  logExercise: (exerciseData) => api.post('exercise/log', exerciseData),
+  getTodayLogs: () => api.get('exercise/logs/today'),
+  getLogs: (params) => api.get('exercise/logs', { params }),
+  getDailySummary: (date) => api.get('exercise/summary/daily', { params: { date } }),
+  getWeeklySummary: () => api.get('exercise/summary/weekly'),
+  getTrends: (range) => api.get('exercise/trends', { params: { range } }),
+  getPersonalRecords: () => api.get('exercise/personal-records'),
+  updateExerciseLog: (id, data) => api.put(`exercise/logs/${id}`, data),
+  deleteExerciseLog: (id) => api.delete(`exercise/logs/${id}`)
 };
 
 export const dietRecommendationService = {

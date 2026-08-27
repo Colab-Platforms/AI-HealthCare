@@ -363,6 +363,7 @@ try {
     { path: "/api/wearables", module: "./routes/wearableRoutes" },
     { path: "/api/wearable", module: "./routes/wearableRoutes" },
     { path: "/api/nutrition", module: "./routes/nutritionRoutes" },
+    { path: "/api/exercise", module: "./routes/exerciseRoutes" },
     {
       path: "/api/diet-recommendations",
       module: "./routes/dietRecommendationRoutes",

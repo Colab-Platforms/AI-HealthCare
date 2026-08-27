@@ -82,7 +82,7 @@ const UpdatedNavbar = () => {
           !scrolled
             ? "bg-transparent border-b border-transparent"
             : isHomePage
-            ? "bg-[#014343]/80 border-b border-white/10 backdrop-blur-md"
+            ? "bg-[#1B47B9]/80 border-b border-white/10 backdrop-blur-md"
             : "bg-white/95 border-b border-slate-200 shadow-sm backdrop-blur-md"
         }`}
       >
@@ -106,7 +106,7 @@ const UpdatedNavbar = () => {
               className={`text-xs xl:text-sm font-semibold tracking-wider uppercase transition-colors ${
                 isLight
                   ? "text-white/90 hover:text-white"
-                  : "text-slate-700 hover:text-[#014343]"
+                  : "text-slate-700 hover:text-[#1B47B9]"
               }`}
             >
               {link.label}
@@ -121,7 +121,7 @@ const UpdatedNavbar = () => {
             className={`text-xs xl:text-sm font-semibold tracking-wider uppercase transition-colors px-3 py-2 ${
               isLight
                 ? "text-white hover:text-emerald-200"
-                : "text-slate-700 hover:text-[#014343]"
+                : "text-slate-700 hover:text-[#1B47B9]"
             }`}
           >
             LOG IN
@@ -131,7 +131,7 @@ const UpdatedNavbar = () => {
             className={`text-xs xl:text-sm font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition-all shadow-sm active:scale-95 ${
               isLight
                 ? "text-white bg-white/20 hover:bg-white/30 border border-white/40 backdrop-blur-md"
-                : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
+                : "text-white bg-[#1B47B9] hover:bg-[#1B47B9]/90 border border-[#1B47B9]"
             }`}
           >
             Sign Up
@@ -141,7 +141,7 @@ const UpdatedNavbar = () => {
             className={`text-xs xl:text-sm font-bold tracking-wider px-6 py-2.5 rounded-full transition-all shadow-sm active:scale-95 ${
               isLight
                 ? "text-white bg-white/20 hover:bg-white/30 border border-white/40 backdrop-blur-md"
-                : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
+                : "text-white bg-[#1B47B9] hover:bg-[#1B47B9]/90 border border-[#1B47B9]"
             }`}
           >
             TAKE Your Spot
@@ -155,7 +155,7 @@ const UpdatedNavbar = () => {
             className={`text-xs font-semibold tracking-wide px-4 py-1.5 rounded-full transition-all ${
               isLight
                 ? "text-white bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-md"
-                : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
+                : "text-white bg-[#1B47B9] hover:bg-[#1B47B9]/90 border border-[#1B47B9]"
             }`}
           >
             Sign Up
@@ -165,7 +165,7 @@ const UpdatedNavbar = () => {
             className={`text-xs font-semibold tracking-wide px-4 py-1.5 rounded-full transition-all ${
               isLight
                 ? "text-white bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-md"
-                : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
+                : "text-white bg-[#1B47B9] hover:bg-[#1B47B9]/90 border border-[#1B47B9]"
             }`}
           >
             Join Waitlist
@@ -194,7 +194,7 @@ const UpdatedNavbar = () => {
         <div
           className={`lg:hidden backdrop-blur-xl px-6 py-6 flex flex-col gap-4 ${
             isLight
-              ? "bg-[#014343]/95 border-t border-white/10"
+              ? "bg-[#1B47B9]/95 border-t border-white/10"
               : "bg-white border-t border-slate-200"
           }`}
         >
@@ -209,7 +209,7 @@ const UpdatedNavbar = () => {
               className={`text-sm font-semibold tracking-wider uppercase py-1 ${
                 isLight
                   ? "text-white/90 hover:text-white"
-                  : "text-slate-700 hover:text-[#014343]"
+                  : "text-slate-700 hover:text-[#1B47B9]"
               }`}
             >
               {link.label}
@@ -235,7 +235,7 @@ const UpdatedNavbar = () => {
               className={`text-center text-sm font-bold uppercase tracking-wider py-2.5 rounded-full ${
                 isLight
                   ? "text-white bg-white/20 border border-white/40"
-                  : "text-white bg-[#014343] border border-[#014343]"
+                  : "text-white bg-[#1B47B9] border border-[#1B47B9]"
               }`}
             >
               Sign Up
@@ -246,7 +246,7 @@ const UpdatedNavbar = () => {
               className={`text-center text-sm font-bold uppercase tracking-wider py-2.5 rounded-full ${
                 isLight
                   ? "text-white bg-white/20 border border-white/40"
-                  : "text-white bg-[#014343] border border-[#014343]"
+                  : "text-white bg-[#1B47B9] border border-[#1B47B9]"
               }`}
             >
               Join Waitlist

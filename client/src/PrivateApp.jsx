@@ -25,6 +25,7 @@ const Subscription = lazy(() => import("./pages/Subscription"));
 const DietPlan = lazy(() => import("./pages/DietPlan"));
 const AIChat = lazy(() => import("./pages/AIChat"));
 const Nutrition = lazy(() => import("./pages/Nutrition"));
+const Fitness = lazy(() => import("./pages/Fitness"));
 const AllReports = lazy(() => import("./pages/AllReports"));
 const Challenge30Days = lazy(() => import("./pages/Challenge30Days"));
 
@@ -284,6 +285,25 @@ export default function PrivateApp() {
                   >
                     <Layout>
                       <Nutrition />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/fitness"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "user",
+                      "patient",
+                      "client",
+                      "admin",
+                      "doctor",
+                      "superadmin",
+                    ]}
+                  >
+                    <Layout>
+                      <Fitness />
                     </Layout>
                   </ProtectedRoute>
                 }

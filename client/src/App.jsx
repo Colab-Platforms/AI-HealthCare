@@ -117,7 +117,7 @@ export default function App() {
           />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
-          <Route path="/login" element={getLoginRedirect()} />
+          <Route path="/login" element={user ? getLoginRedirect() : <Login />} />
           <Route path="/register" element={<Navigate to="/waitlist" replace />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           {/* <Route path="/pricing" element={<Pricing />} /> */}
