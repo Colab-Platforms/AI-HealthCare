@@ -126,30 +126,30 @@ const UpdatedNavbar = () => {
           >
             LOG IN
           </Link>
-          <Link
-            to="/register"
+          <a
+            href="https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk"
             className={`text-xs xl:text-sm font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition-all shadow-sm active:scale-95 ${
               isLight
                 ? "text-white bg-white/20 hover:bg-white/30 border border-white/40 backdrop-blur-md"
                 : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
             }`}
           >
-            Sign Up
-          </Link>
+            Download APK
+          </a>
         </div>
 
-        {/* Mobile Header Controls: Sign Up Button + Hamburger */}
+        {/* Mobile Header Controls: Download APK Button + Hamburger */}
         <div className="flex lg:hidden items-center gap-3">
-          <Link
-            to="/register"
+          <a
+            href="https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk"
             className={`text-xs font-semibold tracking-wide px-4 py-1.5 rounded-full transition-all ${
               isLight
                 ? "text-white bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-md"
                 : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
             }`}
           >
-            Sign Up
-          </Link>
+            Download APK
+          </a>
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -209,8 +209,8 @@ const UpdatedNavbar = () => {
             >
               LOG IN
             </Link>
-            <Link
-              to="/register"
+            <a
+              href="https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk"
               onClick={() => setMobileMenuOpen(false)}
               className={`text-center text-sm font-bold uppercase tracking-wider py-2.5 rounded-full ${
                 isLight
@@ -218,8 +218,8 @@ const UpdatedNavbar = () => {
                   : "text-white bg-[#014343] border border-[#014343]"
               }`}
             >
-              Sign Up
-            </Link>
+              Download APK
+            </a>
           </div>
         </div>
       )}
