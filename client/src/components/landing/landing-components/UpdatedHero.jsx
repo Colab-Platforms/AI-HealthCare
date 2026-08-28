@@ -83,7 +83,7 @@ const UpdatedHero = () => {
               to="/waitlist"
               className="w-full max-w-[280px] sm:w-auto sm:px-12 py-3.5 bg-white hover:bg-white/90 text-[#1B47B9] font-bold text-base sm:text-lg rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-xl border border-white text-center inline-block"
             >
-              Start for Free
+              Join The Waitlist
             </Link>
             <span className="text-white text-xs sm:text-sm font-semibold tracking-wide">
               *No Credit Card Required
@@ -104,7 +104,7 @@ const UpdatedHero = () => {
           {/* Card 1: 20+ Years */}
           <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="18" viewBox="0 0 10 18" fill="none">
-              <path d="M0.350098 16.6846H8.92608M0.350098 0.349976H8.92608M7.70094 16.6846V13.2772C7.70087 12.844 7.57175 12.4286 7.34197 12.1224L4.63809 8.5173M4.63809 8.5173L1.9342 12.1224C1.70443 12.4286 1.57531 12.844 1.57524 13.2772V16.6846M4.63809 8.5173L1.9342 4.91224C1.70443 4.60598 1.57531 4.19057 1.57524 3.75738V0.349976M4.63809 8.5173L7.34197 4.91224C7.57175 4.60598 7.70087 4.19057 7.70094 3.75738V0.349976" stroke="black" stroke-width="0.7" stroke-linecap="round"/>
+              <path d="M0.350098 16.6846H8.92608M0.350098 0.349976H8.92608M7.70094 16.6846V13.2772C7.70087 12.844 7.57175 12.4286 7.34197 12.1224L4.63809 8.5173M4.63809 8.5173L1.9342 12.1224C1.70443 12.4286 1.57531 12.844 1.57524 13.2772V16.6846M4.63809 8.5173L1.9342 4.91224C1.70443 4.60598 1.57531 4.19057 1.57524 3.75738V0.349976M4.63809 8.5173L7.34197 4.91224C7.57175 4.60598 7.70087 4.19057 7.70094 3.75738V0.349976" stroke="black" strokeWidth="0.7" strokeLinecap="round"/>
             </svg>
             <div className="flex flex-col items-center sm:items-start">
               <span className="text-2xl sm:text-3xl font-semibold font-landing-title text-slate-900 tracking-tight leading-none">
@@ -119,8 +119,8 @@ const UpdatedHero = () => {
           {/* Card 2: NSE & BSE Listed */}
           <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
             <svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" viewBox="0 0 23 23" fill="none">
-              <path d="M11.2 2.09998L2.80005 5.59998V11.9C2.80005 15.6333 5.60005 18.6666 11.2 21C16.8 18.6666 19.6 15.6333 19.6 11.9V5.59998L11.2 2.09998Z" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M7 11.2L9.8 14L15.4 8.40002" stroke="black" stroke-width="0.77" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M11.2 2.09998L2.80005 5.59998V11.9C2.80005 15.6333 5.60005 18.6666 11.2 21C16.8 18.6666 19.6 15.6333 19.6 11.9V5.59998L11.2 2.09998Z" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M7 11.2L9.8 14L15.4 8.40002" stroke="black" strokeWidth="0.77" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <div className="flex flex-col items-center sm:items-start">
               <span className="text-2xl sm:text-3xl font-semibold font-landing-title text-slate-900 tracking-tight leading-none">
@@ -135,12 +135,12 @@ const UpdatedHero = () => {
           {/* Card 3: 5000+ Happy Users */}
           <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
             <svg xmlns="http://www.w3.org/2000/svg" width="26" height="23" viewBox="0 0 26 23" fill="none">
-              <circle cx="12.915" cy="5.60005" r="2.485" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M5.21509 19.6C5.21509 15.8667 7.78175 14 12.9151 14C18.0484 14 20.6151 15.8667 20.6151 19.6" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="5.21499" cy="7.00002" r="1.785" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M0.314941 19.6C0.314941 16.5667 1.94827 15.05 5.21494 15.05" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="20.6151" cy="7.00002" r="1.785" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M20.615 15.05C23.8817 15.05 25.515 16.5667 25.515 19.6" stroke="black" stroke-width="0.63" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12.915" cy="5.60005" r="2.485" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5.21509 19.6C5.21509 15.8667 7.78175 14 12.9151 14C18.0484 14 20.6151 15.8667 20.6151 19.6" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="5.21499" cy="7.00002" r="1.785" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M0.314941 19.6C0.314941 16.5667 1.94827 15.05 5.21494 15.05" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="20.6151" cy="7.00002" r="1.785" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M20.615 15.05C23.8817 15.05 25.515 16.5667 25.515 19.6" stroke="black" strokeWidth="0.63" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <div className="flex flex-col items-center sm:items-start">
               <span className="text-2xl sm:text-3xl font-semibold font-landing-title text-slate-900 tracking-tight leading-none">
