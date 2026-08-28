@@ -1,4 +1,5 @@
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
+const emailService = require('../services/emailService');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,6 +26,10 @@ exports.joinWaitlist = async (req, res) => {
             email,
             ip: req.ip,
             userAgent: req.headers['user-agent']
+        });
+
+        emailService.sendWaitlistConfirmation(email, name).catch((err) => {
+            console.error('Failed to send waitlist confirmation email:', err.message);
         });
 
         res.json({ success: true, message: "You're on the waitlist!" });

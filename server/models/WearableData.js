@@ -7,7 +7,7 @@ const wearableDataSchema = new mongoose.Schema({
     // Values match Open Wearables provider slugs so a webhook's `provider` field
     // maps straight onto deviceType; the first few predate that integration.
     enum: [
-      'fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'other',
+      'fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'other', 'manual',
       'google', 'whoop', 'oura', 'polar', 'strava', 'suunto', 'ultrahuman', 'sensorbio', 'apple'
     ],
     required: true 

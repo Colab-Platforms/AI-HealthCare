@@ -1192,6 +1192,61 @@ exports.logWeight = async (req, res) => {
   }
 };
 
+// Per-user lifestyle targets (steps/sleep/water) — previously hardcoded the
+// same for every user on the dashboard. New, isolated endpoints; does not
+// touch the existing HealthGoal weight/calorie flow.
+exports.getLifestyleGoals = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('profile.lifestyle').lean();
+    const lifestyle = user?.profile?.lifestyle || {};
+    res.json({
+      success: true,
+      stepGoal: lifestyle.stepGoal || 10000,
+      sleepGoalHours: lifestyle.sleepGoalHours || 8,
+      waterGlassGoal: lifestyle.waterIntake || 8,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.setLifestyleGoals = async (req, res) => {
+  try {
+    const { stepGoal, sleepGoalHours, waterGlassGoal } = req.body;
+    const update = {};
+
+    if (stepGoal !== undefined) {
+      if (typeof stepGoal !== 'number' || stepGoal < 1000 || stepGoal > 50000) {
+        return res.status(400).json({ success: false, message: 'stepGoal must be a number between 1000 and 50000' });
+      }
+      update['profile.lifestyle.stepGoal'] = stepGoal;
+    }
+    if (sleepGoalHours !== undefined) {
+      if (typeof sleepGoalHours !== 'number' || sleepGoalHours < 4 || sleepGoalHours > 12) {
+        return res.status(400).json({ success: false, message: 'sleepGoalHours must be a number between 4 and 12' });
+      }
+      update['profile.lifestyle.sleepGoalHours'] = sleepGoalHours;
+    }
+    if (waterGlassGoal !== undefined) {
+      if (typeof waterGlassGoal !== 'number' || waterGlassGoal < 1 || waterGlassGoal > 30) {
+        return res.status(400).json({ success: false, message: 'waterGlassGoal must be a number between 1 and 30' });
+      }
+      update['profile.lifestyle.waterIntake'] = waterGlassGoal;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ success: false, message: 'Provide at least one of stepGoal, sleepGoalHours, waterGlassGoal' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, { $set: update });
+    cache.delete(`dashboard:${req.user._id}`);
+
+    res.json({ success: true, ...update });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Log water — accepts either a glass count (converted via the user's configured
 // glass size) or a raw ml amount, and ADDS it to the day's total by default.
 // action:'set' overwrites the day's total instead (used for corrections).
@@ -1234,6 +1289,19 @@ exports.logWater = async (req, res) => {
     summary.waterIntake = action === 'set'
       ? Math.max(0, deltaMl)
       : Math.max(0, (summary.waterIntake || 0) + deltaMl);
+
+    // Individual log entries power the per-tap history view. 'set' is a total
+    // correction, not a drink event, so it isn't recorded as one here — the
+    // log list can end up not summing to the total in that case, which is
+    // expected (the total was explicitly overridden).
+    if (action === 'add') {
+      summary.waterLogs.push({
+        amountMl: deltaMl,
+        loggedAt: new Date(),
+        label: typeof amountMl === 'number' ? 'Custom' : `${glasses} glass${glasses === 1 ? '' : 'es'}`
+      });
+    }
+
     await summary.save();
 
     // Also update DailyProgress for dashboard metrics
@@ -1270,6 +1338,37 @@ exports.logWater = async (req, res) => {
       message: 'Failed to log water',
       error: error.message
     });
+  }
+};
+
+// Individual water log entries for a given day, newest first (the "History" list)
+exports.getWaterHistory = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, message: 'date must be in YYYY-MM-DD format' });
+    }
+
+    const queryDate = date ? new Date(date) : new Date();
+    const targetDate = new Date(queryDate.toISOString().split('T')[0]);
+    targetDate.setUTCHours(0, 0, 0, 0);
+
+    const summary = await NutritionSummary.findOne({ userId: req.user._id, date: targetDate })
+      .select('waterLogs waterIntake')
+      .lean();
+
+    const logs = (summary?.waterLogs || [])
+      .slice()
+      .sort((a, b) => new Date(b.loggedAt) - new Date(a.loggedAt));
+
+    res.json({
+      success: true,
+      date: targetDate.toISOString().split('T')[0],
+      totalMl: summary?.waterIntake || 0,
+      logs: logs.map(l => ({ amountMl: l.amountMl, loggedAt: l.loggedAt, label: l.label || null }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

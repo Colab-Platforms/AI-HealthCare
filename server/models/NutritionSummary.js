@@ -43,7 +43,13 @@ const nutritionSummarySchema = new mongoose.Schema({
   },
 
   // Water intake
-  waterIntake: { type: Number, default: 0 }, // in ml
+  waterIntake: { type: Number, default: 0 }, // in ml — running total for the day
+  // Individual log entries behind that total, for a per-tap history view
+  waterLogs: [{
+    amountMl: { type: Number, required: true },
+    loggedAt: { type: Date, default: Date.now },
+    label: String // e.g. "Custom", "250ml preset" — optional, for display
+  }],
 
   // Calories burned via logged activity (manual entry or wearable sync) — offsets the daily total
   caloriesBurned: { type: Number, default: 0 },

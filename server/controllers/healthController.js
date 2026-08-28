@@ -861,7 +861,12 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       totalReports, recentReports: reports.slice(0, 5), reportTypeCounts, history,
       stepsToday: history[history.length - 1]?.steps || 0,
       sleepToday: history[history.length - 1]?.sleep || 0,
-      goals: { steps: 10000, sleep: 8, water: 8, weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65 },
+      goals: {
+        steps: userWithLogs?.profile?.lifestyle?.stepGoal || 10000,
+        sleep: userWithLogs?.profile?.lifestyle?.sleepGoalHours || 8,
+        water: userWithLogs?.profile?.lifestyle?.waterIntake || 8,
+        weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65
+      },
       alcoholToday: alcoholSummary.today, alcoholTodayUnits: alcoholSummary.todayUnits,
       alcohol7DayAvg: alcoholSummary.avg7, alcoholSummary,
       streakDays: reqUser.streakDays || 0,

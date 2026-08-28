@@ -106,6 +106,11 @@ class EmailService {
     return this.sendEmail({ to: email, subject: 'Customized Diet Plan Ready - take.health AI', html });
   }
 
+  async sendWaitlistConfirmation(email, name) {
+    const html = this.getWaitlistConfirmationTemplate(name);
+    return this.sendEmail({ to: email, subject: "You're on the Take waitlist", html });
+  }
+
   // Marketing emails (tips, newsletters, promotions) — skipped if user opted out
   async sendMarketingEmail(userId, email, subject, html) {
     try {
@@ -566,6 +571,81 @@ class EmailService {
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getWaitlistConfirmationTemplate(name) {
+    const appUrl = process.env.APP_URL && process.env.APP_URL.startsWith('http') && !process.env.APP_URL.includes('localhost') && !process.env.APP_URL.includes('192.168')
+      ? process.env.APP_URL
+      : 'https://take.health';
+    const heroImageUrl = `${appUrl}/waitlist/waitlisted_user_mail_content_img.jpg`;
+    const greetName = name ? name.split(' ')[0] : 'Human';
+
+    const socialIcon = (href, path) => `
+      <a href="${href}" style="display:inline-block; margin: 0 8px; text-decoration:none;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:36px;height:36px;background:rgba(255,255,255,0.12);border-radius:50%;">
+          <tr><td align="center" valign="middle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff"><path d="${path}"/></svg>
+          </td></tr>
+        </table>
+      </a>`;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>You're on the Take waitlist</title>
+      </head>
+      <body style="margin:0; padding:0; background-color:#0a0a1f;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a1f;">
+          <tr>
+            <td align="center" style="padding: 24px 12px;">
+              <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background-color:#2b0f8f; border-radius: 16px; overflow:hidden; font-family: 'Segoe UI', Arial, sans-serif;">
+                <tr>
+                  <td>
+                    <img src="${heroImageUrl}" alt="Take" width="480" style="display:block; width:100%; height:auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 28px 28px 8px 28px; color:#ffffff; font-size:15px; line-height:1.6;">
+                    <p style="margin:0 0 4px 0;">Dear <strong>${greetName}</strong>,</p>
+                    <p style="margin:0 0 20px 0;">You're officially on the <strong>Take waitlist</strong>.</p>
+                    <p style="margin:0 0 16px 0;">
+                      We're getting ready for something built to help you <strong>understand your health</strong>,
+                      <strong>optimise what matters</strong>, and take control of what's next.<br/>
+                      Your journey starts here.
+                    </p>
+                    <p style="margin:0 0 16px 0;">We'll let you know as soon as Take is ready for you to take off.</p>
+                    <p style="margin:0 0 4px 0;">Until then, stay curious. Stay ahead.</p>
+                    <p style="margin:0 0 20px 0;"><strong>The Take Team</strong></p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 28px;">
+                    <hr style="border:none; border-top:1px solid rgba(255,255,255,0.2); margin:0;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 20px 28px;">
+                    ${socialIcon('https://www.facebook.com', 'M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z')}
+                    ${socialIcon('https://www.instagram.com/takehealth_', 'M12 2c2.7 0 3 0 4.1.06 1.1.05 1.8.22 2.4.46a5 5 0 0 1 1.8 1.2 5 5 0 0 1 1.2 1.8c.24.6.4 1.3.46 2.4.06 1.1.06 1.4.06 4.1s0 3-.06 4.1c-.05 1.1-.22 1.8-.46 2.4a5 5 0 0 1-1.2 1.8 5 5 0 0 1-1.8 1.2c-.6.24-1.3.4-2.4.46-1.1.06-1.4.06-4.1.06s-3 0-4.1-.06c-1.1-.05-1.8-.22-2.4-.46a5 5 0 0 1-1.8-1.2 5 5 0 0 1-1.2-1.8c-.24-.6-.4-1.3-.46-2.4C2 15 2 14.7 2 12s0-3 .06-4.1c.05-1.1.22-1.8.46-2.4a5 5 0 0 1 1.2-1.8 5 5 0 0 1 1.8-1.2c.6-.24 1.3-.4 2.4-.46C9 2 9.3 2 12 2Zm0 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm5.5-1a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z')}
+                    ${socialIcon('https://x.com/Take_Limited', 'M17.5 3h3.2l-7 8 8.2 10h-6.4l-5-6.5L4.4 21H1.2l7.5-8.6L1 3h6.5l4.5 5.9L17.5 3Zm-1.1 16.2h1.8L7.7 4.7H5.8l10.6 14.5Z')}
+                    ${socialIcon('https://www.youtube.com', 'M23.5 7.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.4-1C16.9 3.6 12 3.6 12 3.6h0s-4.9 0-8.2.3c-.5.1-1.5.1-2.4 1-.7.7-.9 2.3-.9 2.3S.2 9.1.2 11v1.9c0 1.9.3 3.8.3 3.8s.2 1.6.9 2.3c.9.9 2.1.9 2.6 1 1.9.2 8 .3 8 .3s4.9 0 8.2-.3c.5-.1 1.5-.1 2.4-1 .7-.7.9-2.3.9-2.3s.3-1.9.3-3.8V11c0-1.9-.3-3.8-.3-3.8ZM9.7 15.1V8.4l6.4 3.4-6.4 3.3Z')}
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 28px 24px 28px; color:rgba(255,255,255,0.6); font-size:11px; line-height:1.6;">
+                    &copy; ${new Date().getFullYear()} NSE &amp; BSE Listed<br/>India
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;

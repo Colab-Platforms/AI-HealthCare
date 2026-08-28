@@ -79,16 +79,16 @@ exports.getConnectedDevices = async (req, res) => {
 // Sync daily metrics (simulated - in real app would come from device API)
 exports.syncDailyMetrics = async (req, res) => {
   try {
-    const { deviceType = 'other', metrics } = req.body;
+    const { deviceType = 'manual', metrics } = req.body;
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
-      if (deviceType === 'other') {
+      if (deviceType === 'manual') {
         wearable = await WearableData.create({
           user: req.user._id,
-          deviceType: 'other',
+          deviceType: 'manual',
           deviceName: 'Manual Entry',
-          isConnected: true,
+          isConnected: false,
           dailyMetrics: []
         });
       } else {
@@ -209,16 +209,16 @@ exports.addHeartRate = async (req, res) => {
 // Add sleep data
 exports.addSleepData = async (req, res) => {
   try {
-    const { deviceType = 'other', sleepData } = req.body;
+    const { deviceType = 'manual', sleepData } = req.body;
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
-      if (deviceType === 'other') {
+      if (deviceType === 'manual') {
         wearable = await WearableData.create({
           user: req.user._id,
-          deviceType: 'other',
+          deviceType: 'manual',
           deviceName: 'Manual Entry',
-          isConnected: true,
+          isConnected: false,
           sleepData: []
         });
       } else {

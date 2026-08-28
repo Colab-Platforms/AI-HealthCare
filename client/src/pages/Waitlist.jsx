@@ -23,6 +23,35 @@ export default function WaitlistPage() {
     setEmail("");
   };
 
+  const trackWaitlistConversion = () => {
+    try {
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "Lead", { content_name: "waitlist_signup" });
+      }
+    } catch (err) {
+      console.error("fbq tracking failed", err);
+    }
+
+    try {
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "waitlist_signup", {
+          event_category: "engagement",
+          event_label: "waitlist_page",
+        });
+      }
+    } catch (err) {
+      console.error("gtag tracking failed", err);
+    }
+
+    try {
+      if (typeof window.gtag_report_conversion === "function") {
+        window.gtag_report_conversion();
+      }
+    } catch (err) {
+      console.error("gtag_report_conversion failed", err);
+    }
+  };
+
   const triggerCelebration = () => {
     const pieces = Array.from({ length: 28 }, (_, i) => ({
       id: `${Date.now()}-${i}`,
@@ -58,6 +87,7 @@ export default function WaitlistPage() {
       setEmail("");
       setIsSuccess(true);
       triggerCelebration();
+      trackWaitlistConversion();
     } catch (error) {
       setStatusError(true);
       setStatusMessage(error?.response?.data?.message || "Something went wrong. Please try again.");
