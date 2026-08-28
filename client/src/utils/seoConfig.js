@@ -114,6 +114,16 @@ export const seoConfig = {
       noindex: true,
     },
 
+    fitness: {
+      title: "Fitness & Exercise Tracking | take.health",
+      description:
+        "Log workouts, track calories burned, and see your fitness trends and personal records.",
+      keywords: "exercise tracking, workout log, fitness tracker, calories burned",
+      path: "/fitness",
+      canonical: `${baseURL}/fitness`,
+      noindex: true,
+    },
+
     dietPlan: {
       title: "Personalized Diet Plans | take.health",
       description:

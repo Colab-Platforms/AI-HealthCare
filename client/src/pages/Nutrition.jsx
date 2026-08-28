@@ -46,7 +46,6 @@ import {
 import api, {
   nutritionService,
   dietRecommendationService,
-  wearableService,
 } from "../services/api";
 import toast from "react-hot-toast";
 import { useData } from "../context/DataContext";
@@ -55,7 +54,6 @@ import NutritionSkeleton from "../components/skeletons/NutritionSkeleton";
 import { NutritionTab } from "../components/NutritionTab";
 import { MealAnalysisModal } from "../components/MealAnalysisModal";
 import { MealEditReviewModal } from "../components/MealEditReviewModal";
-import { LogActivityModal } from "../components/LogActivityModal";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { MEAL_CALORIE_SPLIT } from "../utils/mealCalorieSplit";
 import SEO from "../hooks/useSEO";
@@ -96,8 +94,6 @@ function Nutrition() {
     fatsTarget: 55,
     caloriesBurned: 0,
   });
-  const [showLogActivity, setShowLogActivity] = useState(false);
-  const [isLoggingActivity, setIsLoggingActivity] = useState(false);
   const [mealLogs, setMealLogs] = useState({
     Breakfast: [],
     Lunch: [],
@@ -599,26 +595,6 @@ function Nutrition() {
     }
   };
 
-  const handleSubmitActivity = async ({ activityType, activeMinutes, caloriesBurned }) => {
-    setIsLoggingActivity(true);
-    try {
-      // isAdditive=true: repeated logs on the same day accumulate rather than overwrite
-      await wearableService.syncMetrics(
-        "other",
-        { date: selectedDate, caloriesBurned, activeMinutes },
-        true,
-      );
-      toast.success(`🔥 Logged ${activityType.toLowerCase()} — ${caloriesBurned} kcal burned`);
-      setShowLogActivity(false);
-      invalidateCache(["dashboard", `nutrition_${selectedDate}`]);
-      await fetchData(true);
-    } catch (error) {
-      toast.error("Failed to log activity");
-    } finally {
-      setIsLoggingActivity(false);
-    }
-  };
-
   const openModal = (meal) => {
     setMealTab(meal);
     setIsModalOpen(true);
@@ -1104,7 +1080,7 @@ function Nutrition() {
           recentMeals={recentMeals}
           frequentFoods={frequentFoods}
           aiInsights={aiInsights}
-          onLogActivity={() => setShowLogActivity(true)}
+          onLogActivity={() => navigate("/fitness")}
         />
 
         {/* View Meal Detail Modal */}
@@ -1600,17 +1576,6 @@ function Nutrition() {
             onClose={() => setReviewMeal(null)}
             onConfirm={handleConfirmReviewedMeal}
             isSubmitting={isLoggingMeal}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Log Activity — offsets daily calories with manually-entered exercise burn */}
-      <AnimatePresence>
-        {showLogActivity && (
-          <LogActivityModal
-            onClose={() => setShowLogActivity(false)}
-            onSubmit={handleSubmitActivity}
-            isSubmitting={isLoggingActivity}
           />
         )}
       </AnimatePresence>

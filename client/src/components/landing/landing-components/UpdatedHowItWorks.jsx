@@ -50,7 +50,10 @@ const UpdatedHowItWorks = ({ cardImages = {} }) => {
       imageKey: "step2",
       // Default fallback UI matching screenshot Card 2
       renderGraphic: () => (
-        <div className="w-full h-full bg-[#014343] relative flex items-end justify-center pt-6 sm:pt-8 px-3 sm:px-4 overflow-hidden">
+        <div
+          className="w-full h-full relative flex items-end justify-center pt-6 sm:pt-8 px-3 sm:px-4 overflow-hidden"
+          style={{ background: "linear-gradient(90deg, #1B47B9 0%, #17133A 100%)" }}
+        >
           {/* Simulated Mobile Display Card */}
           <div className="w-full max-w-[230px] sm:max-w-[270px] bg-white rounded-t-2xl sm:rounded-t-[28px] p-4 sm:p-5 pb-5 shadow-2xl text-slate-900 flex flex-col gap-2.5 sm:gap-3 h-[calc(100%-12px)] text-left">
             <div className="text-[10px] sm:text-xs font-bold text-slate-400">9:41</div>
@@ -68,7 +71,7 @@ const UpdatedHowItWorks = ({ cardImages = {} }) => {
 
             <div className="flex items-center justify-between bg-slate-50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs">
               <span className="font-medium text-slate-700">Glucose regulation</span>
-              <span className="font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">Normal</span>
+              <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Normal</span>
             </div>
           </div>
         </div>
@@ -113,7 +116,10 @@ const UpdatedHowItWorks = ({ cardImages = {} }) => {
       imageKey: "step4",
       // Default fallback UI matching screenshot Card 4
       renderGraphic: () => (
-        <div className="w-full h-full bg-[#014343] relative flex items-end justify-center pt-6 sm:pt-8 px-3 sm:px-4 overflow-hidden">
+        <div
+          className="w-full h-full relative flex items-end justify-center pt-6 sm:pt-8 px-3 sm:px-4 overflow-hidden"
+          style={{ background: "linear-gradient(90deg, #1B47B9 0%, #17133A 100%)" }}
+        >
           {/* Simulated Mobile Screen */}
           <div className="w-full max-w-[230px] sm:max-w-[270px] bg-white rounded-t-2xl sm:rounded-t-[28px] p-4 sm:p-5 pb-5 shadow-2xl text-slate-900 flex flex-col gap-3 h-[calc(100%-12px)] text-left">
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-slate-400">
@@ -123,33 +129,33 @@ const UpdatedHowItWorks = ({ cardImages = {} }) => {
 
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-black text-slate-900">Wellness Score</span>
-              <span className="text-sm sm:text-base font-black text-sky-600">94%</span>
+              <span className="text-sm sm:text-base font-black text-emerald-600">94%</span>
             </div>
 
             {/* Weekly Bar Chart */}
             <div className="flex items-end justify-between gap-1.5 h-20 sm:h-28 pt-2 border-t border-slate-100">
               <div className="flex flex-col items-center gap-1 flex-1">
-                <div className="w-full bg-sky-300 h-8 sm:h-10 rounded-md" />
+                <div className="w-full bg-emerald-300 h-8 sm:h-10 rounded-md" />
                 <span className="text-[9px] text-slate-400">Mon</span>
               </div>
               <div className="flex flex-col items-center gap-1 flex-1">
-                <div className="w-full bg-sky-400 h-11 sm:h-14 rounded-md" />
+                <div className="w-full bg-emerald-400 h-11 sm:h-14 rounded-md" />
                 <span className="text-[9px] text-slate-400"></span>
               </div>
               <div className="flex flex-col items-center gap-1 flex-1">
-                <div className="w-full bg-sky-400 h-12 sm:h-16 rounded-md" />
+                <div className="w-full bg-emerald-400 h-12 sm:h-16 rounded-md" />
                 <span className="text-[9px] text-slate-400"></span>
               </div>
               <div className="flex flex-col items-center gap-1 flex-1">
-                <div className="w-full bg-sky-300 h-9 sm:h-12 rounded-md" />
+                <div className="w-full bg-emerald-300 h-9 sm:h-12 rounded-md" />
                 <span className="text-[9px] text-slate-400"></span>
               </div>
               <div className="flex flex-col items-center gap-1 flex-1">
-                <div className="w-full bg-sky-500 h-14 sm:h-18 rounded-md" />
+                <div className="w-full bg-emerald-500 h-14 sm:h-18 rounded-md" />
                 <span className="text-[9px] text-slate-400"></span>
               </div>
               <div className="flex flex-col items-center gap-1 flex-1">
-                <div className="w-full bg-blue-600 h-16 sm:h-20 rounded-md" />
+                <div className="w-full bg-emerald-600 h-16 sm:h-20 rounded-md" />
                 <span className="text-[9px] text-slate-400">Sun</span>
               </div>
             </div>
@@ -169,7 +175,7 @@ const UpdatedHowItWorks = ({ cardImages = {} }) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.5 }}
-          className="text-xs sm:text-lg font-extrabold uppercase tracking-widest text-[#014343] mb-2"
+          className="text-xs sm:text-lg font-extrabold uppercase tracking-widest text-[#1B47B9] mb-2"
         >
           HOW IT WORKS
         </motion.span>

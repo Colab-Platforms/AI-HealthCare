@@ -363,6 +363,7 @@ try {
     { path: "/api/wearables", module: "./routes/wearableRoutes" },
     { path: "/api/wearable", module: "./routes/wearableRoutes" },
     { path: "/api/nutrition", module: "./routes/nutritionRoutes" },
+    { path: "/api/exercise", module: "./routes/exerciseRoutes" },
     {
       path: "/api/diet-recommendations",
       module: "./routes/dietRecommendationRoutes",
@@ -379,6 +380,7 @@ try {
     { path: "/api/activity", module: "./routes/activityRoutes" },
     { path: "/api/insights", module: "./routes/insightRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
+    { path: "/api/waitlist", module: "./routes/waitlistRoutes" },
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
     { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots

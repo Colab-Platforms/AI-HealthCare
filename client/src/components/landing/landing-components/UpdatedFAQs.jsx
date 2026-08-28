@@ -57,7 +57,13 @@ const UpdatedFAQs = () => {
         >
           <h2 className="text-3xl sm:text-5xl lg:text-[68px] font-medium font-landing-title text-[#000] leading-tight">
             Frequently Asked, <br />
-            Clearly <span className="text-[#014343]">Answered</span>
+            Clearly{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: "linear-gradient(90deg, #1B47B9 0%, #17133A 100%)" }}
+            >
+              Answered
+            </span>
           </h2>
         </motion.div>
 

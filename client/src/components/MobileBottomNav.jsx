@@ -6,7 +6,7 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
-  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck, Wind, Wine
+  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck, Wind, Wine, Dumbbell
 } from 'lucide-react';
 import { features } from '../config/features';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +95,7 @@ export default function MobileBottomNav() {
 
   const logActivities = [
     { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-orange-500', borderColor: 'border-orange-100', iconBg: 'bg-orange-50', state: { openLogMeal: true } },
+    { label: 'Exercise', icon: Dumbbell, path: '/fitness', color: 'text-rose-500', borderColor: 'border-rose-100', iconBg: 'bg-rose-50' },
     isDiabetic
       ? { label: 'Nutrition', icon: Activity, path: '/nutrition', color: 'text-emerald-700', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' }
       : { label: 'Analysis', icon: BarChart3, path: '/complete-analysis', color: 'text-purple-600', borderColor: 'border-purple-100', iconBg: 'bg-purple-50' },
@@ -109,6 +110,7 @@ export default function MobileBottomNav() {
   const moreMenuItems = [
     // { path: '/shop', icon: ShoppingBag, label: 'Shop' },
     { path: '/profile', icon: Settings, label: 'Profile' },
+    { path: '/fitness', icon: Dumbbell, label: 'Fitness' },
     { path: '/diet-plan', icon: Heart, label: 'Diet Plan' }
   ];
 

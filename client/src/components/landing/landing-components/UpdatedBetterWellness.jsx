@@ -233,7 +233,13 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
             className="text-3xl sm:text-5xl lg:text-[84px] font-medium font-landing-title text-[#000] leading-[1.1] sm:leading-[1.12] mb-3 sm:mb-4"
           >
             Everything You Need <br />
-            For Better <span className="text-[#014343]">Wellness</span>
+            For Better{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: "linear-gradient(90deg, #1B47B9 0%, #17133A 100%)" }}
+            >
+              Wellness
+            </span>
           </motion.h2>
 
           <motion.p

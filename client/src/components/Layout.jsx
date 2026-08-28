@@ -53,6 +53,7 @@ const patientNavItems = [
   { path: "/complete-analysis", icon: TrendingUp, label: "Analysis" },
   { path: "/reports", icon: ShieldCheck, label: "Medical Records" },
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
+  { path: "/fitness", icon: Dumbbell, label: "Fitness" },
   { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
   { path: "/glucose-log", icon: Droplet, label: "Glucose Tracking", isDiabeticOnly: true },
   { path: "/notification-settings", icon: Bell, label: "Notificationss" },

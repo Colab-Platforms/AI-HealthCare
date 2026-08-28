@@ -22,7 +22,13 @@ const UpdatedWellnessIntelligence = ({ videoSrc = "" }) => {
       >
         {/* Line 1: Heading */}
         <div>
-          This is <span className="text-[#014343] font-bold">Wellness Intelligence</span>
+          This is{" "}
+          <span
+            className="font-bold bg-clip-text text-transparent"
+            style={{ backgroundImage: "linear-gradient(90deg, #1B47B9 0%, #17133A 100%)" }}
+          >
+            Wellness Intelligence
+          </span>
         </div>
 
         {/* Line 2: Subheading */}

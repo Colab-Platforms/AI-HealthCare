@@ -79,7 +79,7 @@ const UpdatedTestimonials = () => {
   }, [isPaused, totalLoopWidth]);
 
   return (
-    <section className="w-full bg-[#014343] py-14 sm:py-24 px-4 sm:px-12 lg:px-20 font-landing-body text-white overflow-hidden relative">
+    <section className="w-full bg-[#17133A] py-14 sm:py-24 px-4 sm:px-12 lg:px-20 font-landing-body text-white overflow-hidden relative">
       <div className="max-w-[1920px] mx-auto">
 
         {/* ─── TOP HEADER (NO MANUAL ARROW BUTTONS) ─────────────────────────────── */}
@@ -120,14 +120,14 @@ const UpdatedTestimonials = () => {
                 <div>
                   {/* Top Row: Stars + Custom SVG Quote Icon */}
                   <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-1 text-[#014343]">
+                    <div className="flex items-center gap-1 text-[#1B47B9]">
                       {[...Array(item.stars)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-[#014343] stroke-[#014343]" />
+                        <Star key={i} className="w-4 h-4 fill-[#1B47B9] stroke-[#1B47B9]" />
                       ))}
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" width="56" height="40" viewBox="0 0 71 51" fill="none">
                       <g clipPath="url(#clip0_1162_2323)">
-                        <path d="M0 30.1054H15.0527L5.01725 50.1753H20.0699L30.1054 30.1054V0H0V30.1054ZM40.1399 0V30.1054H55.1926L45.1571 50.1753H60.2098L70.2453 30.1054V0H40.1399Z" fill="#014343" fillOpacity="0.18" />
+                        <path d="M0 30.1054H15.0527L5.01725 50.1753H20.0699L30.1054 30.1054V0H0V30.1054ZM40.1399 0V30.1054H55.1926L45.1571 50.1753H60.2098L70.2453 30.1054V0H40.1399Z" fill="#1B47B9" fillOpacity="0.18" />
                       </g>
                       <defs>
                         <clipPath id="clip0_1162_2323">
@@ -150,10 +150,10 @@ const UpdatedTestimonials = () => {
                     <img
                       src={item.avatar}
                       alt={item.name}
-                      className="w-11 h-11 rounded-full object-cover border-2 border-[#014343]/20 flex-shrink-0"
+                      className="w-11 h-11 rounded-full object-cover border-2 border-[#1B47B9]/20 flex-shrink-0"
                     />
                     <div className="flex flex-col text-left">
-                      <span className="text-sm font-bold text-slate-900 leading-snug">
+                      <span className="text-sm font-bold text-[#1B47B9] leading-snug">
                         {item.name}
                       </span>
                     </div>

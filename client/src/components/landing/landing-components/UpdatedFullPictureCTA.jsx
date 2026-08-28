@@ -59,21 +59,28 @@ const UpdatedFullPictureCTA = ({ bgImage = "" }) => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 mb-6"
             >
-              {/* Primary Button */}
+              {/* Primary Button
               <Link
-                to="/register"
+                to="/waitlist"
                 className="px-8 py-3.5 bg-white text-slate-900 font-bold text-sm sm:text-base rounded-full hover:bg-slate-100 transition-all transform hover:scale-105 active:scale-95 shadow-2xl"
               >
                 Start For Free
               </Link>
 
-              {/* Secondary Button */}
+              Secondary Button
               <a
                 href="https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk"
                 className="px-8 py-3.5 bg-black/40 hover:bg-black/60 text-white font-semibold text-sm sm:text-base rounded-full border border-white/40 backdrop-blur-md transition-all transform hover:scale-105 active:scale-95 shadow-2xl"
               >
                 Download Android APK
-              </a>
+              </a> */}
+
+              <Link
+                to="/waitlist"
+                className="px-8 py-3.5 bg-white/10 text-white font-bold text-sm sm:text-base rounded-full border border-white/40 backdrop-blur-md hover:bg-white/20 transition-all transform hover:scale-105 active:scale-95 shadow-2xl"
+              >
+                Join the Waitlist
+              </Link>
             </motion.div>
 
             {/* Small Green Description Note */}
