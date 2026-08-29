@@ -14,11 +14,11 @@ const CarouselItems = () => (
     </div>
 
     {/* App download — phone mockup */}
-    <div className="relative flex h-[468px] w-[372px] shrink-0 items-center justify-end overflow-hidden rounded-[24px] border border-white/10 bg-[#05070c] ">
+    <div className="relative h-[468px] w-[372px] shrink-0">
       <img
         src="/waitlist/wait_2.png"
         alt="Take Health app dashboard on a phone"
-        className="absolute inset-0 h-full w-full object-cover object-top"
+        className="absolute left-0 top-0 h-full w-full object-cover object-top"
       />
     </div>
 
@@ -32,9 +32,12 @@ const CarouselItems = () => (
     </div>
 
     {/* TAKE Noticed — insight card, no photo */}
-    <div className="relative flex h-[218px] w-[329px] shrink-0 flex-col justify-between rounded-[24px] bg-[radial-gradient(circle_at_0%_50%,_rgba(59,130,246,0.35),_transparent_45%),radial-gradient(circle_at_100%_50%,_rgba(59,130,246,0.35),_transparent_45%),radial-gradient(circle_at_25%_15%,_rgba(45,212,191,0.14),_transparent_35%),linear-gradient(160deg,#0b1420_0%,#0a1a24_45%,#080f18_100%)] p-4 ">
-      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75 lg:text-xs">
-        <span className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full lg:h-14 lg:w-14">
+    <div
+      className="relative flex h-[218px] w-[329px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] p-5"
+      style={{ background: "radial-gradient(circle 170px at 82% 48%, rgba(90,150,255,0.95), rgba(60,100,220,0.3) 42%, transparent 68%), #020305" }}
+    >
+      <div className="flex items-center gap-3 text-base font-medium text-white lg:text-lg">
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full lg:h-11 lg:w-11">
           <video
             src="/waitlist/waitlist_bolb.mp4"
             autoPlay
@@ -59,10 +62,10 @@ const CarouselItems = () => (
         TAKE Noticed
       </div>
       <div>
-        <p className="font-landing-title text-sm font-medium leading-snug text-white lg:text-lg">
+        <p className="font-landing-title text-base font-medium leading-snug text-white lg:text-xl">
           Your sleep has been more consistent this week.
         </p>
-        <p className="mt-3 text-[11px] text-white/50 lg:text-sm">7h 12m average</p>
+        <p className="mt-4 font-mono text-[11px] text-white/50 lg:text-sm">7h 12m average</p>
       </div>
     </div>
 
