@@ -24,14 +24,17 @@ const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 const generateToken = generateAccessToken;
 
 // DPDPA Section 9: a submitted age under 18 requires verifiable guardian
-// consent before that profile data can be stored. Returns an error message
-// string if consent is missing/incomplete, or null if the request may proceed.
-const checkGuardianConsentRequired = (age, guardianConsent, alreadyOnFile) => {
+// consent before that profile data can be stored. "Verifiable" means the
+// guardian entered a one-time code sent to their own inbox (see
+// requestGuardianConsentOtp/verifyGuardianConsentOtp) — a client-submitted
+// guardianConsent object is never trusted directly, only what's already on
+// the user record from that verified flow. Returns an error message string
+// if consent is missing/unverified, or null if the request may proceed.
+const checkGuardianConsentRequired = (age, existingGuardianConsent) => {
   const numericAge = Number(age);
   if (!Number.isFinite(numericAge) || numericAge <= 0 || numericAge >= 18) return null;
-  if (alreadyOnFile) return null;
-  if (guardianConsent?.given && guardianConsent?.guardianName && guardianConsent?.guardianEmail) return null;
-  return 'This profile indicates an age under 18. Guardian consent (guardianConsent: { given, guardianName, guardianEmail }) is required under DPDPA before this data can be saved.';
+  if (existingGuardianConsent?.given && existingGuardianConsent?.verifiedViaOtp) return null;
+  return 'This profile indicates an age under 18. A parent/guardian must verify via the guardian consent step before this data can be saved.';
 };
 
 // ---------------------------------------------------------------------------
@@ -202,6 +205,91 @@ const claimDevice = async (user, req) => {
   });
 
   return { allowed: true };
+};
+
+// @desc    Send a verification code to a guardian's own email, for DPDPA
+//          Section 9 consent when the logged-in user's profile age is under 18
+// @route   POST /api/auth/guardian-otp/send  (requires auth — the child's session)
+exports.requestGuardianConsentOtp = async (req, res) => {
+  try {
+    const guardianEmail = req.body.guardianEmail?.toLowerCase().trim();
+    const { guardianName, relation } = req.body;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!guardianEmail || !emailRegex.test(guardianEmail)) {
+      return res.status(400).json({ message: 'A valid guardian email is required' });
+    }
+    if (!guardianName?.trim()) {
+      return res.status(400).json({ message: "Guardian's name is required" });
+    }
+    if (guardianEmail === req.user.email) {
+      return res.status(400).json({ message: 'Guardian email must be different from your own account email' });
+    }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    await Otp.findOneAndUpdate(
+      { email: guardianEmail },
+      { code, createdAt: Date.now() },
+      { upsert: true, new: true }
+    );
+
+    const emailService = require('../services/emailService');
+    await emailService.sendGuardianConsentCode(guardianEmail, req.user.name || 'A Take Health user', code);
+
+    res.json({ success: true, message: 'Verification code sent to guardian email' });
+  } catch (error) {
+    console.error('Guardian OTP request error:', error);
+    res.status(500).json({ message: 'Failed to send guardian verification code' });
+  }
+};
+
+// @desc    Verify the guardian's code and record verified consent on the
+//          child's account. This is the only place guardianConsent is ever
+//          written — never trusted directly from a client request body.
+// @route   POST /api/auth/guardian-otp/verify  (requires auth — the child's session)
+exports.verifyGuardianConsentOtp = async (req, res) => {
+  try {
+    const guardianEmail = req.body.guardianEmail?.toLowerCase().trim();
+    const { otp, guardianName, relation } = req.body;
+
+    if (!guardianEmail || !otp) {
+      return res.status(400).json({ message: 'Guardian email and code are required' });
+    }
+
+    const otpRecord = await Otp.findOne({ email: guardianEmail, code: otp });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    const consentedAt = new Date();
+    await User.findByIdAndUpdate(req.user._id, {
+      guardianConsent: {
+        given: true,
+        guardianName: guardianName?.trim() || '',
+        guardianEmail,
+        relation: relation || '',
+        consentedAt,
+        verifiedViaOtp: true,
+      },
+    });
+
+    const ConsentLog = require('../models/ConsentLog');
+    await ConsentLog.create({
+      userId: req.user._id,
+      version: '1.0',
+      action: 'granted',
+      purposes: ['guardian_consent_minor'],
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: { guardianName, guardianEmail, relation, verifiedViaOtp: true },
+    }).catch(err => console.error('Guardian ConsentLog failed:', err.message));
+
+    res.json({ success: true, message: 'Guardian consent verified' });
+  } catch (error) {
+    console.error('Guardian OTP verify error:', error);
+    res.status(500).json({ message: 'Failed to verify guardian code' });
+  }
 };
 
 exports.requestRegistrationOtp = async (req, res) => {
@@ -474,7 +562,10 @@ exports.register = async (req, res) => {
     const userRole = role === 'doctor' ? 'doctor' : 'user';
 
     if (profile?.age) {
-      const consentError = checkGuardianConsentRequired(profile.age, req.body.guardianConsent, false);
+      // No account exists yet at this point, so no verified guardian consent
+      // can exist either — an under-18 age here always routes through the
+      // dedicated guardian-otp flow after account creation instead.
+      const consentError = checkGuardianConsentRequired(profile.age, null);
       if (consentError) return res.status(403).json({ message: consentError, requiresGuardianConsent: true });
     }
 
@@ -517,15 +608,9 @@ exports.register = async (req, res) => {
         device_id: device_id || null,
         fcmToken: getIncomingFcmToken(req),
         profile: profile || {},
-        ...(req.body.guardianConsent?.given ? {
-          guardianConsent: {
-            given: true,
-            guardianName: req.body.guardianConsent.guardianName,
-            guardianEmail: req.body.guardianConsent.guardianEmail,
-            relation: req.body.guardianConsent.relation || '',
-            consentedAt: new Date(),
-          },
-        } : {}),
+        // guardianConsent is deliberately never taken from the request body —
+        // it's only ever written by verifyGuardianConsentOtp, after the
+        // guardian has actually proven access to their own inbox.
         // Only set when the client actually sent one, so an absent state keeps
         // the schema default instead of writing an explicit null.
         ...(state ? { foodPreferences: { state } } : {}),
@@ -1130,38 +1215,16 @@ exports.updateProfile = async (req, res) => {
 
         const mergedProfile = { ...user.profile.toObject(), ...sanitizedProfile };
 
-        if (sanitizedProfile.age) {
-          const consentError = checkGuardianConsentRequired(
-            mergedProfile.age,
-            req.body.guardianConsent,
-            user.guardianConsent?.given
-          );
-          if (consentError) {
-            return res.status(403).json({ message: consentError, requiresGuardianConsent: true });
-          }
-          if (req.body.guardianConsent?.given && !user.guardianConsent?.given) {
-            user.guardianConsent = {
-              given: true,
-              guardianName: req.body.guardianConsent.guardianName,
-              guardianEmail: req.body.guardianConsent.guardianEmail,
-              relation: req.body.guardianConsent.relation || '',
-              consentedAt: new Date(),
-            };
-            const ConsentLog = require('../models/ConsentLog');
-            await ConsentLog.create({
-              userId: user._id,
-              version: '1.0',
-              action: 'granted',
-              purposes: ['guardian_consent_minor'],
-              ipAddress: req.ip,
-              userAgent: req.headers['user-agent'],
-              metadata: {
-                guardianName: req.body.guardianConsent.guardianName,
-                guardianEmail: req.body.guardianConsent.guardianEmail,
-                relation: req.body.guardianConsent.relation || '',
-              },
-            }).catch(err => console.error('Guardian ConsentLog failed:', err.message));
-          }
+        // Checked on every update that touches `profile` — not just ones that
+        // include `age` — so an account whose *stored* age is already under
+        // 18 without verified guardian consent (e.g. a pre-existing record)
+        // can't keep updating other fields forever by simply omitting age
+        // from the request. guardianConsent here is whatever's already on
+        // the user record — written only by verifyGuardianConsentOtp once
+        // the guardian actually verified. Nothing from this request body is trusted.
+        const consentError = checkGuardianConsentRequired(mergedProfile.age, user.guardianConsent);
+        if (consentError) {
+          return res.status(403).json({ message: consentError, requiresGuardianConsent: true });
         }
 
         user.profile = mergedProfile;

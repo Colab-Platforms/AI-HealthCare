@@ -5,6 +5,12 @@ import { Mail, Phone, Facebook, Twitter, Instagram, Youtube } from "lucide-react
 const UpdatedFooter = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  // Starting the field readOnly stops Chrome from classifying it as an
+  // autofillable email field at page-load time (its autofill/autocomplete
+  // dropdown decision is made once, from the field's initial state) —
+  // removing readOnly on first focus is the one workaround that reliably
+  // survives Chrome ignoring autocomplete="off" on email-shaped inputs.
+  const [emailFieldLocked, setEmailFieldLocked] = useState(true);
 
   const handleSubscribe = (e) => {
     e.preventDefault();
@@ -102,12 +108,20 @@ const UpdatedFooter = () => {
 
               <form onSubmit={handleSubscribe} className="flex w-full items-center">
                 <input
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  name="nl-contact-field"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setEmailFieldLocked(false)}
                   placeholder="Enter your email address"
+                  autoComplete="off"
+                  readOnly={emailFieldLocked}
+                  pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                  title="Enter a valid email address"
                   required
-                  className="w-full bg-[#222222] border border-white/10 text-xs text-white placeholder-white/40 px-3 py-2.5 rounded-l-md focus:outline-none focus:border-emerald-500/50"
+                  className="footer-newsletter-input w-full bg-transparent border border-white/10 text-xs text-gray-300 placeholder-white/40 px-3 py-2.5 rounded-l-md focus:outline-none focus:border-emerald-500/50"
+                  style={{ "--autofill-bg": "#000000", "--autofill-text": "#d1d5db" }}
                 />
                 <button
                   type="submit"
@@ -130,7 +144,7 @@ const UpdatedFooter = () => {
               </span>
               <div className="flex flex-col gap-2 text-xs text-white/80 font-light">
                 <a
-                  href="mailto:takesolutionsltd@gmail.com"
+                  href="mailto:support@takelimited.com"
                   className="flex items-center gap-2 hover:text-white transition-colors"
                 >
                   <Mail className="w-3.5 h-3.5 text-white/60 flex-shrink-0" />
@@ -156,14 +170,18 @@ const UpdatedFooter = () => {
                 <Facebook className="w-3.5 h-3.5" />
               </a>
               <a
-                href="#"
+                href="https://x.com/Take_Limited"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:border-white transition-all"
-                aria-label="Twitter"
+                aria-label="X (Twitter)"
               >
                 <Twitter className="w-3.5 h-3.5" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/takehealth_"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:border-white transition-all"
                 aria-label="Instagram"
               >

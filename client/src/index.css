@@ -14,6 +14,18 @@
   font-display: swap;
 }
 
+/* Chrome/Edge inject an opaque autofill background on email-like inputs,
+   which stays even though the input itself is styled transparent — leaving
+   inherited light text unreadable against it. The huge inset box-shadow
+   paints over that injected background with the color we actually want. */
+.footer-newsletter-input:-webkit-autofill,
+.footer-newsletter-input:-webkit-autofill:hover,
+.footer-newsletter-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--autofill-text, #ffffff);
+  -webkit-box-shadow: 0 0 0px 1000px var(--autofill-bg, #2C2A28) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 @font-face {
   font-family: "Founders Grotesk";
   src: url("/assets/fonts/founders-grotesk.woff2") format("woff2");
@@ -569,6 +581,18 @@ textarea:focus {
   border-color: #064e3b;
   box-shadow: 0 0 0 4px rgba(6, 78, 59, 0.1);
   background: white;
+}
+
+/* The global input:focus rule above forces a white background on every
+   focused input in the app. It sits outside any @layer, so it beats
+   Tailwind's focus: utilities regardless of their specificity — that's why
+   focus:bg-transparent on the footer newsletter input never had any effect.
+   This rule opts that one input back out, matching its own class+pseudo
+   specificity so it wins here without touching the global rule everywhere
+   else it's actually wanted. */
+.footer-newsletter-input:focus {
+  background: transparent;
+  box-shadow: none;
 }
 
 input,

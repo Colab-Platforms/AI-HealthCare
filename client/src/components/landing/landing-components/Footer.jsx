@@ -19,6 +19,10 @@ const fadeIn = {
 
 const Footer = () => {
   const [openSections, setOpenSections] = useState([]);
+  // Starting the newsletter field readOnly stops Chrome from classifying it
+  // as an autofillable email field at page-load time — removing readOnly on
+  // first focus survives Chrome ignoring autocomplete="off" on such fields.
+  const [emailFieldLocked, setEmailFieldLocked] = useState(true);
 
   const footerItems = [
     {
@@ -138,8 +142,14 @@ const Footer = () => {
             <form className="relative py-2 border-b border-gray-500 mt-5">
               <input
                 type="text"
+                inputMode="email"
+                name="nl-contact-field"
                 placeholder="Enter your email address"
-                className="w-full bg-transparent outline-none border-none ring-0 focus:outline-none focus:ring-0 focus:bg-transparent focus:border-none"
+                autoComplete="off"
+                readOnly={emailFieldLocked}
+                onFocus={() => setEmailFieldLocked(false)}
+                className="footer-newsletter-input w-full bg-transparent text-gray-300 outline-none border-none ring-0 focus:outline-none focus:ring-0 focus:bg-transparent focus:border-none"
+                style={{ "--autofill-text": "#d1d5db" }}
               />
               <button
                 type="submit"
@@ -277,8 +287,14 @@ const Footer = () => {
             <form className="relative py-2 border-b border-gray-500 mt-5">
               <input
                 type="text"
+                inputMode="email"
+                name="nl-contact-field"
                 placeholder="Enter your email address"
-                className="w-full bg-transparent outline-none border-none ring-0 focus:outline-none focus:ring-0 focus:bg-transparent focus:border-none"
+                autoComplete="off"
+                readOnly={emailFieldLocked}
+                onFocus={() => setEmailFieldLocked(false)}
+                className="footer-newsletter-input w-full bg-transparent text-gray-300 outline-none border-none ring-0 focus:outline-none focus:ring-0 focus:bg-transparent focus:border-none"
+                style={{ "--autofill-text": "#d1d5db" }}
               />
               <button
                 type="submit"
