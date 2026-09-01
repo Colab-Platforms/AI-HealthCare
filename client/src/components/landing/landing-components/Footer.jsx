@@ -44,7 +44,7 @@ const Footer = () => {
       items: [
         { name: "Privacy Policy", link: "/privacy-policy" },
         { name: "Terms & Conditions", link: "/terms-and-conditions" },
-        { name: "Medical Disclaimer", link: "#" },
+        // { name: "Medical Disclaimer", link: "#" },
       ],
     },
   ];

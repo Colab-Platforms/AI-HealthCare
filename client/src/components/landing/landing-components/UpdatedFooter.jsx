@@ -39,7 +39,7 @@ const UpdatedFooter = () => {
       links: [
         { label: "Privacy Policy", to: "/privacy-policy" },
         { label: "Terms of Service", to: "/terms-and-conditions" },
-        { label: "Medical Disclaimer", to: "#" },
+        // { label: "Medical Disclaimer", to: "#" },
       ],
     },
   ];
