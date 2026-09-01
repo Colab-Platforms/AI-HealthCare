@@ -163,7 +163,9 @@ const UpdatedFooter = () => {
             {/* Social Links */}
             <div className="flex items-center gap-3 mt-1">
               <a
-                href="#"
+                href="https://www.facebook.com/share/1Es9isKBpo/?mibextid=wwXIfr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:border-white transition-all"
                 aria-label="Facebook"
               >
@@ -188,7 +190,9 @@ const UpdatedFooter = () => {
                 <Instagram className="w-3.5 h-3.5" />
               </a>
               <a
-                href="#"
+                href="https://www.youtube.com/@Takehealth21"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:border-white transition-all"
                 aria-label="Youtube"
               >

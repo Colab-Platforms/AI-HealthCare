@@ -113,9 +113,9 @@ class EmailService {
     return this.sendEmail({ to: email, subject: 'Customized Diet Plan Ready - Take Health', html });
   }
 
-  async sendWaitlistConfirmation(email, name, confirmationUrl) {
-    const html = this.getWaitlistConfirmationTemplate(name, confirmationUrl);
-    return this.sendEmail({ to: email, subject: "Confirm Your Waitlist Registration - Take Health", html });
+  async sendWaitlistConfirmation(email, name) {
+    const html = this.getWaitlistConfirmationTemplate(name);
+    return this.sendEmail({ to: email, subject: "You're on the Take waitlist", html });
   }
 
   // Marketing emails (tips, newsletters, promotions) — skipped if user opted out

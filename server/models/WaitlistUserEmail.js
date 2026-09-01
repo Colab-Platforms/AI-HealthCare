@@ -22,19 +22,6 @@ const waitlistUserEmailSchema = new mongoose.Schema({
         required: true,
         index: true
     },
-    // Email confirmation
-    confirmationToken: {
-        type: String,
-        sparse: true
-    },
-    tokenExpiry: Date,
-    isConfirmed: {
-        type: Boolean,
-        default: false,
-        index: true
-    },
-    confirmedAt: Date,
-    
     // Email tracking
     emailSent: {
         type: Boolean,
@@ -110,18 +97,15 @@ waitlistUserEmailSchema.methods.unsubscribe = function() {
 waitlistUserEmailSchema.statics.getEngagementStats = async function() {
     const total = await this.countDocuments();
     const emailed = await this.countDocuments({ status: 'emailed' });
-    const confirmed = await this.countDocuments({ isConfirmed: true });
     const converted = await this.countDocuments({ status: 'converted' });
     const unsubscribed = await this.countDocuments({ status: 'unsubscribed' });
 
     return {
         total,
         emailed,
-        confirmed,
         converted,
         conversionRate: total > 0 ? ((converted / total) * 100).toFixed(2) + '%' : '0%',
-        unsubscribed,
-        emailConfirmationRate: total > 0 ? ((confirmed / total) * 100).toFixed(2) + '%' : '0%'
+        unsubscribed
     };
 };
 
