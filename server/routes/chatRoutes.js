@@ -5,6 +5,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { protect } = require('../middleware/auth');
 const { aiLimiter } = require('../middleware/rateLimit');
 const { requireFeature } = require('../middleware/subscriptionAccess');
+const { requireHealthConsent } = require('../middleware/consentAccess');
 const { countAiChatToday } = require('../utils/featureUsage');
 const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
@@ -27,7 +28,7 @@ function joinCapped(arr, formatter = (x) => x) {
 
 // AI Chat endpoint - Requires authentication for personalized context
 // TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
-router.post('/chat', protect, aiLimiter, /* requireFeature('aiChatPerDay', countAiChatToday), */ async (req, res) => {
+router.post('/chat', protect, requireHealthConsent, aiLimiter, /* requireFeature('aiChatPerDay', countAiChatToday), */ async (req, res) => {
   try {
     const { query, conversationHistory } = req.body;
     const user = req.user;

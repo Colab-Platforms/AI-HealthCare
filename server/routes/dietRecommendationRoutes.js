@@ -4,6 +4,7 @@ const dietRecommendationController = require('../controllers/dietRecommendationC
 const { protect } = require('../middleware/auth');
 const { verifyQStash } = require('../middleware/qstashAuth');
 const { requireFeature } = require('../middleware/subscriptionAccess');
+const { requireHealthConsent } = require('../middleware/consentAccess');
 const { countDietPlansThisMonth } = require('../utils/featureUsage');
 
 // Background callback route — called by QStash, so no user session to `protect`.
@@ -16,7 +17,7 @@ router.use(protect);
 
 // Diet plan routes
 // TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
-router.post('/diet-plan/generate', /* requireFeature('dietPlansPerMonth', countDietPlansThisMonth), */ dietRecommendationController.generatePersonalizedDietPlan);
+router.post('/diet-plan/generate', requireHealthConsent, /* requireFeature('dietPlansPerMonth', countDietPlansThisMonth), */ dietRecommendationController.generatePersonalizedDietPlan);
 router.get('/diet-plan/active', dietRecommendationController.getActiveDietPlan);
 router.get('/diet-plan/history', dietRecommendationController.getDietPlanHistory);
 router.get('/diet-plan/:planId', dietRecommendationController.getDietPlanById);
@@ -25,7 +26,7 @@ router.post('/diet-plan/:planId/rate', dietRecommendationController.rateDietPlan
 
 // Supplement recommendation routes — boolean feature, no usage counter needed
 // TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
-router.post('/supplements/generate', /* requireFeature('supplementRecommendations'), */ dietRecommendationController.generateSupplementRecommendations);
+router.post('/supplements/generate', requireHealthConsent, /* requireFeature('supplementRecommendations'), */ dietRecommendationController.generateSupplementRecommendations);
 router.get('/supplements/active', dietRecommendationController.getActiveSupplementRecommendations);
 router.post('/supplements/:recommendationId/track', dietRecommendationController.trackSupplementUsage);
 

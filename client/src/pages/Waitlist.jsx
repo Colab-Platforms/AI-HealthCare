@@ -113,12 +113,18 @@ const CarouselItems = () => (
     >
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col items-center justify-between px-4 py-8 sm:px-8 lg:px-12">
         <div className="w-full max-w-[1560px]">
-          <div className="mb-10 flex justify-center">
+          <div className="relative mb-10 flex justify-center">
             <img
               src="/assets/logos/take_logo.png"
               alt="Take Health logo"
               className="h-[46px] w-auto sm:h-[56px]"
             />
+            <Link
+              to="/login"
+              className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full border border-white/15 px-4 py-2 text-xs font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white sm:px-5 sm:py-2.5 sm:text-sm"
+            >
+              Log in
+            </Link>
           </div>
 
           <div className="text-center">

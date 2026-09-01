@@ -105,19 +105,29 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+// Keep in sync with CONSENT_VERSION in server/controllers/privacyController.js
+const CONSENT_VERSION = '1.0';
+
 function ConsentGate({ children }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [needsConsent, setNeedsConsent] = useState(false);
 
   useEffect(() => {
-    // Show consent modal if user hasn't given consent yet (new user or field missing)
-    if (user && !user.consent?.given) {
+    // Show consent modal if user hasn't consented yet, or consented to an older policy version
+    if (user && (!user.consent?.given || user.consent?.version !== CONSENT_VERSION)) {
       setNeedsConsent(true);
     }
   }, [user]);
 
+  const handleAccept = async () => {
+    // Pull the fresh consent record from the backend into context + localStorage,
+    // otherwise a page refresh reads the stale pre-consent snapshot and re-shows this modal.
+    await refreshUser();
+    setNeedsConsent(false);
+  };
+
   if (needsConsent) {
-    return <ConsentModal onAccept={() => setNeedsConsent(false)} />;
+    return <ConsentModal onAccept={handleAccept} />;
   }
   return children;
 }
