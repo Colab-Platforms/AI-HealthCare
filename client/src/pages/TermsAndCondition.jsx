@@ -6,7 +6,7 @@ import PdfViewer from "../components/PdfViewer";
 
 const TermsAndCondition = () => {
   const pdfUrl =
-    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1787557576/Terrms_and_Conditions_take.health_updated_24.08.26_hifch6.pdf";
+    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1788346542/Terrms_and_Conditions_take.health_updated_24.08.26_hifch6_fanxrq_q3dddp.pdf";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">

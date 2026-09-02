@@ -470,10 +470,35 @@ if (!process.env.VERCEL) {
   });
 
   // DPDPA Account Deletion — midnight daily
-  const { runDeletionCron } = require('./controllers/privacyController');
+  const { runDeletionCron, runDeletionReminderCron, runUnconsentedMinorGraceCron } = require('./controllers/privacyController');
   cron.schedule('0 0 * * *', async () => {
     console.log('🗑️ Running DPDPA deletion cron...');
     await runDeletionCron();
+  });
+
+  // DPDPA Section 9 — grace period + eventual deletion handoff for pre-existing
+  // accounts under 18 without verified guardian consent. Daily is fine here;
+  // the 15-day grace window and the 48h/24h reminder cron above absorb the timing.
+  cron.schedule('0 0 * * *', async () => {
+    await runUnconsentedMinorGraceCron();
+  });
+
+  // DPDPA Deletion Reminders (48h + 24h pre-erasure notice) — hourly, not
+  // daily, so notice timing can't drift by up to a day against a wall-clock
+  // deletion timestamp (see comment on runDeletionReminderCron).
+  cron.schedule('0 * * * *', async () => {
+    await runDeletionReminderCron();
+  });
+
+  // Privacy Policy retention schedule — consent records (5yr post-deletion),
+  // support tickets (3yr), transaction records (8yr, statutory). Independent
+  // of the 30-day account-erasure cron and each other; daily is fine, these
+  // are multi-year windows with no tight-notice requirement.
+  const { runConsentLogRetentionCron, runSupportTicketRetentionCron, runTransactionRetentionCron } = require('./controllers/privacyController');
+  cron.schedule('0 1 * * *', async () => {
+    await runConsentLogRetentionCron();
+    await runSupportTicketRetentionCron();
+    await runTransactionRetentionCron();
   });
 
   // Subscription Lifecycle — expiry downgrade + past_due grace period, midnight daily

@@ -96,11 +96,48 @@ class EmailService {
     return this.sendEmail({ to: guardianEmail, subject: `Guardian Verification Needed for ${childName}'s Take Health Account`, html });
   }
 
+  // DPDP Rules 2025, Rule 8: advance notice before erasure. Sent at both the
+  // 48h and 24h marks so the user has more than one chance to see it and
+  // cancel if they didn't mean to request deletion.
+  async sendDeletionReminder(email, name, scheduledDeletion, hoursBefore) {
+    const html = this.getDeletionReminderTemplate(name, scheduledDeletion, hoursBefore);
+    const subject = hoursBefore <= 24
+      ? 'Final notice: your take.health data will be deleted in 24 hours'
+      : 'Your take.health data will be deleted in 2 days';
+    return this.sendEmail({ to: email, subject, html });
+  }
+
+  // Google Play "delete without the app" page — the code proves the person
+  // submitting the public form actually controls this inbox, before we
+  // schedule anything.
+  async sendPublicDeletionConfirmCode(email, name, code) {
+    const html = this.getPublicDeletionConfirmTemplate(name, code);
+    return this.sendEmail({ to: email, subject: 'Confirm your take.health account deletion request', html });
+  }
+
+  // DPDPA Section 9: sent to a pre-existing account found to be under 18
+  // without ever-verified guardian consent (e.g. created before the
+  // guardian-otp gate existed). Goes to the child's own registered email,
+  // since no guardian email is on file yet — that's the whole problem.
+  async sendGuardianConsentGraceNotice(email, name, deadline) {
+    const html = this.getGuardianConsentGraceNoticeTemplate(name, deadline);
+    return this.sendEmail({ to: email, subject: 'Action needed: guardian verification required for your Take Health account', html });
+  }
+
   // Security alert — sent after a successful password change so the account
   // owner can act fast (contact support) if they didn't make the change.
   async sendPasswordChangedAlert(email, name) {
     const html = this.getPasswordChangedTemplate(name);
     return this.sendEmail({ to: email, subject: 'Your password was changed - take.health', html });
+  }
+
+  // Confirms a pending deletion was cancelled — same reasoning as the
+  // password-changed alert: any reversal of a scheduled data-erasure is a
+  // security-relevant event the account owner should see happen, not just
+  // a UI toast that vanishes.
+  async sendDeletionCancelledConfirmation(email, name) {
+    const html = this.getDeletionCancelledTemplate(name);
+    return this.sendEmail({ to: email, subject: 'Your take.health account deletion was cancelled', html });
   }
 
   async sendReportAnalysisComplete(email, name, reportId) {
@@ -211,6 +248,48 @@ class EmailService {
             <p>Your account password was just changed successfully. You've been logged out on all other devices as a security precaution.</p>
             <div class="warning-box">
               <p><strong>Wasn't you?</strong> If you didn't make this change, your account may be compromised — please contact our support team immediately at support@take.health.</p>
+            </div>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} take.health. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getDeletionCancelledTemplate(name) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Deletion Cancelled</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 10px; }
+          .warning-box { background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 20px; margin: 24px 0; text-align: left; }
+          .warning-box p { margin: 0; font-size: 13px; color: #991b1b; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">take.health</div>
+            <h2 style="margin: 0;">Deletion Cancelled</h2>
+          </div>
+          <div class="content">
+            <p class="welcome-text">Hi ${name || 'there'},</p>
+            <p>Your pending account deletion request has been cancelled. Your account and data are safe — nothing further will happen.</p>
+            <div class="warning-box">
+              <p><strong>Didn't cancel this yourself?</strong> If you didn't request this cancellation, someone else may have access to your account — please contact our support team immediately at support@take.health.</p>
             </div>
           </div>
           <div class="footer">
@@ -580,6 +659,155 @@ class EmailService {
           <div class="footer">
             <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getGuardianConsentGraceNoticeTemplate(name, deadline) {
+    const deadlineStr = new Date(deadline).toLocaleString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata',
+    });
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Guardian Verification Required</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #d97706, #f59e0b); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .body-text { font-size: 16px; color: #334155; text-align: left; }
+          .date-box { background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin: 24px 0; }
+          .date-box .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+          .date-box .value { font-size: 20px; font-weight: 800; color: #1e293b; margin-top: 4px; }
+          .cta { display: inline-block; margin-top: 24px; padding: 14px 32px; background: #059669; color: white; text-decoration: none; border-radius: 10px; font-weight: 700; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">Take Health</div>
+            <h2 style="margin: 0;">Guardian Verification Needed</h2>
+          </div>
+          <div class="content">
+            <p class="body-text">Hi ${name || 'there'},</p>
+            <p class="body-text">Our records show your profile indicates you're under 18, and we don't have verified consent from a parent or guardian on file for your account — required under India's DPDP Act, 2023.</p>
+            <p class="body-text">Please open the app and complete guardian verification (your guardian will receive a short code by email to confirm) before the date below. Until then, AI features on your account remain unavailable.</p>
+            <div class="date-box">
+              <div class="label">Complete verification by</div>
+              <div class="value">${deadlineStr}</div>
+            </div>
+            <p class="body-text">If we don't hear back by then, your account and data will be scheduled for deletion — you'll get advance notice before that happens too.</p>
+            <a href="https://take.health/privacy-settings" class="cta">Verify Now</a>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getPublicDeletionConfirmTemplate(name, code) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Confirm Account Deletion</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 10px; text-align: left; }
+          .otp-container { background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin: 30px 0; display: inline-block; }
+          .otp-code { font-size: 42px; font-weight: 900; color: #dc2626; letter-spacing: 12px; font-family: 'Courier New', monospace; padding-left: 12px; }
+          .expiry-note { font-size: 14px; color: #94a3b8; margin-top: 20px; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+          .highlight { color: #dc2626; font-weight: 600; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">Take Health</div>
+            <h2 style="margin: 0;">Confirm Account Deletion</h2>
+          </div>
+          <div class="content">
+            <p class="welcome-text">Hi ${name || 'there'},</p>
+            <p class="welcome-text">Someone requested deletion of this account from take.health/delete-account. If this was you, enter this code to confirm:</p>
+
+            <div class="otp-container">
+              <div class="otp-code">${code}</div>
+            </div>
+
+            <p class="expiry-note">Valid for <span class="highlight">10 minutes</span>. If you didn't request this, ignore this email — your account stays exactly as it is, nothing happens without this code.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getDeletionReminderTemplate(name, scheduledDeletion, hoursBefore) {
+    const deletionDate = new Date(scheduledDeletion).toLocaleString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata',
+    });
+    const urgent = hoursBefore <= 24;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Deletion Notice</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, ${urgent ? '#dc2626, #ef4444' : '#d97706, #f59e0b'}); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .body-text { font-size: 16px; color: #334155; text-align: left; }
+          .date-box { background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin: 24px 0; }
+          .date-box .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+          .date-box .value { font-size: 20px; font-weight: 800; color: #1e293b; margin-top: 4px; }
+          .cta { display: inline-block; margin-top: 24px; padding: 14px 32px; background: #059669; color: white; text-decoration: none; border-radius: 10px; font-weight: 700; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">Take Health</div>
+            <h2 style="margin: 0;">${urgent ? 'Final Notice' : 'Deletion Scheduled'}</h2>
+          </div>
+          <div class="content">
+            <p class="body-text">Hi ${name || 'there'},</p>
+            <p class="body-text">You requested deletion of your Take Health account. This is a reminder, as required under India's DPDP Rules, 2025, that your account and all associated data (health reports, chat history, food logs) will be <strong>permanently deleted</strong> in approximately <strong>${hoursBefore} hours</strong>.</p>
+            <div class="date-box">
+              <div class="label">Permanent deletion at</div>
+              <div class="value">${deletionDate} IST</div>
+            </div>
+            <p class="body-text">If you didn't request this, or changed your mind, you can cancel anytime before this date from Privacy Settings — your data is untouched until then.</p>
+            <a href="https://take.health/privacy-settings" class="cta">Cancel Deletion</a>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
           </div>
         </div>
       </body>

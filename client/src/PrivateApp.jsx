@@ -59,7 +59,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const navigate = useNavigate();
 
   if (loading) return <GenericSkeleton />;
-  if (!user) return <Navigate to="/login" replace />;
+  // Preserve where they were headed (e.g. a "Cancel Deletion" email link to
+  // /privacy-settings) so Login can send them back here instead of always
+  // dropping them on /dashboard after signing in.
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
 
   // Check onboarding for regular users
   const hasSeenOnboarding =

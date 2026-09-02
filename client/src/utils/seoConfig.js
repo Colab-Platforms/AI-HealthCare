@@ -381,6 +381,15 @@ export const seoConfig = {
       canonical: `${baseURL}/terms-and-conditions`,
     },
 
+    deleteAccount: {
+      title: "Delete Your Account | take.health",
+      description:
+        "Request permanent deletion of your take.health account and personal data — no app install required.",
+      keywords: "delete account, data deletion, account removal",
+      path: "/delete-account",
+      canonical: `${baseURL}/delete-account`,
+    },
+
     demo: {
       title: "Demo Preview | take.health",
       description: "See a demo of take.health's features and capabilities.",

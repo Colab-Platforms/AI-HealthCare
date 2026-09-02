@@ -6,7 +6,7 @@ import PdfViewer from "../components/PdfViewer";
 
 const PrivacyPolicy = () => {
   const pdfUrl =
-    "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816";
+    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1788346794/Privacy_Policy_updated_31.08.2026_1_1_xab7xt.pdf";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">

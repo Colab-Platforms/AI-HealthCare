@@ -37,6 +37,30 @@ const checkGuardianConsentRequired = (age, existingGuardianConsent) => {
   return 'This profile indicates an age under 18. A parent/guardian must verify via the guardian consent step before this data can be saved.';
 };
 
+// Phone-first onboarding's "I agree to Take.Health's Privacy Policy" checkbox
+// lands here — same user.consent field the post-login ConsentModal writes,
+// so whichever flow a user goes through first satisfies the other too
+// (ConsentGate only checks user.consent.given, not which path set it).
+const recordPrivacyPolicyConsent = async (user, req) => {
+  const ConsentLog = require('../models/ConsentLog');
+  const CONSENT_VERSION = '1.0';
+  user.consent = {
+    given: true,
+    version: CONSENT_VERSION,
+    givenAt: new Date(),
+    withdrawn: false,
+    withdrawnAt: null,
+  };
+  await ConsentLog.create({
+    userId: user._id,
+    version: CONSENT_VERSION,
+    action: 'granted',
+    purposes: ['health_processing'],
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+  }).catch((e) => console.error('Phone-onboarding ConsentLog failed:', e.message));
+};
+
 // ---------------------------------------------------------------------------
 // Single-device sessions
 //
@@ -263,7 +287,7 @@ exports.verifyGuardianConsentOtp = async (req, res) => {
     await Otp.deleteOne({ _id: otpRecord._id });
 
     const consentedAt = new Date();
-    await User.findByIdAndUpdate(req.user._id, {
+    const update = {
       guardianConsent: {
         given: true,
         guardianName: guardianName?.trim() || '',
@@ -271,8 +295,21 @@ exports.verifyGuardianConsentOtp = async (req, res) => {
         relation: relation || '',
         consentedAt,
         verifiedViaOtp: true,
+        graceNoticeSentAt: req.user.guardianConsent?.graceNoticeSentAt || null,
+        graceDeadline: null, // resolved — clear so the grace cron won't re-evaluate
       },
-    });
+    };
+    // Only auto-cancel a deletion the *system* scheduled for this exact
+    // reason — never a deletion the user requested themselves, even if it
+    // happens to be in flight at the same time.
+    if (req.user.dataRetention?.deletionReason === 'unconsented_minor') {
+      update['dataRetention.scheduledDeletion'] = null;
+      update['dataRetention.deletionRequestedAt'] = null;
+      update['dataRetention.deletionReason'] = null;
+      update['dataRetention.reminder48SentAt'] = null;
+      update['dataRetention.reminder24SentAt'] = null;
+    }
+    await User.findByIdAndUpdate(req.user._id, update);
 
     const ConsentLog = require('../models/ConsentLog');
     await ConsentLog.create({
@@ -392,6 +429,9 @@ exports.loginWithPhoneOtp = async (req, res) => {
 
     user.isPhoneVerified = true;
     user.loginCount = (user.loginCount || 0) + 1;
+    if (req.body.privacyPolicyAccepted === true && !user.consent?.given) {
+      await recordPrivacyPolicyConsent(user, req);
+    }
     await user.save();
 
     const rawRefreshToken = generateRefreshToken();
@@ -492,6 +532,9 @@ exports.verifyPhone = async (req, res) => {
 
     user.phone = phone;
     user.isPhoneVerified = true;
+    if (req.body.privacyPolicyAccepted === true && !user.consent?.given) {
+      await recordPrivacyPolicyConsent(user, req);
+    }
     await user.save();
 
     res.json({ success: true, message: 'Phone number verified successfully', phone: user.phone, isPhoneVerified: true });
@@ -512,6 +555,13 @@ exports.register = async (req, res) => {
     if (!name || !email || !password ) {
       console.log('Registration attempt: Missing required fields');
       return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    // The "I agree to Take Health's Privacy Policy and Terms of Service"
+    // checkbox on the Create Account screen — mandatory there, enforced
+    // here too rather than trusting client-side validation alone.
+    if (req.body.privacyPolicyAccepted !== true) {
+      return res.status(400).json({ message: 'You must agree to the Privacy Policy and Terms of Service to create an account' });
     }
 
     // Phone number validation (exactly 0 digits)
@@ -608,6 +658,15 @@ exports.register = async (req, res) => {
         device_id: device_id || null,
         fcmToken: getIncomingFcmToken(req),
         profile: profile || {},
+        // Validated above (privacyPolicyAccepted must be exactly true) before
+        // reaching this point, so it's safe to record as given here.
+        consent: {
+          given: true,
+          version: '1.0',
+          givenAt: new Date(),
+          withdrawn: false,
+          withdrawnAt: null,
+        },
         // guardianConsent is deliberately never taken from the request body —
         // it's only ever written by verifyGuardianConsentOtp, after the
         // guardian has actually proven access to their own inbox.
@@ -627,6 +686,16 @@ exports.register = async (req, res) => {
           startDate: new Date()
         }
       });
+
+      const ConsentLog = require('../models/ConsentLog');
+      await ConsentLog.create({
+        userId: user._id,
+        version: '1.0',
+        action: 'granted',
+        purposes: ['health_processing'],
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      }).catch((e) => console.error('Registration ConsentLog failed:', e.message));
 
       // 🆕 CREATE INITIAL HEALTHGOAL IF PROFILE PROVIDED
       if (user && profile && nutritionGoal && profile.age) {

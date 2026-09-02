@@ -31,6 +31,12 @@ const userSchema = new mongoose.Schema({
     // True only once the guardian entered a one-time code sent to their own
     // inbox — distinguishes real verification from a typed, unverified email.
     verifiedViaOtp: { type: Boolean, default: false },
+    // Grace period for pre-existing accounts found to be under 18 without
+    // verified consent (e.g. accounts created before this gate existed).
+    // Set once, the first time such an account is detected; never reset by
+    // the detection cron on later runs, so the notice email fires exactly once.
+    graceNoticeSentAt: { type: Date, default: null },
+    graceDeadline: { type: Date, default: null },
   },
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
@@ -270,6 +276,18 @@ const userSchema = new mongoose.Schema({
   dataRetention: {
     scheduledDeletion: { type: Date, default: null }, // set when user requests account delete
     deletionRequestedAt: { type: Date, default: null },
+    // Distinguishes a user's own deletion request from one the system
+    // scheduled after an unconsented-minor grace period expired — so
+    // verifying guardian consent can safely auto-cancel only the latter,
+    // never a deletion the user actually asked for themselves.
+    deletionReason: { type: String, enum: ['user_requested', 'unconsented_minor'], default: null },
+    // Optional free-text from the "Reason for deletion" field on the public
+    // (Play Store compliance) delete page — churn insight, not shown to the user again.
+    deletionFeedback: { type: String, default: null, maxlength: 1000 },
+    // DPDP Rules 2025, Rule 8: data principal must be notified before erasure.
+    // Idempotency markers so the hourly reminder cron never double-sends.
+    reminder48SentAt: { type: Date, default: null },
+    reminder24SentAt: { type: Date, default: null },
   },
   privacySettings: {
     analyticsEnabled:   { type: Boolean, default: true },
@@ -287,6 +305,17 @@ userSchema.index({ resetPasswordCode: 1, resetPasswordExpire: 1 }, { sparse: tru
 userSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 }, { sparse: true });
 // Admin stats/growth charts filter by signup date range collection-wide
 userSchema.index({ createdAt: 1 });
+// DPDPA deletion cron + hourly reminder cron both range-query this field.
+// Partial (not sparse/plain) because it's null for ~every user — only
+// accounts that actually requested deletion ever enter the index, so it
+// stays tiny regardless of total user count.
+// MongoDB partial indexes don't support $ne — $gt: null is the standard
+// workaround (BSON sorts null below every real Date value, so this matches
+// exactly the documents where the field is actually set).
+userSchema.index(
+  { 'dataRetention.scheduledDeletion': 1 },
+  { partialFilterExpression: { 'dataRetention.scheduledDeletion': { $gt: null } } }
+);
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

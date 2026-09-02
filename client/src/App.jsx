@@ -26,6 +26,7 @@ const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));
 const TermsAndCondition = lazy(() => import("./pages/TermsAndCondition"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const DeleteAccount = lazy(() => import("./pages/DeleteAccount"));
 const DemoPreview = lazy(() => import("./pages/DemoPreview"));
 
 // Lazy load the PrivateApp which contains all heavy providers and routes
@@ -127,6 +128,7 @@ export default function App() {
           {/* <Route path="/pricing" element={<Pricing />} /> */}
           <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
           <Route
             path="/forgot-password"
             element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
