@@ -253,6 +253,7 @@ export const wearableService = {
   addHeartRate: (deviceType, bpm, type) => api.post('wearables/heart-rate', { deviceType, bpm, type }),
   addSleepData: (deviceType, sleepData) => api.post('wearables/sleep', { deviceType, sleepData }),
   getDashboard: () => api.get('wearables/dashboard'),
+  getHeartRateTrend: (weeks) => api.get('wearables/heart-rate/trend', { params: { weeks } }),
   generateDemoData: (deviceType) => api.post('wearables/demo-data', { deviceType })
 };
 
@@ -375,7 +376,10 @@ export const exerciseService = {
   getTrends: (range) => api.get('exercise/trends', { params: { range } }),
   getPersonalRecords: () => api.get('exercise/personal-records'),
   updateExerciseLog: (id, data) => api.put(`exercise/logs/${id}`, data),
-  deleteExerciseLog: (id) => api.delete(`exercise/logs/${id}`)
+  deleteExerciseLog: (id) => api.delete(`exercise/logs/${id}`),
+  previewHeartRate: (startTime, endTime) =>
+    api.get('exercise/heart-rate-preview', { params: { startTime, endTime } }),
+  getSessionInsight: (id) => api.get(`exercise/logs/${id}/insight`)
 };
 
 export const dietRecommendationService = {

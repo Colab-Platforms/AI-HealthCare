@@ -13,9 +13,9 @@ const RefreshToken = require('../models/RefreshToken');
 const FCMToken = require('../models/FCMToken');
 const crypto = require('crypto')
 
-// Short-lived access token — 2 minutes (TEMP: for testing, revert to 15m after)
+// Short-lived access token — 15 minutes
 const generateAccessToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '2m' });
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
 // Long-lived refresh token — opaque random string stored in DB
 const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');

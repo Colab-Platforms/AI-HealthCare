@@ -30,11 +30,27 @@ const wearableDataSchema = new mongoose.Schema({
     floorsClimbed: { type: Number, default: 0 }
   }],
 
-  // Heart rate data
+  // Heart rate data — raw samples, capped to the most recent 100 (see
+  // wearableController). Fine for a "recent readings" widget, but too short a
+  // window for week-over-week trends, hence heartRateDailySummary below.
   heartRate: [{
     timestamp: { type: Date, default: Date.now },
     bpm: { type: Number, required: true },
     type: { type: String, enum: ['resting', 'active', 'peak', 'cardio'], default: 'resting' }
+  }],
+
+  // One rollup per calendar day, updated incrementally as samples arrive —
+  // same pattern as dailyMetrics. Never evicted, so this is the source of
+  // truth for any HR trend spanning more than a day or two.
+  heartRateDailySummary: [{
+    date: { type: Date, required: true },
+    avgBpm: { type: Number, default: 0 },
+    minBpm: { type: Number },
+    maxBpm: { type: Number },
+    readingCount: { type: Number, default: 0 },
+    // Running min of samples tagged type==='resting' that day — distinct from
+    // avgBpm/minBpm/maxBpm above, which mix all sample types together
+    restingBpm: { type: Number }
   }],
 
   // Sleep data
@@ -84,6 +100,7 @@ const wearableDataSchema = new mongoose.Schema({
 
 // Index for efficient queries
 wearableDataSchema.index({ user: 1, 'dailyMetrics.date': -1 });
+wearableDataSchema.index({ user: 1, 'heartRateDailySummary.date': -1 });
 wearableDataSchema.index({ user: 1, 'heartRate.timestamp': -1 });
 wearableDataSchema.index({ user: 1, isConnected: 1 });
 wearableDataSchema.index({ user: 1, deviceType: 1 });

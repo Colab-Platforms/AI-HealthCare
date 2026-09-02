@@ -10,6 +10,7 @@ const {
   addHeartRate,
   addSleepData,
   getWearableDashboard,
+  getHeartRateTrend,
   generateDemoData,
   getConnectUrl,
   handleWebhook
@@ -28,6 +29,7 @@ router.post('/sync', syncDailyMetrics);
 router.post('/heart-rate', addHeartRate);
 router.post('/sleep', addSleepData);
 router.get('/dashboard', heavyReadLimiter, getWearableDashboard);
+router.get('/heart-rate/trend', heavyReadLimiter, getHeartRateTrend);
 router.post('/demo-data', generateDemoData);
 
 module.exports = router;

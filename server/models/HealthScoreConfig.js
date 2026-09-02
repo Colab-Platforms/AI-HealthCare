@@ -59,6 +59,12 @@ const healthScoreConfigSchema = new mongoose.Schema({
   activity: {
     activeMinutesGoal: { type: Number, default: 30 },
     stepsShare: { type: Number, default: 0.6 }, // rest goes to active minutes
+    // Share for deliberate logged exercise (ExerciseLog duration for the day),
+    // scored against the same activeMinutesGoal. Independent signal from
+    // device-reported active minutes — not summed with it, since a workout a
+    // wearable auto-detected AND the user also manually logged would otherwise
+    // double-count the same minutes.
+    exerciseShare: { type: Number, default: 0.35 },
   },
 
   // Conditions that limit walking. Scoring steps for these users measures their

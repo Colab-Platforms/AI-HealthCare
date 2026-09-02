@@ -37,4 +37,10 @@ const dailyInsightSchema = new mongoose.Schema({
 dailyInsightSchema.index({ userId: 1, insightDate: 1, insightType: 1 }, { unique: true });
 dailyInsightSchema.index({ userId: 1, insightDate: -1 });
 
+// Users only ever look at "today's" and maybe "yesterday's" insight — MongoDB's
+// TTL monitor auto-deletes the doc 2 days after createdAt (upsert never touches
+// createdAt, so this counts from when the insight was first generated). Same
+// pattern as FCMToken/Notification/RefreshToken/Otp — no cron needed.
+dailyInsightSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2 * 24 * 60 * 60 });
+
 module.exports = mongoose.model('DailyInsight', dailyInsightSchema);
