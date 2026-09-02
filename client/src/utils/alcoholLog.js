@@ -6,18 +6,6 @@ const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ETHANOL_DENSITY_G_PER_ML = 0.789;
 const STANDARD_DRINK_GRAMS = 14;
 
-/** Standard alcohol units from volume (ml) and ABV (%), e.g. 300ml @ 37.5% -> ~6.34 units. */
-export const computeUnitsFraomVolume = (volumeMl, abv) => {
-  const v = Number(volumeMl);
-  const a = Number(abv);
-  if (!(v > 0) || !(a > 0)) return null;
-  const grams = v * (a / 100) * ETHANOL_DENSITY_G_PER_ML;
-  return Math.round((grams / STANDARD_DRINK_GRAMS) * 100) / 100;
-};
-
-/** Common default volume (ml) / ABV (%) per drink type, used to prefill the log form. */
-
-
 const CONTEXT_LABELS = {
   social: 'Social',
   stress: 'Stress',
@@ -46,12 +34,16 @@ export const DRINK_PRESETS = {
   other: { volumeMl: 250, abv: 10 },
 };
 
-// Standard alcohol units: volume(ml) * ABV(%) / 1000.
+/** Standard alcohol units from volume (ml) and ABV (%), e.g. 300ml @ 37.5% -> ~6.34 units.
+ *  Matches the server's identical computeUnitsFromVolume, which recomputes this same
+ *  value from volumeMl/abv server-side and doesn't trust a client-sent units field —
+ *  so this number should always agree with what's actually used for health scoring. */
 export const computeUnitsFromVolume = (volumeMl, abv) => {
   const v = Number(volumeMl);
   const a = Number(abv);
-  if (!Number.isFinite(v) || !Number.isFinite(a) || v <= 0 || a <= 0) return null;
-  return Math.round(((v * a) / 1000) * 100) / 100;
+  if (!(v > 0) || !(a > 0)) return null;
+  const grams = v * (a / 100) * ETHANOL_DENSITY_G_PER_ML;
+  return Math.round((grams / STANDARD_DRINK_GRAMS) * 100) / 100;
 };
 
 export const getTodayKey = () => {

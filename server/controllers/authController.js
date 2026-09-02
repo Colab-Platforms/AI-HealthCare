@@ -660,6 +660,7 @@ exports.register = async (req, res) => {
         profile: profile || {},
         // Validated above (privacyPolicyAccepted must be exactly true) before
         // reaching this point, so it's safe to record as given here.
+        privacyPolicyAccepted: true,
         consent: {
           given: true,
           version: '1.0',

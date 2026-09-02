@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema({
   fcmToken: { type: String, default: null }, // Android/iOS push notification token
   device_id: { type: String, default: null }, // Currently logged-in device; null means no active session
   password: { type: String, required: true, minlength: 6 },
+  // Simple, direct flag: true only if the user checked the "I agree to
+  // Privacy Policy and Terms of Service" checkbox on Create Account.
+  privacyPolicyAccepted: { type: Boolean, default: false },
   googleId: { type: String, unique: true, sparse: true }, // Google 'sub' claim, only set for Google sign-ins
   authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   role: { type: String, enum: ['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
