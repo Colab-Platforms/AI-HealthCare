@@ -2,6 +2,7 @@ const UserMetricBaseline = require('../models/UserMetricBaseline');
 const DailyHealthScore = require('../models/DailyHealthScore');
 const NutritionSummary = require('../models/NutritionSummary');
 const WearableData = require('../models/WearableData');
+const ExerciseLog = require('../models/ExerciseLog');
 const User = require('../models/User');
 const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
@@ -18,7 +19,7 @@ const POPULATION_NORMS = { sleepHours: 7.5 };
 const FIXED_GOALS = { steps: 10000, waterGlasses: 8 };
 
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
-
+``
 // Reads (and lazily creates) the user's per-metric running baseline doc,
 // updates the given metric with today's value, and returns the personalized
 // (population-blended) target for that metric.
@@ -67,12 +68,17 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const sleepBounds = config.sleepTargetBounds || { min: 0, max: Infinity };
   const nw = config.nutritionWeights || { logging: 0.6, quality: 0.4, calories: 0 };
 
-  const [nutritionSummary, wearables, user] = await Promise.all([
+  const dayEnd = new Date(dayStart);
+  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+  const [nutritionSummary, wearables, user, exerciseLogs] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     WearableData.find({ user: userId }).lean(),
     User.findById(userId)
       .select('smokeLog alcoholLog profile.gender profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
       .lean(),
+    ExerciseLog.find({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } })
+      .select('duration caloriesBurned').lean(),
   ]);
 
   const components = {};
@@ -169,6 +175,29 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
       const total = parts.reduce((s, p) => s + p.weight, 0);
       components.activity = parts.reduce((s, p) => s + p.score * (p.weight / total), 0);
     }
+  }
+
+  // Deliberate logged exercise (running, gym, yoga, etc. via ExerciseLog) is a
+  // signal independent of the wearable's passive step/active-minute tracking —
+  // not folded into activeMinutes above, since a workout a device auto-detected
+  // AND the user separately logged would otherwise double-count the same
+  // minutes. Scored against the same activeMinutesGoal (WHO's daily activity
+  // guidance applies just as directly to deliberate exercise), unaffected by
+  // the mobility exclusion above — exercise a wheelchair user logs still counts
+  // in full, unlike step-counting.
+  if (exerciseLogs.length > 0) {
+    const exerciseMinutes = exerciseLogs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+    raw.exerciseMinutes = exerciseMinutes;
+    raw.exerciseMinutesGoal = activityCfg.activeMinutesGoal;
+    raw.exerciseSessionsCount = exerciseLogs.length;
+    raw.exerciseCaloriesBurned = exerciseLogs.reduce((sum, log) => sum + (Number(log.caloriesBurned) || 0), 0);
+
+    const exerciseScore = saturatingToGoal(exerciseMinutes, activityCfg.activeMinutesGoal);
+    const exerciseShare = activityCfg.exerciseShare ?? 0.35; // per-field fallback: older configs may predate this field
+
+    components.activity = components.activity === undefined
+      ? exerciseScore
+      : (components.activity * (1 - exerciseShare)) + (exerciseScore * exerciseShare);
   }
 
   // --- Hydration — scored against the app's fixed water goal (glasses, not

@@ -2,6 +2,28 @@ export const LOG_KEY = 'takehealth_alcohol_log';
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// US standard drink = 14g pure alcohol — matches the server's alcohol health-score limits.
+const ETHANOL_DENSITY_G_PER_ML = 0.789;
+const STANDARD_DRINK_GRAMS = 14;
+
+/** Standard alcohol units from volume (ml) and ABV (%), e.g. 300ml @ 37.5% -> ~6.34 units. */
+export const computeUnitsFromVolume = (volumeMl, abv) => {
+  const v = Number(volumeMl);
+  const a = Number(abv);
+  if (!(v > 0) || !(a > 0)) return null;
+  const grams = v * (a / 100) * ETHANOL_DENSITY_G_PER_ML;
+  return Math.round((grams / STANDARD_DRINK_GRAMS) * 100) / 100;
+};
+
+/** Common default volume (ml) / ABV (%) per drink type, used to prefill the log form. */
+export const DRINK_PRESETS = {
+  beer: { volumeMl: 330, abv: 5 },
+  wine: { volumeMl: 150, abv: 12 },
+  spirits: { volumeMl: 30, abv: 40 },
+  cocktail: { volumeMl: 200, abv: 12 },
+  other: { volumeMl: 250, abv: 5 },
+};
+
 const CONTEXT_LABELS = {
   social: 'Social',
   stress: 'Stress',
