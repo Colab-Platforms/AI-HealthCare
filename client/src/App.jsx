@@ -14,6 +14,8 @@ import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import UpdatedLandingPage from "./pages/UpdatedLandingPage";
 import WaitlistPage from "./pages/Waitlist";
+import WaitlistThankYou from "./pages/WaitlistThankYou";
+import WaitlistJoin from "./pages/WaitlistJoin";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
 import WeightLossLanding from "./pages/WeightLossLanding";
@@ -117,6 +119,8 @@ export default function App() {
           />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
+          <Route path="/waitlist/join" element={<WaitlistJoin />} />
+          <Route path="/waitlist/thank-you" element={<WaitlistThankYou />} />
           <Route path="/login" element={user ? getLoginRedirect() : <Login />} />
           <Route path="/register" element={<Navigate to="/waitlist" replace />} />
           <Route path="/how-it-works" element={<HowItWorks />} />

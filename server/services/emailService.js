@@ -63,8 +63,8 @@ class EmailService {
     const doctorHtml = this.getDoctorNotificationTemplate(patient, doctor, appointment);
 
     await Promise.all([
-      this.sendEmail({ to: patient.email, subject: 'Appointment Confirmation - HealthAI', html }),
-      this.sendEmail({ to: doctor.email, subject: 'New Appointment Booking - HealthAI', html: doctorHtml })
+      this.sendEmail({ to: patient.email, subject: 'Appointment Confirmation - Take Health', html }),
+      this.sendEmail({ to: doctor.email, subject: 'New Appointment Booking - Take Health', html: doctorHtml })
     ]);
   }
 
@@ -74,19 +74,26 @@ class EmailService {
     const doctorHtml = this.getDoctorReminderTemplate(patient, doctor, appointment);
 
     await Promise.all([
-      this.sendEmail({ to: patient.email, subject: 'Consultation Reminder - HealthAI', html }),
-      this.sendEmail({ to: doctor.email, subject: 'Consultation Reminder - HealthAI', html: doctorHtml })
+      this.sendEmail({ to: patient.email, subject: 'Consultation Reminder - Take Health', html }),
+      this.sendEmail({ to: doctor.email, subject: 'Consultation Reminder - Take Health', html: doctorHtml })
     ]);
   }
 
   async sendPasswordResetCode(email, name, code) {
     const html = this.getPasswordResetTemplate(name, code);
-    return this.sendEmail({ to: email, subject: 'Password Reset Verification - HealthAI', html });
+    return this.sendEmail({ to: email, subject: 'Password Reset Verification - Take Health', html });
   }
 
   async sendVerificationCode(email, name, code) {
     const html = this.getVerificationTemplate(name, code);
-    return this.sendEmail({ to: email, subject: 'Email Verification - take.health AI', html });
+    return this.sendEmail({ to: email, subject: 'Email Verification - Take Health', html });
+  }
+
+  // DPDPA Section 9: sent to the guardian's own inbox (not the child's) so
+  // consent is tied to a mailbox the guardian actually controls.
+  async sendGuardianConsentCode(guardianEmail, childName, code) {
+    const html = this.getGuardianConsentTemplate(guardianEmail, childName, code);
+    return this.sendEmail({ to: guardianEmail, subject: `Guardian Verification Needed for ${childName}'s Take Health Account`, html });
   }
 
   // Security alert — sent after a successful password change so the account
@@ -98,12 +105,17 @@ class EmailService {
 
   async sendReportAnalysisComplete(email, name, reportId) {
     const html = this.getReportAnalysisCompleteTemplate(name, reportId);
-    return this.sendEmail({ to: email, subject: 'Report Analysis Completed - take.health AI', html });
+    return this.sendEmail({ to: email, subject: 'Report Analysis Completed - Take Health', html });
   }
 
   async sendDietPlanComplete(email, name) {
     const html = this.getDietPlanCompleteTemplate(name);
-    return this.sendEmail({ to: email, subject: 'Customized Diet Plan Ready - take.health AI', html });
+    return this.sendEmail({ to: email, subject: 'Customized Diet Plan Ready - Take Health', html });
+  }
+
+  async sendWaitlistConfirmation(email, name) {
+    const html = this.getWaitlistConfirmationTemplate(name);
+    return this.sendEmail({ to: email, subject: "You're on the Take waitlist", html });
   }
 
   // Marketing emails (tips, newsletters, promotions) — skipped if user opted out
@@ -145,7 +157,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">TakeHealth AI</div>
+            <div class="logo">Take Health</div>
             <h2 style="margin: 0;">Password Reset Request</h2>
           </div>
           <div class="content">
@@ -159,7 +171,7 @@ class EmailService {
             <p class="expiry-note">This code is valid for <span class="highlight">10 minutes</span>. If you didn't request this, you can safely ignore this email.</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} TakeHealth AI. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>
@@ -231,7 +243,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🏥 HealthAI</h1>
+            <h1>🏥 Take Health</h1>
             <h2>Appointment Confirmed!</h2>
           </div>
           <div class="content">
@@ -276,7 +288,7 @@ class EmailService {
             </div>
           </div>
           <div class="footer">
-            <p>Thank you for choosing HealthAI for your healthcare needs.</p>
+            <p>Thank you for choosing Take Health for your healthcare needs.</p>
             <p>For support, contact us at support@healthai.com</p>
           </div>
         </div>
@@ -306,7 +318,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🩺 HealthAI</h1>
+            <h1>🩺 Take Health</h1>
             <h2>New Appointment Booking</h2>
           </div>
           <div class="content">
@@ -344,7 +356,7 @@ class EmailService {
             </div>
           </div>
           <div class="footer">
-            <p>HealthAI - Connecting patients with healthcare professionals</p>
+            <p>Take Health - Connecting patients with healthcare professionals</p>
             <p>For support, contact us at support@healthai.com</p>
           </div>
         </div>
@@ -378,7 +390,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>⏰ HealthAI</h1>
+            <h1>⏰ Take Health</h1>
             <h2>Consultation Reminder</h2>
           </div>
           <div class="content">
@@ -413,7 +425,7 @@ class EmailService {
             </div>
           </div>
           <div class="footer">
-            <p>Thank you for choosing HealthAI</p>
+            <p>Thank you for choosing Take Health</p>
           </div>
         </div>
       </body>
@@ -442,7 +454,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🩺 HealthAI</h1>
+            <h1>🩺 Take Health</h1>
             <h2>Consultation Reminder</h2>
           </div>
           <div class="content">
@@ -470,8 +482,8 @@ class EmailService {
             </div>
           </div>
           <div class="footer">
-            <p>HealthAI - Professional Healthcare Platform</p>
-            <p>Thank you for choosing HealthAI - Professional Healthcare Platform</p>
+            <p>Take Health - Professional Healthcare Platform</p>
+            <p>Thank you for choosing Take Health - Professional Healthcare Platform</p>
           </div>
         </div>
       </body>
@@ -504,12 +516,12 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">take.health AI</div>
+            <div class="logo">Take Health</div>
             <h2 style="margin: 0;">Verify Your Email</h2>
           </div>
           <div class="content">
             <p class="welcome-text">Hi ${name},</p>
-            <p>Welcome to take.health AI! To complete your registration and start your health journey, please verify your email using the 6-digit code below:</p>
+            <p>Welcome to Take Health! To complete your registration and start your health journey, please verify your email using the 6-digit code below:</p>
             
             <div class="otp-container">
               <div class="otp-code">${code}</div>
@@ -518,7 +530,55 @@ class EmailService {
             <p class="expiry-note">This code is valid for <span class="highlight">15 minutes</span>. If you didn't create an account, you can safely ignore this email.</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
+            <p>Empowering your health journey with AI.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getGuardianConsentTemplate(guardianEmail, childName, code) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Guardian Verification</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 10px; }
+          .otp-container { background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin: 30px 0; display: inline-block; }
+          .otp-code { font-size: 42px; font-weight: 900; color: #059669; letter-spacing: 12px; font-family: 'Courier New', monospace; padding-left: 12px; }
+          .expiry-note { font-size: 14px; color: #94a3b8; margin-top: 20px; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+          .highlight { color: #059669; font-weight: 600; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">Take Health</div>
+            <h2 style="margin: 0;">Guardian Verification</h2>
+          </div>
+          <div class="content">
+            <p class="welcome-text"><strong>${childName}</strong> has listed you as their guardian while creating a Take Health account.</p>
+            <p>Take Health processes health data for users under 18 only with a parent or guardian's consent, as required under India's Digital Personal Data Protection Act (DPDPA), 2023. Share this code with ${childName} to confirm you are their parent/guardian and consent to this account being created:</p>
+
+            <div class="otp-container">
+              <div class="otp-code">${code}</div>
+            </div>
+
+            <p class="expiry-note">This code is valid for <span class="highlight">10 minutes</span>. If you did not expect this email, you can safely ignore it — no account will be activated without this code.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>
@@ -550,7 +610,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">take.health AI</div>
+            <div class="logo">Take Health</div>
             <h2 style="margin: 0;">Analysis Completed</h2>
           </div>
           <div class="content">
@@ -562,10 +622,80 @@ class EmailService {
             <p>You can also view your updated diet plan and health dashboard for more information.</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getWaitlistConfirmationTemplate(name) {
+    const heroImageUrl = 'https://res.cloudinary.com/dvgg1i1ck/image/upload/v1787982029/k28szqgoxlclkazyxfua.jpg';
+    const greetName = name ? name.split(' ')[0] : 'username';
+
+    const socialIcon = (href, imgSrc) => `
+      <a href="${href}" style="display:inline-block; margin: 0 12px; text-decoration:none;">
+        <img src="${imgSrc}" width="20" height="20" alt="Social Icon" style="display:block; border:none;" />
+      </a>`;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>You're on the Take waitlist</title>
+      </head>
+      <body style="margin:0; padding:0; background-color:#261386;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#261386;">
+          <tr>
+            <td align="center" style="padding: 0;">
+              <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background-color:#261386; font-family: 'Segoe UI', Arial, sans-serif;">
+                <tr>
+                  <td>
+                    <img src="${heroImageUrl}" alt="Take" width="480" style="display:block; width:100%; height:auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 24px 32px 12px 32px; color:#ffffff; font-size:15px; line-height:1.6; text-align: left;">
+                    <p style="margin:0 0 4px 0; font-weight: 500;">Dear ${greetName},</p>
+                    <p style="margin:0 0 24px 0; font-weight: 500;">You're officially on the Take waitlist.</p>
+                    
+                    <p style="margin:0 0 4px 0; font-weight: 500;">We're getting ready for something built to help you understand your health, optimise what matters, and take control of what's next.</p>
+                    <p style="margin:0 0 24px 0; font-weight: 500;">Your journey starts here.</p>
+                    
+
+                    
+                    <p style="margin:0 0 24px 0; font-weight: 500;">We'll let you know as soon as Take is ready for you to take off.</p>
+                    
+                    <p style="margin:0 0 4px 0; font-weight: 500;">Until then, stay curious. Stay ahead.</p>
+                    <p style="margin:0 0 24px 0; font-weight: 500;">The Take Team</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 32px;">
+                    <hr style="border:none; border-top:1px solid #ffffff; margin:0;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 24px 32px;">
+                    ${socialIcon('https://www.facebook.com', 'https://img.icons8.com/ios-filled/50/ffffff/facebook-new.png')}
+                    ${socialIcon('https://www.instagram.com/takehealth_', 'https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png')}
+                    ${socialIcon('https://x.com/Take_Limited', 'https://img.icons8.com/ios-filled/50/ffffff/twitterx.png')}
+                    ${socialIcon('https://www.youtube.com', 'https://img.icons8.com/ios-filled/50/ffffff/youtube-play.png')}
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 32px 32px 32px; color:#ffffff; font-size:12px; line-height:1.6;">
+                    &copy; 2026 NSE &amp; BSE Listed<br/>India
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
@@ -594,7 +724,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">take.health AI</div>
+            <div class="logo">Take Health</div>
             <h2 style="margin: 0;">Your Diet Plan is Ready</h2>
           </div>
           <div class="content">
@@ -606,7 +736,7 @@ class EmailService {
             <p>Following this plan consistently will help you reach your health goals faster.</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Take Health. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>

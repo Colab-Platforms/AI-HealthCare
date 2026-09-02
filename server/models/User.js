@@ -28,6 +28,9 @@ const userSchema = new mongoose.Schema({
     guardianEmail: String,
     relation: String,
     consentedAt: Date,
+    // True only once the guardian entered a one-time code sent to their own
+    // inbox — distinguishes real verification from a typed, unverified email.
+    verifiedViaOtp: { type: Boolean, default: false },
   },
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },

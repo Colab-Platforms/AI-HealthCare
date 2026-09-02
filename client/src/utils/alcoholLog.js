@@ -42,6 +42,24 @@ const DRINK_LABELS = {
   other: 'Other',
 };
 
+// Default volume/ABV filled in when a drink type is picked, matching the
+// quick-select chips (30/60/150/330/500ml, 5/12/20/40% ABV) in AlcoholTracker.
+export const DRINK_PRESETS = {
+  beer: { volumeMl: 330, abv: 5 },
+  wine: { volumeMl: 150, abv: 12 },
+  spirits: { volumeMl: 30, abv: 40 },
+  cocktail: { volumeMl: 200, abv: 15 },
+  other: { volumeMl: 250, abv: 10 },
+};
+
+// Standard alcohol units: volume(ml) * ABV(%) / 1000.
+export const computeUnitsFromVolume = (volumeMl, abv) => {
+  const v = Number(volumeMl);
+  const a = Number(abv);
+  if (!Number.isFinite(v) || !Number.isFinite(a) || v <= 0 || a <= 0) return null;
+  return Math.round(((v * a) / 1000) * 100) / 100;
+};
+
 export const getTodayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

@@ -34,6 +34,13 @@ exports.recordConsent = async (req, res) => {
             ? { 'consent.given': true, 'consent.version': CONSENT_VERSION, 'consent.givenAt': new Date(), 'consent.withdrawn': false, 'consent.withdrawnAt': null }
             : { 'consent.withdrawn': true, 'consent.withdrawnAt': new Date() };
 
+        // Mirror purpose choices into privacySettings — the fields activityLogger
+        // and emailService actually check before logging/emailing.
+        if (action === 'granted' && Array.isArray(purposes)) {
+            consentUpdate['privacySettings.analyticsEnabled'] = purposes.includes('analytics');
+            consentUpdate['privacySettings.marketingEnabled'] = purposes.includes('marketing');
+        }
+
         await User.findByIdAndUpdate(req.user._id, consentUpdate);
 
         res.json({ success: true, action, version: CONSENT_VERSION });
