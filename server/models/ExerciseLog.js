@@ -1,35 +1,11 @@
 const mongoose = require('mongoose');
+const { MET_VALUES, ACTIVITY_CATEGORY } = require('../config/activityCatalog');
 
-// MET (Metabolic Equivalent of Task) values used for calorie-burn estimation.
 // caloriesBurned = MET * weightKg * (durationMinutes / 60)
-const MET_VALUES = {
-  running: 9.8,
-  cycling: 7.5,
-  walking: 3.8,
-  swimming: 8.3,
-  gym_strength: 5.0,
-  yoga: 2.5,
-  hiit: 8.0,
-  sports: 7.0,
-  other: 4.0
-};
-
 const INTENSITY_MULTIPLIERS = {
   low: 0.8,
   medium: 1.0,
   high: 1.25
-};
-
-const ACTIVITY_CATEGORY = {
-  running: 'cardio',
-  cycling: 'cardio',
-  walking: 'cardio',
-  swimming: 'cardio',
-  gym_strength: 'strength',
-  yoga: 'flexibility',
-  hiit: 'cardio',
-  sports: 'cardio',
-  other: 'other'
 };
 
 const DEFAULT_WEIGHT_KG = 70;
@@ -61,9 +37,11 @@ const exerciseLogSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  // Validated against config/activityCatalog.js's isValidActivityId() in the
+  // controller rather than a Mongoose enum, so adding a new activity doesn't
+  // require a schema change.
   activityType: {
     type: String,
-    enum: Object.keys(MET_VALUES),
     required: true
   },
   category: {
@@ -74,10 +52,27 @@ const exerciseLogSchema = new mongoose.Schema({
 
   // Cardio-specific
   distance: { type: Number, min: 0 }, // km
-  avgPace: { type: Number, min: 0 }, // min/km
+  avgPace: { type: Number, min: 0 }, // min/km, auto-computed from duration/distance when omitted
+  steps: { type: Number, min: 0 }, // estimated from distance when omitted
   avgHeartRate: { type: Number, min: 0 },
+  minHeartRate: { type: Number, min: 0 },
   maxHeartRate: { type: Number, min: 0 },
   elevationGain: { type: Number, min: 0 }, // meters
+
+  // Minutes spent in each %-of-max-HR band (zone1 = 50-60% ... zone5 = 90-100%),
+  // computed from wearable samples when available — see utils/heartRateZones.js
+  heartRateZones: {
+    zone1: { type: Number, min: 0 },
+    zone2: { type: Number, min: 0 },
+    zone3: { type: Number, min: 0 },
+    zone4: { type: Number, min: 0 },
+    zone5: { type: Number, min: 0 }
+  },
+
+  // Precise session window, when known — lets the server pull matching wearable
+  // heart-rate samples. `timestamp` mirrors startTime when this is set.
+  startTime: Date,
+  endTime: Date,
 
   // Strength-specific
   exercises: [exerciseEntrySchema],
@@ -88,7 +83,9 @@ const exerciseLogSchema = new mongoose.Schema({
   caloriesBurned: { type: Number, default: 0 },
   metValue: { type: Number },
 
-  source: { type: String, enum: ['manual'], default: 'manual' },
+  // 'wearable_sync' = HR fields computed entirely from device samples,
+  // 'hybrid' = some fields manual, HR from device
+  source: { type: String, enum: ['manual', 'wearable_sync', 'hybrid'], default: 'manual' },
   notes: String,
 
   timestamp: {

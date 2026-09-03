@@ -55,6 +55,58 @@ export default function Register() {
   const { register, refreshUser, user, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
+  // DPDPA Section 9: under-18 profiles need a guardian to verify via a code
+  // sent to the guardian's own email before the profile can be saved.
+  const [guardianForm, setGuardianForm] = useState({ name: "", email: "", relation: "Parent" });
+  const [guardianOtp, setGuardianOtp] = useState("");
+  const [guardianOtpSent, setGuardianOtpSent] = useState(false);
+  const [guardianVerified, setGuardianVerified] = useState(false);
+  const [guardianLoading, setGuardianLoading] = useState(false);
+  const isMinor = formData.age && parseInt(formData.age) > 0 && parseInt(formData.age) < 18;
+
+  const handleSendGuardianOtp = async () => {
+    if (!guardianForm.name.trim() || !guardianForm.email.trim()) {
+      toast.error("Enter the guardian's name and email");
+      return;
+    }
+    setGuardianLoading(true);
+    try {
+      await api.post("auth/guardian-otp/send", {
+        guardianName: guardianForm.name,
+        guardianEmail: guardianForm.email,
+        relation: guardianForm.relation,
+      });
+      toast.success("Verification code sent to guardian's email");
+      setGuardianOtpSent(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to send code to guardian");
+    } finally {
+      setGuardianLoading(false);
+    }
+  };
+
+  const handleVerifyGuardianOtp = async () => {
+    if (guardianOtp.length !== 6) {
+      toast.error("Enter the 6-digit code from the guardian's email");
+      return;
+    }
+    setGuardianLoading(true);
+    try {
+      await api.post("auth/guardian-otp/verify", {
+        guardianEmail: guardianForm.email,
+        guardianName: guardianForm.name,
+        relation: guardianForm.relation,
+        otp: guardianOtp,
+      });
+      toast.success("Guardian verified!");
+      setGuardianVerified(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Invalid or expired code");
+    } finally {
+      setGuardianLoading(false);
+    }
+  };
+
   const handleGoogleToken = async (accessToken) => {
     try {
       const googleUser = await loginWithGoogle(accessToken);
@@ -192,6 +244,11 @@ export default function Register() {
     }
     if (age > 120) {
       toast.error("Please enter a valid age (max 120)");
+      return;
+    }
+
+    if (age < 18 && !guardianVerified) {
+      toast.error("A parent/guardian must verify via the code sent to their email first");
       return;
     }
 
@@ -545,6 +602,110 @@ export default function Register() {
                   </select>
                 </div>
               </div>
+
+              {isMinor && (
+                <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-amber-800">
+                    Since you're under 18, a parent or guardian needs to verify before we can save your profile — as required under India's DPDPA.
+                  </p>
+
+                  {!guardianVerified ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                            Guardian's Name
+                          </label>
+                          <input
+                            type="text"
+                            value={guardianForm.name}
+                            onChange={(e) => setGuardianForm({ ...guardianForm, name: e.target.value })}
+                            disabled={guardianOtpSent}
+                            className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm disabled:bg-gray-100"
+                            placeholder="Full name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                            Relation
+                          </label>
+                          <select
+                            value={guardianForm.relation}
+                            onChange={(e) => setGuardianForm({ ...guardianForm, relation: e.target.value })}
+                            disabled={guardianOtpSent}
+                            className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base shadow-sm disabled:bg-gray-100"
+                          >
+                            <option value="Parent">Parent</option>
+                            <option value="Legal Guardian">Legal Guardian</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                          Guardian's Email
+                        </label>
+                        <input
+                          type="email"
+                          value={guardianForm.email}
+                          onChange={(e) => setGuardianForm({ ...guardianForm, email: e.target.value })}
+                          disabled={guardianOtpSent}
+                          className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm disabled:bg-gray-100"
+                          placeholder="guardian@example.com"
+                        />
+                      </div>
+
+                      {!guardianOtpSent ? (
+                        <button
+                          type="button"
+                          onClick={handleSendGuardianOtp}
+                          disabled={guardianLoading}
+                          className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl transition-all text-sm disabled:opacity-60"
+                        >
+                          {guardianLoading ? "Sending..." : "Send Code to Guardian"}
+                        </button>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                            Code sent to {guardianForm.email} — ask your guardian for it
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={guardianOtp}
+                              onChange={(e) => setGuardianOtp(e.target.value.replace(/\D/g, ""))}
+                              className="flex-1 bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold tracking-widest transition-all text-base shadow-sm"
+                              placeholder="6-digit code"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleVerifyGuardianOtp}
+                              disabled={guardianLoading}
+                              className="bg-[#064e3b] hover:bg-[#053b2c] text-white font-bold px-5 rounded-xl transition-all text-sm disabled:opacity-60"
+                            >
+                              {guardianLoading ? "..." : "Verify"}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSendGuardianOtp}
+                            disabled={guardianLoading}
+                            className="text-[9px] font-black text-gray-400 uppercase tracking-widest hover:text-[#064e3b] transition-colors"
+                          >
+                            Resend Code
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                      ✓ Guardian verified ({guardianForm.name}, {guardianForm.email})
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1 ml-1">

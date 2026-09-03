@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Shield, Download, Trash2, ToggleLeft, ToggleRight, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 import { getToken } from '../utils/authStorage';
+import { useAuth } from '../context/AuthContext';
 
 const glass = {
   background: 'rgba(255,255,255,0.72)',
@@ -17,6 +18,7 @@ const glassDivider = { borderBottom: '1px solid rgba(0,0,0,0.05)' };
 
 export default function PrivacySettings() {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const [consent, setConsent]         = useState(null);
   const [settings, setSettings]       = useState(null);
   const [loading, setLoading]         = useState(true);
@@ -82,6 +84,32 @@ export default function PrivacySettings() {
     }
   };
 
+  const handleWithdrawConsent = async () => {
+    const ok = window.confirm(
+      'Withdrawing consent stops all AI processing of your health data — report analysis, AI chat, diet plans and supplement recommendations will be disabled. Your account and stored data are not deleted. Continue?'
+    );
+    if (!ok) return;
+    try {
+      await api.post('/privacy/consent', { action: 'withdrawn' });
+      await refreshUser();
+      await fetchStatus();
+      showToast('Consent withdrawn. AI features are now disabled.');
+    } catch {
+      showToast('Failed to withdraw consent. Try again.', 'error');
+    }
+  };
+
+  const handleReGrantConsent = async () => {
+    try {
+      await api.post('/privacy/consent', { action: 'granted', purposes: ['health_processing', 'analytics'] });
+      await refreshUser();
+      await fetchStatus();
+      showToast('Consent granted. AI features are re-enabled.');
+    } catch {
+      showToast('Failed to grant consent. Try again.', 'error');
+    }
+  };
+
   const handleCancelDeletion = async () => {
     try {
       await api.post('/privacy/cancel-deletion');
@@ -120,7 +148,7 @@ export default function PrivacySettings() {
 
         {/* Consent Status */}
         <Section title="Consent Status">
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between p-4" style={glassDivider}>
             <div>
               <p className="text-slate-700 text-sm font-semibold">Data Processing Consent</p>
               <p className="text-slate-400 text-xs mt-0.5">
@@ -132,6 +160,29 @@ export default function PrivacySettings() {
             <span className={`text-xs font-bold px-3 py-1 rounded-full ${consent?.given && !consent?.withdrawn ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
               {consent?.given && !consent?.withdrawn ? '✓ Active' : '✗ Withdrawn'}
             </span>
+          </div>
+          <div className="p-4">
+            {consent?.given && !consent?.withdrawn ? (
+              <>
+                <button onClick={handleWithdrawConsent}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
+                  Withdraw Consent
+                </button>
+                <p className="text-slate-400 text-[11px] mt-2 leading-relaxed">
+                  Turns off AI processing of your health data (report analysis, AI chat, diet plans, supplements). Your account and stored data stay intact — you can grant consent again anytime.
+                </p>
+              </>
+            ) : (
+              <>
+                <button onClick={handleReGrantConsent}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors">
+                  Grant Consent
+                </button>
+                <p className="text-slate-400 text-[11px] mt-2 leading-relaxed">
+                  AI features are currently disabled. Grant consent to resume report analysis, AI chat, and diet recommendations.
+                </p>
+              </>
+            )}
           </div>
         </Section>
 

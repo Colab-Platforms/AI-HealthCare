@@ -14,6 +14,8 @@ import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import UpdatedLandingPage from "./pages/UpdatedLandingPage";
 import WaitlistPage from "./pages/Waitlist";
+import WaitlistThankYou from "./pages/WaitlistThankYou";
+import WaitlistJoin from "./pages/WaitlistJoin";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
 import WeightLossLanding from "./pages/WeightLossLanding";
@@ -24,6 +26,7 @@ const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));
 const TermsAndCondition = lazy(() => import("./pages/TermsAndCondition"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const DeleteAccount = lazy(() => import("./pages/DeleteAccount"));
 const DemoPreview = lazy(() => import("./pages/DemoPreview"));
 
 // Lazy load the PrivateApp which contains all heavy providers and routes
@@ -117,12 +120,15 @@ export default function App() {
           />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
+          <Route path="/waitlist/join" element={<WaitlistJoin />} />
+          <Route path="/waitlist/thank-you" element={<WaitlistThankYou />} />
           <Route path="/login" element={user ? getLoginRedirect() : <Login />} />
           <Route path="/register" element={<Navigate to="/waitlist" replace />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           {/* <Route path="/pricing" element={<Pricing />} /> */}
           <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
           <Route
             path="/forgot-password"
             element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}

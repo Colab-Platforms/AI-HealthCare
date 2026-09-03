@@ -3,6 +3,19 @@ const DRINK_TYPES = new Set(['beer', 'wine', 'spirits', 'cocktail', 'other']);
 const CONTEXT_IDS = new Set(['social', 'stress', 'celebration', 'habit', 'meal', 'boredom', 'other']);
 const BINGE_THRESHOLD = 4;
 
+// US standard drink = 14g pure alcohol (matches the limits scoreAlcohol() is scored against).
+const ETHANOL_DENSITY_G_PER_ML = 0.789;
+const STANDARD_DRINK_GRAMS = 14;
+
+/** Standard alcohol units from volume (ml) and ABV (%), e.g. 300ml @ 37.5% -> ~6.34 units. */
+const computeUnitsFromVolume = (volumeMl, abv) => {
+  const v = Number(volumeMl);
+  const a = Number(abv);
+  if (!(v > 0) || !(a > 0)) return null;
+  const grams = v * (a / 100) * ETHANOL_DENSITY_G_PER_ML;
+  return Math.round((grams / STANDARD_DRINK_GRAMS) * 100) / 100;
+};
+
 const getTodayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -23,15 +36,25 @@ const sanitizeAlcoholLog = (raw) => {
     if (!DATE_KEY_RE.test(key) || !val || typeof val !== 'object') continue;
 
     const sessions = Array.isArray(val.sessions)
-      ? val.sessions.slice(0, 200).map((s) => ({
-          time: String(s?.time || new Date().toISOString()),
-          drinkType: DRINK_TYPES.has(s?.drinkType) ? s.drinkType : 'other',
-          units: Math.max(0.5, Math.min(20, Number(s?.units) || 1)),
-          context: s?.context && CONTEXT_IDS.has(s.context) ? s.context : null,
-          mood: s?.mood ? String(s.mood).slice(0, 50) : null,
-          notes: s?.notes ? String(s.notes).slice(0, 200) : null,
-          id: s?.id ? String(s.id) : String(s?.time || Date.now())
-        }))
+      ? val.sessions.slice(0, 200).map((s) => {
+          const volumeMl = Number(s?.volumeMl) > 0 ? Math.min(2000, Number(s.volumeMl)) : null;
+          const abv = Number(s?.abv) > 0 ? Math.min(100, Number(s.abv)) : null;
+          const derivedUnits = computeUnitsFromVolume(volumeMl, abv);
+          const units = Math.max(0.5, Math.min(20, derivedUnits ?? (Number(s?.units) || 1)));
+
+          return {
+            time: String(s?.time || new Date().toISOString()),
+            drinkType: DRINK_TYPES.has(s?.drinkType) ? s.drinkType : 'other',
+            name: s?.name ? String(s.name).trim().slice(0, 60) : null,
+            volumeMl,
+            abv,
+            units,
+            context: s?.context && CONTEXT_IDS.has(s.context) ? s.context : null,
+            mood: s?.mood ? String(s.mood).slice(0, 50) : null,
+            notes: s?.notes ? String(s.notes).slice(0, 200) : null,
+            id: s?.id ? String(s.id) : String(s?.time || Date.now())
+          };
+        })
       : [];
 
     const cravingEvents = Array.isArray(val.cravingEvents)
@@ -44,12 +67,14 @@ const sanitizeAlcoholLog = (raw) => {
 
     const countFromSessions = sessions.reduce((sum, s) => sum + 1, 0);
     const unitsFromSessions = sessions.reduce((sum, s) => sum + (s.units || 1), 0);
+    const volumeFromSessions = sessions.reduce((sum, s) => sum + (s.volumeMl || 0), 0);
     const count = Math.max(0, Number(val.count) || countFromSessions);
-    const units = Math.max(0, Number(val.units) || unitsFromSessions || count);
+    const units = Math.max(0, sessions.length ? unitsFromSessions : Number(val.units) || count);
 
     out[key] = {
       count,
-      units,
+      units: Math.round(units * 100) / 100,
+      totalVolumeMl: volumeFromSessions || (Number(val.totalVolumeMl) || 0),
       resistedCount: Math.max(0, Number(val.resistedCount) || 0),
       sessions,
       cravingEvents
@@ -78,7 +103,7 @@ const getLastNDays = (log, n = 7) => {
 const getAlcoholSummary = (log) => {
   const plain = sanitizeAlcoholLog(log);
   const todayKey = getTodayKey();
-  const todayEntry = plain[todayKey] || { count: 0, units: 0, resistedCount: 0, sessions: [] };
+  const todayEntry = plain[todayKey] || { count: 0, units: 0, totalVolumeMl: 0, resistedCount: 0, sessions: [] };
   const last7 = getLastNDays(plain, 7);
   const past6 = last7.slice(0, 6).filter((d) => d.count > 0);
   const avg7 =
@@ -118,7 +143,10 @@ const getAlcoholSummary = (log) => {
   return {
     today: todayEntry.count,
     todayUnits: todayEntry.units,
+    todayVolumeMl: todayEntry.totalVolumeMl || 0,
     todayResisted: todayEntry.resistedCount,
+    // Single-day higher-risk threshold per UK CMO guidance (not sex-adjusted, unlike scoreAlcohol's daily limit).
+    overLimit: todayEntry.units > 3,
     avg7,
     avgUnits7,
     diff: avg7 !== null ? todayEntry.count - avg7 : null,
@@ -168,7 +196,9 @@ const buildSmokeContextForAI = (smokeLog) => {
 
 module.exports = {
   DATE_KEY_RE,
+  DRINK_TYPES,
   BINGE_THRESHOLD,
+  computeUnitsFromVolume,
   getTodayKey,
   toPlainAlcoholLog,
   sanitizeAlcoholLog,

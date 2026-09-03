@@ -20,6 +20,7 @@ const WearableData = require('../models/WearableData');
 const HealthMetric = require('../models/HealthMetric');
 const HealthReport = require('../models/HealthReport');
 const FoodLog = require('../models/FoodLog');
+const ExerciseLog = require('../models/ExerciseLog');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
@@ -80,7 +81,7 @@ const findDailyEntry = (wearables, arrayField, dateKey) => {
 async function collectActivityData(userId, dateKey) {
   const { start, end } = istDayWindow(dateKey);
 
-  const [nutrition, score, progress, wearables, metrics, foodLogs, user] = await Promise.all([
+  const [nutrition, score, progress, wearables, metrics, foodLogs, user, exerciseLogs] = await Promise.all([
     NutritionSummary.findOne({ userId, date: utcMidnight(dateKey) }).lean(),
     DailyHealthScore.findOne({ userId, date: dateKey }).lean(),
     DailyProgress.findOne({ userId, date: dateKey }).lean(),
@@ -90,6 +91,8 @@ async function collectActivityData(userId, dateKey) {
     FoodLog.find({ userId, timestamp: { $gte: start, $lte: end } })
       .select('mealType healthScore10 foodItems.name').lean(),
     User.findById(userId).select('smokeLog alcoholLog').lean(),
+    ExerciseLog.find({ userId, timestamp: { $gte: start, $lte: end } })
+      .select('activityType duration avgHeartRate maxHeartRate caloriesBurned distance').lean(),
   ]);
 
   const steps = findDailyEntry(wearables, 'dailyMetrics', dateKey);
@@ -105,6 +108,14 @@ async function collectActivityData(userId, dateKey) {
       type: f.mealType,
       items: (f.foodItems || []).map((i) => i.name).slice(0, 6),
       healthScore10: f.healthScore10 ?? null,
+    })),
+    workouts: exerciseLogs.map((e) => ({
+      activityType: e.activityType,
+      durationMin: e.duration,
+      avgHeartRate: e.avgHeartRate ?? null,
+      maxHeartRate: e.maxHeartRate ?? null,
+      caloriesBurned: e.caloriesBurned ?? null,
+      distanceKm: e.distance ?? null,
     })),
     calories: nutrition?.totalCalories ?? null,
     calorieGoal: nutrition?.calorieGoal ?? null,
@@ -132,7 +143,8 @@ async function collectActivityData(userId, dateKey) {
 
   const hasSomething = data.meals.length > 0
     || data.steps || data.sleepHours || data.waterGlasses
-    || data.vitals.length > 0 || data.healthScore != null || data.completedTasks > 0;
+    || data.vitals.length > 0 || data.healthScore != null || data.completedTasks > 0
+    || data.workouts.length > 0;
 
   return hasSomething ? data : null;
 }

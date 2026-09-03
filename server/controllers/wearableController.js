@@ -3,7 +3,52 @@ const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
-const { getSleepAnalytics, SleepAnalyticsInputError } = require('../services/sleepAnalyticsService');
+
+function dateOnlyUTCFromDate(d) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+// Rolls one HR sample into that day's running avg/min/max — the raw heartRate[]
+// array is capped to the last 100 entries, so this is what a week-or-longer
+// trend actually reads from. Mutates `wearable` in place; caller saves.
+//
+// `type` (resting/active/peak/cardio) also updates restingBpm separately when
+// it's 'resting' — NOTE: the Open Wearables webhook currently tags every
+// heart_rate.created sample as 'resting' regardless of real context (see
+// handleWebhook below), so restingBpm is only trustworthy for manual/demo data
+// until that's fixed with real provider context.
+function upsertHeartRateDailySummary(wearable, timestamp, bpm, type) {
+  const bpmNum = Number(bpm);
+  if (!(bpmNum > 0)) return;
+
+  const date = dateOnlyUTCFromDate(new Date(timestamp));
+  let entry = wearable.heartRateDailySummary.find(
+    (s) => dateOnlyUTCFromDate(new Date(s.date)).getTime() === date.getTime()
+  );
+
+  if (!entry) {
+    wearable.heartRateDailySummary.push({
+      date,
+      avgBpm: bpmNum,
+      minBpm: bpmNum,
+      maxBpm: bpmNum,
+      readingCount: 1,
+      restingBpm: type === 'resting' ? bpmNum : undefined
+    });
+    wearable.markModified('heartRateDailySummary');
+    return;
+  }
+
+  const newCount = (entry.readingCount || 0) + 1;
+  entry.avgBpm = Math.round(((entry.avgBpm * (entry.readingCount || 0)) + bpmNum) / newCount);
+  entry.minBpm = entry.minBpm != null ? Math.min(entry.minBpm, bpmNum) : bpmNum;
+  entry.maxBpm = entry.maxBpm != null ? Math.max(entry.maxBpm, bpmNum) : bpmNum;
+  entry.readingCount = newCount;
+  if (type === 'resting') {
+    entry.restingBpm = entry.restingBpm != null ? Math.min(entry.restingBpm, bpmNum) : bpmNum;
+  }
+  wearable.markModified('heartRateDailySummary');
+}
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -184,12 +229,15 @@ exports.addHeartRate = async (req, res) => {
       return res.status(404).json({ message: 'Device not connected' });
     }
 
-    wearable.heartRate.push({ bpm, type, timestamp: new Date() });
+    const now = new Date();
+    wearable.heartRate.push({ bpm, type, timestamp: now });
 
     // Keep only last 100 readings
     if (wearable.heartRate.length > 100) {
       wearable.heartRate = wearable.heartRate.slice(-100);
     }
+
+    upsertHeartRateDailySummary(wearable, now, bpm, type);
 
     await wearable.save();
 
@@ -374,33 +422,101 @@ exports.getWearableDashboard = async (req, res) => {
     dashboard.recentSleep.sort((a, b) => new Date(b.date) - new Date(a.date));
     dashboard.weeklyTrend.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    // Most recent resting-tagged sample among the recent readings pulled above.
+    // Best-effort: see upsertHeartRateDailySummary's note on webhook type accuracy.
+    dashboard.latestRestingHeartRate = dashboard.recentHeartRate.find((r) => r.type === 'resting') || null;
+
     res.json(dashboard);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Analytical sleep breakdown (stages, quality score, daily/weekly/monthly/yearly trends)
-exports.getSleepAnalyticsData = async (req, res) => {
+// Daily HR trend across all connected devices, plus a this-week-vs-last-week
+// comparison. Reads heartRateDailySummary (not the capped raw heartRate[]),
+// so this works regardless of how much raw sample history survived.
+exports.getHeartRateTrend = async (req, res) => {
   try {
-    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
-      ? req.query.range
-      : 'daily';
-    const { date, startDate, endDate } = req.query;
+    const weeks = Math.min(12, Math.max(1, parseInt(req.query.weeks) || 4));
+    const days = weeks * 7;
 
-    const cacheKey = `sleep_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
-    const data = await cache.getOrSet(
-      cacheKey,
-      () => getSleepAnalytics(req.user._id, range, { date, startDate, endDate }),
-      300
+    const cutoff = new Date();
+    cutoff.setUTCHours(0, 0, 0, 0);
+    cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
+
+    const wearables = await WearableData.find({ user: req.user._id })
+      .select('heartRateDailySummary')
+      .lean();
+
+    // Merge same-day entries across multiple devices into one weighted-avg point
+    const byDate = new Map();
+    for (const wearable of wearables) {
+      for (const entry of wearable.heartRateDailySummary || []) {
+        const date = new Date(entry.date);
+        if (date < cutoff) continue;
+        const key = date.toISOString().split('T')[0];
+
+        const existing = byDate.get(key);
+        if (!existing) {
+          byDate.set(key, {
+            date: key,
+            avgBpm: entry.avgBpm,
+            minBpm: entry.minBpm,
+            maxBpm: entry.maxBpm,
+            readingCount: entry.readingCount || 0
+          });
+        } else {
+          const totalReadings = existing.readingCount + (entry.readingCount || 0);
+          existing.avgBpm = totalReadings > 0
+            ? Math.round(((existing.avgBpm * existing.readingCount) + (entry.avgBpm * (entry.readingCount || 0))) / totalReadings)
+            : existing.avgBpm;
+          existing.minBpm = Math.min(existing.minBpm, entry.minBpm);
+          existing.maxBpm = Math.max(existing.maxBpm, entry.maxBpm);
+          existing.readingCount = totalReadings;
+        }
+      }
+    }
+
+    const dailyTrend = Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setUTCDate(thisWeekStart.getUTCDate() - 6);
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setUTCDate(lastWeekStart.getUTCDate() - 7);
+    const lastWeekEnd = new Date(thisWeekStart);
+    lastWeekEnd.setUTCDate(lastWeekEnd.getUTCDate() - 1);
+
+    const summarizeWindow = (points) => {
+      if (points.length === 0) return null;
+      const avgSum = points.reduce((sum, p) => sum + p.avgBpm, 0);
+      return {
+        avgBpm: Math.round(avgSum / points.length),
+        minBpm: Math.min(...points.map((p) => p.minBpm)),
+        maxBpm: Math.max(...points.map((p) => p.maxBpm)),
+        daysWithData: points.length
+      };
+    };
+
+    const thisWeekPoints = dailyTrend.filter((p) => p.date >= thisWeekStart.toISOString().split('T')[0]);
+    const lastWeekPoints = dailyTrend.filter(
+      (p) => p.date >= lastWeekStart.toISOString().split('T')[0] && p.date <= lastWeekEnd.toISOString().split('T')[0]
     );
 
-    res.json({ success: true, ...data });
+    const thisWeek = summarizeWindow(thisWeekPoints);
+    const lastWeek = summarizeWindow(lastWeekPoints);
+
+    res.json({
+      success: true,
+      dailyTrend,
+      thisWeek,
+      lastWeek,
+      avgBpmDelta: (thisWeek && lastWeek) ? thisWeek.avgBpm - lastWeek.avgBpm : null
+    });
   } catch (error) {
-    if (error instanceof SleepAnalyticsInputError) {
-      return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message });
+    console.error('Get heart rate trend error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get heart rate trend', error: error.message });
   }
 };
 
@@ -428,12 +544,13 @@ exports.generateDemoData = async (req, res) => {
       });
     }
 
-    // Generate 7 days of demo data
+    // Generate 14 days of demo data (2 full weeks, so week-over-week HR comparison has data)
     const dailyMetrics = [];
     const heartRate = [];
+    const heartRateDailySummary = [];
     const sleepData = [];
 
-    for (let i = 6; i >= 0; i--) {
+    for (let i = 13; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
@@ -448,15 +565,32 @@ exports.generateDemoData = async (req, res) => {
       });
 
       // Heart rate readings throughout the day
+      const dayBpms = [];
+      const restingBpms = [];
       for (let h = 0; h < 6; h++) {
         const timestamp = new Date(date);
         timestamp.setHours(8 + h * 2);
+        const isResting = Math.random() <= 0.7;
+        const bpm = isResting ? Math.floor(58 + Math.random() * 15) : Math.floor(90 + Math.random() * 40);
+        dayBpms.push(bpm);
+        if (isResting) restingBpms.push(bpm);
+        // Only the most recent ~2 days survive the raw-sample cap once real
+        // traffic resumes, so this array intentionally isn't the source of
+        // truth for trends beyond that — heartRateDailySummary is.
         heartRate.push({
           timestamp,
-          bpm: Math.floor(60 + Math.random() * 40),
-          type: Math.random() > 0.7 ? 'active' : 'resting'
+          bpm,
+          type: isResting ? 'resting' : 'active'
         });
       }
+      heartRateDailySummary.push({
+        date,
+        avgBpm: Math.round(dayBpms.reduce((a, b) => a + b, 0) / dayBpms.length),
+        minBpm: Math.min(...dayBpms),
+        maxBpm: Math.max(...dayBpms),
+        readingCount: dayBpms.length,
+        restingBpm: restingBpms.length ? Math.min(...restingBpms) : undefined
+      });
 
       sleepData.push({
         date,
@@ -471,6 +605,7 @@ exports.generateDemoData = async (req, res) => {
 
     wearable.dailyMetrics = dailyMetrics;
     wearable.heartRate = heartRate;
+    wearable.heartRateDailySummary = heartRateDailySummary;
     wearable.sleepData = sleepData;
     wearable.lastSyncedAt = new Date();
 
@@ -702,6 +837,7 @@ exports.handleWebhook = async (req, res) => {
           for (const sample of data.samples) {
             if (sample.type !== 'heart_rate') continue;
             wearable.heartRate.push({ timestamp: sample.timestamp, bpm: sample.value, type: 'resting' });
+            upsertHeartRateDailySummary(wearable, sample.timestamp, sample.value, 'resting');
           }
           if (wearable.heartRate.length > 100) wearable.heartRate = wearable.heartRate.slice(-100);
           wearable.lastSyncedAt = new Date();

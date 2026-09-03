@@ -59,7 +59,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const navigate = useNavigate();
 
   if (loading) return <GenericSkeleton />;
-  if (!user) return <Navigate to="/login" replace />;
+  // Preserve where they were headed (e.g. a "Cancel Deletion" email link to
+  // /privacy-settings) so Login can send them back here instead of always
+  // dropping them on /dashboard after signing in.
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
 
   // Check onboarding for regular users
   const hasSeenOnboarding =
@@ -105,19 +108,29 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+// Keep in sync with CONSENT_VERSION in server/controllers/privacyController.js
+const CONSENT_VERSION = '1.0';
+
 function ConsentGate({ children }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [needsConsent, setNeedsConsent] = useState(false);
 
   useEffect(() => {
-    // Show consent modal if user hasn't given consent yet (new user or field missing)
-    if (user && !user.consent?.given) {
+    // Show consent modal if user hasn't consented yet, or consented to an older policy version
+    if (user && (!user.consent?.given || user.consent?.version !== CONSENT_VERSION)) {
       setNeedsConsent(true);
     }
   }, [user]);
 
+  const handleAccept = async () => {
+    // Pull the fresh consent record from the backend into context + localStorage,
+    // otherwise a page refresh reads the stale pre-consent snapshot and re-shows this modal.
+    await refreshUser();
+    setNeedsConsent(false);
+  };
+
   if (needsConsent) {
-    return <ConsentModal onAccept={() => setNeedsConsent(false)} />;
+    return <ConsentModal onAccept={handleAccept} />;
   }
   return children;
 }

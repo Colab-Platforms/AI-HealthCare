@@ -33,6 +33,7 @@ const upload = require('../middleware/upload');
 const { aiLimiter, heavyReadLimiter, apiLimiter } = require('../middleware/rateLimit');
 const { verifyQStash } = require('../middleware/qstashAuth');
 const { requireFeature } = require('../middleware/subscriptionAccess');
+const { requireHealthConsent } = require('../middleware/consentAccess');
 const { countReportsThisMonth } = require('../utils/featureUsage');
 
 // Background-job webhook — called by QStash, not by users, so it has no `protect`.
@@ -41,7 +42,7 @@ const { countReportsThisMonth } = require('../utils/featureUsage');
 router.post('/process-report-bg', verifyQStash, processReportBG);
 // TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
 // (was gated BEFORE multer/Cloudinary so a quota-exceeded user's file was never spent on)
-router.post('/upload', protect, aiLimiter, /* requireFeature('reportAnalysesPerMonth', countReportsThisMonth), */ upload.single('report'), uploadReport);
+router.post('/upload', protect, requireHealthConsent, aiLimiter, /* requireFeature('reportAnalysesPerMonth', countReportsThisMonth), */ upload.single('report'), uploadReport);
 router.get('/reports', protect, heavyReadLimiter, getReports);
 router.get('/history', protect, apiLimiter, getHealthHistory);
 router.get('/dashboard', protect, heavyReadLimiter, getDashboardData);
@@ -50,12 +51,12 @@ router.get('/report-comparison', protect, apiLimiter, getReportComparison);
 router.get('/reports/:id/status', protect, apiLimiter, getReportStatus);
 router.get('/reports/:id/file-url', protect, apiLimiter, getReportFileUrl);
 router.get('/reports/:id', protect, apiLimiter, getReportById);
-router.post('/reports/:id/reanalyze', protect, aiLimiter, reanalyzeReport);
+router.post('/reports/:id/reanalyze', protect, requireHealthConsent, aiLimiter, reanalyzeReport);
 router.delete('/reports/:id', protect, deleteReport);
 router.get('/reports/:id/compare', protect, compareWithPrevious);
-router.post('/reports/:id/chat', protect, aiLimiter, chatAboutReport);
-router.post('/ai-chat', protect, aiLimiter, aiChat);
-router.post('/metric-info', protect, aiLimiter, getMetricInfo);
+router.post('/reports/:id/chat', protect, requireHealthConsent, aiLimiter, chatAboutReport);
+router.post('/ai-chat', protect, requireHealthConsent, aiLimiter, aiChat);
+router.post('/metric-info', protect, requireHealthConsent, aiLimiter, getMetricInfo);
 router.post('/challenge', protect, saveChallengeData);
 router.get('/challenge', protect, getChallengeData);
 
@@ -73,10 +74,10 @@ router.post('/daily-progress', protect, syncDailyProgress);
 router.get('/daily-progress/:date', protect, getDailyProgress);
 
 // Health DNA Profile
-router.get('/health-dna', protect, aiLimiter, getHealthDNA);
+router.get('/health-dna', protect, requireHealthConsent, aiLimiter, getHealthDNA);
 
 // AI Vitals Insights
-router.get('/vitals-insights/:metricType', protect, aiLimiter, getVitalsInsights);
+router.get('/vitals-insights/:metricType', protect, requireHealthConsent, aiLimiter, getVitalsInsights);
 
 // Health Trends
 router.get('/trends', protect, apiLimiter, getHealthTrends);

@@ -124,6 +124,20 @@ const sanitizeBenefits = (data) => {
   });
 };
 
+// The AI is instructed to return warnings as plain strings, but occasionally
+// returns { message, severity, type } objects instead — Mongoose's [String]
+// schema type has no way to cast an object, so every call site that saves
+// AI-sourced warnings must go through this first.
+const sanitizeWarnings = (data) => {
+  if (!data) return [];
+  const items = Array.isArray(data) ? data : [data];
+  return items.map(w => {
+    if (typeof w === 'string') return w;
+    if (w && typeof w === 'object') return String(w.message || w.text || JSON.stringify(w));
+    return String(w);
+  }).filter(Boolean);
+};
+
 const sanitizeAlternatives = (data) => {
   if (!data) return [];
   const items = Array.isArray(data) ? data : [data];
@@ -194,7 +208,7 @@ const normalizeAnalysisResult = (item) => {
     micronutrients: sanitizeMicronutrients(pojo.micronutrients || pojo.foodItem?.micronutrients),
     enhancementTips: sanitizeTips(pojo.enhancementTips || pojo.foodItem?.enhancementTips),
     benefits: sanitizeBenefits(pojo.benefits || pojo.foodItem?.benefits || pojo.healthBenefits),
-    warnings: Array.isArray(pojo.warnings) ? pojo.warnings : [], // Fixed: Missing mapping for Considerations
+    warnings: sanitizeWarnings(pojo.warnings),
     alternatives: sanitizeAlternatives(pojo.alternatives),
     _isFromCache: true
   };
@@ -361,7 +375,7 @@ exports.analyzeFood = async (req, res) => {
             analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
             micronutrients: sanitizeMicronutrients(aiData.micronutrients),
             enhancementTips: sanitizeTips(aiData.enhancementTips),
-            warnings: Array.isArray(aiData.warnings) ? aiData.warnings.map(w => typeof w === 'string' ? w : (w.message || w.text || JSON.stringify(w))) : [],
+            warnings: sanitizeWarnings(aiData.warnings),
             benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
             healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
             alternatives: sanitizeAlternatives(aiData.alternatives),
@@ -548,7 +562,7 @@ exports.logMeal = async (req, res) => {
       micronutrients: sanitizedMicronutrients,
       enhancementTips: sanitizedTips,
       healthBenefitsSummary,
-      warnings: Array.isArray(warnings) ? warnings : [],
+      warnings: sanitizeWarnings(warnings),
       alternatives: sanitizedAlternatives,
       source,
       timestamp: (() => {
@@ -583,7 +597,7 @@ exports.logMeal = async (req, res) => {
           analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
           micronutrients: sanitizeMicronutrients(aiData.micronutrients),
           enhancementTips: sanitizeTips(aiData.enhancementTips),
-          warnings: Array.isArray(aiData.warnings) ? aiData.warnings.map(w => typeof w === 'string' ? w : (w.message || w.text || JSON.stringify(w))) : [],
+          warnings: sanitizeWarnings(aiData.warnings),
           healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
           alternatives: sanitizeAlternatives(aiData.alternatives),
           dishes: mapDishesForSave(aiData.dishes)
@@ -1990,7 +2004,7 @@ exports.quickFoodCheck = async (req, res) => {
       analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
       micronutrients: sanitizeMicronutrients(aiData.micronutrients),
       enhancementTips: sanitizeTips(aiData.enhancementTips),
-      warnings: Array.isArray(aiData.warnings) ? aiData.warnings.map(w => typeof w === 'string' ? w : (w.message || w.text || JSON.stringify(w))) : [],
+      warnings: sanitizeWarnings(aiData.warnings),
       benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
       healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
       alternatives: alternativesArray,

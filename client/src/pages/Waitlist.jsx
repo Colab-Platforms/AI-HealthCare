@@ -1,99 +1,109 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { waitlistService } from "../services/api";
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-export default function WaitlistPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [statusError, setStatusError] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [confettiPieces, setConfettiPieces] = useState([]);
+const CarouselItems = () => (
+  <>
+    {/* Next meal — food photo */}
+    <div className="relative h-[338px] w-[260px] shrink-0 overflow-hidden rounded-[24px] border border-white/10 ">
+      <img
+        src="/waitlist/wait_1.png"
+        alt="Recommended lunch: paneer, roti and seasonal salad"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </div>
 
-  const CONFETTI_COLORS = ["#4872ff", "#6d54eb", "#2dd4bf", "#f59e0b", "#f472b6", "#34d399"];
+    {/* App download — phone mockup */}
+    <div className="relative h-[468px] w-[372px] shrink-0">
+      <img
+        src="/waitlist/wait_2.png"
+        alt="Take Health app dashboard on a phone"
+        className="absolute left-0 top-0 h-full w-full object-cover object-top"
+      />
+    </div>
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setIsSuccess(false);
-    setStatusMessage("");
-    setStatusError(false);
-    setName("");
-    setEmail("");
-  };
+    {/* Lab markers — man portrait */}
+    <div className="relative h-[310px] w-[277px] shrink-0 overflow-hidden rounded-[24px] border border-white/10">
+      <img
+        src="/waitlist/wait_3.png"
+        alt="Full body health check portrait"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </div>
 
-  const trackWaitlistConversion = () => {
+    {/* TAKE Noticed — insight card, no photo */}
+    <div
+      className="relative flex h-[218px] w-[329px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] p-5"
+      style={{ background: "radial-gradient(circle 170px at 82% 48%, rgba(90,150,255,0.95), rgba(60,100,220,0.3) 42%, transparent 68%), #020305" }}
+    >
+      <div className="flex items-center gap-3 text-base font-medium text-white lg:text-lg">
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full lg:h-11 lg:w-11">
+          <video
+            src="/waitlist/waitlist_bolb.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 h-full w-full scale-[2.2] object-cover"
+          />
+          <svg
+            viewBox="0 0 40 40"
+            className="absolute inset-0 h-full w-full"
+            aria-hidden="true"
+          >
+            <circle cx="20" cy="10" r="2.4" fill="#fff" />
+            <circle cx="14.5" cy="18" r="2" fill="#fff" fillOpacity="0.9" />
+            <circle cx="25.5" cy="18" r="2" fill="#fff" fillOpacity="0.9" />
+            <circle cx="9" cy="26" r="1.7" fill="#fff" fillOpacity="0.75" />
+            <circle cx="20" cy="26" r="1.7" fill="#fff" fillOpacity="0.75" />
+            <circle cx="31" cy="26" r="1.7" fill="#fff" fillOpacity="0.75" />
+          </svg>
+        </span>
+        TAKE Noticed
+      </div>
+      <div>
+        <p className="font-landing-title text-base font-medium leading-snug text-white lg:text-xl">
+          Your sleep has been more consistent this week.
+        </p>
+        <p className="mt-4 font-mono text-[11px] text-white/50 lg:text-sm">7h 12m average</p>
+      </div>
+    </div>
+
+    {/* Supplement recommendation — woman portrait */}
+    <div className="relative h-[471px] w-[283px] shrink-0 overflow-hidden rounded-[24px] border border-white/10">
+      <img
+        src="/waitlist/wait_5.png"
+        alt="Supplement recommended from lab results"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </div>
+  </>
+);export default function WaitlistPage() {
+  const navigate = useNavigate();
+
+  const trackCtaClick = () => {
     try {
       if (typeof window.fbq === "function") {
-        window.fbq("track", "Lead", { content_name: "waitlist_signup" });
+        window.fbq("trackCustom", "WaitlistCTAClick", { content_name: "take_your_spot" });
       }
     } catch (err) {
-      console.error("fbq tracking failed", err);
+      console.error("fbq CTA tracking failed", err);
     }
 
     try {
       if (typeof window.gtag === "function") {
-        window.gtag("event", "waitlist_signup", {
+        window.gtag("event", "waitlist_cta_click", {
           event_category: "engagement",
-          event_label: "waitlist_page",
+          event_label: "take_your_spot_button",
         });
       }
     } catch (err) {
-      console.error("gtag tracking failed", err);
-    }
-
-    try {
-      if (typeof window.gtag_report_conversion === "function") {
-        window.gtag_report_conversion();
-      }
-    } catch (err) {
-      console.error("gtag_report_conversion failed", err);
+      console.error("gtag CTA tracking failed", err);
     }
   };
 
-  const triggerCelebration = () => {
-    const pieces = Array.from({ length: 28 }, (_, i) => ({
-      id: `${Date.now()}-${i}`,
-      left: Math.random() * 100,
-      delay: Math.random() * 0.3,
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-      rotate: Math.random() * 360
-    }));
-    setConfettiPieces(pieces);
-  };
-
-  const handleJoinWaitlist = async () => {
-    if (isSubmitting) return;
-    setStatusError(false);
-
-    if (!name.trim()) {
-      setStatusError(true);
-      setStatusMessage("Please enter your name.");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setStatusError(true);
-      setStatusMessage("Please enter a valid email address.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setStatusMessage("");
-    try {
-      await waitlistService.join(name.trim(), email.trim());
-      setName("");
-      setEmail("");
-      setIsSuccess(true);
-      triggerCelebration();
-      trackWaitlistConversion();
-    } catch (error) {
-      setStatusError(true);
-      setStatusMessage(error?.response?.data?.message || "Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleCtaClick = () => {
+    trackCtaClick();
+    navigate("/waitlist/join");
   };
 
   return (
@@ -103,12 +113,18 @@ export default function WaitlistPage() {
     >
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col items-center justify-between px-4 py-8 sm:px-8 lg:px-12">
         <div className="w-full max-w-[1560px]">
-          <div className="mb-10 flex justify-center">
+          <div className="relative mb-10 flex justify-center">
             <img
               src="/assets/logos/take_logo.png"
               alt="Take Health logo"
               className="h-[46px] w-auto sm:h-[56px]"
             />
+            {/* <Link
+              to="/login"
+              className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full border border-white/15 px-4 py-2 text-xs font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white sm:px-5 sm:py-2.5 sm:text-sm"
+            >
+              Log in
+            </Link> */}
           </div>
 
           <div className="text-center">
@@ -130,7 +146,7 @@ export default function WaitlistPage() {
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:gap-4">
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleCtaClick}
                 style={{
                   borderRadius: "173.517px",
                   background: "linear-gradient(90deg, #080277 0%, #4F46E5 50%, #080277 100%)",
@@ -153,76 +169,27 @@ export default function WaitlistPage() {
             </div>
           </div>
 
-          <div className="mt-14 flex flex-nowrap items-center gap-4 overflow-x-auto px-4 pb-3 snap-x snap-mandatory scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-5 sm:px-6 lg:mt-16 lg:justify-center lg:gap-6 lg:overflow-visible lg:px-10 lg:pl-10 lg:pb-0 [&::-webkit-scrollbar]:hidden">
-            {/* Next meal — food photo */}
-            <div className="relative h-[338px] w-[260px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-white/10 ">
-              <img
-                src="/waitlist/wait_1.png"
-                alt="Recommended lunch: paneer, roti and seasonal salad"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-
-            {/* App download — phone mockup */}
-            <div className="relative flex h-[468px] w-[372px] shrink-0 snap-start items-center justify-end overflow-hidden rounded-[24px] border border-white/10 bg-[#05070c] ">
-              <img
-                src="/waitlist/wait_2.png"
-                alt="Take Health app dashboard on a phone"
-                className="absolute inset-0 h-full w-full object-cover object-top"
-              />
-            </div>
-
-            {/* Lab markers — man portrait */}
-            <div className="relative h-[310px] w-[277px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-white/10">
-              <img
-                src="/waitlist/wait_3.png"
-                alt="Full body health check portrait"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-
-            {/* TAKE Noticed — insight card, no photo */}
-            <div className="relative flex h-[218px] w-[329px] shrink-0 snap-start flex-col justify-between rounded-[24px] bg-[radial-gradient(circle_at_0%_50%,_rgba(59,130,246,0.35),_transparent_45%),radial-gradient(circle_at_100%_50%,_rgba(59,130,246,0.35),_transparent_45%),radial-gradient(circle_at_25%_15%,_rgba(45,212,191,0.14),_transparent_35%),linear-gradient(160deg,#0b1420_0%,#0a1a24_45%,#080f18_100%)] p-4 ">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75 lg:text-xs">
-                <span className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full lg:h-14 lg:w-14">
-                  <video
-                    src="/waitlist/waitlist_bolb.mp4"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute inset-0 h-full w-full scale-[2.2] object-cover"
-                  />
-                  <svg
-                    viewBox="0 0 40 40"
-                    className="absolute inset-0 h-full w-full"
-                    aria-hidden="true"
-                  >
-                    <circle cx="20" cy="10" r="2.4" fill="#fff" />
-                    <circle cx="14.5" cy="18" r="2" fill="#fff" fillOpacity="0.9" />
-                    <circle cx="25.5" cy="18" r="2" fill="#fff" fillOpacity="0.9" />
-                    <circle cx="9" cy="26" r="1.7" fill="#fff" fillOpacity="0.75" />
-                    <circle cx="20" cy="26" r="1.7" fill="#fff" fillOpacity="0.75" />
-                    <circle cx="31" cy="26" r="1.7" fill="#fff" fillOpacity="0.75" />
-                  </svg>
-                </span>
-                TAKE Noticed
-              </div>
-              <div>
-                <p className="font-landing-title text-sm font-medium leading-snug text-white lg:text-lg">
-                  Your sleep has been more consistent this week.
-                </p>
-                <p className="mt-3 text-[11px] text-white/50 lg:text-sm">7h 12m average</p>
-              </div>
-            </div>
-
-            {/* Supplement recommendation — woman portrait */}
-            <div className="relative h-[471px] w-[283px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-white/10 shadow-[0_35px_70px_rgba(0,0,0,0.35)]">
-              <img
-                src="/waitlist/wait_5.png"
-                alt="Supplement recommended from lab results"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
+          <div className="mt-14 w-full overflow-hidden pb-3 sm:pb-5 lg:mt-16 lg:pb-0 relative">
+            
+            <style>
+              {`
+                @keyframes waitlist-slide {
+                  0% { transform: translateX(0); }
+                  100% { transform: translateX(-50%); }
+                }
+                .animate-waitlist-slide {
+                  animation: waitlist-slide 35s linear infinite;
+                  width: max-content;
+                }
+                .animate-waitlist-slide:hover {
+                  animation-play-state: paused;
+                }
+              `}
+            </style>
+            
+            <div className="flex flex-nowrap items-center gap-4 sm:gap-5 lg:gap-6 animate-waitlist-slide">
+              <CarouselItems />
+              <CarouselItems />
             </div>
           </div>
         </div>
@@ -294,110 +261,6 @@ export default function WaitlistPage() {
         </div>
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop ">
-          <div className="relative w-full max-w-[440px] overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,#1C2C4C_0%,#3A4D78_100%)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:p-8">
-            <button
-              type="button"
-              aria-label="Close waitlist modal"
-              onClick={closeModal}
-              className="absolute right-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm text-white/70 transition hover:bg-white/20"
-            >
-              ×
-            </button>
-
-            {isSuccess ? (
-              <div className="relative flex flex-col items-center py-4 text-center">
-                <div className="pointer-events-none absolute inset-x-0 -top-4 h-0">
-                  {confettiPieces.map((p) => (
-                    <span
-                      key={p.id}
-                      className="waitlist-confetti-piece"
-                      style={{
-                        left: `${p.left}%`,
-                        backgroundColor: p.color,
-                        animationDelay: `${p.delay}s`,
-                        transform: `rotate(${p.rotate}deg)`
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-3xl">
-                  🎉
-                </span>
-                <h2 className="mt-5 text-2xl font-bold tracking-tight text-white sm:text-[28px]">
-                  Congratulations!
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-white/60 sm:text-base">
-                  You're on the waitlist. We'll email you as soon as it's your turn to get early access.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="mt-6 rounded-full bg-gradient-to-r from-[#4872ff] via-[#4a5fe0] to-[#6d54eb] px-6 py-2.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(83,92,255,0.45)] transition hover:brightness-110"
-                >
-                  Done
-                </button>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">
-                  Get Early Access
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-white/60 sm:text-base">
-                  Understand your health better. Make better choices every day. Join the waitlist.
-                </p>
-
-                <div className="mt-6 flex items-center rounded-full bg-black/30 p-1.5">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleJoinWaitlist()}
-                    placeholder="Your Name"
-                    autoComplete="off"
-                    style={{ WebkitTextFillColor: "#fff", WebkitBoxShadow: "0 0 0px 1000px transparent inset", transition: "background-color 9999s ease-in-out 0s" }}
-                    className="min-w-0 flex-1 appearance-none border-0 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none autofill:bg-transparent"
-                  />
-                </div>
-
-                <div className="mt-3 flex items-center gap-1.5 rounded-full bg-black/30 p-1.5">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleJoinWaitlist()}
-                    placeholder="Your Email Address"
-                    autoComplete="off"
-                    style={{ WebkitTextFillColor: "#fff", WebkitBoxShadow: "0 0 0px 1000px transparent inset", transition: "background-color 9999s ease-in-out 0s" }}
-                    className="min-w-0 flex-1 appearance-none border-0 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none autofill:bg-transparent"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleJoinWaitlist}
-                    disabled={isSubmitting}
-                    className="shrink-0 rounded-full bg-gradient-to-r from-[#4872ff] via-[#4a5fe0] to-[#6d54eb] px-5 py-2.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(83,92,255,0.45)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSubmitting ? "Joining..." : "Join Waitlist"}
-                  </button>
-                </div>
-
-                {statusMessage && (
-                  <div className={`mt-3 text-center text-xs sm:text-sm ${statusError ? "text-red-400" : "text-emerald-400"}`}>
-                    {statusMessage}
-                  </div>
-                )}
-
-                <div className="mt-5 text-center text-xs font-medium text-white/50 sm:text-sm">
-                  30-Day <span className="font-bold text-white/70">FREE</span> Trial
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -2,10 +2,11 @@ import React from "react";
 import SEO from "../hooks/useSEO";
 import UpdatedNavbar from "../components/landing/landing-components/UpdatedNavbar";
 import UpdatedFooter from "../components/landing/landing-components/UpdatedFooter";
+import PdfViewer from "../components/PdfViewer";
 
 const TermsAndCondition = () => {
   const pdfUrl =
-    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1787557576/Terrms_and_Conditions_take.health_updated_24.08.26_hifch6.pdf";
+    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1788346542/Terrms_and_Conditions_take.health_updated_24.08.26_hifch6_fanxrq_q3dddp.pdf";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">
@@ -24,23 +25,13 @@ const TermsAndCondition = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-5 lg:px-20 h-[calc(100vh-220px)] overflow-hidden  mt-10 ">
-          <iframe
-            src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
-            title="Terms and Conditions PDF"
-            className="h-full w-full border-0 rounded-lg shadow-lg"
-          />
+        {/* Renders every page as canvas, same code path on desktop, Android
+            and iOS — no iframe, no OS-native PDF viewer, no leaving the page. */}
+        <div className="container mx-auto px-5 lg:px-20 mt-10">
+          <PdfViewer url={pdfUrl} title="the Terms and Conditions" />
         </div>
 
         <div className="container mx-auto px-5 lg:px-20 mt-4 flex w-full flex-wrap gap-3 mb-10">
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg bg-landing-primary-hover px-4 py-2.5 font-semibold text-white no-underline transition hover:bg-landing-primary"
-          >
-            Open in New Tab
-          </a>
           <a
             href={pdfUrl}
             download

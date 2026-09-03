@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import SEO from "../hooks/useSEO";
 import { useAuth } from "../context/AuthContext";
 import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight, Smartphone, ChevronDown, Download, AlertTriangle } from "lucide-react";
@@ -95,18 +95,27 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Set by ProtectedRoute when it bounced an unauthenticated user here from
+  // a specific page (e.g. a "Cancel Deletion" email link to /privacy-settings)
+  // — only honored for regular users, since admin/doctor always have their
+  // own dedicated landing page regardless of what link brought them here.
+  const getLoginRedirect = (role) => {
+    const from = location.state?.from;
+    if (from && role !== "admin" && role !== "superadmin" && role !== "doctor") return from;
+    return role === "admin" || role === "superadmin"
+      ? "/admin"
+      : role === "doctor"
+        ? "/doctor/dashboard"
+        : "/dashboard";
+  };
 
   const handleGoogleToken = async (accessToken) => {
     try {
       const user = await loginWithGoogle(accessToken, rememberMe);
       toast.success("Welcome back!");
-      navigate(
-        user.role === "admin" || user.role === "superadmin"
-          ? "/admin"
-          : user.role === "doctor"
-            ? "/doctor/dashboard"
-            : "/dashboard",
-      );
+      navigate(getLoginRedirect(user.role));
     } catch (error) {
       toast.error(error.response?.data?.message || "Google sign-in failed. Please try again.");
     }
@@ -121,13 +130,7 @@ export default function Login() {
       try {
         const user = await login(email, password, rememberMe);
         toast.success("Welcome back!");
-        navigate(
-          user.role === "admin" || user.role === "superadmin"
-            ? "/admin"
-            : user.role === "doctor"
-              ? "/doctor/dashboard"
-              : "/dashboard",
-        );
+        navigate(getLoginRedirect(user.role));
       } catch (error) {
         const status = error.response?.status;
         const errorMsg =
