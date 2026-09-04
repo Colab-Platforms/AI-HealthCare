@@ -67,7 +67,7 @@ const userSchema = new mongoose.Schema({
       enum: [
         'Better Sleep', 'Improve Energy', 'Weight Management', 'Build Muscle',
         'Better Nutrition', 'Reduce Stress', 'Healthy Ageing', 'Understand My Health',
-        'Manage Diabetes', 'Heart Health', 'Boost Immunity', 'Improve Overall Wellness', 'Other'
+        'Manage Diabetes', 'Heart Health', 'Boost Immunity', 'Overall Wellness', 'Other'
       ],
       default: undefined // optional - omit the key entirely rather than defaulting to []
     },
