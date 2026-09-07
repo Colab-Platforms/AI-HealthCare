@@ -1,6 +1,7 @@
 const SupportTicket = require('../models/SupportTicket');
 const Anthropic = require('@anthropic-ai/sdk');
 const UsageLog = require('../models/UsageLog');
+const cloudinaryService = require('../services/cloudinary');
 
 // Initialize Claude client
 const client = new Anthropic({
@@ -28,6 +29,40 @@ exports.createTicket = async (req, res) => {
     }
 };
 
+
+// Public ticket creation — no login required, used by the /support page
+exports.createPublicTicket = async (req, res) => {
+    try {
+        const { name, email, subject, message, category } = req.body;
+
+        if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Name is required' });
+        if (!email || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ success: false, message: 'A valid email is required' });
+        if (!message || !message.trim()) return res.status(400).json({ success: false, message: 'Message is required' });
+
+        let attachments = [];
+        if (req.file) {
+            const buffer = req.file.buffer || (req.file.path ? require('fs').readFileSync(req.file.path) : null);
+            const url = await cloudinaryService.uploadImage(buffer, 'support_tickets');
+            if (url) attachments = [url];
+        }
+
+        const ticket = await SupportTicket.create({
+            name: name.trim(),
+            email: email.trim(),
+            subject: subject?.trim() || 'Support request',
+            message: message.trim(),
+            category: category || 'general_help',
+            attachments,
+            status: 'open',
+            priority: 'medium'
+        });
+
+        res.status(201).json({ success: true, ticket });
+    } catch (error) {
+        console.error('createPublicTicket error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 exports.getMyTickets = async (req, res) => {
     try {
