@@ -1275,7 +1275,7 @@ exports.getLifestyleGoals = async (req, res) => {
       success: true,
       stepGoal: lifestyle.stepGoal || 10000,
       sleepGoalHours: lifestyle.sleepGoalHours || 8,
-      waterGlassGoal: lifestyle.waterIntake || 8,
+      waterGoalMl: lifestyle.waterGoalMl || 2000,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -1284,7 +1284,7 @@ exports.getLifestyleGoals = async (req, res) => {
 
 exports.setLifestyleGoals = async (req, res) => {
   try {
-    const { stepGoal, sleepGoalHours, waterGlassGoal } = req.body;
+    const { stepGoal, sleepGoalHours, waterGoalMl } = req.body;
     const update = {};
 
     if (stepGoal !== undefined) {
@@ -1299,15 +1299,15 @@ exports.setLifestyleGoals = async (req, res) => {
       }
       update['profile.lifestyle.sleepGoalHours'] = sleepGoalHours;
     }
-    if (waterGlassGoal !== undefined) {
-      if (typeof waterGlassGoal !== 'number' || waterGlassGoal < 1 || waterGlassGoal > 30) {
-        return res.status(400).json({ success: false, message: 'waterGlassGoal must be a number between 1 and 30' });
+    if (waterGoalMl !== undefined) {
+      if (typeof waterGoalMl !== 'number' || waterGoalMl < 500 || waterGoalMl > 10000) {
+        return res.status(400).json({ success: false, message: 'waterGoalMl must be a number between 500 and 10000' });
       }
-      update['profile.lifestyle.waterIntake'] = waterGlassGoal;
+      update['profile.lifestyle.waterGoalMl'] = waterGoalMl;
     }
 
     if (Object.keys(update).length === 0) {
-      return res.status(400).json({ success: false, message: 'Provide at least one of stepGoal, sleepGoalHours, waterGlassGoal' });
+      return res.status(400).json({ success: false, message: 'Provide at least one of stepGoal, sleepGoalHours, waterGoalMl' });
     }
 
     await User.findByIdAndUpdate(req.user._id, { $set: update });

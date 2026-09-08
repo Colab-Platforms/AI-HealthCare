@@ -95,8 +95,12 @@ const userSchema = new mongoose.Schema({
       alcoholFrequency: String, // 'occasional', 'moderate', 'heavy'
       sleepHours: { type: Number, min: 0, max: 24 }, // hrs per day
       stressLevel: { type: String, enum: ['low', 'moderate', 'high'] },
-      waterIntake: { type: Number, min: 0 }, // glasses per day (goal) — falls back to 8 in code if unset
-      waterGlassSizeMl: { type: Number, min: 50, max: 2000, default: 250 }, // ml per glass, user-configurable
+      // Deprecated — superseded by waterGoalMl below. Left declared (not deleted)
+      // so any already-stored value on old documents doesn't raise a strict-schema
+      // error; nothing reads or writes this field anymore.
+      waterIntake: { type: Number, min: 0 },
+      waterGlassSizeMl: { type: Number, min: 50, max: 2000, default: 250 }, // ml per glass — used only to render "X glasses" from a logged ml total, never for the goal itself
+      waterGoalMl: { type: Number, min: 500, max: 10000, default: 2000 }, // ml per day (goal) — the single source of truth for the water target
       stepGoal: { type: Number, min: 1000, max: 50000, default: 10000 },
       sleepGoalHours: { type: Number, min: 4, max: 12, default: 8 }
     },

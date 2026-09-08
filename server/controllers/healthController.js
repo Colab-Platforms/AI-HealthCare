@@ -880,7 +880,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       goals: {
         steps: userWithLogs?.profile?.lifestyle?.stepGoal || 10000,
         sleep: userWithLogs?.profile?.lifestyle?.sleepGoalHours || 8,
-        water: userWithLogs?.profile?.lifestyle?.waterIntake || 8,
+        water: userWithLogs?.profile?.lifestyle?.waterGoalMl || 2000, // ml — directly comparable to history[].water / nutritionData.waterIntake, no glass conversion needed
         weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65
       },
       alcoholToday: alcoholSummary.today, alcoholTodayUnits: alcoholSummary.todayUnits,

@@ -174,7 +174,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       }
 
       if (dashboardCache) {
-        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${dashboardCache.stepsToday || 0}/${dashboardCache.goals?.steps || 10000}\n- Water: ${dashboardCache.nutritionData?.waterIntake || 0}/${dashboardCache.goals?.water || 8} glasses\n- Sleep: ${dashboardCache.sleepToday || 0}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${dashboardCache.todayMetrics?.caloriesBurned || 0} kcal`;
+        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${dashboardCache.stepsToday ?? 0}/${dashboardCache.goals?.steps || 10000}\n- Water: ${dashboardCache.nutritionData?.waterIntake || 0}/${dashboardCache.goals?.water || 2000} ml\n- Sleep: ${dashboardCache.sleepToday ?? 0}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${dashboardCache.todayMetrics?.caloriesBurned || 0} kcal`;
       } else {
         activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
       }
