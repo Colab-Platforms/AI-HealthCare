@@ -3,8 +3,16 @@ const mongoose = require('mongoose');
 const supportTicketSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
+    },
+    name: {
+        type: String,
+        trim: true
+    },
+    email: {
+        type: String,
+        trim: true,
+        lowercase: true
     },
     subject: {
         type: String,

@@ -67,9 +67,9 @@ const waitlistUserEmailSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
+// (position already gets its index via `index: true` on the field above)
 waitlistUserEmailSchema.index({ email: 1, createdAt: -1 });
 waitlistUserEmailSchema.index({ createdAt: -1 });
-waitlistUserEmailSchema.index({ position: 1 });
 waitlistUserEmailSchema.index({ status: 1, emailSent: 1 });
 waitlistUserEmailSchema.index({ convertedAt: 1 }, { sparse: true });
 

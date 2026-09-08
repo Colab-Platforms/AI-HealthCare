@@ -33,11 +33,11 @@ const UpdatedFooter = () => {
       ],
     },
     {
-      title: "SUPPORT",
+      title: "Contact & Support",
       links: [
-        { label: "Help Center", to: "#" },
+        { label: "Help Center", to: "/support" },
         { label: "Safety Guide", to: "#" },
-        { label: "Contact", to: "#" },
+        { label: "Support", to: "/support" },
       ],
     },
     {

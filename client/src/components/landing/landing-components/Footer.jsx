@@ -37,10 +37,10 @@ const Footer = () => {
     {
       title: "Support",
       items: [
-        { name: "Help Center", link: "#" },
+        { name: "Help Center", link: "/support" },
         { name: "Safety Guide", link: "#" },
         { name: "Community", link: "#" },
-        { name: "Contact", link: "#" },
+        { name: "Contact", link: "/support" },
       ],
     },
     {

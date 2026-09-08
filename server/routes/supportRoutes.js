@@ -1,8 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { createTicket, getMyTickets, getAllTickets, respondToTicket, aiChat } = require('../controllers/supportController');
+const { createTicket, createPublicTicket, getMyTickets, getAllTickets, respondToTicket, aiChat } = require('../controllers/supportController');
 const { protect, authorize } = require('../middleware/auth');
-const { aiLimiter } = require('../middleware/rateLimit');
+const { aiLimiter, sensitiveActionLimiter } = require('../middleware/rateLimit');
+const upload = require('../middleware/upload');
+
+// Public route — raise a ticket without logging in
+router.post('/public', sensitiveActionLimiter, upload.single('attachment'), createPublicTicket);
 
 // User routes
 router.use(protect);

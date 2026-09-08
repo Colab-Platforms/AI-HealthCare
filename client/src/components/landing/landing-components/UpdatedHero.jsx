@@ -69,7 +69,7 @@ const UpdatedHero = () => {
             className="max-w-md px-2 text-center text-[rgba(255,255,255,0.80)] text-base sm:text-xl lg:text-[28px] not-italic font-normal leading-[150%] sm:leading-[140%] font-landing-body mb-4 sm:mb-8 sm:max-w-2xl lg:max-w-4xl"
           >
             Take Health brings your lab reports, daily habits and long-term trends into one place,
-            and explains what they actually mean — so you always know what to do next.
+            and explains what they actually mean - so you always know what to do next.
           </motion.p>
 
           {/* Start For Free CTA Button & No Credit Card Text */}

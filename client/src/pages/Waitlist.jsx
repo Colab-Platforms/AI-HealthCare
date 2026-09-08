@@ -140,7 +140,7 @@ export default function WaitlistPage() {
               className="mx-auto mt-4 max-w-[760px] text-center text-[rgba(255,255,255,0.80)] text-[15px] not-italic font-normal leading-[150%] sm:mt-7 sm:text-lg lg:text-[28px] lg:leading-[140%]"
               style={{ fontFamily: '"Founders Grotesk", sans-serif' }}
             >
-              Take brings your health data, habits, lifestyle and insights together —
+              Take brings your health data, habits, lifestyle and insights together -
               turning them into a clear picture of where you are today and where your
               health is headed.
             </p>
