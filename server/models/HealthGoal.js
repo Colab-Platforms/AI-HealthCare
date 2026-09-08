@@ -64,11 +64,16 @@ const healthGoalSchema = new mongoose.Schema({
     default: 'auto'
   },
   manualCalorieTarget: Number,
+  // True only when the user explicitly confirmed a manual calorie target below
+  // their personalized safety floor after seeing a warning — an audit trail,
+  // not a bypass: an absolute hard floor still can never be crossed regardless.
+  unsafeOverrideAcknowledged: { type: Boolean, default: false },
 
   macroTargets: {
     protein: Number, // grams
     carbs: Number, // grams
-    fats: Number // grams
+    fats: Number, // grams
+    fiber: Number // grams — 14g per 1000 kcal (USDA/WHO)
   },
 
   // Progress tracking
@@ -82,6 +87,10 @@ const healthGoalSchema = new mongoose.Schema({
     date: Date,
     notes: String
   }],
+  // Derived, recomputed on every save — persisted so the dashboard can show it
+  // without the user having to reopen the goal-edit form.
+  progressPercent: { type: Number, min: 0, max: 100 },
+  projectedCompletionDate: Date,
 
   // Preferences
   dietaryPreference: {
@@ -145,6 +154,34 @@ const MAX_WEEKLY_RATE_FRACTION = {
   muscle_gain: 0.0025,
 };
 const KCAL_PER_KG_FAT = 7700; // Wishnofsky rule — standard energy-density-of-fat approximation
+
+// Pre-save consent check — mirrors the requestedRate/cap logic inside
+// calculateCalorieTarget() below, WITHOUT duplicating the calorie math, so a
+// controller can warn the user about an unrealistic timeframe before saving
+// (instead of silently capping it, which is what calculateCalorieTarget()
+// still does regardless — this is purely about informing the user up front).
+healthGoalSchema.statics.checkRequestedRate = function ({ goalType, currentWeight, targetWeight, targetDate }) {
+  const hasWeightGoal = ['weight_loss', 'weight_gain', 'muscle_gain'].includes(goalType);
+  if (!hasWeightGoal || !targetWeight || !currentWeight) {
+    return { isUnsafe: false };
+  }
+
+  const weeksAvailable = targetDate
+    ? Math.max(1, (new Date(targetDate) - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+    : 12;
+  const requestedWeeklyRate = (targetWeight - currentWeight) / weeksAvailable;
+
+  const maxRateFraction = requestedWeeklyRate < 0
+    ? MAX_WEEKLY_RATE_FRACTION.weight_loss
+    : (goalType === 'muscle_gain' ? MAX_WEEKLY_RATE_FRACTION.muscle_gain : MAX_WEEKLY_RATE_FRACTION.weight_gain);
+  const maxRate = maxRateFraction * currentWeight;
+
+  return {
+    isUnsafe: Math.abs(requestedWeeklyRate) > maxRate,
+    requestedWeeklyRate: Math.round(requestedWeeklyRate * 100) / 100,
+    maxRate: Math.round(maxRate * 100) / 100,
+  };
+};
 
 // Calculate daily calorie target based on goal (scientifically backed)
 healthGoalSchema.methods.calculateCalorieTarget = function () {
@@ -248,7 +285,9 @@ healthGoalSchema.methods.calculateMacros = function () {
     this.macroTargets = {
       protein: Math.round((this.dailyCalorieTarget * proteinPct) / 4),
       carbs: Math.round((this.dailyCalorieTarget * carbPct) / 4),
-      fats: Math.round((this.dailyCalorieTarget * fatPct) / 9)
+      fats: Math.round((this.dailyCalorieTarget * fatPct) / 9),
+      // 14g fiber per 1000 kcal — USDA Dietary Guidelines for Americans / WHO
+      fiber: Math.round((this.dailyCalorieTarget * 14) / 1000)
     };
 
     return this.macroTargets;
@@ -300,10 +339,54 @@ healthGoalSchema.methods.calculateMacros = function () {
   this.macroTargets = {
     protein: protein,
     carbs: carbs,
-    fats: fats
+    fats: fats,
+    // 14g fiber per 1000 kcal — USDA Dietary Guidelines for Americans / WHO
+    fiber: Math.round((this.dailyCalorieTarget * 14) / 1000)
   };
 
   return this.macroTargets;
+};
+
+// Progress % and ETA toward targetWeight — pure arithmetic on already-computed
+// fields, not a new medical claim. Guards against every div-by-zero / wrong-
+// direction / no-target case rather than surfacing Infinity or a fake number.
+healthGoalSchema.methods.calculateProgress = function () {
+  const hasWeightGoal = ['weight_loss', 'weight_gain', 'muscle_gain'].includes(this.goalType);
+
+  if (!hasWeightGoal || !this.targetWeight || !this.startWeight) {
+    this.progressPercent = undefined;
+    this.projectedCompletionDate = undefined;
+    return;
+  }
+
+  const totalPlannedChange = this.targetWeight - this.startWeight;
+  if (totalPlannedChange === 0) {
+    this.progressPercent = undefined;
+    this.projectedCompletionDate = undefined;
+    return;
+  }
+
+  const actualChange = this.currentWeight - this.startWeight;
+  const rawPercent = (actualChange / totalPlannedChange) * 100;
+  this.progressPercent = Math.round(Math.max(0, Math.min(100, rawPercent)));
+
+  if (!this.weeklyRateKg) {
+    this.projectedCompletionDate = undefined;
+    return;
+  }
+
+  const remaining = this.targetWeight - this.currentWeight;
+  // Only project when the current rate actually moves toward the target —
+  // otherwise the division gives a meaningless or negative ETA.
+  if (remaining !== 0 && Math.sign(remaining) !== Math.sign(this.weeklyRateKg)) {
+    this.projectedCompletionDate = undefined;
+    return;
+  }
+
+  const weeksRemaining = Math.abs(remaining / this.weeklyRateKg);
+  const projected = new Date();
+  projected.setDate(projected.getDate() + Math.round(weeksRemaining * 7));
+  this.projectedCompletionDate = projected;
 };
 
 // Calculate all targets before saving
@@ -317,12 +400,18 @@ healthGoalSchema.pre('save', function (next) {
 
   if (this.calorieSource === 'manual' && this.manualCalorieTarget) {
     this.dailyCalorieTarget = this.manualCalorieTarget;
-    this.weeklyRateKg = null; // no longer derived from the formula
+    // Reverse the same rate<->calorie relationship calculateCalorieTarget() uses,
+    // so a manual override still yields a usable weekly rate for progress/ETA
+    // instead of leaving it null. Mathematically exact (same equation, solved
+    // for the other variable) — see calculateCalorieTarget() for the forward form.
+    const calorieAdjust = this.manualCalorieTarget - this.tdee;
+    this.weeklyRateKg = Math.round((calorieAdjust * 7 / KCAL_PER_KG_FAT) * 100) / 100;
   } else {
     this.calculateCalorieTarget();
   }
 
   this.calculateMacros(); // macro split still derives from dailyCalorieTarget either way
+  this.calculateProgress();
 
   next();
 });

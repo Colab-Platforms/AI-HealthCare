@@ -171,6 +171,15 @@ exports.logExercise = async (req, res) => {
 
     await updateDailyExerciseSummary(req.user._id, exerciseLog.timestamp);
 
+    // Workout calories only reach the daily calorie budget once NutritionSummary
+    // recomputes — without this, a workout with no food-log action that day
+    // would show a stale (zero) caloriesBurned until something else triggered it.
+    const dateStr = exerciseLog.timestamp.toISOString().split('T')[0];
+    await require('./nutritionController').updateDailySummaryInternal(req.user._id, dateStr).catch(err => {
+      console.error('[Exercise] NutritionSummary recompute failed:', err.message);
+    });
+    cache.delete(`dashboard:${req.user._id}`);
+
     await logActivity(req.user._id, 'LOG_EXERCISE', 'fitness', {
       activityType,
       duration: exerciseLog.duration,

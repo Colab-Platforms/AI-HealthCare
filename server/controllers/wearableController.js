@@ -3,6 +3,10 @@ const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
+const { getSleepAnalytics, SleepAnalyticsInputError } = require('../services/sleepAnalyticsService');
+const { getActivityAnalytics, ActivityAnalyticsInputError } = require('../services/activityAnalyticsService');
+const { getSleepInsight } = require('../services/sleepInsightService');
+const { getActivityInsight } = require('../services/activityInsightService');
 
 function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -211,6 +215,7 @@ exports.syncDailyMetrics = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`activity_analytics:${req.user._id}:*`);
     require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
 
     res.json({ wearable, gamification: gamificationResult });
@@ -427,6 +432,87 @@ exports.getWearableDashboard = async (req, res) => {
     dashboard.latestRestingHeartRate = dashboard.recentHeartRate.find((r) => r.type === 'resting') || null;
 
     res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Analytical sleep breakdown (stages, quality score, daily/weekly/monthly/yearly trends)
+exports.getSleepAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `sleep_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getSleepAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof SleepAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Steps/activity breakdown — device-agnostic: hasWearableConnected tells the UI
+// whether a missing/zero reading means "no device" vs "genuinely inactive".
+exports.getActivityAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `activity_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getActivityAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof ActivityAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Fact-based sleep-goal adherence + a safety note if the user is training
+// while under-slept. No calorie/exercise number is adjusted — see sleepInsightService.
+// Device-agnostic: reads WearableData.sleepData regardless of whether entries
+// came from manual logging or a connected wearable's webhook.
+exports.getSleepInsightData = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('profile.lifestyle.sleepGoalHours').lean();
+    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+
+    const insight = await getSleepInsight(req.user._id, sleepGoalHours);
+    res.json({ success: true, ...insight });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Fact-based step-goal adherence + a separate "vs. your own normal" signal.
+// stepGoal is never modified by this — see activityInsightService.
+exports.getActivityInsightData = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('profile.lifestyle.stepGoal').lean();
+    const stepGoal = user?.profile?.lifestyle?.stepGoal || 10000;
+
+    const insight = await getActivityInsight(req.user._id, stepGoal);
+    res.json({ success: true, ...insight });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -827,6 +913,7 @@ exports.handleWebhook = async (req, res) => {
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`activity_analytics:${wearable.user}:*`);
         }
         break;
       }
@@ -867,6 +954,7 @@ exports.handleWebhook = async (req, res) => {
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`activity_analytics:${wearable.user}:*`);
         }
         break;
       }
@@ -893,6 +981,7 @@ exports.handleWebhook = async (req, res) => {
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`activity_analytics:${wearable.user}:*`);
         }
         break;
       }

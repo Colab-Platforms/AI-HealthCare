@@ -765,7 +765,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       // stressLevels arrays — which grow one entry per sample, forever, for any
       // user with a connected device — just to read steps and sleep minutes.
       withTimeout(WearableData.find({ user: reqUser._id })
-        .select('dailyMetrics.date dailyMetrics.steps sleepData.date sleepData.totalSleepMinutes')
+        .select('dailyMetrics.date dailyMetrics.steps sleepData.date sleepData.totalSleepMinutes isConnected')
         .lean()),
       withTimeout(HealthMetric.find({ userId: reqUser._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
       HealthMetric.findOne({ userId: reqUser._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
@@ -812,19 +812,28 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
     const weightByDate = {};
     weightMetrics.forEach(m => { weightByDate[new Date(m.recordedAt).toISOString().split('T')[0]] = m.value; });
 
+    // hasEntry maps track whether a date actually has a device/manual reading —
+    // separate from the numeric value itself — so a day with no data at all can be
+    // told apart from a day that was genuinely logged as zero (e.g. no steps taken).
     const stepsByDate = {};
+    const stepsHasEntry = {};
     const sleepByDate = {};
+    const sleepHasEntry = {};
+    let hasWearableConnected = false;
     for (const w of wearables) {
+      if (w.isConnected) hasWearableConnected = true;
       w.dailyMetrics?.forEach(m => {
         if (m.date) {
           const d = new Date(m.date).toISOString().split('T')[0];
           stepsByDate[d] = (stepsByDate[d] || 0) + (m.steps || 0);
+          stepsHasEntry[d] = true;
         }
       });
       w.sleepData?.forEach(s => {
         if (s.date) {
           const d = new Date(s.date).toISOString().split('T')[0];
           sleepByDate[d] = (sleepByDate[d] || 0) + (s.totalSleepMinutes || 0) / 60;
+          sleepHasEntry[d] = true;
         }
       });
     }
@@ -842,8 +851,11 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       history.push({
         date: dStr,
         calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0),
-        steps: stepsByDate[dStr] || 0,
-        sleep: sleepByDate[dStr] || 0,
+        // null = no device/manual reading exists for this day (distinct from a
+        // genuine, logged zero) — lets the UI show "no data" instead of implying
+        // the user was totally inactive when we simply never measured it.
+        steps: stepsHasEntry[dStr] ? stepsByDate[dStr] : null,
+        sleep: sleepHasEntry[dStr] ? sleepByDate[dStr] : null,
         weight: lastKnownWeight,
         water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0),
         alcohol: alcoholDay?.count || 0,
@@ -859,8 +871,12 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       user: trimmedUser,
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
       totalReports, recentReports: reports.slice(0, 5), reportTypeCounts, history,
-      stepsToday: history[history.length - 1]?.steps || 0,
-      sleepToday: history[history.length - 1]?.sleep || 0,
+      // null here means "no device/manual reading today" — distinct from a
+      // genuine, logged zero. hasWearableConnected lets the UI choose copy
+      // ("Connect a device" vs "0 steps today") without guessing from the number.
+      stepsToday: history[history.length - 1]?.steps ?? null,
+      sleepToday: history[history.length - 1]?.sleep ?? null,
+      hasWearableConnected,
       goals: {
         steps: userWithLogs?.profile?.lifestyle?.stepGoal || 10000,
         sleep: userWithLogs?.profile?.lifestyle?.sleepGoalHours || 8,

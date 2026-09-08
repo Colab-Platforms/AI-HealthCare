@@ -818,6 +818,23 @@ exports.setHealthGoal = async (req, res) => {
       manualCalorieTarget: undefined
     };
 
+    // Warn before saving an unrealistic timeframe instead of silently capping
+    // it — the calorie math still caps it regardless (see calculateCalorieTarget),
+    // this only decides whether the user gets told about it up front.
+    const rateCheck = HealthGoal.checkRequestedRate({
+      goalType: sanitizedData.goalType,
+      currentWeight: sanitizedData.currentWeight,
+      targetWeight: sanitizedData.targetWeight,
+      targetDate: sanitizedData.targetDate,
+    });
+    if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
+      return res.status(422).json({
+        success: false,
+        requiresConsent: true,
+        warningMessage: `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+      });
+    }
+
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
     if (healthGoal) {
@@ -905,9 +922,11 @@ exports.getHealthGoal = async (req, res) => {
     );
 
     if (healthGoal) {
+      const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
       return res.json({
         success: true,
-        healthGoal
+        healthGoal,
+        exerciseGuidance: getExerciseGuidance(healthGoal.age, healthGoal.goalType),
       });
     }
 
@@ -956,6 +975,20 @@ exports.updateHealthGoal = async (req, res) => {
       calorieSource: 'auto',
       manualCalorieTarget: undefined
     };
+
+    const rateCheck = HealthGoal.checkRequestedRate({
+      goalType: goalData.goalType,
+      currentWeight: Number(goalData.currentWeight),
+      targetWeight: Number(goalData.targetWeight),
+      targetDate: goalData.targetDate,
+    });
+    if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
+      return res.status(422).json({
+        success: false,
+        requiresConsent: true,
+        warningMessage: `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+      });
+    }
 
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
@@ -1018,13 +1051,21 @@ exports.updateHealthGoal = async (req, res) => {
 //          formula. Sticks until the user resubmits the full goal form (setHealthGoal/updateHealthGoal),
 //          which always resets calorieSource back to 'auto'.
 // @route   PATCH /api/nutrition/goals/calorie-override
+// 800 kcal/day is the clinical threshold for a Very-Low-Calorie-Diet (VLCD) —
+// NIDDK and obesity-medicine literature treat anything at or below this as
+// requiring direct physician supervision. Never crossable, with or without
+// user consent — this app has no such supervision to offer.
+const VLCD_HARD_FLOOR = 800;
+
 exports.setCalorieOverride = async (req, res) => {
   try {
     const value = Number(req.body.dailyCalorieTarget);
-    if (!value || value < 800 || value > 6000) {
+    const acknowledgeUnsafe = req.body.acknowledgeUnsafe === true;
+
+    if (!value || value < VLCD_HARD_FLOOR || value > 6000) {
       return res.status(400).json({
         success: false,
-        message: 'Enter a calorie target between 800 and 6000 kcal'
+        message: `Enter a calorie target between ${VLCD_HARD_FLOOR} and 6000 kcal`
       });
     }
 
@@ -1038,8 +1079,25 @@ exports.setCalorieOverride = async (req, res) => {
       });
     }
 
+    // Personalized safety floor — the same formula calculateCalorieTarget()
+    // uses internally for auto-calculated targets (its safeMinimum). A manual
+    // override bypasses that function entirely, so it's checked separately here.
+    const personalizedFloor = Math.max(
+      healthGoal.gender === 'male' ? 1500 : 1200,
+      Math.round((healthGoal.bmr || 0) * 1.1)
+    );
+
+    if (value < personalizedFloor && !acknowledgeUnsafe) {
+      return res.status(422).json({
+        success: false,
+        requiresConsent: true,
+        warningMessage: `${value} kcal is below your personal safe minimum (${personalizedFloor} kcal, based on your BMR). Eating less than this without medical supervision can be harmful. Resubmit with acknowledgeUnsafe: true to proceed anyway.`
+      });
+    }
+
     healthGoal.calorieSource = 'manual';
     healthGoal.manualCalorieTarget = value;
+    healthGoal.unsafeOverrideAcknowledged = value < personalizedFloor;
     await healthGoal.save({ maxTimeMS: 30000 });
 
     const proteinGoal = healthGoal.macroTargets?.protein || 150;
@@ -1656,9 +1714,10 @@ async function updateDailySummary(userId, date) {
 
     const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
     const WearableData = require('../models/WearableData');
+    const ExerciseLog = require('../models/ExerciseLog');
 
     // Run all independent DB queries in PARALLEL — was sequential before
-    const [foodLogs, healthGoal, activePlan, existingSummary, wearableDocs] = await Promise.all([
+    const [foodLogs, healthGoal, activePlan, existingSummary, wearableDocs, exerciseLogs] = await Promise.all([
       FoodLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).lean(),
       // Cached active goal — 15 min TTL avoids repeated scans on every meal log
       (async () => {
@@ -1683,10 +1742,13 @@ async function updateDailySummary(userId, date) {
       NutritionSummary.findOne({ userId, date: targetDate }),
       // All of the user's devices/manual-entry docs — summed below for the target date
       WearableData.find({ user: userId }).select('dailyMetrics').lean(),
+      // Logged gym/workout sessions for the same day — previously never reached
+      // NutritionSummary at all, so exercise never "earned back" any calories.
+      ExerciseLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).select('caloriesBurned').lean(),
     ]);
 
     // Sum caloriesBurned across every device (including manual "other" entries) for this date
-    const caloriesBurned = wearableDocs.reduce((sum, doc) => {
+    const wearableCaloriesBurned = wearableDocs.reduce((sum, doc) => {
       const entry = (doc.dailyMetrics || []).find((m) => {
         const d = new Date(m.date);
         return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
@@ -1695,6 +1757,10 @@ async function updateDailySummary(userId, date) {
       });
       return sum + (entry?.caloriesBurned || 0);
     }, 0);
+    // Logged workouts are a separate source from wearable-reported daily totals
+    // (a user can have one, both, or neither) — combine rather than pick one.
+    const exerciseCaloriesBurned = exerciseLogs.reduce((sum, log) => sum + (log.caloriesBurned || 0), 0);
+    const caloriesBurned = wearableCaloriesBurned + exerciseCaloriesBurned;
 
     // Aggregate nutrition totals in JS (handles totalNutrition + foodItems fallback + micronutrients array)
     const totals = {
@@ -1790,6 +1856,7 @@ async function updateDailySummary(userId, date) {
           proteinGoal: activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100,
           carbsGoal:   activePlan.nutritionGoals?.macroTargets?.carbs   || activePlan.macroTargets?.carbs   || 250,
           fatsGoal:    activePlan.nutritionGoals?.macroTargets?.fats    || activePlan.macroTargets?.fats    || 65,
+          fiberGoal:   activePlan.nutritionGoals?.macroTargets?.fiber   || activePlan.macroTargets?.fiber   || 28,
         };
       }
       if (healthGoal) {
@@ -1798,6 +1865,7 @@ async function updateDailySummary(userId, date) {
           proteinGoal: healthGoal.macroTargets?.protein || 100,
           carbsGoal:   healthGoal.macroTargets?.carbs   || 250,
           fatsGoal:    healthGoal.macroTargets?.fats    || 65,
+          fiberGoal:   healthGoal.macroTargets?.fiber   || 28,
         };
       }
       return {};
@@ -2095,7 +2163,7 @@ exports.getHealthyAlternatives = async (req, res) => {
       allergies: healthGoal?.allergies || user.profile?.allergies || [],
       goal: healthGoal?.goalType,
       remainingCalories: healthGoal && todaySummary
-        ? healthGoal.dailyCalorieTarget - todaySummary.totalCalories
+        ? (healthGoal.dailyCalorieTarget + (todaySummary.caloriesBurned || 0)) - todaySummary.totalCalories
         : null
     };
 
