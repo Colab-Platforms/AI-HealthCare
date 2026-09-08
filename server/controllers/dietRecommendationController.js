@@ -472,6 +472,127 @@ exports.processDietBG = async (req, res) => {
 };
 
 /**
+ * Regenerate a single meal slot (one meal type, one day) instead of the
+ * whole 7-day plan. Keeps every other meal untouched.
+ */
+exports.regenerateMealSlot = async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const { mealType, dayIndex } = req.body;
+    const userId = req.user._id;
+
+    if (!['breakfast', 'lunch', 'dinner'].includes(mealType)) {
+      return res.status(400).json({ success: false, message: 'mealType must be breakfast, lunch, or dinner' });
+    }
+    if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6) {
+      return res.status(400).json({ success: false, message: 'dayIndex must be an integer between 0 and 6' });
+    }
+
+    const dietPlan = await PersonalizedDietPlan.findOne({ _id: planId, userId });
+    if (!dietPlan) {
+      return res.status(404).json({ success: false, message: 'Diet plan not found' });
+    }
+    if (dietPlan.status !== 'completed') {
+      return res.status(409).json({ success: false, message: `Plan is currently "${dietPlan.status}" — wait for it to finish before regenerating a meal.` });
+    }
+
+    // One regeneration in flight at a time, with the same 10-minute self-heal
+    // window as whole-plan generation (see getActiveDietPlan) — a stuck slot
+    // from a crashed background job should not permanently block new requests.
+    if (dietPlan.pendingMealRegeneration?.status === 'generating') {
+      const ageMs = Date.now() - new Date(dietPlan.pendingMealRegeneration.requestedAt).getTime();
+      if (ageMs < 10 * 60 * 1000) {
+        return res.status(409).json({ success: false, message: 'A meal regeneration is already in progress for this plan.' });
+      }
+    }
+
+    const otherMealTypes = ['breakfast', 'lunch', 'dinner'].filter(t => t !== mealType);
+    const otherCaloriesSum = otherMealTypes.reduce((sum, t) => {
+      const item = dietPlan.mealPlan?.[t]?.[dayIndex];
+      return sum + (item?.calories || 0);
+    }, 0);
+    const dailyTarget = dietPlan.nutritionGoals?.dailyCalorieTarget || dietPlan.dailyCalorieTarget || 2000;
+    const remainingCalories = Math.max(300, dailyTarget - otherCaloriesSum);
+
+    // Avoid-list scoped to this meal type across the whole week — small prompt,
+    // still gives variety across days (see design discussion: whole-plan avoid
+    // list would be unnecessarily large and irrelevant to what's being replaced).
+    const avoidNames = (dietPlan.mealPlan?.[mealType] || [])
+      .map((m, i) => (i === dayIndex ? null : m?.name))
+      .filter(Boolean);
+
+    await PersonalizedDietPlan.findByIdAndUpdate(planId, {
+      pendingMealRegeneration: { mealType, dayIndex, status: 'generating', requestedAt: new Date() }
+    });
+
+    const userData = {
+      dietaryPreference: dietPlan.inputData?.dietaryPreference,
+      allergies: dietPlan.inputData?.allergies,
+      medicalConditions: dietPlan.inputData?.medicalConditions,
+      foodPreferences: req.user.foodPreferences,
+      country: req.user.foodPreferences?.country,
+      region: req.user.foodPreferences?.region,
+      state: req.user.foodPreferences?.state,
+    };
+
+    const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+    const baseUrl = `${req.protocol || 'https'}://${req.get('host')}`;
+    const jobPayload = { planId, mealType, dayIndex, remainingCalories, userData, avoidNames };
+
+    if (isVercel) {
+      await queueService.enqueueTask('process-meal-regen', jobPayload, baseUrl);
+    } else {
+      setImmediate(() => processMealRegenInternal(jobPayload));
+    }
+
+    res.json({
+      success: true,
+      message: 'Meal regeneration started',
+      pendingMealRegeneration: { mealType, dayIndex, status: 'generating' }
+    });
+  } catch (error) {
+    console.error('Regenerate meal slot error:', error);
+    res.status(500).json({ success: false, message: 'Failed to start meal regeneration', error: error.message });
+  }
+};
+
+async function processMealRegenInternal({ planId, mealType, dayIndex, remainingCalories, userData, avoidNames }) {
+  try {
+    const newMeal = await dietRecommendationAI.regenerateSingleMeal({ mealType, remainingCalories, userData, avoidNames });
+    if (!newMeal || typeof newMeal.calories !== 'number') {
+      throw new Error('AI did not return a valid meal');
+    }
+
+    // NOTE: Mongoose strips `undefined` values out of update objects before
+    // sending them to MongoDB, so `pendingMealRegeneration: undefined` here
+    // would silently do nothing — $unset is the correct way to clear a field.
+    await PersonalizedDietPlan.findByIdAndUpdate(planId, {
+      $set: { [`mealPlan.${mealType}.${dayIndex}`]: newMeal },
+      $unset: { pendingMealRegeneration: '' }
+    });
+
+    const plan = await PersonalizedDietPlan.findById(planId).select('userId');
+    if (plan) cache.delete(`dashboard:${plan.userId}`);
+  } catch (error) {
+    console.error('[MealRegen] Failed:', error.message);
+    await PersonalizedDietPlan.findByIdAndUpdate(planId, {
+      'pendingMealRegeneration.status': 'failed'
+    }).catch(() => {});
+  }
+}
+
+// QStash callback counterpart to processMealRegenInternal — same auth pattern as process-diet-bg.
+exports.processMealRegenBG = async (req, res) => {
+  try {
+    await processMealRegenInternal(req.body);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('QStash Meal-Regen Callback Error:', err.message);
+    if (!res.headersSent) res.status(500).end();
+  }
+};
+
+/**
  * Get active personalized diet plan
  */
 exports.getActiveDietPlan = async (req, res) => {
@@ -500,6 +621,17 @@ exports.getActiveDietPlan = async (req, res) => {
           message: 'Diet plan generation timed out. Please try generating again.',
           dietPlan: null
         });
+      }
+    }
+
+    // Same self-heal idea, scoped to a single stuck meal-regeneration —
+    // clears it so a crashed background job doesn't block future requests.
+    if (dietPlan?.pendingMealRegeneration?.status === 'generating') {
+      const ageMs = Date.now() - new Date(dietPlan.pendingMealRegeneration.requestedAt).getTime();
+      if (ageMs > 10 * 60 * 1000) {
+        console.warn(`⚠️ [Recovery] Meal regen stuck for plan ${dietPlan._id}. Marking as failed.`);
+        await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, { 'pendingMealRegeneration.status': 'failed' });
+        dietPlan.pendingMealRegeneration.status = 'failed';
       }
     }
 

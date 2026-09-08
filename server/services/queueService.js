@@ -32,6 +32,8 @@ exports.enqueueTask = async (taskType, payload, customBaseUrl = null) => {
       endpoint = "/api/health/process-report-bg";
     } else if (taskType === 'process-diet') {
       endpoint = "/api/diet-recommendations/process-diet-bg";
+    } else if (taskType === 'process-meal-regen') {
+      endpoint = "/api/diet-recommendations/process-meal-regen-bg";
     }
 
 

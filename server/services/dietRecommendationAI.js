@@ -210,6 +210,65 @@ JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
     return this.generatePersonalizedDietPlan(userData, promptExtension);
   }
 
+  /**
+   * Regenerate ONE meal slot (one meal type, one day) instead of the whole
+   * 7-day plan. `remainingCalories` is the target for this single meal —
+   * the caller computes it as dailyCalorieTarget minus whatever the OTHER
+   * two meals for that same day already total, so the day's combo-calorie
+   * rule stays intact without regenerating the meals we're keeping.
+   * `avoidNames` should be that meal type's dish names across the whole
+   * week (not the whole plan) — keeps the prompt small and the exclusion
+   * relevant to what's actually being replaced.
+   */
+  async regenerateSingleMeal({ mealType, remainingCalories, userData, avoidNames = [] }) {
+    const { dietaryPreference, allergies, medicalConditions, foodPreferences, country, region, state } = userData;
+
+    const dietTypeInstructions = {
+      'vegetarian': 'STRICT VEGETARIAN: must be 100% vegetarian. NEVER meat, poultry, fish, or eggs. Dairy allowed.',
+      'vegan': 'STRICT VEGAN: must be 100% vegan. NEVER meat, poultry, fish, eggs, dairy, or any animal-derived ingredient.',
+      'eggetarian': 'EGGETARIAN: must be vegetarian, but eggs are allowed. NEVER meat, poultry, or fish.',
+      'non-vegetarian': 'NON-VEGETARIAN: meat, poultry, fish, and eggs are all fine.',
+      'other': ''
+    };
+    const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || dietTypeInstructions['non-vegetarian'];
+
+    const userState = typeof state === 'string' ? state.trim() : '';
+    const locationLine = userState
+      ? `User is from ${userState}, ${country || 'India'} — prefer everyday home-style dishes native to ${userState}.`
+      : (region && region !== 'other' ? `Prioritize ${region} Indian cuisine.` : 'Focus on diverse Indian cuisine.');
+
+    const favorites = foodPreferences?.mealPreferences?.[mealType];
+    const favoritesLine = favorites?.length ? `User's ${mealType} favorites (build around these where the calorie budget allows): ${favorites.join(', ')}.` : '';
+    const avoidLine = avoidNames.length ? `Do NOT suggest any of these — already used this week: ${avoidNames.join(', ')}.` : '';
+
+    const prompt = `Indian Clinical Nutritionist. Generate ONE ${mealType} option as JSON.
+STRUCTURE:
+{ "name": "Meal Name", "description": "one line", "portionSize": "1 bowl (200g)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "benefits": "one line" }
+
+REQUIREMENTS:
+1. CRITICAL: calories must equal ${remainingCalories} kcal, within ±30 kcal. This is fixed by the OTHER two meals already planned for this day — do not deviate.
+2. Dietary Type: ${dietTypeInstruction}
+3. Allergies — NEVER include: ${allergies?.join(', ') || 'None'}
+4. Medical conditions to keep in mind: ${medicalConditions?.join(', ') || 'None'}
+5. ${locationLine}
+6. ${favoritesLine}
+7. ${avoidLine}
+8. Must be a genuinely different dish from anything just listed as already-used.
+
+JSON output ONLY. No markdown. Exact calorie match is mandatory.`;
+
+    const aiResponse = await this.makeAIRequest({
+      max_tokens: 500,
+      system: 'Expert Clinical Dietitian. Generate one precise, calorie-accurate Indian meal suggestion as strict JSON.',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.8 // higher than whole-plan gen — this call exists specifically because the user wants something DIFFERENT
+    });
+
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    return robustJsonParse(jsonMatch[0]);
+  }
+
 
 
   async generateSupplementRecommendations(userData) {

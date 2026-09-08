@@ -160,6 +160,17 @@ const personalizedDietPlanSchema = new mongoose.Schema({
   isFallback: {
     type: Boolean,
     default: false
+  },
+
+  // Single-slot regeneration in flight (one at a time — a second request for a
+  // different slot overwrites this rather than queuing, matching the realistic
+  // UX of one "regenerating..." spinner at a time). Self-healing timeout mirrors
+  // the whole-plan generating->failed recovery in getActiveDietPlan.
+  pendingMealRegeneration: {
+    mealType: { type: String, enum: ['breakfast', 'lunch', 'dinner'] },
+    dayIndex: Number,
+    status: { type: String, enum: ['generating', 'failed'] },
+    requestedAt: Date
   }
 }, {
   timestamps: true,
