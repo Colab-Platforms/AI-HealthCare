@@ -134,6 +134,41 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithApple = async (idToken, appleUser, rememberMe = true) => {
+    clearAuthData();
+    setRememberMe(rememberMe);
+
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (err) {
+        console.error('Cache clear error:', err);
+      }
+    }
+
+    // appleUser (name) is only ever sent by Apple on the very first
+    // authorization — undefined on every subsequent sign-in.
+    const { data } = await api.post('auth/apple', { idToken, user: appleUser }, { skipAutoLogout: true });
+
+    setAuthData({ token: data.token, refreshToken: data.refreshToken, user: data });
+    api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+
+    try {
+      const profileResponse = await api.get('auth/profile');
+      const userData = { ...data, ...profileResponse.data };
+      setAuthData({ user: userData });
+      setUser(userData);
+      setupFCM();
+      return userData;
+    } catch (error) {
+      setAuthData({ user: data });
+      setUser(data);
+      setupFCM();
+      return data;
+    }
+  };
+
   const register = async (name, email, phone, password, profile = {}, nutritionGoal = null, otp = null) => {
     // Clear any existing session — signup always starts a remembered session (no checkbox here)
     clearAuthData();
@@ -256,6 +291,7 @@ export const AuthProvider = ({ children }) => {
       user,
       login,
       loginWithGoogle,
+      loginWithApple,
       register,
       registerDoctor,
       logout,

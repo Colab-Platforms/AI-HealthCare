@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-    register, requestRegistrationOtp, registerDoctor, login, googleAuth, getProfile, updateProfile,
+    register, requestRegistrationOtp, registerDoctor, login, googleAuth, appleAuth, getProfile, updateProfile,
     getSubscription, createAdmin, uploadProfilePicture,
     verifyEmail, resendVerificationCode,
     requestPhoneLoginOtp, loginWithPhoneOtp, requestPhoneVerificationOtp, verifyPhone,
@@ -22,6 +22,7 @@ router.post('/phone/verify', protect, sensitiveActionLimiter, verifyPhone);
 router.post('/guardian-otp/send', protect, sensitiveActionLimiter, requestGuardianConsentOtp);
 router.post('/guardian-otp/verify', protect, sensitiveActionLimiter, verifyGuardianConsentOtp);
 router.post('/google', authLimiter, googleAuth);
+router.post('/apple', authLimiter, appleAuth);
 router.post('/logout', protect, require('../controllers/authController').logout);
 router.post('/refresh', require('../controllers/authController').refresh);
 router.post('/verify-email', authLimiter, verifyEmail);

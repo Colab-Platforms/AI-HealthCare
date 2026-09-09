@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import AppleSignInButton from "../components/AppleSignInButton";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -52,7 +53,7 @@ export default function Register() {
   const [heightUnit, setHeightUnit] = useState("cm");
   const [feet, setFeet] = useState("");
   const [inches, setInches] = useState("");
-  const { register, refreshUser, user, loginWithGoogle } = useAuth();
+  const { register, refreshUser, user, loginWithGoogle, loginWithApple } = useAuth();
   const navigate = useNavigate();
 
   // DPDPA Section 9: under-18 profiles need a guardian to verify via a code
@@ -120,6 +121,22 @@ export default function Register() {
       );
     } catch (error) {
       toast.error(error.response?.data?.message || "Google sign-up failed. Please try again.");
+    }
+  };
+
+  const handleAppleToken = async (idToken, appleUser) => {
+    try {
+      const appleUserResult = await loginWithApple(idToken, appleUser);
+      toast.success("Account created!");
+      navigate(
+        appleUserResult.role === "admin" || appleUserResult.role === "superadmin"
+          ? "/admin"
+          : appleUserResult.role === "doctor"
+            ? "/doctor/dashboard"
+            : "/dashboard",
+      );
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Apple sign-up failed. Please try again.");
     }
   };
 
@@ -481,7 +498,10 @@ export default function Register() {
                 <div className="h-px flex-1 bg-gray-200" />
               </div>
 
-              <GoogleSignInButton onAccessToken={handleGoogleToken} label="Sign up with Google" />
+              <div className="space-y-2.5">
+                <GoogleSignInButton onAccessToken={handleGoogleToken} label="Sign up with Google" />
+                <AppleSignInButton onIdentityToken={handleAppleToken} label="Sign up with Apple" />
+              </div>
 
               <div className="mt-4 text-center">
                 <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
