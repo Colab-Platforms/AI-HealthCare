@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight, Smartphone, ChevronDown, Download, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import AppleSignInButton from "../components/AppleSignInButton";
 
 const APK_URL = "https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk";
 
@@ -93,7 +94,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, loginWithApple } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -118,6 +119,16 @@ export default function Login() {
       navigate(getLoginRedirect(user.role));
     } catch (error) {
       toast.error(error.response?.data?.message || "Google sign-in failed. Please try again.");
+    }
+  };
+
+  const handleAppleToken = async (idToken, appleUser) => {
+    try {
+      const user = await loginWithApple(idToken, appleUser, rememberMe);
+      toast.success("Welcome back!");
+      navigate(getLoginRedirect(user.role));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Apple sign-in failed. Please try again.");
     }
   };
 
@@ -318,7 +329,10 @@ export default function Login() {
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
-          <GoogleSignInButton onAccessToken={handleGoogleToken} />
+          <div className="space-y-2.5">
+            <GoogleSignInButton onAccessToken={handleGoogleToken} />
+            <AppleSignInButton onIdentityToken={handleAppleToken} />
+          </div>
 
           <p className="text-center mt-6 shrink-0">
             <Link

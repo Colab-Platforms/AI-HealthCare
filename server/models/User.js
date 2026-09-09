@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema({
   // Privacy Policy and Terms of Service" checkbox on Create Account.
   privacyPolicyAccepted: { type: Boolean, default: false },
   googleId: { type: String, unique: true, sparse: true }, // Google 'sub' claim, only set for Google sign-ins
-  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+  appleId: { type: String, unique: true, sparse: true }, // Apple 'sub' claim, only set for Apple sign-ins
+  authProvider: { type: String, enum: ['local', 'google', 'apple'], default: 'local' },
   role: { type: String, enum: ['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
   isActive: { type: Boolean, default: true },
   isEmailVerified: { type: Boolean, default: false },
@@ -79,7 +80,7 @@ const userSchema = new mongoose.Schema({
         'Diabetes', 'Hypertension', 'High Cholesterol', 'Thyroid', 'PCOS',
         'Vitamin Deficiency', 'Gut Health Issues', 'Heart Disease', 'None of these', 'Other'
       ],
-      default: undefined // optional
+      default: undefined 
     },
     healthConditionOther: { type: String, trim: true }, // free-text when 'Other' is selected in healthConditions
     medicalHistory: {

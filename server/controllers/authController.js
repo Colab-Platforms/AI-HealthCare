@@ -23,6 +23,35 @@ const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 // Legacy alias so existing register/doctor flows still work
 const generateToken = generateAccessToken;
 
+// Apple's JWKS (https://appleid.apple.com/auth/keys) rotates rarely — cache
+// it for an hour instead of fetching on every sign-in.
+let appleJwksCache = { keys: null, fetchedAt: 0 };
+const APPLE_JWKS_URL = 'https://appleid.apple.com/auth/keys';
+const APPLE_JWKS_TTL_MS = 60 * 60 * 1000;
+
+const getApplePublicKey = async (kid) => {
+  if (!appleJwksCache.keys || Date.now() - appleJwksCache.fetchedAt > APPLE_JWKS_TTL_MS) {
+    const { data } = await axios.get(APPLE_JWKS_URL);
+    appleJwksCache = { keys: data.keys, fetchedAt: Date.now() };
+  }
+  const jwk = appleJwksCache.keys.find((key) => key.kid === kid);
+  if (!jwk) throw new Error('Apple signing key not found');
+  return crypto.createPublicKey({ key: jwk, format: 'jwk' });
+};
+
+// Apple sends a signed JWT (unlike Google's access-token + REST-verify flow),
+// so verification means: look up the signing key Apple used (by `kid` in the
+// token header) from Apple's own JWKS, then verify the signature ourselves.
+const verifyAppleIdToken = async (idToken) => {
+  const decodedHeader = jwt.decode(idToken, { complete: true })?.header;
+  if (!decodedHeader?.kid) throw new Error('Invalid Apple token header');
+  const publicKey = await getApplePublicKey(decodedHeader.kid);
+  return jwt.verify(idToken, publicKey, {
+    algorithms: ['RS256'],
+    issuer: 'https://appleid.apple.com',
+  });
+};
+
 // DPDPA Section 9: a submitted age under 18 requires verifiable guardian
 // consent before that profile data can be stored. "Verifiable" means the
 // guardian entered a one-time code sent to their own inbox (see
@@ -1202,6 +1231,186 @@ exports.googleAuth = async (req, res) => {
   }
 };
 
+// @desc    Sign in (or sign up) with an Apple identity token obtained
+//          client-side via AppleID.auth.signIn() (see AppleSignInButton.jsx).
+//          Verified against Apple's own JWKS (no client secret needed for
+//          verification — that's only required for server-to-Apple calls
+//          like token revocation, which this flow doesn't need).
+// @route   POST /api/auth/apple
+exports.appleAuth = async (req, res) => {
+  try {
+    const { idToken, user: appleUserRaw, device_id } = req.body;
+
+    deviceLog('appleLogin:request', req, {});
+
+    if (!idToken) {
+      return res.status(400).json({ message: 'An Apple identity token is required' });
+    }
+
+    let payload;
+    try {
+      payload = await verifyAppleIdToken(idToken);
+    } catch (verifyError) {
+      console.error('Apple token verification failed:', verifyError.message);
+      return res.status(401).json({ message: 'Invalid Apple token' });
+    }
+
+    console.log('Apple token payload:', JSON.stringify(payload));
+
+    // APPLE_CLIENT_ID may hold a single identifier or a comma-separated list
+    // (the web Services ID and the native app's Bundle ID are different
+    // identifiers under the same Apple Developer team).
+    const allowedClientIds = (process.env.APPLE_CLIENT_ID || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (!allowedClientIds.includes(payload.aud)) {
+      console.log('Apple token audience mismatch — received:', payload.aud, 'expected (one of):', allowedClientIds);
+      return res.status(401).json({ message: 'Apple token audience mismatch' });
+    }
+
+    // Apple only ever includes `email` on a user's very first authorization
+    // for this app, ever — every later sign-in (this is the normal case, not
+    // an edge case) omits it entirely. So email can only be required when
+    // there's no existing account to fall back to; `sub` is the one field
+    // that's always present.
+    const email = payload.email?.toLowerCase().trim();
+    const appleId = payload.sub;
+    if (!appleId) {
+      return res.status(401).json({ message: 'Apple token missing required fields' });
+    }
+
+    if (payload.email_verified === false || payload.email_verified === 'false') {
+      return res.status(401).json({ message: 'Apple email not verified' });
+    }
+
+    // Apple only ever hands back the user's name in the client-side
+    // authorization response, and only on the very first authorization ever
+    // — never inside the token, never again after that. Parse it
+    // defensively: native SDKs send it as a JSON string, some web flows as
+    // an object already.
+    let appleName;
+    try {
+      const parsedAppleUser = typeof appleUserRaw === 'string' ? JSON.parse(appleUserRaw) : appleUserRaw;
+      const { firstName, lastName } = parsedAppleUser?.name || {};
+      appleName = [firstName, lastName].filter(Boolean).join(' ') || undefined;
+    } catch {
+      appleName = undefined;
+    }
+
+    let user = await User.findOne(email ? { $or: [{ appleId }, { email }] } : { appleId }).populate('doctorProfile');
+
+    if (!user && !email) {
+      // Brand-new account with no email available — this only happens if the
+      // client itself never captured the email from its own first-ever
+      // authorization response either (see AppleSignInButton.jsx / the
+      // Flutter credential.email caveat). Nothing to create an account with.
+      return res.status(401).json({ message: 'Apple did not provide an email for this account. Please try signing in again.' });
+    }
+
+    if (!user) {
+      deviceLog('appleLogin:create-user', req, {
+        email,
+        storingRaw: device_id ?? null,
+        wouldResolveTo: getIncomingDeviceId(req),
+      });
+      user = await User.create({
+        name: appleName || email.split('@')[0],
+        email,
+        password: crypto.randomBytes(32).toString('hex'), // unusable random password — user only ever signs in via Apple
+        appleId,
+        authProvider: 'apple',
+        isEmailVerified: true,
+        device_id: device_id || null,
+        subscription: {
+          plan: 'free',
+          status: 'active',
+          startDate: new Date()
+        }
+      });
+    } else if (!user.appleId) {
+      // Existing password-based account with the same email — link it instead of creating a duplicate
+      user.appleId = appleId;
+      user.authProvider = 'apple';
+      await user.save();
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    // The Apple token is verified by this point, so the caller has proven they
+    // own the account and the device state is safe to act on.
+    const deviceCheck = await claimDevice(user, req);
+    if (!deviceCheck.allowed) {
+      deviceLog('appleLogin:RESPONSE_409', req, { userId: String(user._id), email, body: deviceCheck.body });
+      return res.status(deviceCheck.status).json(deviceCheck.body);
+    }
+
+    user.loginCount = (user.loginCount || 0) + 1;
+    captureFcmToken(user, req);
+    await user.save();
+
+    const rawRefreshToken = generateRefreshToken();
+    await RefreshToken.create({
+      userId: user._id,
+      token: rawRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    // Counter bump, off the critical path — see login()
+    User.updateOne({ _id: user._id }, { $inc: { loginCount: 1 } })
+      .catch((e) => console.error('loginCount update failed:', e.message));
+
+    if (user.role === 'doctor') {
+      try {
+        await user.populate('doctorProfile');
+      } catch (e) {
+        console.error('doctorProfile populate failed:', e.message);
+      }
+    }
+
+    const response = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profile: user.profile,
+      nutritionGoal: user.nutritionGoal,
+      foodPreferences: user.foodPreferences,
+      subscription: user.subscription,
+      healthMetrics: user.healthMetrics,
+      consent: user.consent,
+      privacySettings: user.privacySettings,
+      dataRetention: user.dataRetention,
+      token: generateAccessToken(user._id),
+      refreshToken: rawRefreshToken,
+    };
+
+    if (user.role === 'doctor' && user.doctorProfile) {
+      response.doctorProfile = {
+        _id: user.doctorProfile._id,
+        approvalStatus: user.doctorProfile.approvalStatus,
+        specialization: user.doctorProfile.specialization,
+        isListed: user.doctorProfile.isListed
+      };
+    }
+
+    res.json(response);
+
+    // Fire-and-forget bookkeeping — see login()
+    logActivity(user._id, 'USER_LOGIN', 'authentication', { method: 'apple' }, req);
+    gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
+  } catch (error) {
+    console.error('Apple auth error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Logout user & revoke refresh token
 // @route   POST /api/auth/logout
 exports.logout = async (req, res) => {
@@ -1475,10 +1684,10 @@ exports.changePassword = async (req, res) => {
     const user = await User.findById(req.user._id).maxTimeMS(15000);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Google-only accounts have a random, never-shared password — there's
-    // nothing real for the user to "verify" here.
-    if (user.authProvider === 'google') {
-      return res.status(400).json({ message: 'This account uses Google Sign-In and has no password to change' });
+    // Google/Apple-only accounts have a random, never-shared password —
+    // there's nothing real for the user to "verify" here.
+    if (user.authProvider === 'google' || user.authProvider === 'apple') {
+      return res.status(400).json({ message: `This account uses ${user.authProvider === 'google' ? 'Google' : 'Apple'} Sign-In and has no password to change` });
     }
 
     const isMatch = await user.comparePassword(currentPassword);
