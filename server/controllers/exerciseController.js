@@ -12,6 +12,9 @@ const { estimateMaxHR, computeZones, summarizeHeartRate } = require('../utils/he
 const { estimateSteps, estimateAvgPace, computeSessionVolumeKg } = require('../utils/exerciseEstimates');
 const { isValidActivityId, groupCatalog } = require('../config/activityCatalog');
 const { calculateDailyScore } = require('../services/dailyHealthScoreService');
+const { getExerciseAdherence, ExerciseAdherenceInputError } = require('../services/exerciseAdherenceService');
+const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
+const HealthGoal = require('../models/HealthGoal');
 
 const DEFAULT_WEEKLY_GOAL = { weeklyMinutesTarget: 150, weeklyCaloriesTarget: 2000, weeklyDistanceKmTarget: 10 };
 
@@ -275,6 +278,41 @@ exports.getActivityCatalog = async (req, res) => {
       message: 'Failed to get activity catalog',
       error: error.message
     });
+  }
+};
+
+// Target-vs-actual for cardio-minutes/strength-sessions, at any granularity
+// (daily/weekly/monthly/yearly, or a custom date/range) — same date-param
+// contract as sleep/water/activity analytics. Targets come from the user's
+// own exerciseGuidance (age+goal+profession), never hardcoded here.
+exports.getExerciseAdherenceData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'weekly';
+    const { date, startDate, endDate } = req.query;
+
+    const healthGoal = await withTimeout(
+      HealthGoal.findOne({ userId: req.user._id, isActive: true }).sort({ createdAt: -1 })
+    );
+    if (!healthGoal) {
+      return res.status(404).json({ success: false, message: 'Set your fitness goal first to get exercise targets' });
+    }
+    const user = await User.findById(req.user._id).select('profile.profession').lean();
+    const guidance = getExerciseGuidance(healthGoal.age, healthGoal.goalType, user?.profile?.profession || null);
+
+    const data = await getExerciseAdherence(req.user._id, range, { date, startDate, endDate }, {
+      cardioMinutesPerWeek: guidance.cardioMinutesPerWeek,
+      strengthSessionsPerWeek: guidance.strengthSessionsPerWeek,
+    });
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof ExerciseAdherenceInputError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    console.error('Get exercise adherence error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get exercise adherence', error: error.message });
   }
 };
 

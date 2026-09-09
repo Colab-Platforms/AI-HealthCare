@@ -61,6 +61,17 @@ const userSchema = new mongoose.Schema({
       enum: ['sedentary', 'lightly_active', 'moderately_active', 'moderate', 'very_active', 'extremely_active']
       // optional - no default, left unset until the user completes onboarding
     },
+    // Optional — used only to lightly adjust exercise guidance (see
+    // exerciseGuidanceService.js) when present. A desk_job user already has
+    // low incidental daily movement (relevant to step/activity targets); a
+    // physically_active_job user already gets substantial occupational
+    // activity, which formal exercise recommendations should account for
+    // instead of stacking on top of it blindly. No default — absent means
+    // guidance falls back to age+goal only, exactly as it did before this field existed.
+    profession: {
+      type: String,
+      enum: ['desk_job', 'physically_active_job', 'mixed', 'other']
+    },
     // Onboarding "What matters to you?" goals (pick up to 3), plus free-text "Other"
     goals: {
       type: [String],

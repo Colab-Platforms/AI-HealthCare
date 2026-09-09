@@ -923,10 +923,11 @@ exports.getHealthGoal = async (req, res) => {
 
     if (healthGoal) {
       const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
+      const userProfession = await User.findById(req.user._id).select('profile.profession').lean();
       return res.json({
         success: true,
         healthGoal,
-        exerciseGuidance: getExerciseGuidance(healthGoal.age, healthGoal.goalType),
+        exerciseGuidance: getExerciseGuidance(healthGoal.age, healthGoal.goalType, userProfession?.profile?.profession || null),
       });
     }
 
@@ -1079,25 +1080,42 @@ exports.setCalorieOverride = async (req, res) => {
       });
     }
 
-    // Personalized safety floor — the same formula calculateCalorieTarget()
-    // uses internally for auto-calculated targets (its safeMinimum). A manual
+    // Personalized LOW floor — same formula calculateCalorieTarget() uses
+    // internally for auto-calculated targets (its safeMinimum). A manual
     // override bypasses that function entirely, so it's checked separately here.
     const personalizedFloor = Math.max(
       healthGoal.gender === 'male' ? 1500 : 1200,
       Math.round((healthGoal.bmr || 0) * 1.1)
     );
+    const belowFloor = value < personalizedFloor;
 
-    if (value < personalizedFloor && !acknowledgeUnsafe) {
+    // HIGH side — a value far above TDEE implies an extreme weekly weight-gain
+    // rate. Reuses the exact same rate-cap fractions and reverse-calculation
+    // (calories -> implied rate) as HealthGoal's own consent check, imported
+    // from the model so the two can never silently drift apart.
+    const { MAX_WEEKLY_RATE_FRACTION, KCAL_PER_KG_FAT } = HealthGoal;
+    const calorieAdjust = value - (healthGoal.tdee || 0);
+    const impliedWeeklyRate = (calorieAdjust * 7) / KCAL_PER_KG_FAT;
+    const maxRateFraction = impliedWeeklyRate < 0
+      ? MAX_WEEKLY_RATE_FRACTION.weight_loss
+      : (healthGoal.goalType === 'muscle_gain' ? MAX_WEEKLY_RATE_FRACTION.muscle_gain : MAX_WEEKLY_RATE_FRACTION.weight_gain);
+    const maxRate = maxRateFraction * (healthGoal.currentWeight || 70);
+    const exceedsRateCap = Math.abs(impliedWeeklyRate) > maxRate;
+
+    if ((belowFloor || exceedsRateCap) && !acknowledgeUnsafe) {
+      const warningMessage = belowFloor
+        ? `${value} kcal is below your personal safe minimum (${personalizedFloor} kcal, based on your BMR). Eating less than this without medical supervision can be harmful. Resubmit with acknowledgeUnsafe: true to proceed anyway.`
+        : `${value} kcal implies a weight-change pace of ${Math.abs(impliedWeeklyRate).toFixed(2)} kg/week, which exceeds the safe maximum (${maxRate.toFixed(2)} kg/week) for your body weight. Resubmit with acknowledgeUnsafe: true to proceed anyway.`;
       return res.status(422).json({
         success: false,
         requiresConsent: true,
-        warningMessage: `${value} kcal is below your personal safe minimum (${personalizedFloor} kcal, based on your BMR). Eating less than this without medical supervision can be harmful. Resubmit with acknowledgeUnsafe: true to proceed anyway.`
+        warningMessage
       });
     }
 
     healthGoal.calorieSource = 'manual';
     healthGoal.manualCalorieTarget = value;
-    healthGoal.unsafeOverrideAcknowledged = value < personalizedFloor;
+    healthGoal.unsafeOverrideAcknowledged = belowFloor || exceedsRateCap;
     await healthGoal.save({ maxTimeMS: 30000 });
 
     const proteinGoal = healthGoal.macroTargets?.protein || 150;

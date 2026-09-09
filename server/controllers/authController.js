@@ -1282,6 +1282,7 @@ exports.updateProfile = async (req, res) => {
         if (sanitizedProfile.dietaryPreference === "") delete sanitizedProfile.dietaryPreference;
         if (sanitizedProfile.activityLevel === "") delete sanitizedProfile.activityLevel;
         if (sanitizedProfile.isDiabetic === "") delete sanitizedProfile.isDiabetic;
+        if (sanitizedProfile.profession === "") delete sanitizedProfile.profession;
 
         const mergedProfile = { ...user.profile.toObject(), ...sanitizedProfile };
 

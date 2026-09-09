@@ -16,6 +16,7 @@ router.get('/trends/weekly', heavyReadLimiter, exerciseController.getWeeklyTrend
 router.get('/personal-records', heavyReadLimiter, exerciseController.getPersonalRecords);
 router.get('/heart-rate-preview', apiLimiter, exerciseController.previewHeartRate);
 router.get('/activity-catalog', apiLimiter, exerciseController.getActivityCatalog);
+router.get('/adherence', apiLimiter, exerciseController.getExerciseAdherenceData);
 router.get('/goals', apiLimiter, exerciseController.getFitnessGoal);
 router.put('/goals', apiLimiter, exerciseController.upsertFitnessGoal);
 

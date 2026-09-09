@@ -419,3 +419,9 @@ healthGoalSchema.pre('save', function (next) {
 healthGoalSchema.index({ userId: 1, isActive: 1 }); // fetch active goal per user
 
 module.exports = mongoose.model('HealthGoal', healthGoalSchema);
+// Attached to the model export (not a separate module) so any caller that
+// needs the same safety-cap fractions — e.g. the calorie-override consent
+// check in nutritionController.js — reuses this exact constant instead of
+// re-declaring it and risking the two silently drifting apart.
+module.exports.MAX_WEEKLY_RATE_FRACTION = MAX_WEEKLY_RATE_FRACTION;
+module.exports.KCAL_PER_KG_FAT = KCAL_PER_KG_FAT;
