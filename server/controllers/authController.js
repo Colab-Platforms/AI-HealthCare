@@ -1239,7 +1239,7 @@ exports.googleAuth = async (req, res) => {
 // @route   POST /api/auth/apple
 exports.appleAuth = async (req, res) => {
   try {
-    const { idToken, user: appleUserRaw, device_id } = req.body;
+    const { idToken, user: appleUserRaw, device_id, privacyPolicyAccepted } = req.body;
 
     deviceLog('appleLogin:request', req, {});
 
@@ -1338,6 +1338,10 @@ exports.appleAuth = async (req, res) => {
 
     if (!user.isActive) {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    if (privacyPolicyAccepted === true && !user.consent?.given) {
+      await recordPrivacyPolicyConsent(user, req);
     }
 
     // The Apple token is verified by this point, so the caller has proven they
