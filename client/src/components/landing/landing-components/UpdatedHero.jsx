@@ -83,7 +83,7 @@ const UpdatedHero = () => {
               to="/waitlist"
               className="w-full max-w-[280px] sm:w-auto sm:px-12 py-3.5 bg-white hover:bg-white/90 text-[#1B47B9] font-bold text-base sm:text-lg rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-xl border border-white text-center inline-block"
             >
-              Start for Free
+              Let's Start
             </Link>
             <span className="text-white text-xs sm:text-sm font-semibold tracking-wide">
               *No Credit Card Required

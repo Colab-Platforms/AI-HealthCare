@@ -160,12 +160,7 @@ const CarouselItems = () => (
                   TAKE YOUR SPOT
                 </span>
               </button>
-              <div
-                className="text-center text-[rgba(255,255,255,0.80)] text-[13px] not-italic font-medium leading-[160%] sm:text-lg lg:text-[24px]"
-                style={{ fontFamily: '"Geist Mono", monospace' }}
-              >
-                30-Day Free Trial
-              </div>
+              
             </div>
           </div>
 

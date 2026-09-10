@@ -167,10 +167,6 @@ export default function WaitlistJoin() {
                 {statusMessage}
               </div>
             )}
-
-            <div className="mt-5 text-center text-xs font-medium text-white/50 sm:text-sm">
-              30-Day <span className="font-bold text-white/70">FREE</span> Trial
-            </div>
           </>
         )}
       </div>
