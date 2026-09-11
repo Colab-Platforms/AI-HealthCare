@@ -14,6 +14,7 @@ const {
   getHeartRateTrend,
   generateDemoData,
   getConnectUrl,
+  getMiddlewareUserId,
   handleWebhook
 } = require('../controllers/wearableController');
 
@@ -23,6 +24,7 @@ router.post('/webhook', handleWebhook);
 router.use(protect); // All routes below require authentication
 
 router.get('/connect-url/:provider', getConnectUrl);
+router.get('/middleware-user-id/:provider', getMiddlewareUserId);
 router.post('/connect', connectDevice);
 router.post('/os-sync', wearableSyncLimiter, syncOsHealthData);
 router.post('/disconnect/:deviceType', disconnectDevice);

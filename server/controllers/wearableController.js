@@ -851,6 +851,38 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
 }
 
 // Get an authorize URL from Open Wearables for a given provider (fitbit/garmin/etc)
+// Apple/Health Connect don't go through our OAuth redirect flow — the mobile
+// SDK talks to Open Wearables directly from the device — but it still needs
+// to know which Open Wearables user_id maps to this app account, so it can
+// tag the data it pushes. Everything downstream (webhook handling, dashboard)
+// is already provider-agnostic and needs no changes once this exists.
+exports.getMiddlewareUserId = async (req, res) => {
+  try {
+    const { provider } = req.params;
+
+    if (!openWearablesClient.isConfigured) {
+      return res.status(503).json({
+        message: 'Wearable device connections are not available yet',
+        error: 'OPEN_WEARABLES_NOT_CONFIGURED'
+      });
+    }
+
+    const wearable = await ensureOpenWearablesUser(req.user._id, provider);
+    res.json({ userId: wearable.openWearablesUserId });
+  } catch (error) {
+    const upstreamStatus = error.response?.status;
+    if (!upstreamStatus) {
+      console.error('[OpenWearables] unreachable:', error.message);
+      return res.status(503).json({
+        message: 'Wearable service is temporarily unavailable, please try again',
+        error: 'OPEN_WEARABLES_UNREACHABLE'
+      });
+    }
+    console.error(`[OpenWearables] ${upstreamStatus} on /users (getMiddlewareUserId):`, error.response?.data);
+    res.status(502).json({ message: 'Could not set up device connection', error: 'OPEN_WEARABLES_ERROR' });
+  }
+};
+
 exports.getConnectUrl = async (req, res) => {
   try {
     const { provider } = req.params;
