@@ -153,6 +153,7 @@ const userSchema = new mongoose.Schema({
     // outside India, and `country` is already free-form. Trimmed so a stray
     // space can't produce "Kerala " and "Kerala" as distinct values.
     state: { type: String, trim: true, default: null },
+    city: { type: String, trim: true, default: null },
     preferredFoods: [String], // Foods user likes to eat
     foodsToAvoid: [String], // Foods user wants to avoid
     dietaryRestrictions: [String], // Allergies, intolerances, religious restrictions

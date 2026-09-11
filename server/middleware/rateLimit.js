@@ -76,6 +76,21 @@ const heavyReadLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please slow down.' },
 });
 
+// Mobile health uploads are batched, but can be retried by several background
+// workers. Keep a separate authenticated limit and tell the client when to retry.
+const wearableSyncLimiter = rateLimit({
+  store: buildStore('wearable-sync'),
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  handler: (req, res) => {
+    res.set('Retry-After', '900');
+    res.status(429).json({ message: 'Too many wearable sync requests. Retry later.' });
+  }
+});
+
 // Sensitive account actions (change password, etc.) — an attacker who steals
 // an access token could otherwise brute-force the current password with
 // unlimited attempts. Keyed per-user (not per-IP) since the request is
@@ -90,4 +105,4 @@ const sensitiveActionLimiter = rateLimit({
   message: { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, sensitiveActionLimiter };
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter };

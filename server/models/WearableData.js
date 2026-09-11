@@ -8,7 +8,8 @@ const wearableDataSchema = new mongoose.Schema({
     // maps straight onto deviceType; the first few predate that integration.
     enum: [
       'fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'other',
-      'google', 'whoop', 'oura', 'polar', 'strava', 'suunto', 'ultrahuman', 'sensorbio', 'apple'
+      'google', 'whoop', 'oura', 'polar', 'strava', 'suunto', 'ultrahuman', 'sensorbio', 'apple',
+      'noise', 'boat'
     ],
     required: true 
   },
@@ -19,6 +20,9 @@ const wearableDataSchema = new mongoose.Schema({
   // Open Wearables service ka internal user ID — webhook se aane wale data ko
   // isi field se match karke pata chalega ye kis user ka data hai
   openWearablesUserId: { type: String, index: true },
+  // Source metadata for records imported from Health Connect or HealthKit.
+  osHealthSource: { type: String, enum: ['health_connect', 'healthkit'] },
+  sourceDeviceId: String,
 
   // Daily metrics
   dailyMetrics: [{
@@ -27,7 +31,9 @@ const wearableDataSchema = new mongoose.Schema({
     caloriesBurned: { type: Number, default: 0 },
     activeMinutes: { type: Number, default: 0 },
     distance: { type: Number, default: 0 }, // in km
-    floorsClimbed: { type: Number, default: 0 }
+    floorsClimbed: { type: Number, default: 0 },
+    source: String,
+    sourceRecordId: String
   }],
 
   // Heart rate data — raw samples, capped to the most recent 100 (see
@@ -36,7 +42,9 @@ const wearableDataSchema = new mongoose.Schema({
   heartRate: [{
     timestamp: { type: Date, default: Date.now },
     bpm: { type: Number, required: true },
-    type: { type: String, enum: ['resting', 'active', 'peak', 'cardio'], default: 'resting' }
+    type: { type: String, enum: ['resting', 'active', 'peak', 'cardio'], default: 'resting' },
+    source: String,
+    sourceRecordId: String
   }],
 
   // One rollup per calendar day, updated incrementally as samples arrive —
@@ -63,13 +71,17 @@ const wearableDataSchema = new mongoose.Schema({
     awakeMinutes: Number,
     sleepScore: { type: Number, min: 0, max: 100 },
     bedTime: Date,
-    wakeTime: Date
+    wakeTime: Date,
+    source: String,
+    sourceRecordId: String
   }],
 
   // Blood oxygen (SpO2)
   bloodOxygen: [{
     timestamp: { type: Date, default: Date.now },
-    percentage: { type: Number, min: 0, max: 100 }
+    percentage: { type: Number, min: 0, max: 100 },
+    source: String,
+    sourceRecordId: String
   }],
 
   // Body composition (weight, body fat, BMI) — populated from provider webhooks
@@ -78,7 +90,9 @@ const wearableDataSchema = new mongoose.Schema({
     weightKg: Number,
     bodyFatPercentage: { type: Number, min: 0, max: 100 },
     bmi: Number,
-    leanBodyMassKg: Number
+    leanBodyMassKg: Number,
+    source: String,
+    sourceRecordId: String
   }],
 
   // Stress levels
