@@ -800,6 +800,67 @@ exports.deleteFoodLog = async (req, res) => {
   }
 };
 
+// Dry-run of setHealthGoal/updateHealthGoal — computes exactly what would be
+// saved (BMR/TDEE/calorie target/macros/progress, and whether the safety-cap
+// consent flow would trigger) WITHOUT writing anything to the database. Built
+// on a plain in-memory HealthGoal instance so the same instance methods the
+// real save-path uses (calculateBMR/TDEE/CalorieTarget/Macros/Progress, and
+// the static checkRequestedRate helper) are reused verbatim — no formula is
+// re-implemented here, so this can never silently drift from the real thing.
+exports.previewGoal = async (req, res) => {
+  try {
+    const sanitizedData = {
+      goalType: req.body.goalType,
+      currentWeight: Number(req.body.currentWeight) || 0,
+      targetWeight: Number(req.body.targetWeight) || 0,
+      height: Number(req.body.height) || 0,
+      age: Number(req.body.age) || 0,
+      gender: req.body.gender || 'male',
+      activityLevel: req.body.activityLevel || 'sedentary',
+      targetDate: req.body.targetDate,
+      isDiabetic: !!req.body.isDiabetic,
+    };
+
+    if (!sanitizedData.goalType || !sanitizedData.currentWeight || !sanitizedData.height || !sanitizedData.age) {
+      return res.status(400).json({ success: false, message: 'goalType, currentWeight, height, and age are required to preview a goal' });
+    }
+
+    const rateCheck = HealthGoal.checkRequestedRate({
+      goalType: sanitizedData.goalType,
+      currentWeight: sanitizedData.currentWeight,
+      targetWeight: sanitizedData.targetWeight,
+      targetDate: sanitizedData.targetDate,
+    });
+
+    // Never saved — .calculate*() are plain instance methods, no DB call inside them.
+    const draft = new HealthGoal(sanitizedData);
+    draft.startWeight = draft.currentWeight;
+    draft.calculateBMR();
+    draft.calculateTDEE();
+    draft.calculateCalorieTarget();
+    draft.calculateMacros();
+    draft.calculateProgress();
+
+    res.json({
+      success: true,
+      wouldRequireConsent: rateCheck.isUnsafe,
+      warningMessage: rateCheck.isUnsafe
+        ? `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+        : null,
+      previewBmr: draft.bmr,
+      previewTdee: draft.tdee,
+      previewCalorieTarget: draft.dailyCalorieTarget,
+      previewMacroTargets: draft.macroTargets,
+      previewWeeklyRate: draft.weeklyRateKg,
+      previewProgressPercent: draft.progressPercent,
+      previewProjectedCompletionDate: draft.projectedCompletionDate,
+    });
+  } catch (error) {
+    console.error('Preview goal error:', error);
+    res.status(500).json({ success: false, message: 'Failed to preview goal', error: error.message });
+  }
+};
+
 // Set health goal
 exports.setHealthGoal = async (req, res) => {
   try {

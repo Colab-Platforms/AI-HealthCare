@@ -16,6 +16,7 @@ router.post('/quick-check/save', nutritionController.saveQuickCheck);
 router.post('/get-alternatives', aiLimiter, nutritionController.getHealthyAlternatives);
 
 // Health Goals - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
+router.post('/goals/preview', nutritionController.previewGoal);
 router.post('/goals', nutritionController.setHealthGoal);
 router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', apiLimiter, nutritionController.getHealthGoal);
