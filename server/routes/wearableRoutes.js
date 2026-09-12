@@ -14,6 +14,7 @@ const {
   getHeartRateTrend,
   generateDemoData,
   getConnectUrl,
+  getMiddlewareUserId,
   handleWebhook,
   getSleepAnalyticsData,
   getActivityAnalyticsData,
