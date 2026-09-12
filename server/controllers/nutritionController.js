@@ -1209,6 +1209,13 @@ exports.logWeight = async (req, res) => {
 exports.logWater = async (req, res) => {
   try {
     const { waterIntake, date } = req.body;
+    const waterAmount = Number(waterIntake);
+    if (!Number.isFinite(waterAmount) || waterAmount < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'waterIntake must be a finite number greater than or equal to 0'
+      });
+    }
     const queryDate = date ? new Date(date) : new Date();
     const targetDate = new Date(queryDate.toISOString().split('T')[0]);
     targetDate.setUTCHours(0, 0, 0, 0);
@@ -1228,7 +1235,7 @@ exports.logWater = async (req, res) => {
       });
     }
 
-    summary.waterIntake = Number(waterIntake);
+    summary.waterIntake = waterAmount;
     await summary.save();
 
     // Also update DailyProgress for dashboard metrics
@@ -1237,7 +1244,7 @@ exports.logWater = async (req, res) => {
     const DailyProgress = require('../models/DailyProgress');
     await DailyProgress.findOneAndUpdate(
       { userId: req.user._id, date: dateStr },
-      { waterIntake: Number(waterIntake) },
+      { waterIntake: waterAmount },
       { upsert: true, new: true }
     );
 

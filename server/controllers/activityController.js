@@ -575,13 +575,14 @@ exports.getDauMau = async (req, res) => {
 };
 
 // @desc    Get day-wise activity count (+ action breakdown) for one user for a given month
-// @route   GET /api/activity/heatmap?userId=<id>&month=YYYY-MM
+// @route   GET /api/activity/heatmap?month=YYYY-MM
 exports.getUserActivityHeatmap = async (req, res) => {
   try {
-    const { userId, month } = req.query;
+    const { userId: requestedUserId, month } = req.query;
+    const userId = String(req.user._id);
 
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'userId is required' });
+    if (requestedUserId && String(requestedUserId) !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only view your own activity heatmap' });
     }
 
     // Default to current month if not provided

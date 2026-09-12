@@ -158,6 +158,7 @@ export default function Profile() {
     foodPreferences: {
       region: user?.foodPreferences?.region || "other",
       country: user?.foodPreferences?.country || "India",
+      city: user?.foodPreferences?.city || "",
       preferredFoods: user?.foodPreferences?.preferredFoods || [],
       foodsToAvoid: user?.foodPreferences?.foodsToAvoid || [],
       dietaryRestrictions: user?.foodPreferences?.dietaryRestrictions || [],
@@ -283,6 +284,7 @@ export default function Profile() {
         foodPreferences: {
           region: formData.foodPreferences.region,
           country: formData.foodPreferences.country,
+          city: formData.foodPreferences.city,
           preferredFoods: formData.foodPreferences.preferredFoods || [],
           foodsToAvoid: formData.foodPreferences.foodsToAvoid || [],
           dietaryRestrictions: formData.foodPreferences.dietaryRestrictions || [],
@@ -989,6 +991,18 @@ export default function Profile() {
                               onChange={handleChange}
                               className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
                               placeholder="e.g. India, USA, UK"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                              City
+                            </label>
+                            <input
+                              name="foodPreferences.city"
+                              value={formData.foodPreferences.city}
+                              onChange={handleChange}
+                              className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
+                              placeholder="e.g. Kochi, Mumbai, New York"
                             />
                           </div>
                         </div>
