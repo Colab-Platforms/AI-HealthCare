@@ -3,7 +3,7 @@ const router = express.Router();
 const { getActivityLogs, getActivityStats, exportActivityLogs, exportUsers, getLiveActiveUsers, getFeatureStats, getDauMau, getUserActivityHeatmap } = require('../controllers/activityController');
 const { protect, authorize } = require('../middleware/auth');
 
-// All activity routes are admin-only
+router.get('/heatmap', protect, getUserActivityHeatmap);
 router.use(protect, authorize('admin', 'superadmin'));
 
 router.get('/', getActivityLogs);
@@ -13,6 +13,5 @@ router.get('/export', exportActivityLogs);
 router.get('/export-users', exportUsers);
 router.get('/feature-stats', getFeatureStats);
 router.get('/dau-mau', getDauMau);
-router.get('/heatmap', getUserActivityHeatmap);
 
 module.exports = router;

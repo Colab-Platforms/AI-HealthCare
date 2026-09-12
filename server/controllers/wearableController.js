@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const WearableData = require('../models/WearableData');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
@@ -221,6 +222,204 @@ exports.syncDailyMetrics = async (req, res) => {
     res.json({ wearable, gamification: gamificationResult });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Receive normalized records read by the Android Health Connect or iOS HealthKit bridge.
+// The mobile syncId makes retries safe: a batch is applied at most once.
+exports.syncOsHealthData = async (req, res) => {
+  let session;
+  try {
+    const {
+      source,
+      provider,
+      deviceName,
+      sourceDeviceId,
+      syncId,
+      metrics = {},
+      syncMode = 'incremental',
+      cursor,
+      batchSequence,
+      isFinalBatch = true
+    } = req.body;
+
+    if (!['health_connect', 'healthkit'].includes(source)) {
+      return res.status(400).json({ message: 'source must be health_connect or healthkit' });
+    }
+    if (!['noise', 'boat', 'xiaomi', 'samsung', 'other'].includes(provider)) {
+      return res.status(400).json({ message: 'provider must be noise, boat, xiaomi, samsung, or other' });
+    }
+    if (!provider || !syncId || typeof metrics !== 'object' || Array.isArray(metrics)) {
+      return res.status(400).json({ message: 'provider, syncId, and metrics are required' });
+    }
+    if (!['initial', 'incremental'].includes(syncMode) || typeof syncId !== 'string' || syncId.length > 128) {
+      return res.status(400).json({ message: 'syncMode or syncId is invalid' });
+    }
+    if (cursor !== undefined && (typeof cursor !== 'string' || cursor.length > 4096)) {
+      return res.status(400).json({ message: 'cursor is invalid' });
+    }
+    if (batchSequence !== undefined && (!Number.isInteger(batchSequence) || batchSequence < 0)) {
+      return res.status(400).json({ message: 'batchSequence must be a non-negative integer' });
+    }
+
+    const metricGroups = ['dailyMetrics', 'heartRate', 'sleepData', 'bloodOxygen', 'bodyComposition'];
+    const records = metricGroups.flatMap(group => Array.isArray(metrics[group]) ? metrics[group] : []);
+    if (records.length > 1000) {
+      return res.status(413).json({ message: 'A maximum of 1000 records is allowed per sync batch' });
+    }
+    if (metricGroups.some(group => metrics[group] !== undefined && !Array.isArray(metrics[group]))) {
+      return res.status(400).json({ message: 'metric groups must be arrays' });
+    }
+
+    const now = Date.now();
+    const maxFutureTimestamp = now + (5 * 60 * 1000);
+    const requireRecordId = (record, group) => {
+      if (typeof record.sourceRecordId !== 'string' || record.sourceRecordId.length < 1 || record.sourceRecordId.length > 256) {
+        throw new Error(`${group} records require sourceRecordId`);
+      }
+    };
+    const validateTimestamp = (value, field) => {
+      const timestamp = new Date(value);
+      if (Number.isNaN(timestamp.getTime()) || timestamp.getTime() > maxFutureTimestamp) {
+        throw new Error(`${field} contains an invalid or future timestamp`);
+      }
+      return timestamp;
+    };
+    const validateNumber = (value, field, min, max) => {
+      if (value === undefined) return;
+      const number = Number(value);
+      if (!Number.isFinite(number) || number < min || number > max) {
+        throw new Error(`${field} is outside the allowed range`);
+      }
+    };
+
+    for (const metric of metrics.dailyMetrics || []) {
+      requireRecordId(metric, 'dailyMetrics');
+      validateTimestamp(metric.date, 'dailyMetrics.date');
+      validateNumber(metric.steps, 'steps', 0, 200000);
+      validateNumber(metric.caloriesBurned, 'caloriesBurned', 0, 10000);
+      validateNumber(metric.activeMinutes, 'activeMinutes', 0, 1440);
+      validateNumber(metric.distance, 'distance', 0, 1000);
+      validateNumber(metric.floorsClimbed, 'floorsClimbed', 0, 500);
+    }
+    for (const reading of metrics.heartRate || []) {
+      requireRecordId(reading, 'heartRate');
+      validateTimestamp(reading.timestamp, 'heartRate.timestamp');
+      validateNumber(reading.bpm, 'heartRate.bpm', 20, 250);
+      if (!['resting', 'active', 'peak', 'cardio'].includes(reading.type || 'resting')) {
+        return res.status(400).json({ message: 'heartRate.type is invalid' });
+      }
+    }
+    for (const sleep of metrics.sleepData || []) {
+      requireRecordId(sleep, 'sleepData');
+      validateTimestamp(sleep.date, 'sleepData.date');
+      for (const field of ['totalSleepMinutes', 'deepSleepMinutes', 'lightSleepMinutes', 'remSleepMinutes', 'awakeMinutes']) {
+        validateNumber(sleep[field], `sleepData.${field}`, 0, 1440);
+      }
+    }
+    for (const oxygen of metrics.bloodOxygen || []) {
+      requireRecordId(oxygen, 'bloodOxygen');
+      validateTimestamp(oxygen.timestamp, 'bloodOxygen.timestamp');
+      validateNumber(oxygen.percentage, 'bloodOxygen.percentage', 0, 100);
+    }
+    for (const composition of metrics.bodyComposition || []) {
+      requireRecordId(composition, 'bodyComposition');
+      validateTimestamp(composition.timestamp, 'bodyComposition.timestamp');
+      validateNumber(composition.weightKg, 'bodyComposition.weightKg', 0, 500);
+      validateNumber(composition.bodyFatPercentage, 'bodyComposition.bodyFatPercentage', 0, 100);
+      validateNumber(composition.bmi, 'bodyComposition.bmi', 0, 150);
+      validateNumber(composition.leanBodyMassKg, 'bodyComposition.leanBodyMassKg', 0, 500);
+    }
+
+    session = await mongoose.startSession();
+    let result;
+    await session.withTransaction(async () => {
+      const existingReceipt = await WearableSyncReceipt.findOne({
+        user: req.user._id,
+        source,
+        syncId
+      }).session(session);
+      if (existingReceipt) {
+        result = { received: true, duplicate: true, syncId };
+        return;
+      }
+
+      await WearableSyncReceipt.create([{
+        user: req.user._id,
+        syncId,
+        source,
+        provider,
+        syncMode,
+        cursor,
+        batchSequence,
+        isFinalBatch
+      }], { session });
+
+      let wearable = await WearableData.findOne({ user: req.user._id, deviceType: provider }).session(session);
+      if (!wearable) {
+        wearable = new WearableData({
+          user: req.user._id,
+          deviceType: provider,
+          deviceName: deviceName || provider,
+          isConnected: true,
+          osHealthSource: source,
+          sourceDeviceId
+        });
+      } else {
+        wearable.isConnected = true;
+        wearable.deviceName = deviceName || wearable.deviceName;
+        wearable.osHealthSource = source;
+        wearable.sourceDeviceId = sourceDeviceId || wearable.sourceDeviceId;
+      }
+
+      for (const metric of metrics.dailyMetrics || []) {
+        const date = new Date(metric.date);
+        if (wearable.dailyMetrics.some(entry => entry.sourceRecordId === metric.sourceRecordId)) continue;
+        const sameDay = wearable.dailyMetrics.find(entry =>
+          entry.source === source && dateOnlyUTCFromDate(entry.date).getTime() === dateOnlyUTCFromDate(date).getTime()
+        );
+        const values = { date, source, sourceRecordId: metric.sourceRecordId };
+        for (const field of ['steps', 'caloriesBurned', 'activeMinutes', 'distance', 'floorsClimbed']) {
+          if (metric[field] !== undefined) values[field] = Number(metric[field]);
+        }
+        if (sameDay) Object.assign(sameDay, values);
+        else wearable.dailyMetrics.push(values);
+      }
+
+      for (const reading of metrics.heartRate || []) {
+        if (wearable.heartRate.some(entry => entry.sourceRecordId === reading.sourceRecordId)) continue;
+        const type = reading.type || 'resting';
+        wearable.heartRate.push({ timestamp: reading.timestamp, bpm: Number(reading.bpm), type, source, sourceRecordId: reading.sourceRecordId });
+        upsertHeartRateDailySummary(wearable, reading.timestamp, reading.bpm, type);
+      }
+      for (const sleep of metrics.sleepData || []) {
+        if (!wearable.sleepData.some(entry => entry.sourceRecordId === sleep.sourceRecordId)) wearable.sleepData.push({ ...sleep, source });
+      }
+      for (const oxygen of metrics.bloodOxygen || []) {
+        if (!wearable.bloodOxygen.some(entry => entry.sourceRecordId === oxygen.sourceRecordId)) wearable.bloodOxygen.push({ ...oxygen, percentage: Number(oxygen.percentage), source });
+      }
+      for (const composition of metrics.bodyComposition || []) {
+        if (!wearable.bodyComposition.some(entry => entry.sourceRecordId === composition.sourceRecordId)) wearable.bodyComposition.push({ ...composition, source });
+      }
+
+      if (wearable.heartRate.length > 100) wearable.heartRate = wearable.heartRate.slice(-100);
+      wearable.lastSyncedAt = new Date();
+      await wearable.save({ session });
+      result = { received: true, duplicate: false, syncId, wearableId: wearable._id };
+    });
+
+    if (result.duplicate) return res.json(result);
+    cache.delete(`dashboard:${req.user._id}`);
+    return res.json(result);
+  } catch (error) {
+    console.error(`[Wearables] OS sync failed: user=${req.user?._id} error=${error.message}`);
+    if (error.code === 11000) {
+      return res.json({ received: true, duplicate: true, syncId: req.body?.syncId });
+    }
+    const validationError = /required|invalid|outside|must be|maximum/.test(error.message);
+    res.status(validationError ? 400 : 503).json({ message: error.message });
+  } finally {
+    if (session) await session.endSession();
   }
 };
 
@@ -738,6 +937,38 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
 }
 
 // Get an authorize URL from Open Wearables for a given provider (fitbit/garmin/etc)
+// Apple/Health Connect don't go through our OAuth redirect flow — the mobile
+// SDK talks to Open Wearables directly from the device — but it still needs
+// to know which Open Wearables user_id maps to this app account, so it can
+// tag the data it pushes. Everything downstream (webhook handling, dashboard)
+// is already provider-agnostic and needs no changes once this exists.
+exports.getMiddlewareUserId = async (req, res) => {
+  try {
+    const { provider } = req.params;
+
+    if (!openWearablesClient.isConfigured) {
+      return res.status(503).json({
+        message: 'Wearable device connections are not available yet',
+        error: 'OPEN_WEARABLES_NOT_CONFIGURED'
+      });
+    }
+
+    const wearable = await ensureOpenWearablesUser(req.user._id, provider);
+    res.json({ userId: wearable.openWearablesUserId });
+  } catch (error) {
+    const upstreamStatus = error.response?.status;
+    if (!upstreamStatus) {
+      console.error('[OpenWearables] unreachable:', error.message);
+      return res.status(503).json({
+        message: 'Wearable service is temporarily unavailable, please try again',
+        error: 'OPEN_WEARABLES_UNREACHABLE'
+      });
+    }
+    console.error(`[OpenWearables] ${upstreamStatus} on /users (getMiddlewareUserId):`, error.response?.data);
+    res.status(502).json({ message: 'Could not set up device connection', error: 'OPEN_WEARABLES_ERROR' });
+  }
+};
+
 exports.getConnectUrl = async (req, res) => {
   try {
     const { provider } = req.params;
@@ -846,6 +1077,30 @@ exports.handleWebhook = async (req, res) => {
       throw err;
     }
 
+    // Open Wearables emits every metric type (97+ `series_type` values —
+    // heart rate, VO2 max, running power, UV exposure, ...) through this same
+    // generic batch shape, whether or not the switch below has a named case
+    // for it. Capturing it here means a metric we don't have a dedicated
+    // field for yet still shows up, instead of silently falling through the
+    // switch's default case.
+    if (data?.series_type && Array.isArray(data.samples)) {
+      const wearable = await findWearableDoc(data.user_id, data.provider);
+      if (wearable) {
+        for (const sample of data.samples) {
+          wearable.metrics.push({
+            seriesType: data.series_type,
+            value: sample.value,
+            unit: sample.unit,
+            timestamp: sample.timestamp,
+            provider: data.provider,
+            device: data.source?.device
+          });
+        }
+        wearable.lastSyncedAt = new Date();
+        await wearable.save();
+      }
+    }
+
     switch (type) {
       case 'connection.created': {
         const wearable = await findWearableDoc(data.user_id, data.provider)
@@ -911,6 +1166,21 @@ exports.handleWebhook = async (req, res) => {
             });
           }
           wearable.markModified('dailyMetrics');
+
+          wearable.workouts.push({
+            workoutId: data.id,
+            type: data.type,
+            startTime: data.start_time,
+            endTime: data.end_time,
+            durationSeconds: data.duration_seconds,
+            caloriesKcal: data.calories_kcal,
+            distanceMeters: data.distance_meters,
+            avgHeartRateBpm: data.avg_heart_rate_bpm,
+            maxHeartRateBpm: data.max_heart_rate_bpm,
+            elevationGainMeters: data.elevation_gain_meters,
+            provider: data.source?.provider
+          });
+
           wearable.lastSyncedAt = new Date();
           await wearable.save();
           cache.deletePattern(`activity_analytics:${wearable.user}:*`);

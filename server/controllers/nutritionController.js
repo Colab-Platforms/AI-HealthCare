@@ -1403,24 +1403,14 @@ exports.setLifestyleGoals = async (req, res) => {
 // action:'set' overwrites the day's total instead (used for corrections).
 exports.logWater = async (req, res) => {
   try {
-    const { glasses, amountMl, date, action = 'add' } = req.body;
-
-    if (typeof glasses !== 'number' && typeof amountMl !== 'number') {
-      return res.status(400).json({ success: false, message: 'Provide either glasses or amountMl' });
+    const { waterIntake, date } = req.body;
+    const waterAmount = Number(waterIntake);
+    if (!Number.isFinite(waterAmount) || waterAmount < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'waterIntake must be a finite number greater than or equal to 0'
+      });
     }
-    if (!['add', 'set'].includes(action)) {
-      return res.status(400).json({ success: false, message: "action must be 'add' or 'set'" });
-    }
-
-    const user = await User.findById(req.user._id).select('profile.lifestyle.waterGlassSizeMl').lean();
-    const glassSizeMl = user?.profile?.lifestyle?.waterGlassSizeMl || 250;
-
-    const deltaMl = typeof amountMl === 'number' ? amountMl : glasses * glassSizeMl;
-
-    if (!Number.isFinite(deltaMl) || Math.abs(deltaMl) > 5000) {
-      return res.status(400).json({ success: false, message: 'amountMl must be a finite number within +/-5000ml per request' });
-    }
-
     const queryDate = date ? new Date(date) : new Date();
     const targetDate = new Date(queryDate.toISOString().split('T')[0]);
     targetDate.setUTCHours(0, 0, 0, 0);
@@ -1437,22 +1427,7 @@ exports.logWater = async (req, res) => {
       });
     }
 
-    summary.waterIntake = action === 'set'
-      ? Math.max(0, deltaMl)
-      : Math.max(0, (summary.waterIntake || 0) + deltaMl);
-
-    // Individual log entries power the per-tap history view. 'set' is a total
-    // correction, not a drink event, so it isn't recorded as one here — the
-    // log list can end up not summing to the total in that case, which is
-    // expected (the total was explicitly overridden).
-    if (action === 'add') {
-      summary.waterLogs.push({
-        amountMl: deltaMl,
-        loggedAt: new Date(),
-        label: typeof amountMl === 'number' ? 'Custom' : `${glasses} glass${glasses === 1 ? '' : 'es'}`
-      });
-    }
-
+    summary.waterIntake = waterAmount;
     await summary.save();
 
     // Also update DailyProgress for dashboard metrics
@@ -1461,7 +1436,7 @@ exports.logWater = async (req, res) => {
     const DailyProgress = require('../models/DailyProgress');
     await DailyProgress.findOneAndUpdate(
       { userId: req.user._id, date: dateStr },
-      { waterIntake: summary.waterIntake },
+      { waterIntake: waterAmount },
       { upsert: true, new: true }
     );
 

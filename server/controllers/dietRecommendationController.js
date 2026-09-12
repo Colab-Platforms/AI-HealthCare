@@ -163,6 +163,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       region: user.foodPreferences?.region || 'other',  // ← Region
       country: user.foodPreferences?.country || 'India',  // ← Country
       state: user.foodPreferences?.state || null,  // ← State (null when not set; no default guess)
+      city: user.foodPreferences?.city || null,  // ← City (null when not set; no default guess)
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
@@ -240,6 +241,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const region = user.foodPreferences?.region || 'other';
     const country = user.foodPreferences?.country || 'India';
     const state = (user.foodPreferences?.state || '').trim();
+    const city = (user.foodPreferences?.city || '').trim();
 
     // Optional occasion/fasting context (e.g. Ramadan, Shravan month, a vrat/
     // upvas day) — null unless the client explicitly passes one for this
@@ -270,6 +272,10 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     if (state) {
       promptEx += `\nSTATE FOCUS (highest priority): User is from ${state}, ${country}. Prefer everyday home-style dishes, staple grains, and local ingredients specific to ${state} over generic ${country} options.`;
+    }
+
+    if (city) {
+      promptEx += `\nCITY FOCUS (most specific cuisine signal): User is from ${city}, ${state ? `${state}, ` : ''}${country}. Prefer familiar local dishes, ingredients, and everyday meal styles from ${city} where they fit the user's dietary and nutrition requirements.`;
     }
 
     if (avoidMealsList.length > 0) {
@@ -1030,6 +1036,10 @@ exports.generateDietAfterReport = async (userId) => {
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
+      region: user.foodPreferences?.region || 'other',
+      country: user.foodPreferences?.country || 'India',
+      state: user.foodPreferences?.state || null,
+      city: user.foodPreferences?.city || null,
       medicalConditions: user.profile?.medicalConditions || [],
       allergies: user.profile?.allergies || [],
       deficiencies,

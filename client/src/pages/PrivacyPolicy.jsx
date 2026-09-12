@@ -6,7 +6,7 @@ import PdfViewer from "../components/PdfViewer";
 
 const PrivacyPolicy = () => {
   const pdfUrl =
-    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1788346794/Privacy_Policy_updated_31.08.2026_1_1_xab7xt.pdf";
+    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1789035798/Privacy_Policy_updated_31.08.2026_1_2_chuxod.pdf";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">

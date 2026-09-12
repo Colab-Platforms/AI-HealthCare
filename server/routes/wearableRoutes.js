@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { apiLimiter, heavyReadLimiter } = require('../middleware/rateLimit');
+const { apiLimiter, heavyReadLimiter, wearableSyncLimiter } = require('../middleware/rateLimit');
 const {
   connectDevice,
+  syncOsHealthData,
   disconnectDevice,
   getConnectedDevices,
   syncDailyMetrics,
@@ -26,7 +27,9 @@ router.post('/webhook', handleWebhook);
 router.use(protect); // All routes below require authentication
 
 router.get('/connect-url/:provider', getConnectUrl);
+router.get('/middleware-user-id/:provider', getMiddlewareUserId);
 router.post('/connect', connectDevice);
+router.post('/os-sync', wearableSyncLimiter, syncOsHealthData);
 router.post('/disconnect/:deviceType', disconnectDevice);
 router.get('/devices', apiLimiter, getConnectedDevices);
 router.post('/sync', syncDailyMetrics);

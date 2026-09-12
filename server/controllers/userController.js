@@ -27,7 +27,7 @@ exports.getFoodPreferences = async (req, res) => {
 // Save user food preferences
 exports.saveFoodPreferences = async (req, res) => {
   try {
-    const { preferredFoods, foodsToAvoid, dietaryRestrictions, mealPreferences } = req.body;
+    const { city, preferredFoods, foodsToAvoid, dietaryRestrictions, mealPreferences } = req.body;
     console.log('[UserPrefs] Saving for user:', req.user._id, { 
       prefCount: preferredFoods?.length, 
       mealPrefKeys: Object.keys(mealPreferences || {}) 
@@ -42,6 +42,7 @@ exports.saveFoodPreferences = async (req, res) => {
     user.foodPreferences = {
       region: user.foodPreferences?.region,
       country: user.foodPreferences?.country,
+      city: city !== undefined ? city : user.foodPreferences?.city,
       preferredFoods: preferredFoods || [],
       foodsToAvoid: foodsToAvoid || [],
       dietaryRestrictions: dietaryRestrictions || [],
