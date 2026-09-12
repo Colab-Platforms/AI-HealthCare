@@ -791,6 +791,30 @@ exports.handleWebhook = async (req, res) => {
       throw err;
     }
 
+    // Open Wearables emits every metric type (97+ `series_type` values —
+    // heart rate, VO2 max, running power, UV exposure, ...) through this same
+    // generic batch shape, whether or not the switch below has a named case
+    // for it. Capturing it here means a metric we don't have a dedicated
+    // field for yet still shows up, instead of silently falling through the
+    // switch's default case.
+    if (data?.series_type && Array.isArray(data.samples)) {
+      const wearable = await findWearableDoc(data.user_id, data.provider);
+      if (wearable) {
+        for (const sample of data.samples) {
+          wearable.metrics.push({
+            seriesType: data.series_type,
+            value: sample.value,
+            unit: sample.unit,
+            timestamp: sample.timestamp,
+            provider: data.provider,
+            device: data.source?.device
+          });
+        }
+        wearable.lastSyncedAt = new Date();
+        await wearable.save();
+      }
+    }
+
     switch (type) {
       case 'connection.created': {
         const wearable = await findWearableDoc(data.user_id, data.provider)
@@ -855,6 +879,21 @@ exports.handleWebhook = async (req, res) => {
             });
           }
           wearable.markModified('dailyMetrics');
+
+          wearable.workouts.push({
+            workoutId: data.id,
+            type: data.type,
+            startTime: data.start_time,
+            endTime: data.end_time,
+            durationSeconds: data.duration_seconds,
+            caloriesKcal: data.calories_kcal,
+            distanceMeters: data.distance_meters,
+            avgHeartRateBpm: data.avg_heart_rate_bpm,
+            maxHeartRateBpm: data.max_heart_rate_bpm,
+            elevationGainMeters: data.elevation_gain_meters,
+            provider: data.source?.provider
+          });
+
           wearable.lastSyncedAt = new Date();
           await wearable.save();
         }
