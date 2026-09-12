@@ -205,12 +205,12 @@ export default function LogVitals() {
         const payload =
           activeTab === "steps"
             ? {
-                deviceType: "other",
+                deviceType: "manual",
                 isAdditive: isToday,
                 metrics: { steps: Number(value), date },
               }
             : {
-                deviceType: "other",
+                deviceType: "manual",
                 isAdditive: isToday,
                 sleepData: {
                   totalSleepMinutes:

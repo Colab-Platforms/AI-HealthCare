@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const WearableData = require('../models/WearableData');
+const WearableSyncReceipt = require('../models/WearableSyncReceipt');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
@@ -246,8 +247,8 @@ exports.syncOsHealthData = async (req, res) => {
     if (!['health_connect', 'healthkit'].includes(source)) {
       return res.status(400).json({ message: 'source must be health_connect or healthkit' });
     }
-    if (!['noise', 'boat', 'xiaomi', 'samsung', 'other'].includes(provider)) {
-      return res.status(400).json({ message: 'provider must be noise, boat, xiaomi, samsung, or other' });
+    if (!['noise', 'boat', 'xiaomi', 'samsung'].includes(provider)) {
+      return res.status(400).json({ message: 'provider must be noise, boat, xiaomi, or samsung' });
     }
     if (!provider || !syncId || typeof metrics !== 'object' || Array.isArray(metrics)) {
       return res.status(400).json({ message: 'provider, syncId, and metrics are required' });
