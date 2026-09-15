@@ -157,6 +157,8 @@ const userSchema = new mongoose.Schema({
     preferredFoods: [String], // Foods user likes to eat
     foodsToAvoid: [String], // Foods user wants to avoid
     dietaryRestrictions: [String], // Allergies, intolerances, religious restrictions
+    dietaryDo: [String], // User-specific ingredients or rules to include/follow
+    dietaryDont: [String], // User-specific ingredients or rules to exclude
     mealPreferences: {
       breakfast: [String],
       lunch: [String],

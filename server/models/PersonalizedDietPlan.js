@@ -33,6 +33,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     fitnessGoals: [String],
     medicalConditions: [String],
     allergies: [String],
+    dietaryDo: [String],
+    dietaryDont: [String],
     hasReports: Boolean,
     lifestyle: { type: mongoose.Schema.Types.Mixed },
     alcoholSummary: { type: mongoose.Schema.Types.Mixed }

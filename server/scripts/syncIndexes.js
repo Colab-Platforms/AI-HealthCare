@@ -14,10 +14,17 @@
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
+const dns = require('dns');
 const mongoose = require('mongoose');
 
 dotenv.config();
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+// Match the application's development connection path. Some Windows/local
+// DNS resolvers refuse MongoDB Atlas SRV lookups even when public DNS works.
+if (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONMENT_ID && process.env.FORCE_PUBLIC_DNS !== 'false') {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+}
 
 (async () => {
   if (!process.env.MONGODB_URI) {

@@ -405,6 +405,8 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
         fitnessGoals: userData.fitnessGoals,
         medicalConditions: userData.medicalConditions,
         allergies: userData.allergies,
+        dietaryDo: userData.foodPreferences?.dietaryDo || [],
+        dietaryDont: userData.foodPreferences?.dietaryDont || [],
         hasReports: userData.hasReports,
         lifestyle: userData.lifestyle,
         alcoholSummary: userData.alcoholSummary

@@ -98,7 +98,17 @@ class DietRecommendationAI {
     if (foodPreferences?.preferredFoods?.length) prefLines.push(`- General Preferred Foods: ${foodPreferences.preferredFoods.join(', ')}`);
     if (foodPreferences?.foodsToAvoid?.length) prefLines.push(`- MUST AVOID (user dislikes): ${foodPreferences.foodsToAvoid.join(', ')}`);
     if (foodPreferences?.dietaryRestrictions?.length) prefLines.push(`- Dietary Restrictions: ${foodPreferences.dietaryRestrictions.join(', ')}`);
+    if (foodPreferences?.dietaryDo?.length) prefLines.push(`- USER MUST DO / INCLUDE: ${foodPreferences.dietaryDo.join(', ')}`);
+    if (foodPreferences?.dietaryDont?.length) prefLines.push(`- USER MUST NOT DO / EXCLUDE: ${foodPreferences.dietaryDont.join(', ')}`);
     const prefContext = prefLines.length ? `\nUser Food Preferences:\n${prefLines.join('\n')}` : '';
+    const dietaryConstraintSystem = [
+      foodPreferences?.dietaryDo?.length
+        ? `The user MUST follow these dietary requirements: ${foodPreferences.dietaryDo.join('; ')}.`
+        : '',
+      foodPreferences?.dietaryDont?.length
+        ? `The user MUST NOT consume or be given these items or instructions: ${foodPreferences.dietaryDont.join('; ')}. These are hard exclusions and override favorites, regional cuisine, and general preferences.`
+        : '',
+    ].filter(Boolean).join(' ');
     const diabeticAlcoholNote = isDiabetic
       ? 'Diabetic user: do not suggest alcohol; keep meals steady and practical without medical claims about glucose and alcohol.'
       : '';
@@ -180,17 +190,19 @@ REQUIREMENTS:
 2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc. Include both visual quantity AND approximate weight.
 3. OUTPUT EXACTLY 7 unique meal options per meal type (breakfast, lunch, dinner) — all 7 must be completely different dishes.
 4. MANDATORY DIETARY TYPE RULE: ${dietTypeInstruction}
-5. MANDATORY PREFERENCE RULE: If user listed Breakfast Favorites, minimum 5 out of 7 breakfast options MUST be built around those exact ingredients (e.g. if user likes "Toast" → "Masala Toast with Egg", "Peanut Butter Toast", "Avocado Toast", "Toast with Dal", "French Toast" — all count). Same rule for Lunch and Dinner favorites — minimum 5 out of 7 must feature them. If user listed only 1-2 items, repeat them across different preparations to meet the 5/7 minimum. General Preferred Foods must appear across at least 5 days total. NEVER suggest foods from their "MUST AVOID" list.
-6. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
-7. ${elevatedNote} ${diabeticAlcoholNote}
-8. ${promptExtension}
+5. MANDATORY USER DO RULE: Follow every item in the user's "USER MUST DO / INCLUDE" list. This can contain ingredients, preparation methods, cultural or religious requirements, meal timing rules, or any other personal requirement. Apply it wherever relevant without inventing details.
+6. MANDATORY USER DON'T RULE: Never include or recommend anything in the user's "USER MUST NOT DO / EXCLUDE" list. Treat explicit user exclusions as hard constraints, including ingredients inside sauces, spice mixes, garnishes, and composite dishes. If a user DON'T conflicts with a favorite, restriction, regional dish, or general preference, the DON'T wins. For example, if the user says "no onion" or "no tomatoes", do not use onion or tomato in any meal or ingredient.
+7. MANDATORY PREFERENCE RULE: If user listed Breakfast Favorites, minimum 5 out of 7 breakfast options MUST be built around those exact ingredients (e.g. if user likes "Toast" → "Masala Toast with Egg", "Peanut Butter Toast", "Avocado Toast", "Toast with Dal", "French Toast" — all count). Same rule for Lunch and Dinner favorites — minimum 5 out of 7 must feature them. If user listed only 1-2 items, repeat them across different preparations to meet the 5/7 minimum. General Preferred Foods must appear across at least 5 days total. NEVER suggest foods from their "MUST AVOID" list.
+8. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
+9. ${elevatedNote} ${diabeticAlcoholNote}
+10. ${promptExtension}
 
 JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
 
     try {
       const aiResponse = await this.makeAIRequest({
         max_tokens: 8000,
-        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on the user's city, state, region, country, and food preferences. When a city is given, treat it as the most specific cuisine signal; otherwise use state, then region, then country. Favour familiar local dishes and ingredients while respecting all nutrition and dietary constraints. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory.",
+        system: `Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on the user's city, state, region, country, and food preferences. When a city is given, treat it as the most specific cuisine signal; otherwise use state, then region, then country. Favour familiar local dishes and ingredients while respecting all nutrition and dietary constraints. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory. ${dietaryConstraintSystem}`,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7
       });

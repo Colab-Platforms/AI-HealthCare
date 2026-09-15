@@ -4,6 +4,7 @@ const cache = require('../utils/cache');
 const User = require('../models/User');
 const HealthReport = require('../models/HealthReport');
 const WearableData = require('../models/WearableData');
+const HeartRateSample = require('../models/HeartRateSample');
 const emailService = require('../services/emailService');
 const videoService = require('../services/videoService');
 const { getAlcoholSummary } = require('../utils/alcoholLog');
@@ -366,12 +367,15 @@ exports.getPatientProfile = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // Get wearable data. Only these three arrays are read below, and heartRate
-    // is only ever used as .slice(-50) — so slice it server-side rather than
-    // transferring an unbounded sample history to average the tail of it.
+    // Get wearable data. Raw HR samples live in HeartRateSample; daily metrics
+    // and sleep remain on the device document.
     const wearableData = await WearableData.find({ user: patientId, isConnected: true })
-      .select('dailyMetrics sleepData heartRate')
-      .slice('heartRate', -50)
+      .select('deviceType deviceName lastSyncedAt dailyMetrics sleepData')
+      .lean();
+    const recentHeartRateSamples = await HeartRateSample.find({ user: patientId })
+      .select('bpm timestamp')
+      .sort({ timestamp: -1 })
+      .limit(50)
       .lean();
 
     // Get appointment history
@@ -415,12 +419,6 @@ exports.getPatientProfile = async (req, res) => {
         const recentMetrics = device.dailyMetrics.filter(m => new Date(m.date) >= weekAgo);
         wearableSummary.recentMetrics.push(...recentMetrics);
 
-        // Calculate averages
-        for (const hr of device.heartRate.slice(-50)) {
-          totalHeartRate += hr.bpm;
-          heartRateCount++;
-        }
-
         for (const sleep of device.sleepData.slice(-7)) {
           totalSleep += sleep.totalSleepMinutes || 0;
           sleepCount++;
@@ -430,6 +428,11 @@ exports.getPatientProfile = async (req, res) => {
           totalSteps += metric.steps || 0;
           stepsCount++;
         }
+      }
+
+      for (const hr of recentHeartRateSamples) {
+        totalHeartRate += hr.bpm;
+        heartRateCount++;
       }
 
       wearableSummary.avgHeartRate = heartRateCount ? Math.round(totalHeartRate / heartRateCount) : null;

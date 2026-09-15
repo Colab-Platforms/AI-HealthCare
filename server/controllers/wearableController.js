@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const WearableData = require('../models/WearableData');
+const HeartRateSample = require('../models/HeartRateSample');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
@@ -10,9 +11,9 @@ function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-// Rolls one HR sample into that day's running avg/min/max — the raw heartRate[]
-// array is capped to the last 100 entries, so this is what a week-or-longer
-// trend actually reads from. Mutates `wearable` in place; caller saves.
+// Rolls one HR sample into that day's running avg/min/max. Raw samples live in
+// HeartRateSample; this permanent rollup powers long-term trends. Mutates
+// `wearable` in place; caller saves.
 //
 // `type` (resting/active/peak/cardio) also updates restingBpm separately when
 // it's 'resting' — NOTE: the Open Wearables webhook currently tags every
@@ -383,9 +384,22 @@ exports.syncOsHealthData = async (req, res) => {
       }
 
       for (const reading of metrics.heartRate || []) {
-        if (wearable.heartRate.some(entry => entry.sourceRecordId === reading.sourceRecordId)) continue;
         const type = reading.type || 'resting';
-        wearable.heartRate.push({ timestamp: reading.timestamp, bpm: Number(reading.bpm), type, source, sourceRecordId: reading.sourceRecordId });
+        const existingSample = await HeartRateSample.exists({
+          user: req.user._id,
+          deviceType: provider,
+          sourceRecordId: reading.sourceRecordId
+        });
+        if (existingSample) continue;
+        await HeartRateSample.create([{
+          user: req.user._id,
+          deviceType: provider,
+          timestamp: reading.timestamp,
+          bpm: Number(reading.bpm),
+          type,
+          source,
+          sourceRecordId: reading.sourceRecordId
+        }], { session });
         upsertHeartRateDailySummary(wearable, reading.timestamp, reading.bpm, type);
       }
       for (const sleep of metrics.sleepData || []) {
@@ -398,7 +412,6 @@ exports.syncOsHealthData = async (req, res) => {
         if (!wearable.bodyComposition.some(entry => entry.sourceRecordId === composition.sourceRecordId)) wearable.bodyComposition.push({ ...composition, source });
       }
 
-      if (wearable.heartRate.length > 100) wearable.heartRate = wearable.heartRate.slice(-100);
       wearable.lastSyncedAt = new Date();
       await wearable.save({ session });
       result = { received: true, duplicate: false, syncId, wearableId: wearable._id };
@@ -430,12 +443,13 @@ exports.addHeartRate = async (req, res) => {
     }
 
     const now = new Date();
-    wearable.heartRate.push({ bpm, type, timestamp: now });
-
-    // Keep only last 100 readings
-    if (wearable.heartRate.length > 100) {
-      wearable.heartRate = wearable.heartRate.slice(-100);
-    }
+    await HeartRateSample.create({
+      user: req.user._id,
+      deviceType,
+      bpm: Number(bpm),
+      type,
+      timestamp: now
+    });
 
     upsertHeartRateDailySummary(wearable, now, bpm, type);
 
@@ -547,7 +561,11 @@ exports.getWearableDashboard = async (req, res) => {
     // heartRate array crosses the wire just to take the last 10 readings.
     const wearables = await WearableData.find({ user: req.user._id, isConnected: true })
       .select('deviceType deviceName lastSyncedAt dailyMetrics sleepData heartRate')
-      .slice('heartRate', -10)
+      .lean();
+    const recentStoredHeartRate = await HeartRateSample.find({ user: req.user._id })
+      .select('deviceType timestamp bpm type source sourceRecordId')
+      .sort({ timestamp: -1 })
+      .limit(10)
       .lean();
 
     if (!wearables.length) {
@@ -595,11 +613,6 @@ exports.getWearableDashboard = async (req, res) => {
         dashboard.todayMetrics.sleep = (dashboard.todayMetrics.sleep || 0) + (todaySleep.totalSleepMinutes || 0);
       }
 
-      // Get recent heart rate (last 10 readings)
-      if (wearable.heartRate.length) {
-        dashboard.recentHeartRate.push(...wearable.heartRate.slice(-10));
-      }
-
       // Get recent sleep data (last 7 days)
       if (wearable.sleepData.length) {
         const weekAgoDate = new Date();
@@ -615,6 +628,8 @@ exports.getWearableDashboard = async (req, res) => {
       const weeklyData = wearable.dailyMetrics.filter(m => new Date(m.date) >= weekAgo);
       dashboard.weeklyTrend.push(...weeklyData);
     }
+
+    dashboard.recentHeartRate = recentStoredHeartRate;
 
     // Sort by date
     dashboard.recentHeartRate.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1066,10 +1081,23 @@ exports.handleWebhook = async (req, res) => {
         if (wearable) {
           for (const sample of data.samples) {
             if (sample.type !== 'heart_rate') continue;
-            wearable.heartRate.push({ timestamp: sample.timestamp, bpm: sample.value, type: 'resting' });
-            upsertHeartRateDailySummary(wearable, sample.timestamp, sample.value, 'resting');
+            const sampleType = sample.context === 'active' ? 'active' : 'resting';
+            const sampleFilter = sample.id
+              ? { user: wearable.user, deviceType: wearable.deviceType, sourceRecordId: String(sample.id) }
+              : null;
+            const existingSample = sampleFilter ? await HeartRateSample.exists(sampleFilter) : null;
+            if (existingSample) continue;
+            await HeartRateSample.create({
+              user: wearable.user,
+              deviceType: wearable.deviceType,
+              timestamp: sample.timestamp,
+              bpm: Number(sample.value),
+              type: sampleType,
+              source: 'open_wearables',
+              sourceRecordId: sample.id ? String(sample.id) : undefined
+            });
+            upsertHeartRateDailySummary(wearable, sample.timestamp, sample.value, sampleType);
           }
-          if (wearable.heartRate.length > 100) wearable.heartRate = wearable.heartRate.slice(-100);
           wearable.lastSyncedAt = new Date();
           await wearable.save();
         }

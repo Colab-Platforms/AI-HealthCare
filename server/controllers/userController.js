@@ -15,7 +15,9 @@ exports.getFoodPreferences = async (req, res) => {
       data: user.foodPreferences || {
         preferredFoods: [],
         foodsToAvoid: [],
-        dietaryRestrictions: []
+        dietaryRestrictions: [],
+        dietaryDo: [],
+        dietaryDont: []
       }
     });
   } catch (error) {
@@ -27,7 +29,7 @@ exports.getFoodPreferences = async (req, res) => {
 // Save user food preferences
 exports.saveFoodPreferences = async (req, res) => {
   try {
-    const { city, preferredFoods, foodsToAvoid, dietaryRestrictions, mealPreferences } = req.body;
+    const { city, preferredFoods, foodsToAvoid, dietaryRestrictions, dietaryDo, dietaryDont, mealPreferences } = req.body;
     console.log('[UserPrefs] Saving for user:', req.user._id, { 
       prefCount: preferredFoods?.length, 
       mealPrefKeys: Object.keys(mealPreferences || {}) 
@@ -46,6 +48,8 @@ exports.saveFoodPreferences = async (req, res) => {
       preferredFoods: preferredFoods || [],
       foodsToAvoid: foodsToAvoid || [],
       dietaryRestrictions: dietaryRestrictions || [],
+      dietaryDo: dietaryDo || [],
+      dietaryDont: dietaryDont || [],
       mealPreferences: mealPreferences || {
         breakfast: [],
         lunch: [],

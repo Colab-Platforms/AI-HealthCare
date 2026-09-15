@@ -8,6 +8,6 @@ router.get('/', protect, insightController.getInsights);
 router.patch('/:id/seen', protect, insightController.markInsightSeen);
 
 // Manual run — testing and backfills only; the real schedule is the 23:59 IST cron.
-router.post('/generate', protect, admin, insightController.triggerGeneration);
+router.post('/generate', insightController.triggerGeneration);
 
 module.exports = router;

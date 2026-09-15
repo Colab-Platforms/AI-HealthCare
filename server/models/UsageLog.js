@@ -38,6 +38,10 @@ const usageLogSchema = new mongoose.Schema({
         'ai_chat', 'chat_about_report', 'metric_info',
         'compare_reports', 'health_dna', 'vitals_insights',
         'diet_plan', 'translate', 'nutrition_analysis',
+        // Current nightly insight categories
+        'daily_insight_overall', 'daily_insight_sleep',
+        'daily_insight_nutrition', 'daily_insight_fitness',
+        // Retained for historical usage records
         'daily_insight_activity', 'daily_insight_medical', 'other'
     ]},
     model:             { type: String, required: true },

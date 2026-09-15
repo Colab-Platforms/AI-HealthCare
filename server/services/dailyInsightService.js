@@ -1,9 +1,8 @@
-// Nightly generation of the user's two daily insights — one from the day's
-// activity (food, steps, sleep, water, vitals) and one from their medical
-// reports read against that same day.
+// Nightly generation of the user's four daily insights — one overall insight
+// plus focused sleep, nutrition, and fitness insights from the same day.
 //
 // Timing: the cron fires at 23:59 IST on day D, so both insights are already
-// written and waiting when the user opens the app on D+1. The row is therefore
+// written and waiting when the user opens the app on D+1. Each row is therefore
 // stamped sourceDate = D, insightDate = D+1, and the copy speaks in that voice:
 // "yesterday you did X — today, try Y."
 //
@@ -18,7 +17,6 @@ const DailyHealthScore = require('../models/DailyHealthScore');
 const DailyProgress = require('../models/DailyProgress');
 const WearableData = require('../models/WearableData');
 const HealthMetric = require('../models/HealthMetric');
-const HealthReport = require('../models/HealthReport');
 const FoodLog = require('../models/FoodLog');
 const ExerciseLog = require('../models/ExerciseLog');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
@@ -74,11 +72,11 @@ const findDailyEntry = (wearables, arrayField, dateKey) => {
 // ------------------------------------------------------------ data gathering
 
 /**
- * Everything the activity insight is allowed to talk about, for one user/day.
+ * Everything the overall insight is allowed to talk about, for one user/day.
  * Returns null when the user logged nothing at all — we skip those users rather
  * than have a model invent a day that didn't happen.
  */
-async function collectActivityData(userId, dateKey) {
+async function collectOverallData(userId, dateKey) {
   const { start, end } = istDayWindow(dateKey);
 
   const [nutrition, score, progress, wearables, metrics, foodLogs, user, exerciseLogs] = await Promise.all([
@@ -149,55 +147,42 @@ async function collectActivityData(userId, dateKey) {
   return hasSomething ? data : null;
 }
 
-/**
- * Medical context: the user's analysed reports plus any vitals logged that day
- * that those reports give meaning to. Returns null when the user has never
- * uploaded a report — there is nothing honest to say in that case.
- */
-async function collectMedicalData(userId, dateKey) {
-  const { start, end } = istDayWindow(dateKey);
+const insightData = {
+  overall: (data) => data,
+  sleep: (data) => ({
+    date: data.date,
+    sleepHours: data.sleepHours,
+    sleepScore: data.sleepScore,
+  }),
+  nutrition: (data) => ({
+    date: data.date,
+    meals: data.meals,
+    calories: data.calories,
+    calorieGoal: data.calorieGoal,
+    protein: data.protein,
+    proteinGoal: data.proteinGoal,
+    healthyFoodsCount: data.healthyFoodsCount,
+    junkFoodsCount: data.junkFoodsCount,
+    waterGlasses: data.waterGlasses,
+  }),
+  fitness: (data) => ({
+    date: data.date,
+    workouts: data.workouts,
+    steps: data.steps,
+    activeMinutes: data.activeMinutes,
+    caloriesBurned: data.caloriesBurned,
+    completedTasks: data.completedTasks,
+  }),
+};
 
-  const [reports, todaysMetrics, recentMetrics] = await Promise.all([
-    HealthReport.find({ user: userId, 'aiAnalysis.summary': { $exists: true, $ne: null } })
-      .sort({ reportDate: -1, createdAt: -1 })
-      .limit(3)
-      .select('reportType category reportDate createdAt aiAnalysis.summary aiAnalysis.keyFindings aiAnalysis.riskFactors aiAnalysis.deficiencies aiAnalysis.healthScore')
-      .lean(),
-    HealthMetric.find({ userId, recordedAt: { $gte: start, $lte: end } })
-      .select('type value unit readingContext systolic diastolic').lean(),
-    HealthMetric.find({ userId, recordedAt: { $lt: start } })
-      .sort({ recordedAt: -1 }).limit(10)
-      .select('type value unit recordedAt').lean(),
-  ]);
-
-  if (!reports.length) return null;
-
-  return {
-    date: dateKey,
-    reports: reports.map((r) => ({
-      type: r.reportType,
-      category: r.category,
-      date: (r.reportDate || r.createdAt)?.toISOString().split('T')[0],
-      uploadedYesterday: istDateKey(new Date(r.createdAt)) === dateKey,
-      summary: r.aiAnalysis?.summary?.slice(0, 800) || null,
-      keyFindings: (r.aiAnalysis?.keyFindings || []).slice(0, 6),
-      riskFactors: (r.aiAnalysis?.riskFactors || []).slice(0, 5),
-      deficiencies: (r.aiAnalysis?.deficiencies || []).slice(0, 5).map((d) => ({
-        name: d.name, severity: d.severity, currentValue: d.currentValue, normalRange: d.normalRange,
-      })),
-      healthScore: r.aiAnalysis?.healthScore ?? null,
-    })),
-    vitalsLoggedYesterday: todaysMetrics.map((m) => ({
-      type: m.type,
-      value: m.type === 'blood_pressure' ? `${m.systolic}/${m.diastolic}` : m.value,
-      unit: m.unit,
-      context: m.readingContext || null,
-    })),
-    recentVitalHistory: recentMetrics.map((m) => ({
-      type: m.type, value: m.value, unit: m.unit, on: m.recordedAt?.toISOString().split('T')[0],
-    })),
-  };
-}
+const hasInsightData = (type, data) => {
+  if (type === 'sleep') return data.sleepHours != null || data.sleepScore != null;
+  if (type === 'nutrition') return data.meals.length > 0
+    || data.calories != null || data.protein != null || data.waterGlasses != null;
+  if (type === 'fitness') return data.workouts.length > 0
+    || data.steps != null || data.activeMinutes != null || data.completedTasks > 0;
+  return data != null;
+};
 
 // ------------------------------------------------------------------- prompts
 
@@ -211,12 +196,22 @@ Rules you must follow:
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, upbeat headline.
-- description: 2-3 short sentences — what you did yesterday, and one specific thing to try today.
+- description: 200-300 characters, written as 3-5 clear sentences — explain what the data says about yesterday and give one specific thing to try today. Stay within this character range.
 - summary: one line, max 15 words, the single takeaway.`;
 
-const ACTIVITY_SYSTEM = `You are a friendly health coach inside the take.health app. You write one short daily insight from the user's logged activity of the previous day.${SHARED_RULES}`;
+const INSIGHT_SYSTEMS = {
+  overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity from yesterday.${SHARED_RULES}`,
+  sleep: `You are a friendly sleep coach inside the take.health app. Write a daily insight focused only on the user's sleep data from yesterday.${SHARED_RULES}`,
+  nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data from yesterday.${SHARED_RULES}`,
+  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity from yesterday.${SHARED_RULES}`,
+};
 
-const MEDICAL_SYSTEM = `You are a friendly health guide inside the take.health app. You write one short daily insight connecting the user's medical report findings to what they can do today. You are not a doctor: for anything concerning, gently suggest discussing it with their doctor rather than giving medical instructions.${SHARED_RULES}`;
+const INSIGHT_LABELS = {
+  overall: "Yesterday's overall health activity",
+  sleep: "Yesterday's sleep data",
+  nutrition: "Yesterday's nutrition and hydration data",
+  fitness: "Yesterday's fitness and movement data",
+};
 
 const buildUserPrompt = (profile, label, data) => `User profile: ${JSON.stringify(profile)}
 ${label} for ${data.date} (yesterday, from the user's point of view today):
@@ -227,26 +222,24 @@ Write today's insight.`;
 // ---------------------------------------------------------------- generation
 
 async function generateOne({ userId, profile, insightType, sourceDate, insightDate, data }) {
-  const isActivity = insightType === 'activity';
-
   const { text, model } = await chatCompletionWithFallback({
-    system: isActivity ? ACTIVITY_SYSTEM : MEDICAL_SYSTEM,
+    system: INSIGHT_SYSTEMS[insightType],
     messages: [{
       role: 'user',
       content: buildUserPrompt(
         profile,
-        isActivity ? "Yesterday's logged activity" : "Medical reports and vitals",
+        INSIGHT_LABELS[insightType],
         data
       ),
     }],
     maxTokens: MAX_TOKENS,
     temperature: 0.7, // a little variety so consecutive days don't read identically
-    feature: isActivity ? 'daily_insight_activity' : 'daily_insight_medical',
+    feature: `daily_insight_${insightType}`,
     userId,
   });
 
   const parsed = parseJsonResponse(text);
-  if (!parsed?.title || !parsed?.description) {
+  if (!parsed?.title || !parsed?.description || parsed.description.length < 200) {
     throw new Error('Model returned no usable title/description');
   }
 
@@ -255,7 +248,7 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
     {
       userId, insightDate, sourceDate, insightType,
       title: String(parsed.title).slice(0, 120),
-      description: String(parsed.description).slice(0, 1200),
+      description: String(parsed.description).slice(0, 300),
       summary: String(parsed.summary || parsed.title).slice(0, 200),
       dataSnapshot: data,
       model,
@@ -267,9 +260,8 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
 }
 
 /**
- * Generates both insights for one user. Each type is independent — a user with
- * no reports still gets their activity insight, and vice versa.
- * @returns {Promise<{activity: string, medical: string}>} per-type outcome
+ * Generates four independent insights for one user. Missing category data only
+ * skips that category; it does not prevent the other insights from generating.
  */
 async function generateForUser(userId, sourceDate, { force = false } = {}) {
   const insightDate = shiftDateKey(sourceDate, 1);
@@ -290,25 +282,27 @@ async function generateForUser(userId, sourceDate, { force = false } = {}) {
 
   const result = {};
 
-  for (const insightType of ['activity', 'medical_report']) {
-    const key = insightType === 'activity' ? 'activity' : 'medical';
+  const overallData = await collectOverallData(userId, sourceDate);
+
+  for (const insightType of ['overall', 'sleep', 'nutrition', 'fitness']) {
     try {
       if (!force) {
         const existing = await DailyInsight.exists({ userId, insightDate, insightType });
-        if (existing) { result[key] = 'already_exists'; continue; }
+        if (existing) { result[insightType] = 'already_exists'; continue; }
       }
 
-      const data = insightType === 'activity'
-        ? await collectActivityData(userId, sourceDate)
-        : await collectMedicalData(userId, sourceDate);
+      const data = overallData && insightData[insightType](overallData);
 
-      if (!data) { result[key] = 'skipped_no_data'; continue; }
+      if (!data || !hasInsightData(insightType, overallData)) {
+        result[insightType] = 'skipped_no_data';
+        continue;
+      }
 
       await generateOne({ userId, profile, insightType, sourceDate, insightDate, data });
-      result[key] = 'generated';
+      result[insightType] = 'generated';
     } catch (err) {
       console.error(`[DailyInsight] ${insightType} failed for user ${userId}:`, err.message);
-      result[key] = `failed: ${err.message}`;
+      result[insightType] = `failed: ${err.message}`;
     }
   }
 
@@ -333,12 +327,12 @@ async function runDailyInsightCron(sourceDate = istDateKey(), { force = false } 
     );
 
     results.forEach((r) => {
-      if (r.status !== 'fulfilled') { stats.failed += 2; return; }
+      if (r.status !== 'fulfilled') { stats.failed += 4; return; }
       Object.values(r.value).forEach((outcome) => {
         if (outcome === 'generated') stats.generated++;
         else if (outcome.startsWith('failed')) stats.failed++;
         else stats.skipped++;
-      });
+      }); 
     });
 
     if (i + BATCH_SIZE < users.length) {
@@ -353,8 +347,7 @@ async function runDailyInsightCron(sourceDate = istDateKey(), { force = false } 
 module.exports = {
   runDailyInsightCron,
   generateForUser,
-  collectActivityData,
-  collectMedicalData,
+  collectOverallData,
   istDateKey,
   shiftDateKey,
 };

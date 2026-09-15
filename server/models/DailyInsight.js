@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 // Two dates matter here and they are deliberately different:
 //   sourceDate  — the day whose data the insight was built from (8 Aug)
 //   insightDate — the day the user sees it on, always sourceDate + 1 (9 Aug)
-// The cron runs at 23:59 IST on the 8th, so the insight is already waiting
+// The cron runs at 23:59 IST on the 8th, so the insights are already waiting
 // when the user opens the app on the 9th and reads "yesterday you did X...".
 const dailyInsightSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -16,7 +16,7 @@ const dailyInsightSchema = new mongoose.Schema({
 
   insightType: {
     type: String,
-    enum: ['activity', 'medical_report'],
+    enum: ['overall', 'sleep', 'nutrition', 'fitness'],
     required: true,
   },
 

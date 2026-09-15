@@ -36,9 +36,8 @@ const wearableDataSchema = new mongoose.Schema({
     sourceRecordId: String
   }],
 
-  // Heart rate data — raw samples, capped to the most recent 100 (see
-  // wearableController). Fine for a "recent readings" widget, but too short a
-  // window for week-over-week trends, hence heartRateDailySummary below.
+  // Legacy embedded HR samples retained for backward compatibility. New raw
+  // samples are stored in HeartRateSample with a 90-day TTL.
   heartRate: [{
     timestamp: { type: Date, default: Date.now },
     bpm: { type: Number, required: true },

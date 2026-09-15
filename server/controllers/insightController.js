@@ -9,7 +9,7 @@ const {
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // GET /api/insights/today
-// The two insights written last night for today's IST date.
+// The four insight types written last night for today's IST date.
 exports.getTodaysInsights = async (req, res) => {
   try {
     const insightDate = istDateKey();
