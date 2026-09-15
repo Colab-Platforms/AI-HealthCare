@@ -2,7 +2,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const WearableData = require('../models/WearableData');
-const HeartRateSample = require('../models/HeartRateSample');
+const BloodOxygenSample = require('../models/BloodOxygenSample');
 
 dotenv.config();
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -18,29 +18,27 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
   let copied = 0;
 
   try {
-    const cursor = WearableData.find({ 'heartRate.0': { $exists: true } })
-      .select('user deviceType heartRate')
+    const cursor = WearableData.find({ 'bloodOxygen.0': { $exists: true } })
+      .select('user deviceType bloodOxygen')
       .cursor();
 
     for await (const wearable of cursor) {
-      for (const sample of wearable.heartRate || []) {
-        const result = await HeartRateSample.updateOne(
+      for (const entry of wearable.bloodOxygen || []) {
+        const result = await BloodOxygenSample.updateOne(
           {
             user: wearable.user,
-            deviceType: wearable.deviceType,
-            timestamp: sample.timestamp,
-            bpm: sample.bpm,
-            sourceRecordId: sample.sourceRecordId
+            'meta.deviceType': wearable.deviceType,
+            timestamp: entry.timestamp,
+            percentage: entry.percentage,
+            sourceRecordId: entry.sourceRecordId
           },
           {
             $setOnInsert: {
               user: wearable.user,
-              deviceType: wearable.deviceType,
-              timestamp: sample.timestamp,
-              bpm: sample.bpm,
-              type: sample.type || 'resting',
-              source: sample.source,
-              sourceRecordId: sample.sourceRecordId
+              meta: { deviceType: wearable.deviceType, source: entry.source },
+              timestamp: entry.timestamp,
+              percentage: entry.percentage,
+              sourceRecordId: entry.sourceRecordId
             }
           },
           { upsert: true }
@@ -49,11 +47,11 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
       }
     }
 
-    console.log(`Heart-rate migration complete: ${copied} samples copied.`);
+    console.log(`Blood oxygen migration complete: ${copied} readings copied.`);
   } finally {
     await mongoose.disconnect();
   }
 })().catch((error) => {
-  console.error('Heart-rate migration failed:', error);
+  console.error('Blood oxygen migration failed:', error);
   process.exit(1);
 });

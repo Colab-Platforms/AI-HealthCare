@@ -1,4 +1,4 @@
-const WearableData = require('../models/WearableData');
+const SleepSession = require('../models/SleepSession');
 
 // Fallback score jab device se sleepScore na aaye (manual entry).
 // NSF guideline: 8hrs ideal, deviation se linearly penalize karta hai.
@@ -132,27 +132,13 @@ async function getSleepAnalytics(userId, range = 'daily', options = {}) {
 
   const dateMatch = matchEnd ? { $gte: matchStart, $lte: matchEnd } : { $gte: matchStart };
 
-  // Aggregation projects only sleepData subfields — avoids pulling heartRate/
-  // bloodOxygen/stressLevels arrays that grow unbounded per connected device.
-  const rows = await WearableData.aggregate([
-    { $match: { user: userId } },
-    { $unwind: '$sleepData' },
-    { $match: { 'sleepData.date': dateMatch } },
-    { $project: {
-        _id: 0,
-        date: '$sleepData.date',
-        totalSleepMinutes: '$sleepData.totalSleepMinutes',
-        deepSleepMinutes: '$sleepData.deepSleepMinutes',
-        lightSleepMinutes: '$sleepData.lightSleepMinutes',
-        remSleepMinutes: '$sleepData.remSleepMinutes',
-        awakeMinutes: '$sleepData.awakeMinutes',
-        sleepScore: '$sleepData.sleepScore',
-        bedTime: '$sleepData.bedTime',
-        wakeTime: '$sleepData.wakeTime',
-        deviceType: 1,
-    }},
-    { $sort: { date: 1 } },
-  ]);
+  // One doc per night already (no unwind needed) — SleepSession replaced the
+  // embedded WearableData.sleepData[] array precisely so this query doesn't
+  // have to pull a growing per-device array just to read a date range.
+  const rows = await SleepSession.find({ user: userId, date: dateMatch })
+    .select('date totalSleepMinutes deepSleepMinutes lightSleepMinutes remSleepMinutes awakeMinutes sleepScore bedTime wakeTime deviceType')
+    .sort({ date: 1 })
+    .lean();
 
   const entries = rows.map(enrichEntry);
 

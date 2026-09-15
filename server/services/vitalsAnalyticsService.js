@@ -1,10 +1,11 @@
-const WearableData = require('../models/WearableData');
-const DailyActivityMetric = require('../models/DailyActivityMetric');
+// Mirrors activityAnalyticsService.js's structure — reads VitalsDailySummary.
+
+const VitalsDailySummary = require('../models/VitalsDailySummary');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
 
-class ActivityAnalyticsInputError extends Error {}
+class VitalsAnalyticsInputError extends Error {}
 
 function parseDateOnlyUTC(str) {
   const [y, m, d] = str.split('-').map(Number);
@@ -35,17 +36,17 @@ function bucketKey(dateStr, range) {
 function average(nums) {
   const valid = nums.filter(n => typeof n === 'number' && !Number.isNaN(n));
   if (!valid.length) return null;
-  return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+  return Math.round((valid.reduce((a, b) => a + b, 0) / valid.length) * 10) / 10;
 }
 
 function resolveWindow(range, { date, startDate: customStart, endDate: customEnd }) {
   for (const [label, val] of [['date', date], ['startDate', customStart], ['endDate', customEnd]]) {
     if (val !== undefined && !DATE_ONLY_RE.test(val)) {
-      throw new ActivityAnalyticsInputError(`${label} must be in YYYY-MM-DD format`);
+      throw new VitalsAnalyticsInputError(`${label} must be in YYYY-MM-DD format`);
     }
   }
   if (date && range !== 'daily') {
-    throw new ActivityAnalyticsInputError('date is only valid with range=daily — use startDate/endDate for weekly/monthly/yearly');
+    throw new VitalsAnalyticsInputError('date is only valid with range=daily — use startDate/endDate for weekly/monthly/yearly');
   }
 
   let matchStart;
@@ -61,11 +62,11 @@ function resolveWindow(range, { date, startDate: customStart, endDate: customEnd
     matchEnd.setUTCHours(23, 59, 59, 999);
 
     if (matchEnd < matchStart) {
-      throw new ActivityAnalyticsInputError('endDate must not be before startDate');
+      throw new VitalsAnalyticsInputError('endDate must not be before startDate');
     }
     const spanDays = (matchEnd - matchStart) / 86400000;
     if (spanDays > MAX_SPAN_DAYS) {
-      throw new ActivityAnalyticsInputError(`Date range too large — max ${MAX_SPAN_DAYS} days`);
+      throw new VitalsAnalyticsInputError(`Date range too large — max ${MAX_SPAN_DAYS} days`);
     }
   } else if (range === 'weekly') {
     matchStart = currentWeekStartUTC();
@@ -84,38 +85,24 @@ function resolveWindow(range, { date, startDate: customStart, endDate: customEnd
   return { $gte: matchStart, ...(matchEnd ? { $lte: matchEnd } : {}) };
 }
 
-async function getActivityAnalytics(userId, range = 'daily', options = {}) {
+async function getVitalsAnalytics(userId, range = 'daily', options = {}) {
   const dateMatch = resolveWindow(range, options);
 
-  // Connection status still lives on the lightweight WearableData registry
-  // doc; the actual day-by-day numbers now live in their own right-sized
-  // collection, queried directly by date range instead of pulling every
-  // device's full history and filtering in JS.
-  const [devices, dailyEntries] = await Promise.all([
-    WearableData.find({ user: userId }).select('isConnected').lean(),
-    DailyActivityMetric.find({ user: userId, date: dateMatch }).select('date steps caloriesBurned').lean()
-  ]);
+  const rows = await VitalsDailySummary.find({ user: userId, date: dateMatch })
+    .select('date avgRespiratoryRate avgSkinTemperatureCelsius bloodPressure readingCount')
+    .sort({ date: 1 })
+    .lean();
 
-  const hasWearableConnected = devices.some(w => w.isConnected);
-
-  // Merge same-day entries across every device — the has-entry map is what
-  // lets us tell "no data" apart from "measured, and it was zero".
-  const byDate = {};
-  for (const entry of dailyEntries) {
-    const d = new Date(entry.date).toISOString().split('T')[0];
-    if (!byDate[d]) byDate[d] = { steps: 0, caloriesBurned: 0 };
-    byDate[d].steps += entry.steps || 0;
-    byDate[d].caloriesBurned += entry.caloriesBurned || 0;
-  }
-
-  const entries = Object.keys(byDate).sort().map(date => ({
-    date,
-    steps: byDate[date].steps,
-    caloriesBurned: byDate[date].caloriesBurned,
+  const entries = rows.map(r => ({
+    date: new Date(r.date).toISOString().split('T')[0],
+    avgRespiratoryRate: r.avgRespiratoryRate ?? null,
+    avgSkinTemperatureCelsius: r.avgSkinTemperatureCelsius ?? null,
+    bloodPressure: r.bloodPressure ?? null,
+    readingCount: r.readingCount || 0
   }));
 
   if (range === 'daily') {
-    return { range, hasWearableConnected, entries };
+    return { range, entries };
   }
 
   const buckets = {};
@@ -129,13 +116,13 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
     const group = buckets[key];
     return {
       period: key,
-      avgSteps: average(group.map(g => g.steps)),
-      avgCaloriesBurned: average(group.map(g => g.caloriesBurned)),
-      daysLogged: group.length,
+      avgRespiratoryRate: average(group.map(g => g.avgRespiratoryRate)),
+      avgSkinTemperatureCelsius: average(group.map(g => g.avgSkinTemperatureCelsius)),
+      daysLogged: group.length
     };
   });
 
-  return { range, hasWearableConnected, summary };
+  return { range, summary };
 }
 
-module.exports = { getActivityAnalytics, ActivityAnalyticsInputError };
+module.exports = { getVitalsAnalytics, VitalsAnalyticsInputError };

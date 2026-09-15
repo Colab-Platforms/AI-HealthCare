@@ -19,7 +19,10 @@ const {
   getSleepAnalyticsData,
   getActivityAnalyticsData,
   getSleepInsightData,
-  getActivityInsightData
+  getActivityInsightData,
+  getStressAnalyticsData,
+  getVitalsAnalyticsData,
+  getRecoveryAnalyticsData
 } = require('../controllers/wearableController');
 
 // No auth — Open Wearables/Svix calls this directly, verified by signature instead of JWT
@@ -42,6 +45,9 @@ router.get('/sleep/insight', apiLimiter, getSleepInsightData);
 router.get('/activity/analytics', heavyReadLimiter, getActivityAnalyticsData);
 router.get('/activity/insight', apiLimiter, getActivityInsightData);
 router.get('/heart-rate/trend', heavyReadLimiter, getHeartRateTrend);
+router.get('/stress/analytics', heavyReadLimiter, getStressAnalyticsData);
+router.get('/vitals/analytics', heavyReadLimiter, getVitalsAnalyticsData);
+router.get('/recovery/analytics', heavyReadLimiter, getRecoveryAnalyticsData);
 router.post('/demo-data', generateDemoData);
 
 module.exports = router;

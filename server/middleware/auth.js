@@ -70,6 +70,7 @@ exports.authorize = (...roles) => {
 };
 
 exports.admin = (req, res, next) => {
+  console.log('Checking admin access for user:', req.user?.email, 'role:', req.user?.role);
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Admin access required' });
   }

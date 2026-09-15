@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "sync-indexes": "node scripts/syncIndexes.js",
+    "migrate:heart-rate": "node scripts/migrateHeartRateSamples.js",
     "test:alcohol": "node tests/alcoholLog.test.js"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Sparkles, Loader2, CheckCircle, AlertCircle, Target, Activity, Heart, ShieldCheck, Zap, Coffee, Sun, Utensils } from 'lucide-react';
+import { X, Plus, Sparkles, Loader2, CheckCircle, AlertCircle, Target, Activity, Heart, ShieldCheck, Zap, Coffee, Sun, Utensils, Check, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +19,9 @@ const MEAL_TABS = [
   { id: 'general', label: 'General', emoji: '⭐', icon: Sparkles, subTabs: [
     { id: 'preferredFoods', label: 'Preferred', icon: Heart, suggestions: ['Green Tea', 'Honey', 'Lemon', 'Spices', 'Herbs', 'Dry Fruits'] },
     { id: 'foodsToAvoid', label: 'To Avoid', icon: AlertCircle, suggestions: ['Sugar', 'White Bread', 'Fried Food', 'Soda', 'Processed Meat'] },
-    { id: 'dietaryRestrictions', label: 'Restrictions', icon: ShieldCheck, suggestions: ['Gluten-free', 'Dairy-free', 'Nut-free', 'Low Sodium', 'Low Carb'] }
+    { id: 'dietaryRestrictions', label: 'Restrictions', icon: ShieldCheck, suggestions: ['Gluten-free', 'Dairy-free', 'Nut-free', 'Low Sodium', 'Low Carb'] },
+    { id: 'dietaryDo', label: 'Must Do', icon: Check, suggestions: ['Include more protein', 'Use whole grains', 'Use less oil', 'Include seasonal foods'] },
+    { id: 'dietaryDont', label: "Don't", icon: Ban, suggestions: ['No onion', 'No tomatoes', 'No garlic', 'No eggs', 'No dairy'] }
   ]}
 ];
 
@@ -87,6 +89,8 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
     preferredFoods: [],
     foodsToAvoid: [],
     dietaryRestrictions: [],
+    dietaryDo: [],
+    dietaryDont: [],
     mealPreferences: {
       breakfast: [],
       lunch: [],
@@ -101,7 +105,9 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
     dinner: '',
     preferredFoods: '',
     foodsToAvoid: '',
-    dietaryRestrictions: ''
+    dietaryRestrictions: '',
+    dietaryDo: '',
+    dietaryDont: ''
   });
   const [healthWarning, setHealthWarning] = useState(null); // { food: '', alternative: '', type: '', isSuggestion: false }
 
@@ -119,6 +125,8 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
           preferredFoods: data.preferredFoods || [],
           foodsToAvoid: data.foodsToAvoid || [],
           dietaryRestrictions: data.dietaryRestrictions || [],
+          dietaryDo: data.dietaryDo || [],
+          dietaryDont: data.dietaryDont || [],
           mealPreferences: data.mealPreferences || {
             breakfast: [],
             lunch: [],
@@ -179,7 +187,7 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
     if (!value) return;
 
     // Check for unhealthy food (but allow it in "To Avoid" section)
-    if (!forced && type !== 'foodsToAvoid') {
+    if (!forced && type !== 'foodsToAvoid' && type !== 'dietaryDont') {
       const lowerVal = value.toLowerCase();
       
       // DIABETES SPECIFIC GUARD
@@ -243,7 +251,7 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
 
   const addSuggestion = (type, food, forced = false) => {
     // Check for unhealthy selection (skip check for "To Avoid" category)
-    if (!forced && type !== 'foodsToAvoid') {
+    if (!forced && type !== 'foodsToAvoid' && type !== 'dietaryDont') {
       const lowerVal = food.toLowerCase();
       
       // DIABETES SPECIFIC GUARD
@@ -356,7 +364,9 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
   const totalItems = Object.values(preferences.mealPreferences || {}).reduce((sum, arr) => sum + arr.length, 0) + 
                     (preferences.preferredFoods?.length || 0) + 
                     (preferences.foodsToAvoid?.length || 0) + 
-                    (preferences.dietaryRestrictions?.length || 0);
+                    (preferences.dietaryRestrictions?.length || 0) +
+                    (preferences.dietaryDo?.length || 0) +
+                    (preferences.dietaryDont?.length || 0);
   const activeTabData = MEAL_TABS.find(t => t.id === activeTab);
   
   const currentCategory = activeTab === 'general' ? activeGeneralTab : activeTab;
@@ -412,11 +422,11 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
               <span className="text-lg">{tab.emoji}</span>
               <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
               {(tab.id === 'general' ? 
-                ((preferences.preferredFoods?.length || 0) + (preferences.foodsToAvoid?.length || 0) + (preferences.dietaryRestrictions?.length || 0)) : 
+                ((preferences.preferredFoods?.length || 0) + (preferences.foodsToAvoid?.length || 0) + (preferences.dietaryRestrictions?.length || 0) + (preferences.dietaryDo?.length || 0) + (preferences.dietaryDont?.length || 0)) : 
                 (preferences.mealPreferences?.[tab.id] || []).length) > 0 && (
                 <span className="absolute top-2 right-1/4 w-4 h-4 rounded-full bg-[#69A38D] text-white text-[9px] font-black flex items-center justify-center border-2 border-white">
                   {tab.id === 'general' ? 
-                    ((preferences.preferredFoods?.length || 0) + (preferences.foodsToAvoid?.length || 0) + (preferences.dietaryRestrictions?.length || 0)) : 
+                    ((preferences.preferredFoods?.length || 0) + (preferences.foodsToAvoid?.length || 0) + (preferences.dietaryRestrictions?.length || 0) + (preferences.dietaryDo?.length || 0) + (preferences.dietaryDont?.length || 0)) : 
                     (preferences.mealPreferences?.[tab.id] || []).length}
                 </span>
               )}

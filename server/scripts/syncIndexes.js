@@ -27,7 +27,7 @@ if (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONME
 }
 
 (async () => {
-  if (!process.env.MONGODB_URI) {
+  if (!process.env.MONGODB_URI_STAGING  ) {
     console.error('MONGODB_URI is not set');
     process.exit(1);
   }

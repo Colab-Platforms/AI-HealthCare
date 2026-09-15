@@ -21,4 +21,15 @@ const triggerLongTermScoreRecompute = (userId) => {
   );
 };
 
-module.exports = { triggerDailyScoreRecompute, triggerLongTermScoreRecompute };
+// Recovery score depends on HR/stress/vitals/sleep/prior-day activity —
+// fired from the same wearable write endpoints as triggerDailyScoreRecompute,
+// same fire-and-forget contract (never blocks or fails the request).
+const triggerRecoveryScoreRecompute = (userId, dateStr) => {
+  const { calculateRecoveryScore } = require('../services/recoveryScoreService');
+  const date = dateStr || new Date().toISOString().split('T')[0];
+  calculateRecoveryScore(userId, date).catch((e) =>
+    console.error(`[RecoveryScore] Recompute failed for user ${userId}:`, e.message),
+  );
+};
+
+module.exports = { triggerDailyScoreRecompute, triggerLongTermScoreRecompute, triggerRecoveryScoreRecompute };

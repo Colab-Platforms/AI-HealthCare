@@ -8,8 +8,15 @@ const openWearablesClient = require('../config/openWearables');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
 const { getSleepAnalytics, SleepAnalyticsInputError } = require('../services/sleepAnalyticsService');
 const { getActivityAnalytics, ActivityAnalyticsInputError } = require('../services/activityAnalyticsService');
+const { getStressAnalytics, StressAnalyticsInputError } = require('../services/stressAnalyticsService');
+const { getVitalsAnalytics, VitalsAnalyticsInputError } = require('../services/vitalsAnalyticsService');
+const { getRecoveryAnalytics, RecoveryAnalyticsInputError } = require('../services/recoveryAnalyticsService');
 const { getSleepInsight } = require('../services/sleepInsightService');
 const { getActivityInsight } = require('../services/activityInsightService');
+const wearableIngest = require('../services/wearableIngestService');
+const DailyActivityMetric = require('../models/DailyActivityMetric');
+const SleepSession = require('../models/SleepSession');
+const HeartRateDailySummary = require('../models/HeartRateDailySummary');
 
 function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -201,6 +208,26 @@ exports.syncDailyMetrics = async (req, res) => {
     wearable.lastSyncedAt = new Date();
     await wearable.save();
 
+    // Mirror the resolved (additive-or-replace already settled above) values
+    // into the right-sized collection activityAnalyticsService/dashboard now
+    // read from — $set here, never $inc, since additive merging already
+    // happened against the embedded array.
+    const resolved = wearable.dailyMetrics.find(m => dateOnlyUTCFromDate(new Date(m.date)).getTime() === targetDate.getTime());
+    if (resolved) {
+      await DailyActivityMetric.findOneAndUpdate(
+        { user: req.user._id, deviceType, date: targetDate },
+        { $set: {
+            steps: resolved.steps,
+            caloriesBurned: resolved.caloriesBurned,
+            activeMinutes: resolved.activeMinutes,
+            distance: resolved.distance,
+            floorsClimbed: resolved.floorsClimbed,
+            source: deviceType
+          } },
+        { upsert: true }
+      );
+    }
+
     // Log fitness activity
     await logActivity(req.user._id, 'LOG_FITNESS_METRICS', 'fitness', {
       deviceType,
@@ -220,6 +247,7 @@ exports.syncDailyMetrics = async (req, res) => {
     cache.delete(`dashboard:${req.user._id}`);
     cache.deletePattern(`activity_analytics:${req.user._id}:*`);
     require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
+    require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(req.user._id, targetDateString);
 
     res.json({ wearable, gamification: gamificationResult });
   } catch (error) {
@@ -264,7 +292,7 @@ exports.syncOsHealthData = async (req, res) => {
       return res.status(400).json({ message: 'batchSequence must be a non-negative integer' });
     }
 
-    const metricGroups = ['dailyMetrics', 'heartRate', 'sleepData', 'bloodOxygen', 'bodyComposition'];
+    const metricGroups = ['dailyMetrics', 'heartRate', 'sleepData', 'bloodOxygen', 'bodyComposition', 'stress', 'vitals'];
     const records = metricGroups.flatMap(group => Array.isArray(metrics[group]) ? metrics[group] : []);
     if (records.length > 1000) {
       return res.status(413).json({ message: 'A maximum of 1000 records is allowed per sync batch' });
@@ -332,6 +360,26 @@ exports.syncOsHealthData = async (req, res) => {
       validateNumber(composition.bmi, 'bodyComposition.bmi', 0, 150);
       validateNumber(composition.leanBodyMassKg, 'bodyComposition.leanBodyMassKg', 0, 500);
     }
+    for (const stress of metrics.stress || []) {
+      requireRecordId(stress, 'stress');
+      validateTimestamp(stress.timestamp, 'stress.timestamp');
+      validateNumber(stress.level, 'stress.level', 0, 100);
+      validateNumber(stress.hrv, 'stress.hrv', 0, 400);
+      if (stress.category !== undefined && !['rest', 'low', 'medium', 'high'].includes(stress.category)) {
+        return res.status(400).json({ message: 'stress.category is invalid' });
+      }
+    }
+    for (const vitals of metrics.vitals || []) {
+      requireRecordId(vitals, 'vitals');
+      validateTimestamp(vitals.timestamp, 'vitals.timestamp');
+      validateNumber(vitals.respiratoryRate, 'vitals.respiratoryRate', 0, 60);
+      validateNumber(vitals.skinTemperatureCelsius, 'vitals.skinTemperatureCelsius', -10, 10);
+      validateNumber(vitals.bloodPressureSystolic, 'vitals.bloodPressureSystolic', 50, 250);
+      validateNumber(vitals.bloodPressureDiastolic, 'vitals.bloodPressureDiastolic', 30, 150);
+      if (vitals.ecgClassification !== undefined && !['sinus_rhythm', 'atrial_fibrillation', 'inconclusive', 'other'].includes(vitals.ecgClassification)) {
+        return res.status(400).json({ message: 'vitals.ecgClassification is invalid' });
+      }
+    }
 
     session = await mongoose.startSession();
     let result;
@@ -374,48 +422,21 @@ exports.syncOsHealthData = async (req, res) => {
         wearable.sourceDeviceId = sourceDeviceId || wearable.sourceDeviceId;
       }
 
-      for (const metric of metrics.dailyMetrics || []) {
-        const date = new Date(metric.date);
-        if (wearable.dailyMetrics.some(entry => entry.sourceRecordId === metric.sourceRecordId)) continue;
-        const sameDay = wearable.dailyMetrics.find(entry =>
-          entry.source === source && dateOnlyUTCFromDate(entry.date).getTime() === dateOnlyUTCFromDate(date).getTime()
-        );
-        const values = { date, source, sourceRecordId: metric.sourceRecordId };
-        for (const field of ['steps', 'caloriesBurned', 'activeMinutes', 'distance', 'floorsClimbed']) {
-          if (metric[field] !== undefined) values[field] = Number(metric[field]);
-        }
-        if (sameDay) Object.assign(sameDay, values);
-        else wearable.dailyMetrics.push(values);
-      }
-
-      for (const reading of metrics.heartRate || []) {
-        const type = reading.type || 'resting';
-        const existingSample = await HeartRateSample.exists({
-          user: req.user._id,
-          deviceType: provider,
-          sourceRecordId: reading.sourceRecordId
-        });
-        if (existingSample) continue;
-        await HeartRateSample.create([{
-          user: req.user._id,
-          deviceType: provider,
-          timestamp: reading.timestamp,
-          bpm: Number(reading.bpm),
-          type,
-          source,
-          sourceRecordId: reading.sourceRecordId
-        }], { session });
-        upsertHeartRateDailySummary(wearable, reading.timestamp, reading.bpm, type);
-      }
-      for (const sleep of metrics.sleepData || []) {
-        if (!wearable.sleepData.some(entry => entry.sourceRecordId === sleep.sourceRecordId)) wearable.sleepData.push({ ...sleep, source });
-      }
-      for (const oxygen of metrics.bloodOxygen || []) {
-        if (!wearable.bloodOxygen.some(entry => entry.sourceRecordId === oxygen.sourceRecordId)) wearable.bloodOxygen.push({ ...oxygen, percentage: Number(oxygen.percentage), source });
-      }
-      for (const composition of metrics.bodyComposition || []) {
-        if (!wearable.bodyComposition.some(entry => entry.sourceRecordId === composition.sourceRecordId)) wearable.bodyComposition.push({ ...composition, source });
-      }
+      // Dedup + persist + roll up, via the same functions the OpenWearables
+      // webhook path uses below — one code path per metric family instead
+      // of two that can silently diverge. `wearable` is passed through so
+      // the legacy embedded arrays keep getting mirrored during the
+      // migration window; session carries the transaction.
+      await wearableIngest.applyDailyActivity(req.user._id, provider, source, metrics.dailyMetrics || [], { session, wearable });
+      await wearableIngest.applyHeartRateSamples(req.user._id, provider, source, metrics.heartRate || [], { session, wearable });
+      await wearableIngest.applySleepSessions(req.user._id, provider, source, metrics.sleepData || [], { session, wearable });
+      await wearableIngest.applyBloodOxygenSamples(req.user._id, provider, source, metrics.bloodOxygen || [], { session, wearable });
+      await wearableIngest.applyBodyComposition(req.user._id, provider, source, metrics.bodyComposition || [], { session, wearable });
+      // Stress/vitals are greenfield — no legacy WearableData array to mirror,
+      // and (unlike the time-series collections above) they don't take a
+      // session since Mongo time-series collections can't join a transaction.
+      await wearableIngest.applyStressSamples(req.user._id, provider, source, metrics.stress || []);
+      await wearableIngest.applyVitalsSamples(req.user._id, provider, source, metrics.vitals || []);
 
       wearable.lastSyncedAt = new Date();
       await wearable.save({ session });
@@ -424,6 +445,12 @@ exports.syncOsHealthData = async (req, res) => {
 
     if (result.duplicate) return res.json(result);
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
+    cache.deletePattern(`activity_analytics:${req.user._id}:*`);
+    cache.deletePattern(`stress_analytics:${req.user._id}:*`);
+    cache.deletePattern(`vitals_analytics:${req.user._id}:*`);
+    cache.deletePattern(`recovery_analytics:${req.user._id}:*`);
+    require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(req.user._id);
     return res.json(result);
   } catch (error) {
     console.error(`[Wearables] OS sync failed: user=${req.user?._id} error=${error.message}`);
@@ -448,15 +475,7 @@ exports.addHeartRate = async (req, res) => {
     }
 
     const now = new Date();
-    await HeartRateSample.create({
-      user: req.user._id,
-      deviceType,
-      bpm: Number(bpm),
-      type,
-      timestamp: now
-    });
-
-    upsertHeartRateDailySummary(wearable, now, bpm, type);
+    await wearableIngest.applyHeartRateSamples(req.user._id, deviceType, 'manual', [{ timestamp: now, bpm, type }], { wearable });
 
     await wearable.save();
 
@@ -540,6 +559,28 @@ exports.addSleepData = async (req, res) => {
 
     await wearable.save();
 
+    // Mirror the resolved (additive-or-replace already settled above) entry
+    // into SleepSession — sleepAnalyticsService now reads from there, not
+    // the embedded array.
+    const resolvedSleep = wearable.sleepData.find(s => dateOnlyUTCFromDate(new Date(s.date)).getTime() === targetDate.getTime());
+    if (resolvedSleep) {
+      await SleepSession.findOneAndUpdate(
+        { user: req.user._id, deviceType, date: targetDate },
+        { $set: {
+            totalSleepMinutes: resolvedSleep.totalSleepMinutes,
+            deepSleepMinutes: resolvedSleep.deepSleepMinutes,
+            lightSleepMinutes: resolvedSleep.lightSleepMinutes,
+            remSleepMinutes: resolvedSleep.remSleepMinutes,
+            awakeMinutes: resolvedSleep.awakeMinutes,
+            sleepScore: resolvedSleep.sleepScore,
+            bedTime: resolvedSleep.bedTime,
+            wakeTime: resolvedSleep.wakeTime,
+            source: deviceType
+          } },
+        { upsert: true }
+      );
+    }
+
     // Log fitness activity
     await logActivity(req.user._id, 'LOG_SLEEP_DATA', 'fitness', {
       deviceType,
@@ -552,6 +593,7 @@ exports.addSleepData = async (req, res) => {
     cache.delete(`dashboard:${req.user._id}`);
     cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
     require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
+    require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(req.user._id, targetDateString);
 
     res.json(wearable);
   } catch (error) {
@@ -562,23 +604,35 @@ exports.addSleepData = async (req, res) => {
 // Get wearable dashboard data
 exports.getWearableDashboard = async (req, res) => {
   try {
-    // Project to the fields actually read below, and let Mongo do the
-    // heartRate slice — otherwise the whole (unbounded, one-entry-per-sample)
-    // heartRate array crosses the wire just to take the last 10 readings.
     const wearables = await WearableData.find({ user: req.user._id, isConnected: true })
-      .select('deviceType deviceName lastSyncedAt dailyMetrics sleepData heartRate')
-      .lean();
-    const recentStoredHeartRate = await HeartRateSample.find({ user: req.user._id })
-      .select('deviceType timestamp bpm type source sourceRecordId')
-      .sort({ timestamp: -1 })
-      .limit(10)
+      .select('deviceType deviceName lastSyncedAt')
       .lean();
 
     if (!wearables.length) {
       return res.json({ connected: false, devices: [] });
     }
 
-    // Aggregate data from all devices
+    const targetDate = new Date();
+    targetDate.setUTCHours(0, 0, 0, 0);
+    const weekAgoDate = new Date(targetDate);
+    weekAgoDate.setUTCDate(weekAgoDate.getUTCDate() - 7);
+
+    // Bounded at the query level now — DailyActivityMetric/SleepSession are
+    // one right-sized doc per user+device+day, so "today" / "last 7 days"
+    // is a normal indexed range query instead of loading every device's
+    // full history and filtering in JS.
+    const [todayActivity, todaySleep, recentSleep, weeklyTrend, recentStoredHeartRate] = await Promise.all([
+      DailyActivityMetric.find({ user: req.user._id, date: targetDate }).lean(),
+      SleepSession.find({ user: req.user._id, date: targetDate }).lean(),
+      SleepSession.find({ user: req.user._id, date: { $gte: weekAgoDate } }).sort({ date: -1 }).lean(),
+      DailyActivityMetric.find({ user: req.user._id, date: { $gte: weekAgoDate } }).sort({ date: 1 }).lean(),
+      HeartRateSample.find({ user: req.user._id })
+        .select('deviceType timestamp bpm type source sourceRecordId')
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .lean()
+    ]);
+
     const dashboard = {
       connected: true,
       devices: wearables.map(w => ({
@@ -587,60 +641,24 @@ exports.getWearableDashboard = async (req, res) => {
         lastSynced: w.lastSyncedAt
       })),
       todayMetrics: null,
-      recentHeartRate: [],
-      recentSleep: [],
-      weeklyTrend: []
+      recentHeartRate: recentStoredHeartRate,
+      recentSleep,
+      weeklyTrend
     };
 
-    // Get today's metrics
-    const targetDate = new Date();
-    targetDate.setUTCHours(0, 0, 0, 0);
-    const targetDateString = targetDate.toISOString().split('T')[0];
-
-    for (const wearable of wearables) {
-      const todayData = wearable.dailyMetrics.find(
-        m => new Date(m.date).toISOString().split('T')[0] === targetDateString
-      );
-
-      if (todayData) {
-        dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
-        dashboard.todayMetrics.steps += todayData.steps || 0;
-        dashboard.todayMetrics.caloriesBurned += todayData.caloriesBurned || 0;
-        dashboard.todayMetrics.activeMinutes += todayData.activeMinutes || 0;
-        dashboard.todayMetrics.distance += todayData.distance || 0;
-      }
-
-      // Aggregate today's sleep from sleepData array
-      const todaySleep = wearable.sleepData.find(
-        s => new Date(s.date).toISOString().split('T')[0] === targetDateString
-      );
-      if (todaySleep) {
-        dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
-        dashboard.todayMetrics.sleep = (dashboard.todayMetrics.sleep || 0) + (todaySleep.totalSleepMinutes || 0);
-      }
-
-      // Get recent sleep data (last 7 days)
-      if (wearable.sleepData.length) {
-        const weekAgoDate = new Date();
-        weekAgoDate.setDate(weekAgoDate.getDate() - 7);
-        weekAgoDate.setUTCHours(0, 0, 0, 0);
-        const recentSleep = wearable.sleepData.filter(s => new Date(s.date) >= weekAgoDate);
-        dashboard.recentSleep.push(...recentSleep);
-      }
-
-      // Get weekly trend
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weeklyData = wearable.dailyMetrics.filter(m => new Date(m.date) >= weekAgo);
-      dashboard.weeklyTrend.push(...weeklyData);
+    for (const entry of todayActivity) {
+      dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
+      dashboard.todayMetrics.steps += entry.steps || 0;
+      dashboard.todayMetrics.caloriesBurned += entry.caloriesBurned || 0;
+      dashboard.todayMetrics.activeMinutes += entry.activeMinutes || 0;
+      dashboard.todayMetrics.distance += entry.distance || 0;
+    }
+    for (const entry of todaySleep) {
+      dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
+      dashboard.todayMetrics.sleep = (dashboard.todayMetrics.sleep || 0) + (entry.totalSleepMinutes || 0);
     }
 
-    dashboard.recentHeartRate = recentStoredHeartRate;
-
-    // Sort by date
     dashboard.recentHeartRate.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    dashboard.recentSleep.sort((a, b) => new Date(b.date) - new Date(a.date));
-    dashboard.weeklyTrend.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // Most recent resting-tagged sample among the recent readings pulled above.
     // Best-effort: see upsertHeartRateDailySummary's note on webhook type accuracy.
@@ -701,6 +719,79 @@ exports.getActivityAnalyticsData = async (req, res) => {
   }
 };
 
+// Stress breakdown — same daily/weekly/monthly/yearly bucketing as sleep/activity.
+exports.getStressAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `stress_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getStressAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof StressAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Vitals breakdown (respiratory rate, skin temperature, blood pressure).
+exports.getVitalsAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `vitals_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getVitalsAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof VitalsAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Recovery score breakdown — recoveryScore + per-component contributions,
+// computed by recoveryScoreService and stored in RecoveryDailySummary.
+exports.getRecoveryAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `recovery_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getRecoveryAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof RecoveryAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Fact-based sleep-goal adherence + a safety note if the user is training
 // while under-slept. No calorie/exercise number is adjusted — see sleepInsightService.
 // Device-agnostic: reads WearableData.sleepData regardless of whether entries
@@ -745,36 +836,37 @@ exports.getHeartRateTrend = async (req, res) => {
     cutoff.setUTCHours(0, 0, 0, 0);
     cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
 
-    const wearables = await WearableData.find({ user: req.user._id })
-      .select('heartRateDailySummary')
-      .lean();
+    // Permanent rollup collection, queried by date range directly instead of
+    // pulling every device's full heartRateDailySummary history. Response
+    // field names (minBpm/maxBpm) are kept exactly as before even though the
+    // rollup itself now stores {value, timestamp} — the timestamp is a new
+    // addition, not exposed here yet, but is available via HeartRateDailySummary
+    // for a future "when did this happen" surface.
+    const entries = await HeartRateDailySummary.find({ user: req.user._id, date: { $gte: cutoff } }).lean();
 
-    // Merge same-day entries across multiple devices into one weighted-avg point
     const byDate = new Map();
-    for (const wearable of wearables) {
-      for (const entry of wearable.heartRateDailySummary || []) {
-        const date = new Date(entry.date);
-        if (date < cutoff) continue;
-        const key = date.toISOString().split('T')[0];
+    for (const entry of entries) {
+      const key = new Date(entry.date).toISOString().split('T')[0];
+      const minBpm = entry.min?.value;
+      const maxBpm = entry.max?.value;
 
-        const existing = byDate.get(key);
-        if (!existing) {
-          byDate.set(key, {
-            date: key,
-            avgBpm: entry.avgBpm,
-            minBpm: entry.minBpm,
-            maxBpm: entry.maxBpm,
-            readingCount: entry.readingCount || 0
-          });
-        } else {
-          const totalReadings = existing.readingCount + (entry.readingCount || 0);
-          existing.avgBpm = totalReadings > 0
-            ? Math.round(((existing.avgBpm * existing.readingCount) + (entry.avgBpm * (entry.readingCount || 0))) / totalReadings)
-            : existing.avgBpm;
-          existing.minBpm = Math.min(existing.minBpm, entry.minBpm);
-          existing.maxBpm = Math.max(existing.maxBpm, entry.maxBpm);
-          existing.readingCount = totalReadings;
-        }
+      const existing = byDate.get(key);
+      if (!existing) {
+        byDate.set(key, {
+          date: key,
+          avgBpm: entry.avgBpm,
+          minBpm,
+          maxBpm,
+          readingCount: entry.readingCount || 0
+        });
+      } else {
+        const totalReadings = existing.readingCount + (entry.readingCount || 0);
+        existing.avgBpm = totalReadings > 0
+          ? Math.round(((existing.avgBpm * existing.readingCount) + (entry.avgBpm * (entry.readingCount || 0))) / totalReadings)
+          : existing.avgBpm;
+        existing.minBpm = Math.min(existing.minBpm, minBpm);
+        existing.maxBpm = Math.max(existing.maxBpm, maxBpm);
+        existing.readingCount = totalReadings;
       }
     }
 
@@ -911,6 +1003,33 @@ exports.generateDemoData = async (req, res) => {
     wearable.lastSyncedAt = new Date();
 
     await wearable.save();
+
+    // Mirror into the new right-sized collections too — getWearableDashboard/
+    // getHeartRateTrend/analytics services read from these now, not the
+    // embedded arrays above, so demo data has to land in both during the
+    // migration window or it'd silently stop showing up anywhere.
+    const dates = dailyMetrics.map(d => d.date);
+    await Promise.all([
+      DailyActivityMetric.deleteMany({ user: req.user._id, deviceType, date: { $in: dates } }),
+      SleepSession.deleteMany({ user: req.user._id, deviceType, date: { $in: dates } }),
+      HeartRateDailySummary.deleteMany({ user: req.user._id, deviceType, date: { $in: dates } }),
+      HeartRateSample.deleteMany({ user: req.user._id, deviceType, timestamp: { $gte: dates[0] } })
+    ]);
+    await Promise.all([
+      DailyActivityMetric.insertMany(dailyMetrics.map(d => ({ ...d, user: req.user._id, deviceType, source: 'demo' }))),
+      SleepSession.insertMany(sleepData.map(s => ({ ...s, user: req.user._id, deviceType, source: 'demo' }))),
+      HeartRateDailySummary.insertMany(heartRateDailySummary.map(h => ({
+        user: req.user._id,
+        deviceType,
+        date: h.date,
+        avgBpm: h.avgBpm,
+        min: { value: h.minBpm, timestamp: h.date },
+        max: { value: h.maxBpm, timestamp: h.date },
+        readingCount: h.readingCount,
+        restingBpm: h.restingBpm != null ? { value: h.restingBpm, timestamp: h.date } : undefined
+      }))),
+      HeartRateSample.insertMany(heartRate.map(h => ({ ...h, user: req.user._id, deviceType, source: 'demo' })))
+    ]);
 
     res.json({ message: 'Demo data generated', wearable });
   } catch (error) {
@@ -1102,16 +1221,13 @@ exports.handleWebhook = async (req, res) => {
     if (data?.series_type && Array.isArray(data.samples)) {
       const wearable = await findWearableDoc(data.user_id, data.provider);
       if (wearable) {
-        for (const sample of data.samples) {
-          wearable.metrics.push({
-            seriesType: data.series_type,
-            value: sample.value,
-            unit: sample.unit,
-            timestamp: sample.timestamp,
-            provider: data.provider,
-            device: data.source?.device
-          });
-        }
+        await wearableIngest.applyGenericMetric(
+          wearable.user,
+          data.provider,
+          data.provider,
+          data.samples.map(s => ({ seriesType: data.series_type, value: s.value, unit: s.unit, timestamp: s.timestamp, device: data.source?.device })),
+          { wearable }
+        );
         wearable.lastSyncedAt = new Date();
         await wearable.save();
       }
@@ -1145,7 +1261,7 @@ exports.handleWebhook = async (req, res) => {
       case 'sleep.created': {
         const wearable = await findWearableDoc(data.user_id, data.source?.provider);
         if (wearable) {
-          wearable.sleepData.push({
+          await wearableIngest.applySleepSessions(wearable.user, wearable.deviceType, 'open_wearables', [{
             date: dateOnlyUTC(data.start_time),
             totalSleepMinutes: Math.round(data.duration_seconds / 60),
             deepSleepMinutes: data.stages?.deep_minutes,
@@ -1153,8 +1269,9 @@ exports.handleWebhook = async (req, res) => {
             remSleepMinutes: data.stages?.rem_minutes,
             awakeMinutes: data.stages?.awake_minutes,
             bedTime: data.start_time,
-            wakeTime: data.end_time
-          });
+            wakeTime: data.end_time,
+            sourceRecordId: data.id ? String(data.id) : undefined
+          }], { wearable });
           wearable.lastSyncedAt = new Date();
           await wearable.save();
           cache.deletePattern(`sleep_analytics:${wearable.user}:*`);
@@ -1182,6 +1299,17 @@ exports.handleWebhook = async (req, res) => {
             });
           }
           wearable.markModified('dailyMetrics');
+          // Mirror the same totals into the right-sized DailyActivityMetric
+          // collection — $inc keeps this an atomic add regardless of write order.
+          await DailyActivityMetric.findOneAndUpdate(
+            { user: wearable.user, deviceType: wearable.deviceType, date },
+            { $inc: {
+                caloriesBurned: data.calories_kcal || 0,
+                distance: (data.distance_meters || 0) / 1000,
+                activeMinutes: Math.round(data.duration_seconds / 60)
+              } },
+            { upsert: true }
+          );
 
           wearable.workouts.push({
             workoutId: data.id,
@@ -1196,6 +1324,18 @@ exports.handleWebhook = async (req, res) => {
             elevationGainMeters: data.elevation_gain_meters,
             provider: data.source?.provider
           });
+          await wearableIngest.applyWorkouts(wearable.user, wearable.deviceType, data.source?.provider, [{
+            workoutId: String(data.id),
+            type: data.type,
+            startTime: data.start_time,
+            endTime: data.end_time,
+            durationSeconds: data.duration_seconds,
+            caloriesKcal: data.calories_kcal,
+            distanceMeters: data.distance_meters,
+            avgHeartRateBpm: data.avg_heart_rate_bpm,
+            maxHeartRateBpm: data.max_heart_rate_bpm,
+            elevationGainMeters: data.elevation_gain_meters
+          }]);
 
           wearable.lastSyncedAt = new Date();
           await wearable.save();
@@ -1207,25 +1347,15 @@ exports.handleWebhook = async (req, res) => {
       case 'heart_rate.created': {
         const wearable = await findWearableDoc(data.user_id, data.provider);
         if (wearable) {
-          for (const sample of data.samples) {
-            if (sample.type !== 'heart_rate') continue;
-            const sampleType = sample.context === 'active' ? 'active' : 'resting';
-            const sampleFilter = sample.id
-              ? { user: wearable.user, deviceType: wearable.deviceType, sourceRecordId: String(sample.id) }
-              : null;
-            const existingSample = sampleFilter ? await HeartRateSample.exists(sampleFilter) : null;
-            if (existingSample) continue;
-            await HeartRateSample.create({
-              user: wearable.user,
-              deviceType: wearable.deviceType,
+          const readings = data.samples
+            .filter(sample => sample.type === 'heart_rate')
+            .map(sample => ({
               timestamp: sample.timestamp,
-              bpm: Number(sample.value),
-              type: sampleType,
-              source: 'open_wearables',
+              bpm: sample.value,
+              type: sample.context === 'active' ? 'active' : 'resting',
               sourceRecordId: sample.id ? String(sample.id) : undefined
-            });
-            upsertHeartRateDailySummary(wearable, sample.timestamp, sample.value, sampleType);
-          }
+            }));
+          await wearableIngest.applyHeartRateSamples(wearable.user, wearable.deviceType, 'open_wearables', readings, { wearable });
           wearable.lastSyncedAt = new Date();
           await wearable.save();
         }
@@ -1249,6 +1379,11 @@ exports.handleWebhook = async (req, res) => {
               entry = wearable.dailyMetrics[wearable.dailyMetrics.length - 1];
             }
             entry.steps = sample.is_daily_total ? sample.value : (entry.steps || 0) + sample.value;
+            await DailyActivityMetric.findOneAndUpdate(
+              { user: wearable.user, deviceType: wearable.deviceType, date },
+              sample.is_daily_total ? { $set: { steps: sample.value } } : { $inc: { steps: sample.value } },
+              { upsert: true }
+            );
           }
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
@@ -1276,6 +1411,11 @@ exports.handleWebhook = async (req, res) => {
             entry.caloriesBurned = sample.is_daily_total
               ? sample.value
               : (entry.caloriesBurned || 0) + sample.value;
+            await DailyActivityMetric.findOneAndUpdate(
+              { user: wearable.user, deviceType: wearable.deviceType, date },
+              sample.is_daily_total ? { $set: { caloriesBurned: sample.value } } : { $inc: { caloriesBurned: sample.value } },
+              { upsert: true }
+            );
           }
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
@@ -1299,7 +1439,7 @@ exports.handleWebhook = async (req, res) => {
             if (sample.type === 'lean_body_mass') entry.leanBodyMassKg = sample.value;
             byTimestamp.set(sample.timestamp, entry);
           }
-          wearable.bodyComposition.push(...byTimestamp.values());
+          await wearableIngest.applyBodyComposition(wearable.user, wearable.deviceType, 'open_wearables', Array.from(byTimestamp.values()), { wearable });
           wearable.lastSyncedAt = new Date();
           await wearable.save();
         }
@@ -1309,12 +1449,64 @@ exports.handleWebhook = async (req, res) => {
       case 'spo2.created': {
         const wearable = await findWearableDoc(data.user_id, data.provider);
         if (wearable) {
-          for (const sample of data.samples) {
-            if (sample.type !== 'oxygen_saturation') continue;
-            wearable.bloodOxygen.push({ timestamp: sample.timestamp, percentage: sample.value });
-          }
+          const readings = data.samples
+            .filter(sample => sample.type === 'oxygen_saturation')
+            .map(sample => ({ timestamp: sample.timestamp, percentage: sample.value }));
+          await wearableIngest.applyBloodOxygenSamples(wearable.user, wearable.deviceType, 'open_wearables', readings, { wearable });
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+        }
+        break;
+      }
+
+      // NOTE: 'stress.created' and 'respiratory_rate'/'skin_temperature'/
+      // 'blood_pressure' event names/shapes below follow the same
+      // `<metric>.created` + samples[] convention every other named case in
+      // this switch uses — same as ensureOpenWearablesUser's /users call
+      // above, verify the exact event name/payload against Open Wearables'
+      // docs once stress/vitals are live there. Until then, any real event
+      // under a different name still isn't lost — it falls through to the
+      // generic series_type/samples capture at the top of this handler and
+      // lands in WearableMetricSample instead of a dedicated collection.
+      case 'stress.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          const readings = (data.samples || []).map(sample => ({
+            timestamp: sample.timestamp,
+            level: sample.value,
+            category: sample.category,
+            hrv: sample.hrv,
+            sourceRecordId: sample.id ? String(sample.id) : undefined
+          }));
+          await wearableIngest.applyStressSamples(wearable.user, wearable.deviceType, 'open_wearables', readings);
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+          cache.deletePattern(`stress_analytics:${wearable.user}:*`);
+          require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(wearable.user);
+        }
+        break;
+      }
+
+      case 'respiratory_rate.created':
+      case 'skin_temperature.created':
+      case 'blood_pressure.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          const readings = (data.samples || []).map(sample => {
+            const reading = { timestamp: sample.timestamp, sourceRecordId: sample.id ? String(sample.id) : undefined };
+            if (type === 'respiratory_rate.created') reading.respiratoryRate = sample.value;
+            if (type === 'skin_temperature.created') reading.skinTemperatureCelsius = sample.value;
+            if (type === 'blood_pressure.created') {
+              reading.bloodPressureSystolic = sample.systolic;
+              reading.bloodPressureDiastolic = sample.diastolic;
+            }
+            return reading;
+          });
+          await wearableIngest.applyVitalsSamples(wearable.user, wearable.deviceType, 'open_wearables', readings);
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+          cache.deletePattern(`vitals_analytics:${wearable.user}:*`);
+          require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(wearable.user);
         }
         break;
       }
