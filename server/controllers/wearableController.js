@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 const WearableData = require('../models/WearableData');
+const WearableSyncReceipt = require('../models/WearableSyncReceipt');
 const HeartRateSample = require('../models/HeartRateSample');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
-const WearableSyncReceipt = require('../models/WearableSyncReceipt');
+const { getSleepAnalytics, SleepAnalyticsInputError } = require('../services/sleepAnalyticsService');
+const { getActivityAnalytics, ActivityAnalyticsInputError } = require('../services/activityAnalyticsService');
+const { getSleepInsight } = require('../services/sleepInsightService');
+const { getActivityInsight } = require('../services/activityInsightService');
 
 function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -127,16 +131,16 @@ exports.getConnectedDevices = async (req, res) => {
 // Sync daily metrics (simulated - in real app would come from device API)
 exports.syncDailyMetrics = async (req, res) => {
   try {
-    const { deviceType = 'other', metrics } = req.body;
+    const { deviceType = 'manual', metrics } = req.body;
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
-      if (deviceType === 'other') {
+      if (deviceType === 'manual') {
         wearable = await WearableData.create({
           user: req.user._id,
-          deviceType: 'other',
+          deviceType: 'manual',
           deviceName: 'Manual Entry',
-          isConnected: true,
+          isConnected: false,
           dailyMetrics: []
         });
       } else {
@@ -214,6 +218,7 @@ exports.syncDailyMetrics = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`activity_analytics:${req.user._id}:*`);
     require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
 
     res.json({ wearable, gamification: gamificationResult });
@@ -243,8 +248,8 @@ exports.syncOsHealthData = async (req, res) => {
     if (!['health_connect', 'healthkit'].includes(source)) {
       return res.status(400).json({ message: 'source must be health_connect or healthkit' });
     }
-    if (!['noise', 'boat', 'xiaomi', 'samsung', 'other'].includes(provider)) {
-      return res.status(400).json({ message: 'provider must be noise, boat, xiaomi, samsung, or other' });
+    if (!['noise', 'boat', 'xiaomi', 'samsung'].includes(provider)) {
+      return res.status(400).json({ message: 'provider must be noise, boat, xiaomi, or samsung' });
     }
     if (!provider || !syncId || typeof metrics !== 'object' || Array.isArray(metrics)) {
       return res.status(400).json({ message: 'provider, syncId, and metrics are required' });
@@ -471,16 +476,16 @@ exports.addHeartRate = async (req, res) => {
 // Add sleep data
 exports.addSleepData = async (req, res) => {
   try {
-    const { deviceType = 'other', sleepData } = req.body;
+    const { deviceType = 'manual', sleepData } = req.body;
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
-      if (deviceType === 'other') {
+      if (deviceType === 'manual') {
         wearable = await WearableData.create({
           user: req.user._id,
-          deviceType: 'other',
+          deviceType: 'manual',
           deviceName: 'Manual Entry',
-          isConnected: true,
+          isConnected: false,
           sleepData: []
         });
       } else {
@@ -545,6 +550,7 @@ exports.addSleepData = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
     require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
 
     res.json(wearable);
@@ -641,6 +647,87 @@ exports.getWearableDashboard = async (req, res) => {
     dashboard.latestRestingHeartRate = dashboard.recentHeartRate.find((r) => r.type === 'resting') || null;
 
     res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Analytical sleep breakdown (stages, quality score, daily/weekly/monthly/yearly trends)
+exports.getSleepAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `sleep_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getSleepAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof SleepAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Steps/activity breakdown — device-agnostic: hasWearableConnected tells the UI
+// whether a missing/zero reading means "no device" vs "genuinely inactive".
+exports.getActivityAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const cacheKey = `activity_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getActivityAnalytics(req.user._id, range, { date, startDate, endDate }),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof ActivityAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Fact-based sleep-goal adherence + a safety note if the user is training
+// while under-slept. No calorie/exercise number is adjusted — see sleepInsightService.
+// Device-agnostic: reads WearableData.sleepData regardless of whether entries
+// came from manual logging or a connected wearable's webhook.
+exports.getSleepInsightData = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('profile.lifestyle.sleepGoalHours').lean();
+    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+
+    const insight = await getSleepInsight(req.user._id, sleepGoalHours);
+    res.json({ success: true, ...insight });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Fact-based step-goal adherence + a separate "vs. your own normal" signal.
+// stepGoal is never modified by this — see activityInsightService.
+exports.getActivityInsightData = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('profile.lifestyle.stepGoal').lean();
+    const stepGoal = user?.profile?.lifestyle?.stepGoal || 10000;
+
+    const insight = await getActivityInsight(req.user._id, stepGoal);
+    res.json({ success: true, ...insight });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -1006,6 +1093,30 @@ exports.handleWebhook = async (req, res) => {
       throw err;
     }
 
+    // Open Wearables emits every metric type (97+ `series_type` values —
+    // heart rate, VO2 max, running power, UV exposure, ...) through this same
+    // generic batch shape, whether or not the switch below has a named case
+    // for it. Capturing it here means a metric we don't have a dedicated
+    // field for yet still shows up, instead of silently falling through the
+    // switch's default case.
+    if (data?.series_type && Array.isArray(data.samples)) {
+      const wearable = await findWearableDoc(data.user_id, data.provider);
+      if (wearable) {
+        for (const sample of data.samples) {
+          wearable.metrics.push({
+            seriesType: data.series_type,
+            value: sample.value,
+            unit: sample.unit,
+            timestamp: sample.timestamp,
+            provider: data.provider,
+            device: data.source?.device
+          });
+        }
+        wearable.lastSyncedAt = new Date();
+        await wearable.save();
+      }
+    }
+
     switch (type) {
       case 'connection.created': {
         const wearable = await findWearableDoc(data.user_id, data.provider)
@@ -1046,6 +1157,7 @@ exports.handleWebhook = async (req, res) => {
           });
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`sleep_analytics:${wearable.user}:*`);
         }
         break;
       }
@@ -1070,8 +1182,24 @@ exports.handleWebhook = async (req, res) => {
             });
           }
           wearable.markModified('dailyMetrics');
+
+          wearable.workouts.push({
+            workoutId: data.id,
+            type: data.type,
+            startTime: data.start_time,
+            endTime: data.end_time,
+            durationSeconds: data.duration_seconds,
+            caloriesKcal: data.calories_kcal,
+            distanceMeters: data.distance_meters,
+            avgHeartRateBpm: data.avg_heart_rate_bpm,
+            maxHeartRateBpm: data.max_heart_rate_bpm,
+            elevationGainMeters: data.elevation_gain_meters,
+            provider: data.source?.provider
+          });
+
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`activity_analytics:${wearable.user}:*`);
         }
         break;
       }
@@ -1125,6 +1253,7 @@ exports.handleWebhook = async (req, res) => {
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`activity_analytics:${wearable.user}:*`);
         }
         break;
       }
@@ -1151,6 +1280,7 @@ exports.handleWebhook = async (req, res) => {
           wearable.markModified('dailyMetrics');
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`activity_analytics:${wearable.user}:*`);
         }
         break;
       }

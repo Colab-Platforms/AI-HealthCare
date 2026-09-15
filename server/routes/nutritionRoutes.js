@@ -16,12 +16,19 @@ router.post('/quick-check/save', nutritionController.saveQuickCheck);
 router.post('/get-alternatives', aiLimiter, nutritionController.getHealthyAlternatives);
 
 // Health Goals - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
+router.post('/goals/preview', nutritionController.previewGoal);
 router.post('/goals', nutritionController.setHealthGoal);
 router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', apiLimiter, nutritionController.getHealthGoal);
 router.patch('/goals/calorie-override', nutritionController.setCalorieOverride);
 router.post('/log-weight', nutritionController.logWeight);
+router.get('/lifestyle-goals', apiLimiter, nutritionController.getLifestyleGoals);
+router.patch('/lifestyle-goals', nutritionController.setLifestyleGoals);
 router.post('/log-water', nutritionController.logWater);
+router.get('/water-settings', apiLimiter, nutritionController.getWaterSettings);
+router.patch('/water-settings', nutritionController.setWaterSettings);
+router.get('/water/analytics', heavyReadLimiter, nutritionController.getWaterAnalyticsData);
+router.get('/water/history', apiLimiter, nutritionController.getWaterHistory);
 
 // Nutrition Summary - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.get('/summary/daily', apiLimiter, nutritionController.getDailySummary);

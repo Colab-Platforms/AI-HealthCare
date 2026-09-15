@@ -7,7 +7,7 @@ const wearableDataSchema = new mongoose.Schema({
     // Values match Open Wearables provider slugs so a webhook's `provider` field
     // maps straight onto deviceType; the first few predate that integration.
     enum: [
-      'fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'other',
+      'fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'manual',
       'google', 'whoop', 'oura', 'polar', 'strava', 'suunto', 'ultrahuman', 'sensorbio', 'apple',
       'noise', 'boat'
     ],
@@ -101,6 +101,37 @@ const wearableDataSchema = new mongoose.Schema({
     category: { type: String, enum: ['low', 'medium', 'high'] }
   }],
 
+  // Generic time-series store for any metric Open Wearables reports (its
+  // `series_type` — 90+ values covering VO2 max, running power, HRV, UV
+  // exposure, etc.) that predates or falls outside the named arrays above.
+  // Kept alongside the named arrays rather than replacing them, since the
+  // dashboard reads those directly.
+  metrics: [{
+    seriesType: { type: String, required: true, index: true },
+    value: Number,
+    unit: String,
+    timestamp: { type: Date, required: true, index: true },
+    provider: String,
+    device: String
+  }],
+
+  // Workout/exercise sessions — kept separate from dailyMetrics (which only
+  // accumulates calories/distance/activeMinutes per day) since a workout is
+  // a single event with its own start/end and stats.
+  workouts: [{
+    workoutId: String,
+    type: String,
+    startTime: Date,
+    endTime: Date,
+    durationSeconds: Number,
+    caloriesKcal: Number,
+    distanceMeters: Number,
+    avgHeartRateBpm: Number,
+    maxHeartRateBpm: Number,
+    elevationGainMeters: Number,
+    provider: String
+  }],
+
   // Weekly/Monthly summaries
   weeklySummary: {
     avgSteps: Number,
@@ -117,5 +148,6 @@ wearableDataSchema.index({ user: 1, 'heartRateDailySummary.date': -1 });
 wearableDataSchema.index({ user: 1, 'heartRate.timestamp': -1 });
 wearableDataSchema.index({ user: 1, isConnected: 1 });
 wearableDataSchema.index({ user: 1, deviceType: 1 });
+wearableDataSchema.index({ user: 1, 'metrics.seriesType': 1, 'metrics.timestamp': -1 });
 
 module.exports = mongoose.model('WearableData', wearableDataSchema);

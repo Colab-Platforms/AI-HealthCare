@@ -62,6 +62,17 @@ const userSchema = new mongoose.Schema({
       enum: ['sedentary', 'lightly_active', 'moderately_active', 'moderate', 'very_active', 'extremely_active']
       // optional - no default, left unset until the user completes onboarding
     },
+    // Optional — used only to lightly adjust exercise guidance (see
+    // exerciseGuidanceService.js) when present. A desk_job user already has
+    // low incidental daily movement (relevant to step/activity targets); a
+    // physically_active_job user already gets substantial occupational
+    // activity, which formal exercise recommendations should account for
+    // instead of stacking on top of it blindly. No default — absent means
+    // guidance falls back to age+goal only, exactly as it did before this field existed.
+    profession: {
+      type: String,
+      enum: ['desk_job', 'physically_active_job', 'mixed', 'other']
+    },
     // Onboarding "What matters to you?" goals (pick up to 3), plus free-text "Other"
     goals: {
       type: [String],
@@ -96,7 +107,14 @@ const userSchema = new mongoose.Schema({
       alcoholFrequency: String, // 'occasional', 'moderate', 'heavy'
       sleepHours: { type: Number, min: 0, max: 24 }, // hrs per day
       stressLevel: { type: String, enum: ['low', 'moderate', 'high'] },
-      waterIntake: { type: Number, min: 0 } // glasses per day
+      // Deprecated — superseded by waterGoalMl below. Left declared (not deleted)
+      // so any already-stored value on old documents doesn't raise a strict-schema
+      // error; nothing reads or writes this field anymore.
+      waterIntake: { type: Number, min: 0 },
+      waterGlassSizeMl: { type: Number, min: 50, max: 2000, default: 250 }, // ml per glass — used only to render "X glasses" from a logged ml total, never for the goal itself
+      waterGoalMl: { type: Number, min: 500, max: 10000, default: 2000 }, // ml per day (goal) — the single source of truth for the water target
+      stepGoal: { type: Number, min: 1000, max: 50000, default: 10000 },
+      sleepGoalHours: { type: Number, min: 4, max: 12, default: 8 }
     },
     diabetesProfile: {
       type: {

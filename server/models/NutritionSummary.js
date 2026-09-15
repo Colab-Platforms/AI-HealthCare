@@ -43,7 +43,13 @@ const nutritionSummarySchema = new mongoose.Schema({
   },
 
   // Water intake
-  waterIntake: { type: Number, default: 0 }, // in ml
+  waterIntake: { type: Number, default: 0 }, // in ml — running total for the day
+  // Individual log entries behind that total, for a per-tap history view
+  waterLogs: [{
+    amountMl: { type: Number, required: true },
+    loggedAt: { type: Date, default: Date.now },
+    label: String // e.g. "Custom", "250ml preset" — optional, for display
+  }],
 
   // Calories burned via logged activity (manual entry or wearable sync) — offsets the daily total
   caloriesBurned: { type: Number, default: 0 },
@@ -53,6 +59,7 @@ const nutritionSummarySchema = new mongoose.Schema({
   proteinGoal: Number,
   carbsGoal: Number,
   fatsGoal: Number,
+  fiberGoal: Number, // 14g per 1000 kcal — USDA Dietary Guidelines for Americans / WHO
 
   // Status
   status: {
@@ -65,7 +72,8 @@ const nutritionSummarySchema = new mongoose.Schema({
   caloriePercentage: { type: Number, default: 0 },
   proteinPercentage: { type: Number, default: 0 },
   carbsPercentage: { type: Number, default: 0 },
-  fatsPercentage: { type: Number, default: 0 }
+  fatsPercentage: { type: Number, default: 0 },
+  fiberPercentage: { type: Number, default: 0 }
 }, {
   timestamps: true
 });
@@ -76,13 +84,21 @@ nutritionSummarySchema.index({ userId: 1, date: 1 }, { unique: true });
 // Calculate percentages and status
 nutritionSummarySchema.methods.calculateStatus = function () {
   if (this.calorieGoal) {
-    this.caloriePercentage = Math.round((this.totalCalories / this.calorieGoal) * 100);
+    // Exercise calories (gym workouts + wearable activity) extend the day's
+    // effective budget — the "eat back your exercise calories" pattern used
+    // by MyFitnessPal/Fitbit, so a workout is reflected in on_track/over
+    // status instead of sitting unused in caloriesBurned.
+    const effectiveGoal = this.calorieGoal + (this.caloriesBurned || 0);
+    this.caloriePercentage = Math.round((this.totalCalories / effectiveGoal) * 100);
   }
   if (this.proteinGoal) {
     this.proteinPercentage = Math.round((this.totalProtein / this.proteinGoal) * 100);
   }
   if (this.carbsGoal) {
     this.carbsPercentage = Math.round((this.totalCarbs / this.carbsGoal) * 100);
+  }
+  if (this.fiberGoal) {
+    this.fiberPercentage = Math.round((this.totalFiber / this.fiberGoal) * 100);
   }
   if (this.fatsGoal) {
     this.fatsPercentage = Math.round((this.totalFats / this.fatsGoal) * 100);

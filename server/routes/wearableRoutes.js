@@ -15,7 +15,11 @@ const {
   generateDemoData,
   getConnectUrl,
   getMiddlewareUserId,
-  handleWebhook
+  handleWebhook,
+  getSleepAnalyticsData,
+  getActivityAnalyticsData,
+  getSleepInsightData,
+  getActivityInsightData
 } = require('../controllers/wearableController');
 
 // No auth — Open Wearables/Svix calls this directly, verified by signature instead of JWT
@@ -33,6 +37,10 @@ router.post('/sync', syncDailyMetrics);
 router.post('/heart-rate', addHeartRate);
 router.post('/sleep', addSleepData);
 router.get('/dashboard', heavyReadLimiter, getWearableDashboard);
+router.get('/sleep/analytics', heavyReadLimiter, getSleepAnalyticsData);
+router.get('/sleep/insight', apiLimiter, getSleepInsightData);
+router.get('/activity/analytics', heavyReadLimiter, getActivityAnalyticsData);
+router.get('/activity/insight', apiLimiter, getActivityInsightData);
 router.get('/heart-rate/trend', heavyReadLimiter, getHeartRateTrend);
 router.post('/demo-data', generateDemoData);
 

@@ -1031,7 +1031,7 @@ export default function DashboardEnhanced() {
         if (!vitalsInput.steps) throw new Error("Steps required");
         const stepsToAdd = Number(vitalsInput.steps);
         await api.post("wearables/sync", {
-          deviceType: "other",
+          deviceType: "manual",
           isAdditive: true,
           metrics: { steps: stepsToAdd, date: logDate },
         });
@@ -1043,7 +1043,7 @@ export default function DashboardEnhanced() {
           Number(vitalsInput.sleepHours || 0) * 60 +
           Number(vitalsInput.sleepMins || 0);
         await api.post("wearables/sleep", {
-          deviceType: "other",
+          deviceType: "manual",
           isAdditive: false,
           sleepData: { totalSleepMinutes: totalMins, date: logDate },
         });

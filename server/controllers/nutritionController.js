@@ -11,6 +11,7 @@ const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const { buildMedicalContextForAI } = require('../utils/medicalContext');
 const gamificationService = require('../services/gamificationService');
+const { getWaterAnalytics, WaterAnalyticsInputError } = require('../services/waterAnalyticsService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -799,6 +800,67 @@ exports.deleteFoodLog = async (req, res) => {
   }
 };
 
+// Dry-run of setHealthGoal/updateHealthGoal — computes exactly what would be
+// saved (BMR/TDEE/calorie target/macros/progress, and whether the safety-cap
+// consent flow would trigger) WITHOUT writing anything to the database. Built
+// on a plain in-memory HealthGoal instance so the same instance methods the
+// real save-path uses (calculateBMR/TDEE/CalorieTarget/Macros/Progress, and
+// the static checkRequestedRate helper) are reused verbatim — no formula is
+// re-implemented here, so this can never silently drift from the real thing.
+exports.previewGoal = async (req, res) => {
+  try {
+    const sanitizedData = {
+      goalType: req.body.goalType,
+      currentWeight: Number(req.body.currentWeight) || 0,
+      targetWeight: Number(req.body.targetWeight) || 0,
+      height: Number(req.body.height) || 0,
+      age: Number(req.body.age) || 0,
+      gender: req.body.gender || 'male',
+      activityLevel: req.body.activityLevel || 'sedentary',
+      targetDate: req.body.targetDate,
+      isDiabetic: !!req.body.isDiabetic,
+    };
+
+    if (!sanitizedData.goalType || !sanitizedData.currentWeight || !sanitizedData.height || !sanitizedData.age) {
+      return res.status(400).json({ success: false, message: 'goalType, currentWeight, height, and age are required to preview a goal' });
+    }
+
+    const rateCheck = HealthGoal.checkRequestedRate({
+      goalType: sanitizedData.goalType,
+      currentWeight: sanitizedData.currentWeight,
+      targetWeight: sanitizedData.targetWeight,
+      targetDate: sanitizedData.targetDate,
+    });
+
+    // Never saved — .calculate*() are plain instance methods, no DB call inside them.
+    const draft = new HealthGoal(sanitizedData);
+    draft.startWeight = draft.currentWeight;
+    draft.calculateBMR();
+    draft.calculateTDEE();
+    draft.calculateCalorieTarget();
+    draft.calculateMacros();
+    draft.calculateProgress();
+
+    res.json({
+      success: true,
+      wouldRequireConsent: rateCheck.isUnsafe,
+      warningMessage: rateCheck.isUnsafe
+        ? `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+        : null,
+      previewBmr: draft.bmr,
+      previewTdee: draft.tdee,
+      previewCalorieTarget: draft.dailyCalorieTarget,
+      previewMacroTargets: draft.macroTargets,
+      previewWeeklyRate: draft.weeklyRateKg,
+      previewProgressPercent: draft.progressPercent,
+      previewProjectedCompletionDate: draft.projectedCompletionDate,
+    });
+  } catch (error) {
+    console.error('Preview goal error:', error);
+    res.status(500).json({ success: false, message: 'Failed to preview goal', error: error.message });
+  }
+};
+
 // Set health goal
 exports.setHealthGoal = async (req, res) => {
   try {
@@ -816,6 +878,23 @@ exports.setHealthGoal = async (req, res) => {
       calorieSource: 'auto',
       manualCalorieTarget: undefined
     };
+
+    // Warn before saving an unrealistic timeframe instead of silently capping
+    // it — the calorie math still caps it regardless (see calculateCalorieTarget),
+    // this only decides whether the user gets told about it up front.
+    const rateCheck = HealthGoal.checkRequestedRate({
+      goalType: sanitizedData.goalType,
+      currentWeight: sanitizedData.currentWeight,
+      targetWeight: sanitizedData.targetWeight,
+      targetDate: sanitizedData.targetDate,
+    });
+    if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
+      return res.status(422).json({
+        success: false,
+        requiresConsent: true,
+        warningMessage: `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+      });
+    }
 
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
@@ -904,9 +983,12 @@ exports.getHealthGoal = async (req, res) => {
     );
 
     if (healthGoal) {
+      const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
+      const userProfession = await User.findById(req.user._id).select('profile.profession').lean();
       return res.json({
         success: true,
-        healthGoal
+        healthGoal,
+        exerciseGuidance: getExerciseGuidance(healthGoal.age, healthGoal.goalType, userProfession?.profile?.profession || null),
       });
     }
 
@@ -955,6 +1037,20 @@ exports.updateHealthGoal = async (req, res) => {
       calorieSource: 'auto',
       manualCalorieTarget: undefined
     };
+
+    const rateCheck = HealthGoal.checkRequestedRate({
+      goalType: goalData.goalType,
+      currentWeight: Number(goalData.currentWeight),
+      targetWeight: Number(goalData.targetWeight),
+      targetDate: goalData.targetDate,
+    });
+    if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
+      return res.status(422).json({
+        success: false,
+        requiresConsent: true,
+        warningMessage: `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+      });
+    }
 
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
@@ -1017,13 +1113,21 @@ exports.updateHealthGoal = async (req, res) => {
 //          formula. Sticks until the user resubmits the full goal form (setHealthGoal/updateHealthGoal),
 //          which always resets calorieSource back to 'auto'.
 // @route   PATCH /api/nutrition/goals/calorie-override
+// 800 kcal/day is the clinical threshold for a Very-Low-Calorie-Diet (VLCD) —
+// NIDDK and obesity-medicine literature treat anything at or below this as
+// requiring direct physician supervision. Never crossable, with or without
+// user consent — this app has no such supervision to offer.
+const VLCD_HARD_FLOOR = 800;
+
 exports.setCalorieOverride = async (req, res) => {
   try {
     const value = Number(req.body.dailyCalorieTarget);
-    if (!value || value < 800 || value > 6000) {
+    const acknowledgeUnsafe = req.body.acknowledgeUnsafe === true;
+
+    if (!value || value < VLCD_HARD_FLOOR || value > 6000) {
       return res.status(400).json({
         success: false,
-        message: 'Enter a calorie target between 800 and 6000 kcal'
+        message: `Enter a calorie target between ${VLCD_HARD_FLOOR} and 6000 kcal`
       });
     }
 
@@ -1037,8 +1141,42 @@ exports.setCalorieOverride = async (req, res) => {
       });
     }
 
+    // Personalized LOW floor — same formula calculateCalorieTarget() uses
+    // internally for auto-calculated targets (its safeMinimum). A manual
+    // override bypasses that function entirely, so it's checked separately here.
+    const personalizedFloor = Math.max(
+      healthGoal.gender === 'male' ? 1500 : 1200,
+      Math.round((healthGoal.bmr || 0) * 1.1)
+    );
+    const belowFloor = value < personalizedFloor;
+
+    // HIGH side — a value far above TDEE implies an extreme weekly weight-gain
+    // rate. Reuses the exact same rate-cap fractions and reverse-calculation
+    // (calories -> implied rate) as HealthGoal's own consent check, imported
+    // from the model so the two can never silently drift apart.
+    const { MAX_WEEKLY_RATE_FRACTION, KCAL_PER_KG_FAT } = HealthGoal;
+    const calorieAdjust = value - (healthGoal.tdee || 0);
+    const impliedWeeklyRate = (calorieAdjust * 7) / KCAL_PER_KG_FAT;
+    const maxRateFraction = impliedWeeklyRate < 0
+      ? MAX_WEEKLY_RATE_FRACTION.weight_loss
+      : (healthGoal.goalType === 'muscle_gain' ? MAX_WEEKLY_RATE_FRACTION.muscle_gain : MAX_WEEKLY_RATE_FRACTION.weight_gain);
+    const maxRate = maxRateFraction * (healthGoal.currentWeight || 70);
+    const exceedsRateCap = Math.abs(impliedWeeklyRate) > maxRate;
+
+    if ((belowFloor || exceedsRateCap) && !acknowledgeUnsafe) {
+      const warningMessage = belowFloor
+        ? `${value} kcal is below your personal safe minimum (${personalizedFloor} kcal, based on your BMR). Eating less than this without medical supervision can be harmful. Resubmit with acknowledgeUnsafe: true to proceed anyway.`
+        : `${value} kcal implies a weight-change pace of ${Math.abs(impliedWeeklyRate).toFixed(2)} kg/week, which exceeds the safe maximum (${maxRate.toFixed(2)} kg/week) for your body weight. Resubmit with acknowledgeUnsafe: true to proceed anyway.`;
+      return res.status(422).json({
+        success: false,
+        requiresConsent: true,
+        warningMessage
+      });
+    }
+
     healthGoal.calorieSource = 'manual';
     healthGoal.manualCalorieTarget = value;
+    healthGoal.unsafeOverrideAcknowledged = belowFloor || exceedsRateCap;
     await healthGoal.save({ maxTimeMS: 30000 });
 
     const proteinGoal = healthGoal.macroTargets?.protein || 150;
@@ -1205,7 +1343,64 @@ exports.logWeight = async (req, res) => {
   }
 };
 
-// Log water
+// Per-user lifestyle targets (steps/sleep/water) — previously hardcoded the
+// same for every user on the dashboard. New, isolated endpoints; does not
+// touch the existing HealthGoal weight/calorie flow.
+exports.getLifestyleGoals = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('profile.lifestyle').lean();
+    const lifestyle = user?.profile?.lifestyle || {};
+    res.json({
+      success: true,
+      stepGoal: lifestyle.stepGoal || 10000,
+      sleepGoalHours: lifestyle.sleepGoalHours || 8,
+      waterGoalMl: lifestyle.waterGoalMl || 2000,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.setLifestyleGoals = async (req, res) => {
+  try {
+    const { stepGoal, sleepGoalHours, waterGoalMl } = req.body;
+    const update = {};
+
+    if (stepGoal !== undefined) {
+      if (typeof stepGoal !== 'number' || stepGoal < 1000 || stepGoal > 50000) {
+        return res.status(400).json({ success: false, message: 'stepGoal must be a number between 1000 and 50000' });
+      }
+      update['profile.lifestyle.stepGoal'] = stepGoal;
+    }
+    if (sleepGoalHours !== undefined) {
+      if (typeof sleepGoalHours !== 'number' || sleepGoalHours < 4 || sleepGoalHours > 12) {
+        return res.status(400).json({ success: false, message: 'sleepGoalHours must be a number between 4 and 12' });
+      }
+      update['profile.lifestyle.sleepGoalHours'] = sleepGoalHours;
+    }
+    if (waterGoalMl !== undefined) {
+      if (typeof waterGoalMl !== 'number' || waterGoalMl < 500 || waterGoalMl > 10000) {
+        return res.status(400).json({ success: false, message: 'waterGoalMl must be a number between 500 and 10000' });
+      }
+      update['profile.lifestyle.waterGoalMl'] = waterGoalMl;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ success: false, message: 'Provide at least one of stepGoal, sleepGoalHours, waterGoalMl' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, { $set: update });
+    cache.delete(`dashboard:${req.user._id}`);
+
+    res.json({ success: true, ...update });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Log water — accepts either a glass count (converted via the user's configured
+// glass size) or a raw ml amount, and ADDS it to the day's total by default.
+// action:'set' overwrites the day's total instead (used for corrections).
 exports.logWater = async (req, res) => {
   try {
     const { waterIntake, date } = req.body;
@@ -1220,9 +1415,6 @@ exports.logWater = async (req, res) => {
     const targetDate = new Date(queryDate.toISOString().split('T')[0]);
     targetDate.setUTCHours(0, 0, 0, 0);
 
-    console.log('Logging water:', { userId: req.user._id, waterIntake, date: targetDate });
-
-    // Update NutritionSummary
     let summary = await NutritionSummary.findOne({
       userId: req.user._id,
       date: targetDate
@@ -1248,10 +1440,10 @@ exports.logWater = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // Invalidate dashboard cache so next fetch returns fresh data
+    // Invalidate caches so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`water_analytics:${req.user._id}:*`);
 
-    const gamificationService = require('../services/gamificationService');
     const gamificationResult = await gamificationService.awardPoints(req.user._id, 'water_intake', `Logged water intake`).catch(err => {
       console.error('Gamification Error:', err);
       return null;
@@ -1259,7 +1451,9 @@ exports.logWater = async (req, res) => {
 
     res.json({
       success: true,
-      waterIntake: summary.waterIntake,
+      totalMl: summary.waterIntake,
+      glasses: Math.round(summary.waterIntake / glassSizeMl),
+      glassSizeMl,
       gamification: gamificationResult,
       message: 'Water intake logged successfully'
     });
@@ -1270,6 +1464,87 @@ exports.logWater = async (req, res) => {
       message: 'Failed to log water',
       error: error.message
     });
+  }
+};
+
+// Individual water log entries for a given day, newest first (the "History" list)
+exports.getWaterHistory = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, message: 'date must be in YYYY-MM-DD format' });
+    }
+
+    const queryDate = date ? new Date(date) : new Date();
+    const targetDate = new Date(queryDate.toISOString().split('T')[0]);
+    targetDate.setUTCHours(0, 0, 0, 0);
+
+    const summary = await NutritionSummary.findOne({ userId: req.user._id, date: targetDate })
+      .select('waterLogs waterIntake')
+      .lean();
+
+    const logs = (summary?.waterLogs || [])
+      .slice()
+      .sort((a, b) => new Date(b.loggedAt) - new Date(a.loggedAt));
+
+    res.json({
+      success: true,
+      date: targetDate.toISOString().split('T')[0],
+      totalMl: summary?.waterIntake || 0,
+      logs: logs.map(l => ({ amountMl: l.amountMl, loggedAt: l.loggedAt, label: l.label || null }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get/set the user's per-glass ml size (used to convert glass taps into ml)
+exports.getWaterSettings = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('profile.lifestyle.waterGlassSizeMl').lean();
+    res.json({ success: true, glassSizeMl: user?.profile?.lifestyle?.waterGlassSizeMl || 250 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.setWaterSettings = async (req, res) => {
+  try {
+    const { glassSizeMl } = req.body;
+    if (typeof glassSizeMl !== 'number' || glassSizeMl < 50 || glassSizeMl > 2000) {
+      return res.status(400).json({ success: false, message: 'glassSizeMl must be a number between 50 and 2000' });
+    }
+    await User.findByIdAndUpdate(req.user._id, { $set: { 'profile.lifestyle.waterGlassSizeMl': glassSizeMl } });
+    res.json({ success: true, glassSizeMl });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Analytical water breakdown (daily/weekly/monthly/yearly, in ml + glasses)
+exports.getWaterAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const user = await User.findById(req.user._id).select('profile.lifestyle.waterGlassSizeMl').lean();
+    const glassSizeMl = user?.profile?.lifestyle?.waterGlassSizeMl || 250;
+
+    const cacheKey = `water_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getWaterAnalytics(req.user._id, range, { date, startDate, endDate }, glassSizeMl),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof WaterAnalyticsInputError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -1493,9 +1768,10 @@ async function updateDailySummary(userId, date) {
 
     const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
     const WearableData = require('../models/WearableData');
+    const ExerciseLog = require('../models/ExerciseLog');
 
     // Run all independent DB queries in PARALLEL — was sequential before
-    const [foodLogs, healthGoal, activePlan, existingSummary, wearableDocs] = await Promise.all([
+    const [foodLogs, healthGoal, activePlan, existingSummary, wearableDocs, exerciseLogs] = await Promise.all([
       FoodLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).lean(),
       // Cached active goal — 15 min TTL avoids repeated scans on every meal log
       (async () => {
@@ -1520,10 +1796,13 @@ async function updateDailySummary(userId, date) {
       NutritionSummary.findOne({ userId, date: targetDate }),
       // All of the user's devices/manual-entry docs — summed below for the target date
       WearableData.find({ user: userId }).select('dailyMetrics').lean(),
+      // Logged gym/workout sessions for the same day — previously never reached
+      // NutritionSummary at all, so exercise never "earned back" any calories.
+      ExerciseLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).select('caloriesBurned').lean(),
     ]);
 
     // Sum caloriesBurned across every device (including manual "other" entries) for this date
-    const caloriesBurned = wearableDocs.reduce((sum, doc) => {
+    const wearableCaloriesBurned = wearableDocs.reduce((sum, doc) => {
       const entry = (doc.dailyMetrics || []).find((m) => {
         const d = new Date(m.date);
         return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
@@ -1532,6 +1811,10 @@ async function updateDailySummary(userId, date) {
       });
       return sum + (entry?.caloriesBurned || 0);
     }, 0);
+    // Logged workouts are a separate source from wearable-reported daily totals
+    // (a user can have one, both, or neither) — combine rather than pick one.
+    const exerciseCaloriesBurned = exerciseLogs.reduce((sum, log) => sum + (log.caloriesBurned || 0), 0);
+    const caloriesBurned = wearableCaloriesBurned + exerciseCaloriesBurned;
 
     // Aggregate nutrition totals in JS (handles totalNutrition + foodItems fallback + micronutrients array)
     const totals = {
@@ -1627,6 +1910,7 @@ async function updateDailySummary(userId, date) {
           proteinGoal: activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100,
           carbsGoal:   activePlan.nutritionGoals?.macroTargets?.carbs   || activePlan.macroTargets?.carbs   || 250,
           fatsGoal:    activePlan.nutritionGoals?.macroTargets?.fats    || activePlan.macroTargets?.fats    || 65,
+          fiberGoal:   activePlan.nutritionGoals?.macroTargets?.fiber   || activePlan.macroTargets?.fiber   || 28,
         };
       }
       if (healthGoal) {
@@ -1635,6 +1919,7 @@ async function updateDailySummary(userId, date) {
           proteinGoal: healthGoal.macroTargets?.protein || 100,
           carbsGoal:   healthGoal.macroTargets?.carbs   || 250,
           fatsGoal:    healthGoal.macroTargets?.fats    || 65,
+          fiberGoal:   healthGoal.macroTargets?.fiber   || 28,
         };
       }
       return {};
@@ -1932,7 +2217,7 @@ exports.getHealthyAlternatives = async (req, res) => {
       allergies: healthGoal?.allergies || user.profile?.allergies || [],
       goal: healthGoal?.goalType,
       remainingCalories: healthGoal && todaySummary
-        ? healthGoal.dailyCalorieTarget - todaySummary.totalCalories
+        ? (healthGoal.dailyCalorieTarget + (todaySummary.caloriesBurned || 0)) - todaySummary.totalCalories
         : null
     };
 

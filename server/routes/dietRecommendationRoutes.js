@@ -11,6 +11,7 @@ const { countDietPlansThisMonth } = require('../utils/featureUsage');
 // Authenticated by signature instead; without it, anyone knowing the URL could
 // trigger diet generation (and AI spend) against any userId.
 router.post('/process-diet-bg', verifyQStash, dietRecommendationController.processDietBG);
+router.post('/process-meal-regen-bg', verifyQStash, dietRecommendationController.processMealRegenBG);
 
 // All other routes require authentication
 router.use(protect);
@@ -22,6 +23,7 @@ router.get('/diet-plan/active', dietRecommendationController.getActiveDietPlan);
 router.get('/diet-plan/history', dietRecommendationController.getDietPlanHistory);
 router.get('/diet-plan/:planId', dietRecommendationController.getDietPlanById);
 router.get('/diet-plan/:planId/status', dietRecommendationController.getDietPlanStatus);
+router.post('/diet-plan/:planId/regenerate-meal', dietRecommendationController.regenerateMealSlot);
 router.post('/diet-plan/:planId/rate', dietRecommendationController.rateDietPlan);
 
 // Supplement recommendation routes — boolean feature, no usage counter needed
