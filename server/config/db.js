@@ -57,10 +57,16 @@ const connectDB = async () => {
         autoIndex: !isProduction,
       };
 
-      console.log('Connecting to MongoDB Atlas...');
-      cached.promise = mongoose.connect(process.env.MONGODB_URI, options)
+      const useStaging = process.env.USE_STAGING_DB === 'true';
+      const mongoUri = useStaging ? process.env.MONGODB_URI_STAGING : process.env.MONGODB_URI;
+      if (useStaging && !mongoUri) {
+        throw new Error('USE_STAGING_DB=true but MONGODB_URI_STAGING is not set');
+      }
+
+      console.log(`Connecting to MongoDB Atlas${useStaging ? ' (STAGING database)' : ''}...`);
+      cached.promise = mongoose.connect(mongoUri, options)
         .then((conn) => {
-          console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+          console.log(`✅ MongoDB Connected: ${conn.connection.host} | db=${conn.connection.name}`);
           return conn;
         })
         .catch((error) => {
