@@ -22,9 +22,16 @@ const { inferCategory } = require('../utils/reportCategory');
 const { normalizeMetrics, canonicalMetricName } = require('../utils/metricNormalizer');
 const {
   sanitizeAlcoholLog,
+  sanitizeSession,
   toPlainAlcoholLog,
-  getAlcoholSummary
+  getAlcoholSummary,
+  getTodayKey,
+  validateDrinkInput,
+  computeUnitsFromVolume,
+  DATE_KEY_RE: ALCOHOL_DATE_KEY_RE
 } = require('../utils/alcoholLog');
+const { DRINK_CATALOG, isValidDrinkType, getSizeDefaults } = require('../config/drinkCatalog');
+const { getAlcoholAnalytics: getAlcoholAnalyticsService, AlcoholAnalyticsInputError } = require('../services/alcoholAnalyticsService');
 
 const withTimeout = (query, timeoutMs = 45000) => {
   return query.maxTimeMS(timeoutMs);
@@ -1218,6 +1225,176 @@ exports.getAlcoholLog = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ success: true, alcoholLog: sanitizeAlcoholLog(user.alcoholLog) });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Drink catalog (types + standard sizes/ABV defaults) — frontend fetches this
+// once instead of hardcoding ml/ABV values, so the picker UI (category ->
+// size -> ml) stays server-driven.
+exports.getDrinkCatalog = async (req, res) => {
+  res.json({ success: true, catalog: DRINK_CATALOG });
+};
+
+// Atomic single-drink append — used by the category -> size -> log UI flow.
+// Unlike saveAlcoholLog (full-map replace, used for bulk/manual edit), this
+// only ever adds one session so two concurrent logs from the same user never
+// clobber each other.
+exports.logAlcoholSession = async (req, res) => {
+  try {
+    const { drinkType, size, volumeMl: rawVolumeMl, abv: rawAbv, name, context, mood, notes, date } = req.body || {};
+
+    if (!drinkType || !isValidDrinkType(drinkType)) {
+      return res.status(400).json({ message: 'Invalid or missing drinkType' });
+    }
+
+    let volumeMl = rawVolumeMl;
+    let abv = rawAbv;
+
+    if (drinkType === 'other') {
+      // No catalog defaults exist for an unknown drink — refusing to guess is
+      // the whole point of 'other', so both fields are mandatory here.
+      if (volumeMl === undefined || abv === undefined) {
+        return res.status(400).json({ message: 'volumeMl and abv are required when drinkType is "other"' });
+      }
+    } else if (size) {
+      const defaults = getSizeDefaults(drinkType, size);
+      if (!defaults) {
+        return res.status(400).json({ message: `Invalid size "${size}" for drinkType "${drinkType}"` });
+      }
+      volumeMl = volumeMl ?? defaults.volumeMl;
+      abv = abv ?? defaults.defaultAbv;
+    } else if (volumeMl === undefined || abv === undefined) {
+      return res.status(400).json({ message: 'Provide either size or explicit volumeMl + abv' });
+    }
+
+    // Reject out-of-range values outright instead of silently clamping them —
+    // a client typo (abv=300) must surface as an error, never get saved as a
+    // wrong-but-plausible number.
+    const validationError = validateDrinkInput(volumeMl, abv);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
+    const session = sanitizeSession({ drinkType, volumeMl, abv, name, context, mood, notes, time: new Date().toISOString() });
+
+    const dateKey = date && ALCOHOL_DATE_KEY_RE.test(date) ? date : getTodayKey();
+    const path = `alcoholLog.${dateKey}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $push: { [`${path}.sessions`]: session },
+        $inc: {
+          [`${path}.count`]: 1,
+          [`${path}.units`]: session.units,
+          [`${path}.totalVolumeMl`]: session.volumeMl || 0
+        }
+      },
+      { new: true, upsert: false, runValidators: false }
+    ).select('alcoholLog');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    await cache.delete(`dashboard:${req.user._id}`);
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
+
+    res.json({ success: true, session, alcoholLog: toPlainAlcoholLog(user.alcoholLog)[dateKey] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Edit one already-logged drink (correcting volume/ABV/etc after the fact).
+// No delete endpoint by design — mistakes get corrected, not erased, so the
+// day's log stays an honest record rather than something users can scrub.
+// Read-modify-write on the whole date entry (same pattern saveAlcoholLog already
+// uses for the whole map) since Mixed-type array elements can't be targeted
+// with a single atomic positional update.
+exports.editAlcoholSession = async (req, res) => {
+  try {
+    const { date, sessionId } = req.params;
+    if (!ALCOHOL_DATE_KEY_RE.test(date)) {
+      return res.status(400).json({ message: 'date must be in YYYY-MM-DD format' });
+    }
+
+    const { drinkType, volumeMl, abv, name, context, mood, notes } = req.body || {};
+    if (drinkType !== undefined && !isValidDrinkType(drinkType)) {
+      return res.status(400).json({ message: 'Invalid drinkType' });
+    }
+
+    const user = await User.findById(req.user._id).select('alcoholLog');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const plain = toPlainAlcoholLog(user.alcoholLog);
+    const dayEntry = plain[date];
+    const sessions = Array.isArray(dayEntry?.sessions) ? dayEntry.sessions : [];
+    const idx = sessions.findIndex((s) => s.id === sessionId);
+    if (idx === -1) {
+      return res.status(404).json({ message: 'Session not found for that date' });
+    }
+
+    const existing = sessions[idx];
+    const mergedVolumeMl = volumeMl !== undefined ? volumeMl : existing.volumeMl;
+    const mergedAbv = abv !== undefined ? abv : existing.abv;
+
+    // Same reject-not-clamp rule as creating a new session — an edit is a
+    // fresh user submission too, not old data being displayed back.
+    const validationError = validateDrinkInput(mergedVolumeMl, mergedAbv);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
+    const updatedSession = sanitizeSession({
+      ...existing,
+      drinkType: drinkType !== undefined ? drinkType : existing.drinkType,
+      volumeMl: mergedVolumeMl,
+      abv: mergedAbv,
+      name: name !== undefined ? name : existing.name,
+      context: context !== undefined ? context : existing.context,
+      mood: mood !== undefined ? mood : existing.mood,
+      notes: notes !== undefined ? notes : existing.notes,
+      id: existing.id,
+      time: existing.time
+    });
+
+    sessions[idx] = updatedSession;
+
+    const units = Math.round(sessions.reduce((sum, s) => sum + (s.units || 0), 0) * 100) / 100;
+    const totalVolumeMl = sessions.reduce((sum, s) => sum + (s.volumeMl || 0), 0);
+
+    const path = `alcoholLog.${date}`;
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          [`${path}.sessions`]: sessions,
+          [`${path}.units`]: units,
+          [`${path}.totalVolumeMl`]: totalVolumeMl,
+          [`${path}.count`]: sessions.length
+        }
+      },
+      { new: true, runValidators: false }
+    ).select('alcoholLog');
+
+    await cache.delete(`dashboard:${req.user._id}`);
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
+
+    res.json({ success: true, session: updatedSession, alcoholLog: toPlainAlcoholLog(updated.alcoholLog)[date] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAlcoholAnalytics = async (req, res) => {
+  try {
+    const { range = 'daily', date, startDate, endDate } = req.query;
+    const result = await getAlcoholAnalyticsService(req.user._id, range, { date, startDate, endDate });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    if (error instanceof AlcoholAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };

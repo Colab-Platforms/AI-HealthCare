@@ -25,6 +25,10 @@ const {
   getSmokeLog,
   saveAlcoholLog,
   getAlcoholLog,
+  getDrinkCatalog,
+  logAlcoholSession,
+  editAlcoholSession,
+  getAlcoholAnalytics,
   getHealthTrends,
   getReportFileUrl
 } = require('../controllers/healthController');
@@ -67,6 +71,10 @@ router.get('/smoke-log', protect, getSmokeLog);
 // Alcohol Logging Sync Routes
 router.post('/alcohol-log', protect, saveAlcoholLog);
 router.get('/alcohol-log', protect, getAlcoholLog);
+router.get('/alcohol/catalog', protect, getDrinkCatalog);
+router.post('/alcohol-log/session', protect, logAlcoholSession);
+router.patch('/alcohol-log/session/:date/:sessionId', protect, editAlcoholSession);
+router.get('/alcohol/analytics', protect, getAlcoholAnalytics);
 
 
 // Daily Progress Synchronization Routes
