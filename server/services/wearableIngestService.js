@@ -214,19 +214,26 @@ async function applyWorkouts(userId, deviceType, provider, workouts, { session, 
 
 // --- Blood oxygen ----------------------------------------------------------
 
-async function applyBloodOxygenSamples(userId, deviceType, source, samples, { session, wearable } = {}) {
+// No session param — BloodOxygenSample is a Mongo time-series collection,
+// and time-series inserts cannot join a multi-document transaction (this bit
+// us in practice: MongoDB rejects it outright). Callers must not run this
+// inside session.withTransaction()'s callback either — that callback can be
+// retried by the driver on transient errors, and a non-transactional write
+// re-run on retry risks a duplicate insert (the sourceRecordId check below
+// is best-effort, not atomic with the insert).
+async function applyBloodOxygenSamples(userId, deviceType, source, samples, { wearable } = {}) {
   for (const sample of samples) {
     if (sample.sourceRecordId) {
       const exists = await BloodOxygenSample.exists({ user: userId, 'meta.deviceType': deviceType, sourceRecordId: sample.sourceRecordId });
       if (exists) continue;
     }
-    await BloodOxygenSample.create([{
+    await BloodOxygenSample.create({
       user: userId,
       meta: { deviceType, source },
       timestamp: sample.timestamp,
       percentage: Number(sample.percentage),
       sourceRecordId: sample.sourceRecordId
-    }], { session });
+    });
 
     if (wearable && !wearable.bloodOxygen.some(o => sample.sourceRecordId && o.sourceRecordId === sample.sourceRecordId)) {
       wearable.bloodOxygen.push({ timestamp: sample.timestamp, percentage: Number(sample.percentage), source, sourceRecordId: sample.sourceRecordId });
@@ -290,15 +297,22 @@ async function applyVitalsSamples(userId, deviceType, source, samples) {
     const date = dateOnlyUTC(sample.timestamp);
     const doc = await VitalsDailySummary.findOneAndUpdate(
       { user: userId, deviceType, date },
-      { $setOnInsert: { readingCount: 0 } },
+      { $setOnInsert: { readingCount: 0, respiratoryRateCount: 0, skinTemperatureCount: 0 } },
       { upsert: true, new: true }
     );
-    const newCount = (doc.readingCount || 0) + 1;
+    // Each field's average is divided by how many samples actually reported
+    // THAT field, not by the total samples processed that day — a sample
+    // with only skinTemperature must not dilute avgRespiratoryRate as if it
+    // were a respiratoryRate reading of 0.
     if (sample.respiratoryRate != null) {
-      doc.avgRespiratoryRate = Math.round((((doc.avgRespiratoryRate || 0) * (doc.readingCount || 0)) + sample.respiratoryRate) / newCount);
+      const newRrCount = (doc.respiratoryRateCount || 0) + 1;
+      doc.avgRespiratoryRate = Math.round((((doc.avgRespiratoryRate || 0) * (doc.respiratoryRateCount || 0)) + sample.respiratoryRate) / newRrCount);
+      doc.respiratoryRateCount = newRrCount;
     }
     if (sample.skinTemperatureCelsius != null) {
-      doc.avgSkinTemperatureCelsius = (((doc.avgSkinTemperatureCelsius || 0) * (doc.readingCount || 0)) + sample.skinTemperatureCelsius) / newCount;
+      const newTempCount = (doc.skinTemperatureCount || 0) + 1;
+      doc.avgSkinTemperatureCelsius = (((doc.avgSkinTemperatureCelsius || 0) * (doc.skinTemperatureCount || 0)) + sample.skinTemperatureCelsius) / newTempCount;
+      doc.skinTemperatureCount = newTempCount;
     }
     if (sample.bloodPressureSystolic != null && sample.bloodPressureDiastolic != null) {
       if (!doc.bloodPressure?.min?.systolic || sample.bloodPressureSystolic < doc.bloodPressure.min.systolic) {
@@ -310,7 +324,7 @@ async function applyVitalsSamples(userId, deviceType, source, samples) {
         doc.bloodPressure.max = { systolic: sample.bloodPressureSystolic, diastolic: sample.bloodPressureDiastolic, timestamp: sample.timestamp };
       }
     }
-    doc.readingCount = newCount;
+    doc.readingCount = (doc.readingCount || 0) + 1;
     await doc.save();
   }
 }

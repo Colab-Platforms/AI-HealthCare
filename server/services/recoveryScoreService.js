@@ -35,12 +35,16 @@ async function calculateRecoveryScore(userId, dateStr) {
   const baselineStart = new Date(date);
   baselineStart.setUTCDate(baselineStart.getUTCDate() - 30);
 
-  const [todayHr, baselineHr, todayStress, todaySleep, todayVitals, todaySpo2, priorDayActivity, deviceDoc] = await Promise.all([
+  const [todayHr, baselineHr, todayStress, todaySleep, todayVitals, baselineVitals, todaySpo2, priorDayActivity, deviceDoc] = await Promise.all([
     HeartRateDailySummary.findOne({ user: userId, date }).lean(),
     HeartRateDailySummary.find({ user: userId, date: { $gte: baselineStart, $lt: date } }).select('restingBpm.value').lean(),
     StressDailySummary.findOne({ user: userId, date }).lean(),
     SleepSession.findOne({ user: userId, date }).lean(),
     VitalsDailySummary.findOne({ user: userId, date }).lean(),
+    // Skin temperature is an absolute reading (confirmed: HealthKit reports
+    // actual skin/wrist °C, not a delta) — recovery cares about deviation
+    // from THIS user's own recent normal, same idea as the resting-HR baseline.
+    VitalsDailySummary.find({ user: userId, date: { $gte: baselineStart, $lt: date } }).select('avgSkinTemperatureCelsius').lean(),
     BloodOxygenSample.aggregate([
       { $match: { user: userId, timestamp: { $gte: date, $lt: new Date(date.getTime() + 86400000) } } },
       { $group: { _id: null, avg: { $avg: '$percentage' } } }
@@ -72,9 +76,18 @@ async function calculateRecoveryScore(userId, dateStr) {
   }
 
   if (todayVitals?.avgSkinTemperatureCelsius != null) {
-    // Deviation from a neutral baseline in either direction reads as lower recovery.
-    const deviation = Math.abs(todayVitals.avgSkinTemperatureCelsius);
-    components.skinTemperature = Math.max(0, Math.min(100, Math.round(100 - deviation * 20)));
+    const baselineTempValues = baselineVitals.map(v => v.avgSkinTemperatureCelsius).filter(v => typeof v === 'number');
+    const baselineTemp = baselineTempValues.length
+      ? baselineTempValues.reduce((a, b) => a + b, 0) / baselineTempValues.length
+      : null;
+    if (baselineTemp != null) {
+      // Deviation from THIS user's own recent normal in either direction
+      // reads as lower recovery — a fixed ~1°C swing is already a
+      // meaningful signal (illness, poor sleep), unlike resting HR's
+      // percentage-based comparison, so this scores on absolute degrees.
+      const deviation = Math.abs(todayVitals.avgSkinTemperatureCelsius - baselineTemp);
+      components.skinTemperature = Math.max(0, Math.min(100, Math.round(100 - deviation * 25)));
+    }
   }
 
   if (todaySleep?.totalSleepMinutes != null) {
