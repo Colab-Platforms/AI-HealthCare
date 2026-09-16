@@ -12,7 +12,12 @@ const vitalsSampleSchema = new mongoose.Schema({
   },
   timestamp: { type: Date, required: true },
   respiratoryRate: Number, // breaths/min
-  skinTemperatureCelsius: Number, // delta or absolute, per provider
+  // Absolute skin/wrist temperature in °C (confirmed for HealthKit — an
+  // Apple Watch reading like 33.4 is normal). recoveryScoreService compares
+  // this against the user's own rolling baseline, not a fixed reference
+  // point. If a future provider reports a delta-from-baseline instead,
+  // that'll need handling here (a separate field, not overloading this one).
+  skinTemperatureCelsius: Number,
   bloodPressureSystolic: Number,
   bloodPressureDiastolic: Number,
   ecgClassification: { type: String, enum: ['sinus_rhythm', 'atrial_fibrillation', 'inconclusive', 'other'] },

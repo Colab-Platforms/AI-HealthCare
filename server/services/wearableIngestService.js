@@ -214,19 +214,26 @@ async function applyWorkouts(userId, deviceType, provider, workouts, { session, 
 
 // --- Blood oxygen ----------------------------------------------------------
 
-async function applyBloodOxygenSamples(userId, deviceType, source, samples, { session, wearable } = {}) {
+// No session param — BloodOxygenSample is a Mongo time-series collection,
+// and time-series inserts cannot join a multi-document transaction (this bit
+// us in practice: MongoDB rejects it outright). Callers must not run this
+// inside session.withTransaction()'s callback either — that callback can be
+// retried by the driver on transient errors, and a non-transactional write
+// re-run on retry risks a duplicate insert (the sourceRecordId check below
+// is best-effort, not atomic with the insert).
+async function applyBloodOxygenSamples(userId, deviceType, source, samples, { wearable } = {}) {
   for (const sample of samples) {
     if (sample.sourceRecordId) {
       const exists = await BloodOxygenSample.exists({ user: userId, 'meta.deviceType': deviceType, sourceRecordId: sample.sourceRecordId });
       if (exists) continue;
     }
-    await BloodOxygenSample.create([{
+    await BloodOxygenSample.create({
       user: userId,
       meta: { deviceType, source },
       timestamp: sample.timestamp,
       percentage: Number(sample.percentage),
       sourceRecordId: sample.sourceRecordId
-    }], { session });
+    });
 
     if (wearable && !wearable.bloodOxygen.some(o => sample.sourceRecordId && o.sourceRecordId === sample.sourceRecordId)) {
       wearable.bloodOxygen.push({ timestamp: sample.timestamp, percentage: Number(sample.percentage), source, sourceRecordId: sample.sourceRecordId });

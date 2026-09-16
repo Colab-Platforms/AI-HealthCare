@@ -376,7 +376,11 @@ exports.syncOsHealthData = async (req, res) => {
       requireRecordId(vitals, 'vitals');
       validateTimestamp(vitals.timestamp, 'vitals.timestamp');
       validateNumber(vitals.respiratoryRate, 'vitals.respiratoryRate', 0, 60);
-      validateNumber(vitals.skinTemperatureCelsius, 'vitals.skinTemperatureCelsius', -10, 10);
+      // Wide range deliberately: providers report this either as an absolute
+      // skin/wrist reading (~25-42°C) or as a delta from personal baseline
+      // (typically within a few degrees either side of 0) — see the note on
+      // VitalsSample.skinTemperatureCelsius. Reject only clearly-bogus values.
+      validateNumber(vitals.skinTemperatureCelsius, 'vitals.skinTemperatureCelsius', -20, 50);
       validateNumber(vitals.bloodPressureSystolic, 'vitals.bloodPressureSystolic', 50, 250);
       validateNumber(vitals.bloodPressureDiastolic, 'vitals.bloodPressureDiastolic', 30, 150);
       if (vitals.ecgClassification !== undefined && !['sinus_rhythm', 'atrial_fibrillation', 'inconclusive', 'other'].includes(vitals.ecgClassification)) {
@@ -386,6 +390,10 @@ exports.syncOsHealthData = async (req, res) => {
 
     session = await mongoose.startSession();
     let result;
+    // `wearable` is hoisted out so the time-series groups below (which run
+    // AFTER the transaction, not inside it — see comment there) can still
+    // mirror into its legacy arrays and save once more.
+    let wearable;
     await session.withTransaction(async () => {
       const existingReceipt = await WearableSyncReceipt.findOne({
         user: req.user._id,
@@ -408,7 +416,7 @@ exports.syncOsHealthData = async (req, res) => {
         isFinalBatch
       }], { session });
 
-      let wearable = await WearableData.findOne({ user: req.user._id, deviceType: provider }).session(session);
+      wearable = await WearableData.findOne({ user: req.user._id, deviceType: provider }).session(session);
       if (!wearable) {
         wearable = new WearableData({
           user: req.user._id,
@@ -429,17 +437,12 @@ exports.syncOsHealthData = async (req, res) => {
       // webhook path uses below — one code path per metric family instead
       // of two that can silently diverge. `wearable` is passed through so
       // the legacy embedded arrays keep getting mirrored during the
-      // migration window; session carries the transaction.
+      // migration window; session carries the transaction. Only regular
+      // (non-time-series) collections belong in here — see below for why.
       await wearableIngest.applyDailyActivity(req.user._id, provider, source, metrics.dailyMetrics || [], { session, wearable });
       await wearableIngest.applyHeartRateSamples(req.user._id, provider, source, metrics.heartRate || [], { session, wearable });
       await wearableIngest.applySleepSessions(req.user._id, provider, source, metrics.sleepData || [], { session, wearable });
-      await wearableIngest.applyBloodOxygenSamples(req.user._id, provider, source, metrics.bloodOxygen || [], { session, wearable });
       await wearableIngest.applyBodyComposition(req.user._id, provider, source, metrics.bodyComposition || [], { session, wearable });
-      // Stress/vitals are greenfield — no legacy WearableData array to mirror,
-      // and (unlike the time-series collections above) they don't take a
-      // session since Mongo time-series collections can't join a transaction.
-      await wearableIngest.applyStressSamples(req.user._id, provider, source, metrics.stress || []);
-      await wearableIngest.applyVitalsSamples(req.user._id, provider, source, metrics.vitals || []);
 
       wearable.lastSyncedAt = new Date();
       await wearable.save({ session });
@@ -447,6 +450,20 @@ exports.syncOsHealthData = async (req, res) => {
     });
 
     if (result.duplicate) return res.json(result);
+
+    // Blood oxygen/stress/vitals write to Mongo time-series collections,
+    // which (a) cannot join a multi-document transaction at all — MongoDB
+    // rejects the insert outright — and (b) must not merely be moved inside
+    // the withTransaction callback without a session either: that callback
+    // can be retried by the driver on a transient error, and a
+    // non-transactional write left in there would silently re-run and risk
+    // a duplicate insert on retry. So these run once, here, only after the
+    // transaction has definitely committed.
+    await wearableIngest.applyBloodOxygenSamples(req.user._id, provider, source, metrics.bloodOxygen || [], { wearable });
+    await wearableIngest.applyStressSamples(req.user._id, provider, source, metrics.stress || []);
+    await wearableIngest.applyVitalsSamples(req.user._id, provider, source, metrics.vitals || []);
+    if (metrics.bloodOxygen?.length) await wearable.save();
+
     cache.delete(`dashboard:${req.user._id}`);
     cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
     cache.deletePattern(`activity_analytics:${req.user._id}:*`);
