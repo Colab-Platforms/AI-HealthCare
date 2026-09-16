@@ -4,7 +4,7 @@ const NotificationPreference = require('../models/NotificationPreference');
 const NutritionSummary = require('../models/NutritionSummary');
 const FoodLog = require('../models/FoodLog');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
-const { sendToUser } = require('./fcmService');
+const { sendToUser, sendToUsersBulk } = require('./fcmService');
 
 // Reminder types this tick can emit. Used to seed the "already sent today" set
 // in one query instead of asking the DB once per user per type.
@@ -12,12 +12,13 @@ const REMINDER_TYPES = ['food_reminder', 'sleep_reminder', 'macro_update', 'diet
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'snack', 'dinner'];
 
-// Push fan-out is HTTP, not DB, but 5k simultaneous FCM calls still bury the
-// event loop and trip Firebase's own rate limits. Send in waves.
-const FCM_CONCURRENCY = 20;
-
 // insertMany payload cap — keeps any single write well under the 16MB BSON limit.
 const INSERT_CHUNK = 500;
+
+// How many 500-user chunks run concurrently. Bounded well under the shared
+// Mongo pool size (maxPoolSize 20 — see config/db.js) so a big tick can't
+// starve normal API traffic of connections; 5 leaves most of the pool free.
+const CHUNK_CONCURRENCY = 5;
 
 const startOfToday = () => {
     const d = new Date();
@@ -213,20 +214,36 @@ class NotificationService {
 
             // Chunked so one oversized batch can't blow the BSON limit, and unordered
             // so a single bad document doesn't abort the rest of the chunk.
-            let written = 0;
+            const chunks = [];
             for (let i = 0; i < docs.length; i += INSERT_CHUNK) {
-                const chunk = docs.slice(i, i + INSERT_CHUNK);
-                const chunkPushes = pushes.slice(i, i + INSERT_CHUNK);
+                chunks.push({ chunk: docs.slice(i, i + INSERT_CHUNK), chunkPushes: pushes.slice(i, i + INSERT_CHUNK) });
+            }
+
+            const processChunk = async ({ chunk, chunkPushes }) => {
                 try {
                     await Notification.insertMany(chunk, { ordered: false });
                     // Only mark as sent once it is durably stored — a failed chunk is
                     // retried on the next tick rather than silently dropped.
                     for (const p of chunkPushes) this.sentToday.add(p.key);
-                    written += chunk.length;
                     await this.dispatchPush(chunkPushes);
+                    return chunk.length;
                 } catch (error) {
                     console.error(`Notification insert chunk failed (${chunk.length} docs):`, error.message);
+                    return 0;
                 }
+            };
+
+            // Bounded concurrency, not Promise.all(chunks) — this Mongo connection
+            // pool (maxPoolSize 20, see config/db.js) is shared with normal API
+            // traffic. Running every chunk at once would compete with real user
+            // requests for connections, reintroducing the exact "app went slow"
+            // problem this rewrite exists to fix. CHUNK_CONCURRENCY caps how much
+            // of the pool a tick can claim at any moment.
+            let written = 0;
+            for (let i = 0; i < chunks.length; i += CHUNK_CONCURRENCY) {
+                const wave = chunks.slice(i, i + CHUNK_CONCURRENCY);
+                const results = await Promise.all(wave.map(processChunk));
+                written += results.reduce((sum, n) => sum + n, 0);
             }
 
             console.log(`🔔 Notification tick: ${written} sent in ${Date.now() - startedAt}ms`);
@@ -253,17 +270,17 @@ class NotificationService {
         );
     }
 
-    // Push fan-out in bounded waves. Failures are logged, never thrown — a dead FCM
-    // token must not stop the rest of the batch or retry the DB write.
+    // Push fan-out via one bulk FCMToken lookup for the whole chunk instead of
+    // one query per user — that per-user query was the actual bottleneck
+    // (measured: ~73s for 36k pushes at 20-wide concurrency, entirely Mongo
+    // round-trip time, before a single real Firebase call happened). Failures
+    // are logged inside sendToUsersBulk, never thrown — a dead FCM token must
+    // not stop the rest of the batch or retry the DB write.
     async dispatchPush(entries) {
-        for (let i = 0; i < entries.length; i += FCM_CONCURRENCY) {
-            const wave = entries.slice(i, i + FCM_CONCURRENCY);
-            const results = await Promise.allSettled(
-                wave.map((e) => sendToUser(e.userId, e.payload))
-            );
-            for (const r of results) {
-                if (r.status === 'rejected') console.error('FCM push failed:', r.reason?.message || r.reason);
-            }
+        try {
+            await sendToUsersBulk(entries);
+        } catch (error) {
+            console.error('FCM bulk push failed:', error.message);
         }
     }
 

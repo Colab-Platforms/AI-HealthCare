@@ -8,6 +8,13 @@ const getMsg = () => {
   return getMessaging(app);
 };
 
+// Concurrency for sendToUsersBulk's Firebase calls. Higher than the old
+// per-user path's effective throughput because the Mongo round-trip that used
+// to gate every call (measured bottleneck: ~73s for 36k users at concurrency
+// 20) is gone — this now bounds only real Firebase network calls, which
+// tolerate much higher parallelism.
+const FCM_SEND_CONCURRENCY = 100;
+
 // Mark invalid tokens inactive in bulk
 const cleanupInvalidTokens = async (tokens, responses) => {
   const invalidTokens = [];
@@ -67,6 +74,70 @@ const sendToUser = async (userId, { title, body, data = {}, imageUrl } = {}) => 
     console.error(`❌ FCM sendToUser error (userId: ${userId}):`, error.message);
     return { success: false, error: error.message };
   }
+};
+
+// Send personalized pushes to many users at once — ONE FCMToken query for the
+// whole batch instead of one per user. `entries` = [{ userId, payload: {title,body,data} }].
+// Each user still gets their own Firebase call (message content differs per
+// user), but the Mongo round-trip that used to happen per-user (the actual
+// bottleneck at 6000-user scale — measured at ~73s for 36000 calls) is now
+// paid once per batch instead of once per notification.
+const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } = {}) => {
+  const messaging = getMsg();
+  if (!messaging) return { successCount: 0, total: entries.length, reason: 'FCM not configured' };
+  if (entries.length === 0) return { successCount: 0, total: 0 };
+
+  const userIds = [...new Set(entries.map((e) => e.userId.toString()))];
+  const tokenDocs = await FCMToken.find({ userId: { $in: userIds }, isActive: true }).lean();
+
+  const tokensByUser = new Map();
+  for (const doc of tokenDocs) {
+    const uid = doc.userId.toString();
+    if (!tokensByUser.has(uid)) tokensByUser.set(uid, []);
+    tokensByUser.get(uid).push(doc.token);
+  }
+
+  let successCount = 0;
+  const usedTokens = [];
+  const allResponses = []; // { token, success, code }
+
+  const sendOne = async (entry) => {
+    const tokens = tokensByUser.get(entry.userId.toString());
+    if (!tokens || tokens.length === 0) return;
+
+    const { title, body, data = {}, imageUrl } = entry.payload || {};
+    try {
+      const response = await messaging.sendEachForMulticast({
+        tokens,
+        notification: { title, body, ...(imageUrl && { imageUrl }) },
+        data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+        android: { priority: 'high', notification: { sound: 'default', channelId: 'health_reminders' } },
+        apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+      });
+      response.responses.forEach((r, i) => {
+        allResponses.push({ token: tokens[i], success: r.success, code: r.error?.code });
+        if (r.success) { successCount++; usedTokens.push(tokens[i]); }
+      });
+    } catch (error) {
+      console.error(`FCM sendToUsersBulk error (userId: ${entry.userId}):`, error.message);
+    }
+  };
+
+  for (let i = 0; i < entries.length; i += concurrency) {
+    const wave = entries.slice(i, i + concurrency);
+    await Promise.allSettled(wave.map(sendOne));
+  }
+
+  await cleanupInvalidTokens(
+    allResponses.map((r) => r.token),
+    allResponses.map((r) => ({ success: r.success, error: { code: r.code } }))
+  );
+  if (usedTokens.length > 0) {
+    await FCMToken.updateMany({ token: { $in: usedTokens } }, { lastUsedAt: new Date() });
+  }
+
+  console.log(`✅ FCM sendToUsersBulk: ${successCount} pushes delivered across ${userIds.length} users`);
+  return { successCount, total: entries.length };
 };
 
 // Send to multiple users — batched multicast (500 tokens per batch)
@@ -170,4 +241,4 @@ const broadcastToAll = async ({ title, body, data = {} } = {}) => {
   }
 };
 
-module.exports = { sendToUser, sendToMultipleUsers, sendToToken, broadcastToAll };
+module.exports = { sendToUser, sendToUsersBulk, sendToMultipleUsers, sendToToken, broadcastToAll };
