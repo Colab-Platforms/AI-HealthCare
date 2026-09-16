@@ -276,8 +276,11 @@ exports.syncOsHealthData = async (req, res) => {
     if (!['health_connect', 'healthkit'].includes(source)) {
       return res.status(400).json({ message: 'source must be health_connect or healthkit' });
     }
-    if (!['noise', 'boat', 'xiaomi', 'samsung'].includes(provider)) {
-      return res.status(400).json({ message: 'provider must be noise, boat, xiaomi, or samsung' });
+    // Matches WearableData.deviceType's enum for the OS-bridge-relevant
+    // providers — apple/apple_watch for HealthKit, the rest for Health Connect.
+    const validOsProviders = ['noise', 'boat', 'xiaomi', 'samsung', 'apple', 'apple_watch', 'google'];
+    if (!validOsProviders.includes(provider)) {
+      return res.status(400).json({ message: `provider must be one of: ${validOsProviders.join(', ')}` });
     }
     if (!provider || !syncId || typeof metrics !== 'object' || Array.isArray(metrics)) {
       return res.status(400).json({ message: 'provider, syncId, and metrics are required' });
