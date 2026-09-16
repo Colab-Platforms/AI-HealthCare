@@ -12,6 +12,13 @@ const vitalsDailySummarySchema = new mongoose.Schema({
     min: { systolic: Number, diastolic: Number, timestamp: Date },
     max: { systolic: Number, diastolic: Number, timestamp: Date }
   },
+  // Each field arrives independently (different sensors, different times of
+  // day), so each average needs its OWN count as the divisor — a sample
+  // reporting only skinTemperature must not dilute avgRespiratoryRate by
+  // being counted as a zero reading for it. `readingCount` stays as the
+  // total-samples-processed-that-day figure (informational).
+  respiratoryRateCount: { type: Number, default: 0 },
+  skinTemperatureCount: { type: Number, default: 0 },
   readingCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
