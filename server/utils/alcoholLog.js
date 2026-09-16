@@ -1,11 +1,38 @@
+const { DRINK_CATALOG } = require('../config/drinkCatalog');
+
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const DRINK_TYPES = new Set(['beer', 'wine', 'spirits', 'cocktail', 'other']);
+// Union of the current catalog's ids (drinkCatalog.js is the single source of
+// truth for what a NEW log can pick) plus 'spirits' — the old, now-retired
+// generic category — so sessions saved before the catalog was split into
+// vodka/whisky/rum/etc. don't get silently downgraded to 'other' on the next
+// sanitize pass. New writes should never produce 'spirits' again; only old
+// documents should ever carry it.
+const DRINK_TYPES = new Set([...DRINK_CATALOG.map((c) => c.id), 'spirits']);
 const CONTEXT_IDS = new Set(['social', 'stress', 'celebration', 'habit', 'meal', 'boredom', 'other']);
 const BINGE_THRESHOLD = 4;
+
+// Everclear (95% ABV) is the strongest legally-sold spirit — anything above
+// that is not a real drink and must be rejected, not silently clamped, so a
+// typo (e.g. abv=300) never gets saved as a wrong-but-plausible-looking value.
+const MAX_ABV = 95;
+// 2000ml single session covers a shared pitcher/jug — beyond that is almost
+// certainly a unit mistake (e.g. someone typing total daily volume).
+const MAX_VOLUME_ML = 2000;
 
 // US standard drink = 14g pure alcohol (matches the limits scoreAlcohol() is scored against).
 const ETHANOL_DENSITY_G_PER_ML = 0.789;
 const STANDARD_DRINK_GRAMS = 14;
+
+/** Returns an error string for invalid volumeMl/abv, or null if both are in range. */
+const validateDrinkInput = (volumeMl, abv) => {
+  const v = Number(volumeMl);
+  const a = Number(abv);
+  if (!(v > 0)) return 'volumeMl must be a positive number';
+  if (v > MAX_VOLUME_ML) return `volumeMl cannot exceed ${MAX_VOLUME_ML}ml`;
+  if (!(a > 0)) return 'abv must be a positive number';
+  if (a > MAX_ABV) return `abv cannot exceed ${MAX_ABV}% (no legally-sold drink is stronger)`;
+  return null;
+};
 
 /** Standard alcohol units from volume (ml) and ABV (%), e.g. 300ml @ 37.5% -> ~6.34 units. */
 const computeUnitsFromVolume = (volumeMl, abv) => {
@@ -28,6 +55,33 @@ const toPlainAlcoholLog = (raw) => {
   return typeof raw === 'object' ? { ...raw } : {};
 };
 
+// Normalizes/validates a single logged drink. Used both when replacing the
+// whole map (sanitizeAlcoholLog) and when appending one new drink via the
+// session-log endpoint — one place decides what a "valid session" looks like.
+const sanitizeSession = (s) => {
+  // This clamp is a defensive fallback for old/corrupt DB rows being read back
+  // for display — it must never reject, only make a value safe to show. Live
+  // user submissions are rejected up front by validateDrinkInput() in the
+  // controller instead, so a bad value never reaches here in the first place.
+  const volumeMl = Number(s?.volumeMl) > 0 ? Math.min(MAX_VOLUME_ML, Number(s.volumeMl)) : null;
+  const abv = Number(s?.abv) > 0 ? Math.min(MAX_ABV, Number(s.abv)) : null;
+  const derivedUnits = computeUnitsFromVolume(volumeMl, abv);
+  const units = Math.max(0.5, Math.min(20, derivedUnits ?? (Number(s?.units) || 1)));
+
+  return {
+    time: String(s?.time || new Date().toISOString()),
+    drinkType: DRINK_TYPES.has(s?.drinkType) ? s.drinkType : 'other',
+    name: s?.name ? String(s.name).trim().slice(0, 60) : null,
+    volumeMl,
+    abv,
+    units,
+    context: s?.context && CONTEXT_IDS.has(s.context) ? s.context : null,
+    mood: s?.mood ? String(s.mood).slice(0, 50) : null,
+    notes: s?.notes ? String(s.notes).slice(0, 200) : null,
+    id: s?.id ? String(s.id) : String(s?.time || Date.now())
+  };
+};
+
 const sanitizeAlcoholLog = (raw) => {
   const input = toPlainAlcoholLog(raw);
   const out = {};
@@ -36,25 +90,7 @@ const sanitizeAlcoholLog = (raw) => {
     if (!DATE_KEY_RE.test(key) || !val || typeof val !== 'object') continue;
 
     const sessions = Array.isArray(val.sessions)
-      ? val.sessions.slice(0, 200).map((s) => {
-          const volumeMl = Number(s?.volumeMl) > 0 ? Math.min(2000, Number(s.volumeMl)) : null;
-          const abv = Number(s?.abv) > 0 ? Math.min(100, Number(s.abv)) : null;
-          const derivedUnits = computeUnitsFromVolume(volumeMl, abv);
-          const units = Math.max(0.5, Math.min(20, derivedUnits ?? (Number(s?.units) || 1)));
-
-          return {
-            time: String(s?.time || new Date().toISOString()),
-            drinkType: DRINK_TYPES.has(s?.drinkType) ? s.drinkType : 'other',
-            name: s?.name ? String(s.name).trim().slice(0, 60) : null,
-            volumeMl,
-            abv,
-            units,
-            context: s?.context && CONTEXT_IDS.has(s.context) ? s.context : null,
-            mood: s?.mood ? String(s.mood).slice(0, 50) : null,
-            notes: s?.notes ? String(s.notes).slice(0, 200) : null,
-            id: s?.id ? String(s.id) : String(s?.time || Date.now())
-          };
-        })
+      ? val.sessions.slice(0, 200).map(sanitizeSession)
       : [];
 
     const cravingEvents = Array.isArray(val.cravingEvents)
@@ -198,9 +234,13 @@ module.exports = {
   DATE_KEY_RE,
   DRINK_TYPES,
   BINGE_THRESHOLD,
+  MAX_ABV,
+  MAX_VOLUME_ML,
+  validateDrinkInput,
   computeUnitsFromVolume,
   getTodayKey,
   toPlainAlcoholLog,
+  sanitizeSession,
   sanitizeAlcoholLog,
   getLastNDays,
   getAlcoholSummary,
