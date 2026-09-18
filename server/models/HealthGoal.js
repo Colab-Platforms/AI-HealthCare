@@ -155,6 +155,28 @@ const MAX_WEEKLY_RATE_FRACTION = {
 };
 const KCAL_PER_KG_FAT = 7700; // Wishnofsky rule — standard energy-density-of-fat approximation
 
+// The mobile app's timeframe picker sends a static weeks number (4/8/12/16/24),
+// not a computed date — only the web client currently does the targetWeeks -> targetDate
+// conversion itself. Without this, a request with targetWeeks but no targetDate silently
+// fell through to checkRequestedRate/calculateCalorieTarget's internal 12-week default,
+// producing a wrong (and sometimes falsely "unsafe") requested rate — e.g. a real 4-week,
+// 3kg goal was evaluated as if it were a 12-week goal, tripping the consent flow for a
+// pace the user never actually asked for. Doing the conversion once, here, means every
+// caller (preview, set, update) gets it for free regardless of which field the client sent.
+healthGoalSchema.statics.resolveTargetDate = function ({ targetDate, targetWeeks }) {
+  if (targetDate) {
+    const parsed = new Date(targetDate);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  const weeks = Number(targetWeeks);
+  if (weeks > 0) {
+    const computed = new Date();
+    computed.setDate(computed.getDate() + weeks * 7);
+    return computed;
+  }
+  return undefined; // caller's default (currently 12 weeks) applies
+};
+
 // Pre-save consent check — mirrors the requestedRate/cap logic inside
 // calculateCalorieTarget() below, WITHOUT duplicating the calorie math, so a
 // controller can warn the user about an unrealistic timeframe before saving

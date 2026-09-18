@@ -817,7 +817,7 @@ exports.previewGoal = async (req, res) => {
       age: Number(req.body.age) || 0,
       gender: req.body.gender || 'male',
       activityLevel: req.body.activityLevel || 'sedentary',
-      targetDate: req.body.targetDate,
+      targetDate: HealthGoal.resolveTargetDate({ targetDate: req.body.targetDate, targetWeeks: req.body.targetWeeks }),
       isDiabetic: !!req.body.isDiabetic,
     };
 
@@ -873,6 +873,7 @@ exports.setHealthGoal = async (req, res) => {
       age: Number(req.body.age) || 0,
       gender: req.body.gender || 'male',
       userId: req.user._id,
+      targetDate: HealthGoal.resolveTargetDate({ targetDate: req.body.targetDate, targetWeeks: req.body.targetWeeks }),
       // Resubmitting the full goal form always reverts to the formula — a stale manual
       // calorie override should not silently persist once weight/goal/timeframe change.
       calorieSource: 'auto',
@@ -1033,6 +1034,7 @@ exports.updateHealthGoal = async (req, res) => {
     const goalData = {
       ...req.body,
       userId: req.user._id,
+      targetDate: HealthGoal.resolveTargetDate({ targetDate: req.body.targetDate, targetWeeks: req.body.targetWeeks }),
       // Same as setHealthGoal — resubmitting the goal form clears any manual calorie override.
       calorieSource: 'auto',
       manualCalorieTarget: undefined
