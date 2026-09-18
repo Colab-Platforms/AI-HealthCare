@@ -3,21 +3,22 @@ const router = express.Router();
 const nutritionController = require('../controllers/nutritionController');
 const { protect } = require('../middleware/auth');
 const { aiLimiter, apiLimiter, heavyReadLimiter } = require('../middleware/rateLimit');
+const { requireFeature } = require('../middleware/subscriptionAccess');
 
 // All routes require authentication
 router.use(protect);
 
 // Food Analysis
 const upload = require('../middleware/upload');
-router.post('/analyze-food', aiLimiter, nutritionController.analyzeFood);
+router.post('/analyze-food', aiLimiter, requireFeature('aiFoodAnalysis'), nutritionController.analyzeFood);
 // 'image' kept for backward-compat single-photo clients; 'images' is the new multi-photo field (up to 5)
-router.post('/quick-check', aiLimiter, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 5 }]), nutritionController.quickFoodCheck);
+router.post('/quick-check', aiLimiter, requireFeature('aiFoodAnalysis'), upload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 5 }]), nutritionController.quickFoodCheck);
 router.post('/quick-check/save', nutritionController.saveQuickCheck);
-router.post('/get-alternatives', aiLimiter, nutritionController.getHealthyAlternatives);
+router.post('/get-alternatives', aiLimiter, requireFeature('aiFoodAnalysis'), nutritionController.getHealthyAlternatives);
 
 // Health Goals - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
-router.post('/goals/preview', nutritionController.previewGoal);
-router.post('/goals', nutritionController.setHealthGoal);
+router.post('/goals/preview', requireFeature('goalPlanner'), nutritionController.previewGoal);
+router.post('/goals', requireFeature('goalPlanner'), nutritionController.setHealthGoal);
 router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', apiLimiter, nutritionController.getHealthGoal);
 router.patch('/goals/calorie-override', nutritionController.setCalorieOverride);

@@ -6,8 +6,15 @@ import { subscriptionService } from "../services/api";
 import { Check, X, ShieldCheck, Loader2, AlertCircle, Download, Receipt } from "lucide-react";
 import GenericSkeleton from "../components/skeletons/GenericSkeleton";
 import SEO from "../hooks/useSEO";
-import PricingSection from "../components/landing/PricingSection";
+import PricingSection, { plans as PRICING_PLANS } from "../components/landing/PricingSection";
 import { loadRazorpayScript } from "../utils/loadRazorpay";
+
+// PricingSection's `plans` only covers the purchasable tiers (free/basic/premium) —
+// free_trial isn't purchasable, so it needs its own display-name entry here.
+const PLAN_DISPLAY_NAMES = {
+  free_trial: "Free Trial",
+  ...Object.fromEntries(PRICING_PLANS.map((p) => [p.id, p.name])),
+};
 
 export default function Subscription() {
   const { user } = useAuth();
@@ -129,14 +136,19 @@ const STATUS_LABELS = {
 
 function CurrentPlanCard({ plan, status, currentPeriodEnd, autoRenew, cancelling, cancelError, onCancel }) {
   const statusInfo = STATUS_LABELS[status] || STATUS_LABELS.inactive;
-  const canCancel = status === "active";
+  const isTrial = plan === "free_trial";
+  // Trials never auto-charge (autoRenew is always false for them), so there's nothing
+  // to "cancel" in the billing sense — hide the cancel action entirely for a trial.
+  const canCancel = status === "active" && !isTrial;
+
+  const periodLabel = status === "cancelled" ? "Access ends" : isTrial ? "Trial ends" : "Renews";
 
   return (
     <div className="max-w-2xl mx-auto bg-white/60 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-sm p-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="text-xs text-landing-text/50 uppercase tracking-wider font-semibold mb-1">Current Plan</p>
-          <p className="text-xl font-bold text-landing-text capitalize">{plan}</p>
+          <p className="text-xl font-bold text-landing-text">{PLAN_DISPLAY_NAMES[plan] || plan}</p>
         </div>
         <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.color}`}>
           {statusInfo.label}
@@ -145,7 +157,7 @@ function CurrentPlanCard({ plan, status, currentPeriodEnd, autoRenew, cancelling
 
       {currentPeriodEnd && (
         <p className="text-sm text-landing-text/60 mt-3">
-          {status === "cancelled" ? "Access ends" : "Renews"} on{" "}
+          {periodLabel} on{" "}
           {new Date(currentPeriodEnd).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
         </p>
       )}
@@ -293,7 +305,7 @@ function CheckoutModal({ plan, dbPlans, onClose, onSubscribed }) {
 
       const rzp = new window.Razorpay({
         key: data.razorpayKeyId,
-        order_id: data.razorpayOrderId,
+        subscription_id: data.razorpaySubscriptionId,
         name: "take.health",
         description: `${data.plan.name} Plan — ${data.plan.billingCycle}`,
         theme: { color: "#014343" },
@@ -356,6 +368,11 @@ function CheckoutModal({ plan, dbPlans, onClose, onSubscribed }) {
                         Billed ₹{plan.price * 12}/year
                       </p>
                     )}
+                    {plan.billingCycle === "quarterly" && (
+                      <p className="text-landing-text/50 text-[11px] mt-0.5">
+                        Billed ₹{plan.price} every 3 months
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -371,9 +388,9 @@ function CheckoutModal({ plan, dbPlans, onClose, onSubscribed }) {
                 <div className="flex items-start gap-3 bg-landing-text/5 rounded-2xl p-4">
                   <ShieldCheck className="w-5 h-5 text-landing-text/40 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-landing-text/50">
-                    Payments are processed securely via Razorpay. This is a one-time
-                    payment for the {plan.billingCycle} period — we'll remind you
-                    before it's time to renew.
+                    Payments are processed securely via Razorpay. Your card will be
+                    charged automatically every {plan.billingCycle === "quarterly" ? "3 months" : "month"} —
+                    cancel anytime from your Subscription page.
                   </p>
                 </div>
 

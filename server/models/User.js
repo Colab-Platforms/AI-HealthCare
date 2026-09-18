@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema({
   authProvider: { type: String, enum: ['local', 'google', 'apple'], default: 'local' },
   role: { type: String, enum: ['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
   isActive: { type: Boolean, default: true },
+  // Set once at registration by matching against WaitlistUserEmail — determines the
+  // free-trial length (30 days vs 14 for a brand-new signup). Purely a historical/
+  // analytics marker after that; not read by any access-control logic.
+  isWaitlistedUser: { type: Boolean, default: false },
   isEmailVerified: { type: Boolean, default: false },
   emailVerificationCode: String,
   emailVerificationExpire: Date,
@@ -186,9 +190,9 @@ const userSchema = new mongoose.Schema({
     lastUpdated: Date
   },
   subscription: {
-    plan: { type: String, enum: ['free', 'basic', 'premium'], default: 'free' },
+    plan: { type: String, enum: ['free', 'free_trial', 'basic', 'premium'], default: 'free' },
     status: { type: String, enum: ['active', 'inactive', 'expired', 'past_due', 'cancelled'], default: 'active' },
-    billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
+    billingCycle: { type: String, enum: ['monthly', 'quarterly', 'yearly'], default: 'monthly' }, // basic(Pro)=monthly, premium(Pro Plus)=quarterly
     startDate: Date,
     endDate: Date,
     currentPeriodEnd: Date, // authoritative expiry check, independent of `status` webhook lag

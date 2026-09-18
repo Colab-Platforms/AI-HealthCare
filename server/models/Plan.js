@@ -4,23 +4,23 @@ const planSchema = new mongoose.Schema({
     key: {
         type: String,
         required: true,
-        enum: ['free', 'basic', 'premium'],
+        enum: ['free', 'free_trial', 'basic', 'premium'],
     },
     name: { type: String, required: true },
     billingCycle: {
         type: String,
-        enum: ['monthly', 'yearly'],
+        enum: ['monthly', 'quarterly', 'yearly'], // 'yearly' kept only so pre-existing inactive plan docs stay valid
         required: true,
     },
     price: { type: Number, required: true }, // in INR, whole rupees
     razorpayPlanId: { type: String }, // null for the free plan
+    // Freeform feature map: { [featureKey]: true|false }. All features are plain
+    // access flags now (no numeric usage limits) — see requireFeature in
+    // middleware/subscriptionAccess.js. Add a feature by editing PLAN_DEFINITIONS
+    // in scripts/syncRazorpayPlans.js and re-running it; no schema change needed.
     features: {
-        reportAnalysesPerMonth: { type: Number, default: 1 }, // -1 = unlimited
-        aiChatPerDay: { type: Number, default: 3 },
-        dietPlansPerMonth: { type: Number, default: 0 },
-        supplementRecommendations: { type: Boolean, default: false },
-        videoConsultAccess: { type: Boolean, default: false },
-        prioritySupport: { type: Boolean, default: false },
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
     },
     isActive: { type: Boolean, default: true },
 }, { timestamps: true });

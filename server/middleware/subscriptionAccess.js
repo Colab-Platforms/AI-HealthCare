@@ -2,9 +2,26 @@
 // Must run after `protect` (needs req.user).
 
 const cache = require('../utils/cache');
+const { PAST_DUE_GRACE_DAYS } = require('../services/subscriptionLifecycleService');
 
 const FREE_PLAN_KEY = 'free';
 const PLAN_CACHE_TTL = 300; // 5 min — plans change rarely (management edits + re-run the sync script)
+
+// True while status is 'active' and still within its paid period, OR status is
+// 'past_due' and still within the grace window since it flipped — this is what
+// actually keeps paid features working during the grace period; without the
+// past_due branch, access would cut off the instant currentPeriodEnd passes,
+// before the grace period the lifecycle cron enforces ever gets a chance to apply.
+const isEntitled = (sub) => {
+  if (sub.status === 'active') {
+    return !sub.currentPeriodEnd || sub.currentPeriodEnd > new Date();
+  }
+  if (sub.status === 'past_due') {
+    const graceDeadline = new Date((sub.statusUpdatedAt || 0).valueOf() + PAST_DUE_GRACE_DAYS * 24 * 60 * 60 * 1000);
+    return sub.statusUpdatedAt && graceDeadline > new Date();
+  }
+  return false;
+};
 
 // Plan lookups happen on every gated request (chat, upload, diet-gen...), so this
 // avoids a DB round trip per call. syncRazorpayPlans.js invalidates this on write.
@@ -27,28 +44,25 @@ exports.requireActiveSubscription = (req, res, next) => {
     return res.status(403).json({ success: false, message: 'This feature requires a paid plan.' });
   }
 
-  const entitled = ['active', 'past_due'].includes(sub.status)
-    && (!sub.currentPeriodEnd || sub.currentPeriodEnd > new Date());
-
-  if (!entitled) {
+  if (!isEntitled(sub)) {
     return res.status(403).json({ success: false, message: 'Your subscription is not active.' });
   }
 
   next();
 };
 
-// Blocks the request if a plan-specific numeric/boolean feature limit is exhausted.
-// `getUsage(req)` should return the count already used in the current period (for numeric limits);
-// ignored for boolean features. -1 in Plan.features means unlimited.
-exports.requireFeature = (featureKey, getUsage) => {
+// Blocks the request unless the effective plan's feature map has `featureKey: true`.
+// All features are plain access flags now — no numeric usage limits (Pro/Pro Plus
+// both get unlimited use of every paid feature; abuse protection is handled by
+// rate-limit middleware like `aiLimiter`, not a monthly ceiling here).
+exports.requireFeature = (featureKey) => {
   return async (req, res, next) => {
     const sub = req.user.subscription || { plan: FREE_PLAN_KEY, billingCycle: 'monthly' };
 
     // A lapsed paid subscription (cancelled, or period end passed) must not keep
-    // granting paid-tier limits just because `subscription.plan` wasn't reset —
+    // granting paid-tier access just because `subscription.plan` wasn't reset —
     // fall back to the free plan's entitlement the moment it's no longer active.
-    const entitled = sub.plan === FREE_PLAN_KEY
-      || (['active', 'past_due'].includes(sub.status) && (!sub.currentPeriodEnd || sub.currentPeriodEnd > new Date()));
+    const entitled = sub.plan === FREE_PLAN_KEY || isEntitled(sub);
     const effectivePlanKey = entitled ? sub.plan : FREE_PLAN_KEY;
 
     const plan = await getCachedPlan(effectivePlanKey, sub.billingCycle || 'monthly');
@@ -56,20 +70,8 @@ exports.requireFeature = (featureKey, getUsage) => {
       return res.status(403).json({ success: false, message: 'No active plan found for this account.' });
     }
 
-    const limit = plan.features?.[featureKey];
-
-    if (typeof limit === 'boolean') {
-      if (!limit) {
-        return res.status(403).json({ success: false, message: `Your plan does not include ${featureKey}.` });
-      }
-      return next();
-    }
-
-    if (limit === -1) return next(); // unlimited
-
-    const used = typeof getUsage === 'function' ? await getUsage(req) : 0;
-    if (used >= limit) {
-      return res.status(403).json({ success: false, message: `You've reached your ${featureKey} limit for this plan.` });
+    if (plan.features?.[featureKey] !== true) {
+      return res.status(403).json({ success: false, message: `Your plan does not include ${featureKey}.`, code: 'UPGRADE_REQUIRED', feature: featureKey, currentPlan: effectivePlanKey });
     }
 
     next();

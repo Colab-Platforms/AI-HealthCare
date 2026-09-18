@@ -5,7 +5,10 @@ const heartRateSampleSchema = new mongoose.Schema({
   deviceType: { type: String, required: true, index: true },
   timestamp: { type: Date, required: true },
   bpm: { type: Number, required: true, min: 20, max: 250 },
-  type: { type: String, enum: ['resting', 'active', 'peak', 'cardio'], default: 'resting' },
+  // 'unspecified' means the provider gave no reliable rest/activity context —
+  // it must NOT default to 'resting', or restingBpm rollups get contaminated
+  // with non-rest samples (see wearableController.js heart_rate.created).
+  type: { type: String, enum: ['resting', 'active', 'peak', 'cardio', 'unspecified'], default: 'unspecified' },
   source: String,
   sourceRecordId: String
 }, {

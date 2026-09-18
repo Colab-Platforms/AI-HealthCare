@@ -11,6 +11,7 @@ const { logActivity } = require('../utils/activityLogger');
 const gamificationService = require('../services/gamificationService');
 const RefreshToken = require('../models/RefreshToken');
 const FCMToken = require('../models/FCMToken');
+const WaitlistUserEmail = require('../models/WaitlistUserEmail');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -22,6 +23,36 @@ const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 
 // Legacy alias so existing register/doctor flows still work
 const generateToken = generateAccessToken;
+
+// Shared by every account-creation path (password register, Google, Apple) so a
+// waitlisted/trial-eligible signup gets the same treatment no matter how they sign
+// up — previously only the password-register path granted the trial, so a
+// waitlisted user signing up via Google or Apple silently landed on plain 'free'.
+// `email` must already be lowercased/trimmed (all three call sites do this).
+const buildTrialGrant = async (email) => {
+  const waitlistEntry = email ? await WaitlistUserEmail.findOne({ email }) : null;
+  const isWaitlistedUser = Boolean(waitlistEntry);
+  const trialDays = isWaitlistedUser ? 30 : 14;
+  const trialEnd = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+
+  return {
+    waitlistEntry,
+    isWaitlistedUser,
+    subscription: {
+      plan: 'free_trial',
+      status: 'active',
+      startDate: new Date(),
+      currentPeriodEnd: trialEnd,
+      endDate: trialEnd,
+      autoRenew: false,
+    },
+  };
+};
+
+const markWaitlistConverted = (waitlistEntry) => {
+  if (!waitlistEntry) return;
+  waitlistEntry.markAsConverted().catch((e) => console.error('Waitlist markAsConverted failed:', e.message));
+};
 
 // Apple's JWKS (https://appleid.apple.com/auth/keys) rotates rarely — cache
 // it for an hour instead of fetching on every sign-in.
@@ -669,6 +700,10 @@ exports.register = async (req, res) => {
       }
     }
 
+    // `email` is already lowercased/trimmed above (line 579), matching
+    // WaitlistUserEmail's own lowercase-on-save, so this can't miss a real match on casing.
+    const { waitlistEntry, isWaitlistedUser, subscription: trialSubscription } = await buildTrialGrant(email);
+
     let user = null;
     try {
       console.log('Creating user in database...');
@@ -710,12 +745,11 @@ exports.register = async (req, res) => {
           ...calculatedGoals,
           autoCalculated: true
         } : undefined,
-        subscription: {
-          plan: 'free',
-          status: 'active',
-          startDate: new Date()
-        }
+        isWaitlistedUser,
+        subscription: trialSubscription,
       });
+
+      markWaitlistConverted(waitlistEntry);
 
       const ConsentLog = require('../models/ConsentLog');
       await ConsentLog.create({
@@ -1134,6 +1168,7 @@ exports.googleAuth = async (req, res) => {
         storingRaw: device_id ?? null,
         wouldResolveTo: getIncomingDeviceId(req),
       });
+      const { waitlistEntry, isWaitlistedUser, subscription } = await buildTrialGrant(email);
       user = await User.create({
         name: profile.name || email.split('@')[0],
         email,
@@ -1143,12 +1178,10 @@ exports.googleAuth = async (req, res) => {
         isEmailVerified: true,
         device_id: device_id || null,
         profilePicture: profile.picture,
-        subscription: {
-          plan: 'free',
-          status: 'active',
-          startDate: new Date()
-        }
+        isWaitlistedUser,
+        subscription,
       });
+      markWaitlistConverted(waitlistEntry);
     } else if (!user.googleId) {
       // Existing password-based account with the same email — link it instead of creating a duplicate
       user.googleId = googleId;
@@ -1315,6 +1348,7 @@ exports.appleAuth = async (req, res) => {
         storingRaw: device_id ?? null,
         wouldResolveTo: getIncomingDeviceId(req),
       });
+      const { waitlistEntry, isWaitlistedUser, subscription } = await buildTrialGrant(email);
       user = await User.create({
         name: appleName || email.split('@')[0],
         email,
@@ -1323,12 +1357,10 @@ exports.appleAuth = async (req, res) => {
         authProvider: 'apple',
         isEmailVerified: true,
         device_id: device_id || null,
-        subscription: {
-          plan: 'free',
-          status: 'active',
-          startDate: new Date()
-        }
+        isWaitlistedUser,
+        subscription,
       });
+      markWaitlistConverted(waitlistEntry);
     } else if (!user.appleId) {
       // Existing password-based account with the same email — link it instead of creating a duplicate
       user.appleId = appleId;
