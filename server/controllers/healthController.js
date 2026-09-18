@@ -45,7 +45,6 @@ const dashboardInFlight = new Map();
  * 🚀 BACKGROUND ANALYSIS PROCESSOR
  */
 async function processReportInternal(userId, reportId, fileMimetype, extractedText, dataBuffer = null) {
-  console.log(`🔄 [BG] Starting internal logic for report ${reportId}...`);
   try {
     const userDoc = await User.findById(userId);
     if (!userDoc) throw new Error('User not found');
@@ -56,7 +55,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     if (!dataBuffer) {
       const updatedReport = await HealthReport.findById(reportId);
       if (updatedReport && updatedReport.originalFile?.cloudinaryUrl) {
-        console.log(`📥 [BG] Fetching file from Cloudinary for analysis: ${updatedReport.originalFile.cloudinaryUrl}`);
         const axios = require('axios');
         // Use signed URL — files are now type:'authenticated' and need a valid signature to fetch
         const fetchUrl = cloudinary.generateSignedUrl(updatedReport.originalFile.cloudinaryUrl) || updatedReport.originalFile.cloudinaryUrl;
@@ -127,7 +125,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
 
     updatedReport.markModified('aiAnalysis');
     await updatedReport.save();
-    console.log(`[BG] Report saved. Metrics count: ${Object.keys(aiAnalysis.metrics || {}).length}`);
 
     // Invalidate every view derived from this user's reports. Previously only
     // `trends:<id>:all` was cleared, leaving per-reportType trend entries stale,
@@ -228,9 +225,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
           }
         };
         await updatedReport.save();
-        console.log(`[BG] Comparison vs ${prev._id} — ${sharedKeys.length} shared marker(s), ${metricChanges.length} with numeric deltas.`);
-      } else {
-        console.log(`[BG] No comparable previous report (best overlap: ${sharedKeys.length} marker(s)).`);
       }
     } catch (e) { console.warn('Comparison failed:', e.message); }
 
@@ -245,18 +239,14 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       data: { type: 'report_ready', actionUrl: `/reports/${reportId}` }
     }).catch(e => console.warn('FCM report notification failed:', e.message));
 
-    console.log(`[BG] Analysis complete for ${reportId}`);
-
     // 🚀 Auto-trigger diet plan generation after successful report analysis
     try {
       const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
       const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true, status: 'completed' });
       if (!existingPlan) {
-        console.log('[BG] No active diet plan found. Auto-generating based on new report...');
         const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
         if (isVercel) {
           // On Vercel: dispatch diet as separate QStash job (setImmediate is unreliable on serverless)
-          console.log('[BG] Dispatching auto-diet via QStash...');
           const appUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
           await queueService.enqueueTask('process-diet', {
             userId,
@@ -268,7 +258,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
           // ⏳ 15s cooldown to prevent 529 (overloaded) errors from back-to-back Claude API calls
           const { generateDietAfterReport } = require('./dietRecommendationController');
           if (generateDietAfterReport) {
-            console.log('[BG] Scheduling auto-diet generation in 15s (API cooldown)...');
             setTimeout(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)), 15000);
           }
         }
@@ -307,7 +296,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
 exports.processReportBG = async (req, res) => {
   try {
     const { userId, reportId, fileMimetype, extractedText } = req.body;
-    console.log(`🔔 QStash callback received for report ${reportId}`);
     await processReportInternal(userId, reportId, fileMimetype, extractedText);
     res.status(202).json({ success: true });
 

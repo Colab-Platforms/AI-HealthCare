@@ -91,12 +91,10 @@ function classifyHeartRateContext(context) {
 exports.connectDevice = async (req, res) => {
   try {
     const { deviceType, deviceName } = req.body;
-    console.log(`[Wearables] connectDevice: user=${req.user._id} deviceType=${deviceType} deviceName=${deviceName}`);
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
 
     if (wearable) {
-      console.log(`[Wearables] connectDevice: existing record ${wearable._id} reused`);
       wearable.isConnected = true;
       wearable.deviceName = deviceName || wearable.deviceName;
       wearable.lastSyncedAt = new Date();
@@ -108,7 +106,6 @@ exports.connectDevice = async (req, res) => {
         deviceName,
         isConnected: true
       });
-      console.log(`[Wearables] connectDevice: created new record ${wearable._id}`);
     }
 
     res.status(201).json(wearable);
@@ -1094,9 +1091,6 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
       deviceName: provider,
       isConnected: false // becomes true once the OAuth flow actually completes
     });
-    console.log(`[Wearables] ensureOpenWearablesUser: created new WearableData record ${wearable._id} for user=${ourUserId} provider=${provider}`);
-  } else {
-    console.log(`[Wearables] ensureOpenWearablesUser: reusing record ${wearable._id} (isConnected=${wearable.isConnected}, openWearablesUserId=${wearable.openWearablesUserId || 'none yet'})`);
   }
 
   if (!wearable.openWearablesUserId) {
@@ -1108,7 +1102,6 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
     });
     wearable.openWearablesUserId = data.id;
     await wearable.save();
-    console.log(`[Wearables] ensureOpenWearablesUser: registered new middleware user ${data.id} for record ${wearable._id}`);
   }
 
   return wearable;
@@ -1150,7 +1143,6 @@ exports.getMiddlewareUserId = async (req, res) => {
 exports.getConnectUrl = async (req, res) => {
   try {
     const { provider } = req.params;
-    console.log(`[Wearables] getConnectUrl requested: user=${req.user._id} provider=${provider}`);
 
     if (!openWearablesClient.isConfigured) {
       return res.status(503).json({
@@ -1240,7 +1232,6 @@ exports.handleWebhook = async (req, res) => {
     // the totals. The unique {source, eventId} index makes this insert the lock:
     // whoever wins it processes the event, a duplicate just acknowledges.
     const { type, data } = event;
-    console.log(`[Wearables] webhook received: type=${type} openWearablesUserId=${data?.user_id} provider=${data?.provider || data?.source?.provider}`);
 
     try {
       await ProcessedWebhook.create({
@@ -1249,7 +1240,6 @@ exports.handleWebhook = async (req, res) => {
       });
     } catch (err) {
       if (err.code === 11000) {
-        console.log(`[Wearables] webhook duplicate (svix-id=${req.headers['svix-id']}), skipping`);
         return res.status(200).json({ received: true, duplicate: true });
       }
       throw err;
