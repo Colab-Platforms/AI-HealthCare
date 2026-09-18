@@ -53,11 +53,15 @@ exports.subscribe = async (req, res) => {
         // Reuse the Razorpay customer across re-subscribes/plan changes instead of creating a new one each time.
         let customerId = user.subscription.razorpayCustomerId;
         if (!customerId) {
+            // fail_existing: '0' — return the existing Razorpay customer instead of
+            // erroring when one already exists for this email/contact (e.g. our DB
+            // record was reset/lost but the customer still exists on Razorpay's side).
             const customer = await razorpay.customers.create({
                 name: user.name,
                 email: user.email,
                 contact: user.phone || undefined,
                 notes: { internal_user_id: user._id.toString() },
+                fail_existing: '0',
             });
             customerId = customer.id;
             user.subscription.razorpayCustomerId = customerId;
