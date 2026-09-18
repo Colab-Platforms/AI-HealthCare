@@ -5,50 +5,111 @@
 // Usage: node scripts/syncRazorpayPlans.js
 
 const mongoose = require('mongoose');
+const dns = require('dns');
 const dotenv = require('dotenv');
 const Plan = require('../models/Plan');
 const { getClient } = require('../services/razorpayService');
 
 dotenv.config();
 
-// Source of truth for pricing — edit here, then re-run this script.
+// Some local networks (VPN/router/antivirus DNS filtering) block Node's direct SRV
+// queries (used by mongodb+srv:// URIs) even though the OS's own resolver works fine
+// via nslookup. If the machine's configured DNS can't resolve the SRV record, retry
+// once against a public resolver before giving up — this script-only workaround
+// doesn't touch config/db.js, which already connects fine for the main app.
+async function ensureSrvResolvable(uri) {
+    if (!uri.startsWith('mongodb+srv://')) return;
+    // new URL() parses any scheme:// generically, so this correctly pulls just the
+    // hostname (e.g. cluster0.ij9yb3s.mongodb.net) regardless of userinfo/db-name/query string.
+    const host = new URL(uri).hostname;
+    try {
+        await dns.promises.resolveSrv(`_mongodb._tcp.${host}`);
+    } catch (e) {
+        console.warn(`Default DNS couldn't resolve the SRV record (${e.code}) — retrying via public DNS (8.8.8.8, 1.1.1.1)...`);
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+        await dns.promises.resolveSrv(`_mongodb._tcp.${host}`); // let this throw if it still fails — real problem, not just DNS
+    }
+}
+
+// Every paid feature, on both Pro and Pro Plus — the two tiers are identical in
+// features and differ only in billing duration (1 month vs 3 months per charge).
+const PAID_FEATURES = {
+    // Free features, included on paid tiers too:
+    waterLogging: true, healthScore: true, activityStepLogging: true, alcoholTracking: true,
+    sleepTracking: true, weightTracking: true, healthTimelineInsights: true, medicalVault: true,
+    darkModeSettings: true, healthStreaks: true, badgesAchievements: true, healthChallenges: true,
+    // Paid-only features:
+    aiHealthCoach: true, mealRecommendations: true, aiFoodAnalysis: true, aiMedicalReportAnalysis: true,
+    smartHealthAlerts: true, goalPlanner: true, detailedNutritionLogging: true, diabetesGlucoseLog: true,
+    nutritionDeficiencyDetection: true, advancedDataExport: true,
+};
+
+const FREE_FEATURES = {
+    waterLogging: true, healthScore: true, activityStepLogging: true, alcoholTracking: true,
+    sleepTracking: true, weightTracking: true, healthTimelineInsights: true, medicalVault: true,
+    darkModeSettings: true, healthStreaks: true, badgesAchievements: true, healthChallenges: true,
+    // Not AI-usage-cost features, so free tier gets them too:
+    smartHealthAlerts: true, detailedNutritionLogging: true, diabetesGlucoseLog: true,
+    nutritionDeficiencyDetection: true, advancedDataExport: true,
+    // True differentiators — AI/compute cost, paid-only:
+    aiHealthCoach: false, mealRecommendations: false, aiFoodAnalysis: false, aiMedicalReportAnalysis: false,
+    goalPlanner: false,
+};
+
+// Source of truth for pricing/features — edit here, then re-run this script.
 const PLAN_DEFINITIONS = [
     {
         key: 'free', name: 'Free', billingCycle: 'monthly', price: 0,
-        features: { reportAnalysesPerMonth: 1, aiChatPerDay: 3, dietPlansPerMonth: 0, supplementRecommendations: false, videoConsultAccess: false, prioritySupport: false },
+        features: FREE_FEATURES,
     },
     {
-        key: 'basic', name: 'Basic', billingCycle: 'monthly', price: 299,
-        features: { reportAnalysesPerMonth: 5, aiChatPerDay: 15, dietPlansPerMonth: 1, supplementRecommendations: true, videoConsultAccess: false, prioritySupport: true },
+        // Time-boxed trial (14 days new signups / 30 days waitlisted+old-user migration) — see
+        // authController.js register() and scripts/grantOldUsersFreeTrial.js. Never charged;
+        // full paid-tier feature set, same shape as basic/premium so nothing else has to special-case it.
+        key: 'free_trial', name: 'Free Trial', billingCycle: 'monthly', price: 0,
+        features: PAID_FEATURES,
     },
     {
-        key: 'basic', name: 'Basic', billingCycle: 'yearly', price: 239, // effective per-month rate, billed yearly
-        features: { reportAnalysesPerMonth: 5, aiChatPerDay: 15, dietPlansPerMonth: 1, supplementRecommendations: true, videoConsultAccess: false, prioritySupport: true },
+        // "Pro" — 1 month per charge.
+        key: 'basic', name: 'Pro', billingCycle: 'monthly', price: 1,
+        features: PAID_FEATURES,
     },
     {
-        key: 'premium', name: 'Premium', billingCycle: 'monthly', price: 599,
-        features: { reportAnalysesPerMonth: -1, aiChatPerDay: -1, dietPlansPerMonth: -1, supplementRecommendations: true, videoConsultAccess: true, prioritySupport: true },
-    },
-    {
-        key: 'premium', name: 'Premium', billingCycle: 'yearly', price: 479,
-        features: { reportAnalysesPerMonth: -1, aiChatPerDay: -1, dietPlansPerMonth: -1, supplementRecommendations: true, videoConsultAccess: true, prioritySupport: true },
+        // "Pro Plus" — 3 months per charge. TODO: confirm price (placeholder below).
+        key: 'premium', name: 'Pro Plus', billingCycle: 'quarterly', price: 2,
+        features: PAID_FEATURES,
     },
 ];
 
+// Same resolution as config/db.js — this repo runs against a staging DB by
+// default (USE_STAGING_DB=true in .env), with MONGODB_URI reserved for production.
+const resolveMongoUri = () =>
+    process.env.USE_STAGING_DB === 'true' ? process.env.MONGODB_URI_STAGING : process.env.MONGODB_URI;
+
 async function run() {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    const mongoUri = resolveMongoUri();
+    if (!mongoUri) {
+        throw new Error('No Mongo URI resolved — check MONGODB_URI / MONGODB_URI_STAGING / USE_STAGING_DB in .env');
+    }
+    await ensureSrvResolvable(mongoUri);
+    await mongoose.connect(mongoUri);
+    console.log(`Connected to MongoDB${process.env.USE_STAGING_DB === 'true' ? ' (STAGING)' : ''}`);
 
     const razorpay = getClient();
 
     for (const def of PLAN_DEFINITIONS) {
         let plan = await Plan.findOne({ key: def.key, billingCycle: def.billingCycle, isActive: true });
 
-        if (def.key === 'free') {
-            // Free plan never touches Razorpay.
+        if (def.key === 'free' || def.key === 'free_trial') {
+            // Never charged, so never touches Razorpay.
             if (!plan) {
                 plan = await Plan.create({ ...def, razorpayPlanId: null });
-                console.log(`Created free plan record`);
+                console.log(`Created ${def.key} plan record`);
+            } else {
+                plan.features = def.features;
+                plan.name = def.name;
+                await plan.save();
+                console.log(`Plan ${def.key} unchanged — updated features only`);
             }
             continue;
         }
@@ -68,9 +129,13 @@ async function run() {
         const needsNewRazorpayPlan = !plan || !plan.razorpayPlanId || plan.price !== def.price || !existsInRazorpay;
 
         if (needsNewRazorpayPlan) {
+            // Razorpay's `period` only accepts daily/weekly/monthly/yearly — a 3-month
+            // cycle is expressed as period 'monthly' with interval 3, not a 'quarterly' period.
+            const rzpPeriod = def.billingCycle === 'yearly' ? 'yearly' : 'monthly';
+            const rzpInterval = def.billingCycle === 'quarterly' ? 3 : 1;
             const rzpPlan = await razorpay.plans.create({
-                period: def.billingCycle === 'yearly' ? 'yearly' : 'monthly',
-                interval: 1,
+                period: rzpPeriod,
+                interval: rzpInterval,
                 item: {
                     name: `${def.name} (${def.billingCycle})`,
                     amount: def.price * 100, // paise

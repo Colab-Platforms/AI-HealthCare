@@ -29,6 +29,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const DeleteAccount = lazy(() => import("./pages/DeleteAccount"));
 const Support = lazy(() => import("./pages/Support"));
 const DemoPreview = lazy(() => import("./pages/DemoPreview"));
+const CreatorApply = lazy(() => import("./pages/CreatorApply"));
 
 // Lazy load the PrivateApp which contains all heavy providers and routes
 const PrivateApp = lazy(() => import("./PrivateApp"));
@@ -136,6 +137,7 @@ export default function App() {
             element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
           />
           <Route path="/demo" element={<DemoPreview />} />
+          <Route path="/creator" element={<CreatorApply />} />
 
           {/* All other routes go to the heavy PrivateApp */}
           <Route
@@ -164,6 +166,7 @@ export default function App() {
           "/privacy-policy",
           "/forgot-password",
           "/demo",
+          "/creator",
         ];
         const isPublicPage = publicPaths.some(
           (p) =>

@@ -1,51 +1,55 @@
-import { useState } from "react";
 import { Crown, Check, Zap, Star } from "lucide-react";
 
+// Free is lifetime access; Pro and Pro Plus are separate plans (not the same plan
+// billed two ways) — Pro autopays every month, Pro Plus every 3 months. There is no
+// monthly/yearly toggle: each tier has exactly one fixed billing cadence.
 const plans = [
   {
     id: "free",
     name: "Free",
-    tagline: "Ideal for getting started with your health journey.",
+    tagline: "Ideal for getting started with your health journey — free for life.",
     price: 0,
+    billingCycle: "monthly", // matches the Free Plan doc's stored billingCycle; irrelevant since price is 0
     icon: Star,
     features: [
-      "1 Report analysis per month",
-      "Basic AI insights",
-      "View doctor listings",
-      "Email support",
+      "Water, weight, sleep & activity logging",
+      "Health score & timeline insights",
+      "Medical vault (secure document storage)",
+      "Streaks, badges & health challenges",
+      "Detailed nutrition logging & smart alerts",
     ],
   },
   {
     id: "basic",
-    name: "Basic",
+    name: "Pro",
     tagline: "Built for people actively tracking their health.",
     price: 299,
+    billingCycle: "monthly",
+    cadenceLabel: "billed every month",
     icon: Zap,
     popular: true,
     features: [
-      "5 Report analyses per month",
-      "Full AI analysis with deficiencies",
-      "Personalized diet plans",
-      "Supplement recommendations",
-      "Health trend tracking",
-      "Priority support",
+      "Everything in Free",
+      "AI Health Coach",
+      "AI food analysis",
+      "AI medical report analysis",
+      "Personalized meal recommendations",
+      "Goal planner",
     ],
   },
   {
     id: "premium",
-    name: "Premium",
-    tagline: "Everything, unlimited, for serious health management.",
-    price: 599,
+    name: "Pro Plus",
+    tagline: "Same Pro features, billed quarterly — save vs. paying monthly.",
+    price: 799,
+    billingCycle: "quarterly",
+    cadenceLabel: "billed every 3 months",
     icon: Crown,
     features: [
-      "Unlimited report analyses",
-      "Advanced AI insights",
-      "Personalized diet & exercise plans",
-      "Supplement recommendations",
-      "Health trend analytics",
-      "Chat with AI about reports",
-      "Doctor recommendations",
-      "24/7 Priority support",
+      "Everything in Pro",
+      "Same features as Pro",
+      "3 months of access per charge",
+      "Fewer renewal charges",
     ],
   },
 ];
@@ -57,37 +61,14 @@ export default function PricingSection({
   onSelectPlan,
   ctaLabel,
 }) {
-  const [billingCycle, setBillingCycle] = useState("yearly");
-
   return (
     <div className="space-y-10">
-      {/* Billing Toggle */}
-      <div className="flex justify-center">
-        <div className="flex items-center gap-1 p-1 bg-white/60 backdrop-blur-xl rounded-full border border-white/60 shadow-sm">
-          <button
-            onClick={() => setBillingCycle("yearly")}
-            className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all ${billingCycle === "yearly" ? "bg-landing-primary text-white shadow-md" : "text-landing-text/60"}`}
-          >
-            Yearly
-          </button>
-          <button
-            onClick={() => setBillingCycle("monthly")}
-            className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all ${billingCycle === "monthly" ? "bg-landing-primary text-white shadow-md" : "text-landing-text/60"}`}
-          >
-            Monthly
-          </button>
-        </div>
-      </div>
-
       {/* Plans Grid */}
       <div className="grid md:grid-cols-3 gap-6 items-stretch max-w-5xl mx-auto">
         {plans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = currentPlan === plan.id;
-          const price =
-            billingCycle === "yearly"
-              ? Math.round((plan.price * 12 * 0.8) / 12)
-              : plan.price;
+          const price = plan.price;
           const dark = plan.popular;
 
           return (
@@ -135,19 +116,19 @@ export default function PricingSection({
                   </span>
                   {plan.price !== 0 && (
                     <span className={`text-sm pb-1 ${dark ? "text-white/50" : "text-landing-text/50"}`}>
-                      /month
+                      /{plan.billingCycle === "quarterly" ? "3 months" : "month"}
                     </span>
                   )}
                 </div>
-                {plan.price !== 0 && billingCycle === "yearly" && (
-                  <p className={`text-xs mt-1 ${dark ? "text-white/50" : "text-landing-text/50"}`}>
-                    Billed ₹{price * 12}/year
+                {plan.cadenceLabel && (
+                  <p className={`text-xs mt-1 capitalize ${dark ? "text-white/50" : "text-landing-text/50"}`}>
+                    {plan.cadenceLabel}, auto-renews
                   </p>
                 )}
               </div>
 
               <button
-                onClick={() => !isCurrentPlan && onSelectPlan?.({ ...plan, price, billingCycle })}
+                onClick={() => !isCurrentPlan && onSelectPlan?.({ ...plan, price, billingCycle: plan.billingCycle })}
                 disabled={isCurrentPlan}
                 className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all
                   ${isCurrentPlan

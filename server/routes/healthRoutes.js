@@ -38,15 +38,13 @@ const { aiLimiter, heavyReadLimiter, apiLimiter } = require('../middleware/rateL
 const { verifyQStash } = require('../middleware/qstashAuth');
 const { requireFeature } = require('../middleware/subscriptionAccess');
 const { requireHealthConsent } = require('../middleware/consentAccess');
-const { countReportsThisMonth } = require('../utils/featureUsage');
 
 // Background-job webhook — called by QStash, not by users, so it has no `protect`.
 // It MUST keep verifyQStash: the handler trusts userId/reportId from the body
 // and spends AI credits.
 router.post('/process-report-bg', verifyQStash, processReportBG);
-// TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
-// (was gated BEFORE multer/Cloudinary so a quota-exceeded user's file was never spent on)
-router.post('/upload', protect, requireHealthConsent, aiLimiter, /* requireFeature('reportAnalysesPerMonth', countReportsThisMonth), */ upload.single('report'), uploadReport);
+// Gated BEFORE multer/Cloudinary so a plan without this feature never spends storage/AI on it.
+router.post('/upload', protect, requireHealthConsent, aiLimiter, requireFeature('aiMedicalReportAnalysis'), upload.single('report'), uploadReport);
 router.get('/reports', protect, heavyReadLimiter, getReports);
 router.get('/history', protect, apiLimiter, getHealthHistory);
 router.get('/dashboard', protect, heavyReadLimiter, getDashboardData);

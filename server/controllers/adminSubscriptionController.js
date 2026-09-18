@@ -33,7 +33,9 @@ exports.getSubscribers = async (req, res) => {
     try {
         const { plan, status, search, page = 1, limit = 20 } = req.query;
 
-        const filter = { 'subscription.plan': { $ne: 'free' } };
+        // free_trial isn't a paid subscription — excluded from the default view, but an
+        // admin can still explicitly filter ?plan=free_trial to see trial users.
+        const filter = { 'subscription.plan': { $nin: ['free', 'free_trial'] } };
         if (plan) filter['subscription.plan'] = plan;
         if (status) filter['subscription.status'] = status;
         if (search) {

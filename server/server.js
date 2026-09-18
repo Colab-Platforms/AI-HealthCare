@@ -381,6 +381,7 @@ try {
     { path: "/api/insights", module: "./routes/insightRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
     { path: "/api/waitlist", module: "./routes/waitlistRoutes" },
+    { path: "/api/creator", module: "./routes/creatorRoutes" },
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
     { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots
@@ -501,8 +502,8 @@ if (!process.env.VERCEL) {
     await runTransactionRetentionCron();
   });
 
-  // Subscription Lifecycle — expiry downgrade + past_due grace period, midnight daily
-  const { runSubscriptionLifecycleCron, runRenewalReminderCron } = require('./services/subscriptionLifecycleService');
+  // Subscription Lifecycle — expiry downgrade (paid AND free_trial) + past_due grace period, midnight daily
+  const { runSubscriptionLifecycleCron, runRenewalReminderCron, runTrialEndingReminderCron } = require('./services/subscriptionLifecycleService');
   cron.schedule('0 0 * * *', async () => {
     console.log('💳 Running subscription lifecycle cron...');
     await runSubscriptionLifecycleCron();
@@ -513,6 +514,13 @@ if (!process.env.VERCEL) {
   cron.schedule('0 9 * * *', async () => {
     console.log('📧 Running subscription renewal reminder cron...');
     await runRenewalReminderCron();
+  });
+
+  // Trial-ending reminder — free_trial equivalent of the renewal reminder above,
+  // "upgrade now" copy instead of "renew" since there's no saved payment method.
+  cron.schedule('0 9 * * *', async () => {
+    console.log('📧 Running trial-ending reminder cron...');
+    await runTrialEndingReminderCron();
   });
 
   // Follow-up Nudges — every night at 10 PM

@@ -195,6 +195,13 @@ export const waitlistService = {
   retryFailedEmails: () => api.post('waitlist/retry-failed-emails')
 };
 
+export const creatorService = {
+  apply: (data) => api.post('creator', data, {
+    timeout: 15000,
+    validateStatus: (status) => status < 500 // Accept all non-5xx responses
+  })
+};
+
 export const notificationService = {
   getAll: () => api.get('notifications'),
   getUnreadCount: () => api.get('notifications/unread-count', { skipAutoLogout: true }),

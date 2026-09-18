@@ -5,19 +5,21 @@
 const User = require('../models/User');
 const emailService = require('./emailService');
 
-const PAST_DUE_GRACE_DAYS = 5;
+const PAST_DUE_GRACE_DAYS = 3;
 const RENEWAL_REMINDER_DAYS_BEFORE = 3;
 
 // One-time-payment flow has no auto-renewal, so remind users a few days before
 // currentPeriodEnd to come back and pay manually. Skips anyone already reminded
 // for this period (renewalReminderSentAt is cleared on every successful payment).
+// Excludes free_trial explicitly — a trial has no payment on file, so "renew your
+// plan" is the wrong message; runTrialEndingReminderCron below handles that case.
 const runRenewalReminderCron = async () => {
   try {
     const now = new Date();
     const reminderWindowEnd = new Date(now.getTime() + RENEWAL_REMINDER_DAYS_BEFORE * 24 * 60 * 60 * 1000);
 
     const dueSoon = await User.find({
-      'subscription.plan': { $ne: 'free' },
+      'subscription.plan': { $nin: ['free', 'free_trial'] },
       'subscription.status': 'active',
       'subscription.autoRenew': false,
       'subscription.currentPeriodEnd': { $gte: now, $lte: reminderWindowEnd },
@@ -43,6 +45,43 @@ const runRenewalReminderCron = async () => {
     console.log(`[Subscription Lifecycle] Renewal reminders sent: ${dueSoon.length}`);
   } catch (error) {
     console.error('[Subscription Lifecycle] Renewal reminder cron error:', error);
+  }
+};
+
+// Same idea as the renewal reminder, but for free_trial accounts and with
+// "upgrade now" copy instead of "renew" — there's no saved payment method to
+// auto-charge, so nothing renews on its own.
+const runTrialEndingReminderCron = async () => {
+  try {
+    const now = new Date();
+    const reminderWindowEnd = new Date(now.getTime() + RENEWAL_REMINDER_DAYS_BEFORE * 24 * 60 * 60 * 1000);
+
+    const endingSoon = await User.find({
+      'subscription.plan': 'free_trial',
+      'subscription.status': 'active',
+      'subscription.currentPeriodEnd': { $gte: now, $lte: reminderWindowEnd },
+      'subscription.renewalReminderSentAt': null,
+    }).select('name email subscription');
+
+    for (const user of endingSoon) {
+      try {
+        await emailService.sendEmail({
+          to: user.email,
+          subject: 'Your take.health free trial is ending soon',
+          html: `<p>Hi ${user.name || 'there'},</p>
+                 <p>Your free trial ends on ${new Date(user.subscription.currentPeriodEnd).toLocaleDateString('en-IN')}.
+                 Upgrade to Pro or Pro Plus from your Subscription page to keep uninterrupted access to paid features.</p>`,
+        });
+        user.subscription.renewalReminderSentAt = now;
+        await user.save();
+      } catch (emailErr) {
+        console.error('[Subscription Lifecycle] Trial-ending email failed for', user.email, emailErr.message);
+      }
+    }
+
+    console.log(`[Subscription Lifecycle] Trial-ending reminders sent: ${endingSoon.length}`);
+  } catch (error) {
+    console.error('[Subscription Lifecycle] Trial-ending reminder cron error:', error);
   }
 };
 
@@ -93,4 +132,4 @@ const runSubscriptionLifecycleCron = async () => {
   }
 };
 
-module.exports = { runSubscriptionLifecycleCron, runRenewalReminderCron };
+module.exports = { runSubscriptionLifecycleCron, runRenewalReminderCron, runTrialEndingReminderCron, PAST_DUE_GRACE_DAYS };

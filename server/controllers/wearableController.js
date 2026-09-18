@@ -27,10 +27,8 @@ function dateOnlyUTCFromDate(d) {
 // `wearable` in place; caller saves.
 //
 // `type` (resting/active/peak/cardio) also updates restingBpm separately when
-// it's 'resting' — NOTE: the Open Wearables webhook currently tags every
-// heart_rate.created sample as 'resting' regardless of real context (see
-// handleWebhook below), so restingBpm is only trustworthy for manual/demo data
-// until that's fixed with real provider context.
+// it's 'resting'. Only classifyHeartRateContext() below is allowed to produce
+// 'resting' for webhook-sourced samples — see its comment for why.
 function upsertHeartRateDailySummary(wearable, timestamp, bpm, type) {
   const bpmNum = Number(bpm);
   if (!(bpmNum > 0)) return;
@@ -62,6 +60,31 @@ function upsertHeartRateDailySummary(wearable, timestamp, bpm, type) {
     entry.restingBpm = entry.restingBpm != null ? Math.min(entry.restingBpm, bpmNum) : bpmNum;
   }
   wearable.markModified('heartRateDailySummary');
+}
+
+// Classifies a heart_rate.created sample's rest/activity type from the
+// provider's `context` field. Previously this defaulted to 'resting' unless
+// context === 'active', which meant sleep, walking, sedentary-but-not-still,
+// or simply missing context all got counted as true rest — silently
+// contaminating the restingBpm rollup (HeartRateDailySummary.restingBpm is a
+// running MIN, so a single misclassified low active-context reading can
+// drag it down permanently for that day).
+//
+// Fix: require positive evidence of rest, and require positive evidence of
+// activity separately. Anything the provider doesn't clearly label either way
+// stays 'unspecified' and is excluded from restingBpm (see
+// upsertHeartRateDailySummary / wearableIngestService.applyHeartRateSamples,
+// both gated on type === 'resting').
+//
+// If Open Wearables' actual context vocabulary differs from this list,
+// extend it here — do not fall back to assuming 'resting'.
+const RESTING_HR_CONTEXTS = new Set(['resting', 'sedentary', 'sleep', 'idle']);
+const ACTIVE_HR_CONTEXTS = new Set(['active', 'workout', 'exercise', 'walking', 'running', 'cycling']);
+
+function classifyHeartRateContext(context) {
+  if (RESTING_HR_CONTEXTS.has(context)) return 'resting';
+  if (ACTIVE_HR_CONTEXTS.has(context)) return 'active';
+  return 'unspecified';
 }
 
 // Connect a new wearable device
@@ -339,7 +362,7 @@ exports.syncOsHealthData = async (req, res) => {
       requireRecordId(reading, 'heartRate');
       validateTimestamp(reading.timestamp, 'heartRate.timestamp');
       validateNumber(reading.bpm, 'heartRate.bpm', 20, 250);
-      if (!['resting', 'active', 'peak', 'cardio'].includes(reading.type || 'resting')) {
+      if (reading.type && !['resting', 'active', 'peak', 'cardio', 'unspecified'].includes(reading.type)) {
         return res.status(400).json({ message: 'heartRate.type is invalid' });
       }
     }
@@ -1372,7 +1395,7 @@ exports.handleWebhook = async (req, res) => {
             .map(sample => ({
               timestamp: sample.timestamp,
               bpm: sample.value,
-              type: sample.context === 'active' ? 'active' : 'resting',
+              type: classifyHeartRateContext(sample.context),
               sourceRecordId: sample.id ? String(sample.id) : undefined
             }));
           await wearableIngest.applyHeartRateSamples(wearable.user, wearable.deviceType, 'open_wearables', readings, { wearable });

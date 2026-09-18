@@ -5,7 +5,6 @@ const { protect } = require('../middleware/auth');
 const { verifyQStash } = require('../middleware/qstashAuth');
 const { requireFeature } = require('../middleware/subscriptionAccess');
 const { requireHealthConsent } = require('../middleware/consentAccess');
-const { countDietPlansThisMonth } = require('../utils/featureUsage');
 
 // Background callback route — called by QStash, so no user session to `protect`.
 // Authenticated by signature instead; without it, anyone knowing the URL could
@@ -17,8 +16,7 @@ router.post('/process-meal-regen-bg', verifyQStash, dietRecommendationController
 router.use(protect);
 
 // Diet plan routes
-// TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
-router.post('/diet-plan/generate', requireHealthConsent, /* requireFeature('dietPlansPerMonth', countDietPlansThisMonth), */ dietRecommendationController.generatePersonalizedDietPlan);
+router.post('/diet-plan/generate', requireHealthConsent, requireFeature('mealRecommendations'), dietRecommendationController.generatePersonalizedDietPlan);
 router.get('/diet-plan/active', dietRecommendationController.getActiveDietPlan);
 router.get('/diet-plan/history', dietRecommendationController.getDietPlanHistory);
 router.get('/diet-plan/:planId', dietRecommendationController.getDietPlanById);

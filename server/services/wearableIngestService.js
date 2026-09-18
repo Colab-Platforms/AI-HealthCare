@@ -63,7 +63,11 @@ async function upsertNumericDailySummary(Model, key, value, timestamp, avgField,
 
 async function applyHeartRateSamples(userId, deviceType, source, readings, { session, wearable } = {}) {
   for (const reading of readings) {
-    const type = reading.type || 'resting';
+    // Don't default an unlabeled reading to 'resting' — that's what caused
+    // the restingBpm contamination bug (see classifyHeartRateContext in
+    // wearableController.js). Callers that know a reading is genuinely at
+    // rest must say so explicitly via reading.type.
+    const type = reading.type || 'unspecified';
     const filter = { user: userId, deviceType };
     if (reading.sourceRecordId) filter.sourceRecordId = reading.sourceRecordId;
     const exists = reading.sourceRecordId ? await HeartRateSample.exists(filter).session(session || null) : null;

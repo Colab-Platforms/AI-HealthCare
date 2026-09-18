@@ -6,6 +6,8 @@ const WebhookLog = require('../models/WebhookLog');
 const User = require('../models/User');
 const { getClient } = require('../services/razorpayService');
 const { generateInvoiceNumber, streamInvoicePDF } = require('../services/invoiceService');
+const emailService = require('../services/emailService');
+const { PAST_DUE_GRACE_DAYS } = require('../services/subscriptionLifecycleService');
 
 // GET /api/subscription/plans — public, used by the pricing page
 exports.getPlans = async (req, res) => {
@@ -17,11 +19,16 @@ exports.getPlans = async (req, res) => {
     }
 };
 
+// Razorpay requires a finite total_count of billing cycles even for an "indefinite"
+// subscription — set far enough out (~10 years) that it never matters in practice;
+// the subscription still auto-charges every cycle until the user cancels.
+const TOTAL_COUNT_BY_CYCLE = { monthly: 120, quarterly: 40, yearly: 10 };
+
 // POST /api/subscription/subscribe { planId }
-// One-time-payment flow: creates a plain Razorpay Order (not a Subscription — the
-// Subscriptions/recurring-payments product isn't activated on the account yet).
-// Access does NOT auto-renew; the lifecycle cron reminds the user to renew manually
-// before currentPeriodEnd. Does NOT grant access here — only the webhook does that.
+// Autopay flow: creates a real Razorpay Subscription (not a one-time Order), so
+// Razorpay auto-charges the user's saved payment method every billing cycle without
+// them returning to checkout. Access is granted only by the webhook (subscription.charged),
+// never here — this just hands the frontend a subscription id to open Razorpay Checkout with.
 exports.subscribe = async (req, res) => {
     try {
         const { planId } = req.body;
@@ -36,14 +43,33 @@ exports.subscribe = async (req, res) => {
         if (plan.key === 'free') {
             return res.status(400).json({ success: false, message: 'Free plan does not require checkout' });
         }
+        if (!plan.razorpayPlanId) {
+            return res.status(500).json({ success: false, message: 'Plan is not synced with the payment gateway yet' });
+        }
 
         const user = await User.findById(req.user._id);
-
         const razorpay = getClient();
-        const order = await razorpay.orders.create({
-            amount: plan.price * 100, // paise
-            currency: 'INR',
-            receipt: `sub_${user._id.toString().slice(-10)}_${Date.now()}`, // Razorpay caps receipt at 40 chars
+
+        // Reuse the Razorpay customer across re-subscribes/plan changes instead of creating a new one each time.
+        let customerId = user.subscription.razorpayCustomerId;
+        if (!customerId) {
+            const customer = await razorpay.customers.create({
+                name: user.name,
+                email: user.email,
+                contact: user.phone || undefined,
+                notes: { internal_user_id: user._id.toString() },
+            });
+            customerId = customer.id;
+            user.subscription.razorpayCustomerId = customerId;
+            await user.save();
+        }
+
+        const totalCount = TOTAL_COUNT_BY_CYCLE[plan.billingCycle] || 120;
+
+        const subscription = await razorpay.subscriptions.create({
+            plan_id: plan.razorpayPlanId,
+            customer_notify: 1,
+            total_count: totalCount,
             notes: {
                 internal_user_id: user._id.toString(),
                 internal_plan_key: plan.key,
@@ -53,7 +79,7 @@ exports.subscribe = async (req, res) => {
 
         res.json({
             success: true,
-            razorpayOrderId: order.id,
+            razorpaySubscriptionId: subscription.id,
             razorpayKeyId: process.env.RAZORPAY_KEY_ID,
             plan: { id: plan._id, name: plan.name, price: plan.price, billingCycle: plan.billingCycle },
         });
@@ -102,9 +128,9 @@ exports.getInvoice = async (req, res) => {
 };
 
 // POST /api/subscription/cancel
-// One-time-payment flow: there's no Razorpay Subscription entity to cancel — this just
-// stops the renewal reminder. Paid access is kept until currentPeriodEnd either way,
-// since nothing was ever going to auto-charge again.
+// Must cancel the actual Razorpay Subscription (cancel_at_cycle_end) — if we only
+// flipped local flags, Razorpay would keep auto-charging the user's saved payment
+// method every cycle regardless of what our DB says. Access is kept until currentPeriodEnd.
 exports.cancelSubscription = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
@@ -112,12 +138,22 @@ exports.cancelSubscription = async (req, res) => {
             return res.status(400).json({ success: false, message: 'No active subscription to cancel' });
         }
 
+        if (user.subscription.razorpaySubscriptionId) {
+            try {
+                const razorpay = getClient();
+                await razorpay.subscriptions.cancel(user.subscription.razorpaySubscriptionId, { cancel_at_cycle_end: 1 });
+            } catch (gatewayError) {
+                console.error('[Subscription] Razorpay cancel failed:', gatewayError);
+                return res.status(502).json({ success: false, message: 'Could not cancel with the payment provider — please try again.' });
+            }
+        }
+
         user.subscription.status = 'cancelled';
         user.subscription.autoRenew = false;
         user.subscription.statusUpdatedAt = new Date();
         await user.save();
 
-        res.json({ success: true, message: 'Renewal reminders stopped. You will keep access until your current billing period ends.' });
+        res.json({ success: true, message: 'Auto-renewal stopped. You will keep access until your current billing period ends.' });
     } catch (error) {
         console.error('[Subscription] cancel error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -152,7 +188,10 @@ exports.handleWebhook = async (req, res) => {
         }
 
         const paymentEntity = event.payload?.payment?.entity;
-        const notes = paymentEntity?.notes || {};
+        const subscriptionEntity = event.payload?.subscription?.entity;
+        // Notes are set by us on both the one-time Order (legacy) and the recurring
+        // Subscription (current) — whichever entity this event carries has them.
+        const notes = subscriptionEntity?.notes || paymentEntity?.notes || {};
         const userId = notes.internal_user_id;
 
         if (!userId) {
@@ -162,7 +201,7 @@ exports.handleWebhook = async (req, res) => {
 
         const user = await User.findById(userId);
         if (!user) {
-            console.warn('[Razorpay Webhook] No user matched for order', paymentEntity?.order_id);
+            console.warn('[Razorpay Webhook] No user matched for', paymentEntity?.order_id || subscriptionEntity?.id);
             return res.json({ success: true, message: 'No matching user' });
         }
 
@@ -171,10 +210,11 @@ exports.handleWebhook = async (req, res) => {
         const plan = planKey ? await Plan.findOne({ key: planKey, billingCycle, isActive: true }) : null;
 
         switch (event.event) {
+            // Legacy one-time-Order flow — kept so any in-flight old-style payment still gets credited.
             case 'payment.captured': {
                 if (!plan) break; // can't credit access without knowing which plan was paid for
 
-                const periodDays = billingCycle === 'yearly' ? 365 : 30;
+                const periodDays = billingCycle === 'yearly' ? 365 : billingCycle === 'quarterly' ? 90 : 30;
                 const periodEnd = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000);
 
                 user.subscription.status = 'active';
@@ -202,11 +242,94 @@ exports.handleWebhook = async (req, res) => {
                 break;
             }
 
-            case 'payment.failed':
-                // No access was granted yet on the one-time-payment flow, so nothing to roll back —
-                // just log it. The user simply sees the failure in the checkout modal and can retry.
-                console.warn('[Razorpay Webhook] payment.failed for user', user._id.toString());
+            // Recurring autopay flow — fires on the very first charge and every renewal after.
+            case 'subscription.charged': {
+                if (!plan || !subscriptionEntity) break;
+
+                // Razorpay is the authority on the period boundary — use its timestamps
+                // rather than computing +N days ourselves, so clock drift can't cause
+                // an early/late downgrade.
+                const periodEnd = new Date(subscriptionEntity.current_end * 1000);
+
+                user.subscription.status = 'active';
+                user.subscription.statusUpdatedAt = new Date();
+                user.subscription.plan = planKey;
+                user.subscription.billingCycle = billingCycle;
+                if (!user.subscription.startDate) user.subscription.startDate = new Date();
+                user.subscription.currentPeriodEnd = periodEnd;
+                user.subscription.endDate = periodEnd;
+                user.subscription.autoRenew = true;
+                user.subscription.razorpaySubscriptionId = subscriptionEntity.id;
+                user.subscription.renewalReminderSentAt = undefined;
+                await user.save();
+
+                const payment = await Payment.create({
+                    user: user._id,
+                    plan: plan._id,
+                    razorpaySubscriptionId: subscriptionEntity.id,
+                    razorpayPaymentId: paymentEntity?.id,
+                    razorpayEventId: eventId,
+                    amount: (paymentEntity?.amount || 0) / 100,
+                    status: 'paid',
+                });
+                payment.invoiceNumber = generateInvoiceNumber(payment);
+                await payment.save();
                 break;
+            }
+
+            // A scheduled recurring charge failed (bank decline, expired card, etc.) — Razorpay
+            // will retry a few times on its own before giving up (subscription.halted below).
+            // Start our own short grace window immediately rather than waiting for that.
+            case 'payment.failed':
+            case 'subscription.pending': {
+                if (user.subscription.status !== 'past_due') {
+                    user.subscription.status = 'past_due';
+                    user.subscription.statusUpdatedAt = new Date();
+                    await user.save();
+
+                    emailService.sendEmail({
+                        to: user.email,
+                        subject: 'Payment failed — action needed to keep your take.health plan',
+                        html: `<p>Hi ${user.name || 'there'},</p>
+                               <p>We couldn't process your renewal payment for the ${user.subscription.plan} plan.
+                               Please update your payment method within ${PAST_DUE_GRACE_DAYS} days to avoid losing access to paid features.</p>`,
+                    }).catch((emailErr) => console.error('[Razorpay Webhook] past_due email failed:', emailErr.message));
+                }
+                console.warn('[Razorpay Webhook] payment failed/pending for user', user._id.toString());
+                break;
+            }
+
+            // Razorpay exhausted its own retry schedule and gave up — hard-stop immediately
+            // rather than waiting for the lifecycle cron's grace-period sweep to catch it.
+            case 'subscription.halted': {
+                user.subscription.plan = 'free';
+                user.subscription.status = 'expired';
+                user.subscription.autoRenew = false;
+                user.subscription.statusUpdatedAt = new Date();
+                await user.save();
+                console.warn('[Razorpay Webhook] subscription.halted — downgraded user', user._id.toString());
+                break;
+            }
+
+            // User (or we, via cancelSubscription) cancelled — access remains until currentPeriodEnd,
+            // matching cancel_at_cycle_end; no further auto-charges will occur.
+            case 'subscription.cancelled': {
+                user.subscription.status = 'cancelled';
+                user.subscription.autoRenew = false;
+                user.subscription.statusUpdatedAt = new Date();
+                await user.save();
+                break;
+            }
+
+            // total_count cycles reached (the ~10-year cap) — extremely unlikely to ever fire
+            // for a real user, but if it does, treat like a graceful non-renewal.
+            case 'subscription.completed': {
+                user.subscription.autoRenew = false;
+                user.subscription.statusUpdatedAt = new Date();
+                await user.save();
+                console.warn('[Razorpay Webhook] subscription.completed for user', user._id.toString());
+                break;
+            }
 
             default:
                 // Unhandled event type — ack without action.
