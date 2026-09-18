@@ -83,6 +83,7 @@ app.use(mongoSanitize());
 const ALLOWED_ORIGINS = [
   ...(process.env.ALLOWED_ORIGINS || "").split(","),
   process.env.CLIENT_URL || "",
+  "https://ai-healthcare-1-0i51.onrender.com"
 ]
   .map((s) => s.trim())
   .filter(Boolean);
