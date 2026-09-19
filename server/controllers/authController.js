@@ -613,7 +613,6 @@ exports.register = async (req, res) => {
 
     // Validate required fields
     if (!name || !email || !password ) {
-      console.log('Registration attempt: Missing required fields');
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
@@ -637,8 +636,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    console.log('Registration attempt for email:', email);
-
     // Check if user exists by email or phone - with extended timeout for Vercel
     let existingUser = null;
     try {
@@ -655,7 +652,6 @@ exports.register = async (req, res) => {
     }
 
     if (existingUser) {
-      console.log('User already exists:', existingUser.email);
       const conflictField = existingUser.email === email ? 'email' : 'phone number';
       return res.status(400).json({ message: `An account with this ${conflictField} already exists` });
     }
@@ -706,7 +702,6 @@ exports.register = async (req, res) => {
 
     let user = null;
     try {
-      console.log('Creating user in database...');
       deviceLog('register:create-user', req, {
         email,
         storingRaw: device_id ?? null,
@@ -775,7 +770,6 @@ exports.register = async (req, res) => {
             activityLevel: profile.activityLevel || 'sedentary',
             isActive: true
           });
-          console.log('Initial HealthGoal created for user');
         } catch (goalError) {
           console.error('Failed to create initial HealthGoal:', goalError.message);
           // Don't fail the whole registration if this fails
@@ -790,8 +784,6 @@ exports.register = async (req, res) => {
         error: process.env.NODE_ENV === 'development' ? createError.message : undefined
       });
     }
-
-    console.log('User registered successfully:', user._id);
 
     if (user.fcmToken) upsertFcmTokenRecord(user._id, user.fcmToken, req);
 
@@ -943,18 +935,15 @@ exports.login = async (req, res) => {
 
     // Input validation
     if (!email && !phone) {
-      console.log('Login attempt: Missing email and phone');
       return res.status(400).json({ message: 'Email or phone is required' });
     }
 
     if (!password) {
-      console.log('Login attempt: Missing password');
       return res.status(400).json({ message: 'Password is required' });
     }
 
     // Allow login with email or phone - with extended timeout for Vercel
     const query = email ? { email } : { phone };
-    console.log('Login attempt with query:', query);
 
     let user;
     try {
@@ -972,21 +961,16 @@ exports.login = async (req, res) => {
     }
 
     if (!user) {
-      console.log('User not found for query:', query);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    console.log('User found:', user._id, 'isActive:', user.isActive);
-
     if (!user.isActive) {
-      console.log('User account is deactivated:', user._id);
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
     // Compare password with proper error handling
     let passwordMatch = false;
     try {
-      console.log('Comparing password for user:', user._id);
       passwordMatch = await user.comparePassword(password);
     } catch (pwError) {
       console.error('Password comparison error:', pwError.message);
@@ -1062,8 +1046,6 @@ exports.login = async (req, res) => {
         };
       }
 
-      console.log('Login successful for user:', user._id);
-
       // Respond first. The audit log and gamification points are both
       // fire-and-forget: neither affects what the client receives, and awaiting
       // the audit write put two extra DB round-trips on the critical path of
@@ -1073,7 +1055,6 @@ exports.login = async (req, res) => {
       logActivity(user._id, 'USER_LOGIN', 'authentication', { method: email ? 'email' : 'phone' }, req);
       gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
     } else {
-      console.log('Password mismatch for user:', user._id);
       res.status(401).json({ message: 'Invalid credentials' });
     }
   } catch (error) {
@@ -1142,7 +1123,7 @@ exports.googleAuth = async (req, res) => {
     const audienceOk = allowedClientIds.includes(receivedAud) || allowedClientIds.includes(receivedAzp);
 
     if (!audienceOk) {
-      console.log('Google token audience mismatch — receivedAud:', receivedAud, 'receivedAzp:', receivedAzp, 'expected (one of):', allowedClientIds);
+      console.warn('Google token audience mismatch — receivedAud:', receivedAud, 'receivedAzp:', receivedAzp, 'expected (one of):', allowedClientIds);
       return res.status(401).json({ message: 'Google token audience mismatch' });
     }
 
@@ -1288,8 +1269,6 @@ exports.appleAuth = async (req, res) => {
       return res.status(401).json({ message: 'Invalid Apple token' });
     }
 
-    console.log('Apple token payload:', JSON.stringify(payload));
-
     // APPLE_CLIENT_ID may hold a single identifier or a comma-separated list
     // (the web Services ID and the native app's Bundle ID are different
     // identifiers under the same Apple Developer team).
@@ -1299,7 +1278,7 @@ exports.appleAuth = async (req, res) => {
       .filter(Boolean);
 
     if (!allowedClientIds.includes(payload.aud)) {
-      console.log('Apple token audience mismatch — received:', payload.aud, 'expected (one of):', allowedClientIds);
+      console.warn('Apple token audience mismatch — received:', payload.aud, 'expected (one of):', allowedClientIds);
       return res.status(401).json({ message: 'Apple token audience mismatch' });
     }
 
@@ -1661,7 +1640,6 @@ exports.updateProfile = async (req, res) => {
               activityLevel: user.profile.activityLevel || 'sedentary',
               isActive: true
             });
-            console.log('Initial HealthGoal created for user through profile setup');
           } catch (goalError) {
             console.error('Failed to create initial HealthGoal:', goalError.message);
           }
@@ -1680,8 +1658,6 @@ exports.updateProfile = async (req, res) => {
         bmiChanged,
         newBmi
       };
-
-      console.log('updateProfile response:', JSON.stringify(responseBody, null, 2));
 
       res.json(responseBody);
     } else {
@@ -1795,8 +1771,6 @@ exports.createAdmin = async (req, res) => {
 // Upload profile picture to Cloudinary
 exports.uploadProfilePicture = async (req, res) => {
   try {
-    console.log('Upload profile picture request received. Files:', req.file ? 'File found' : 'No file');
-
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
@@ -1807,7 +1781,6 @@ exports.uploadProfilePicture = async (req, res) => {
     }
 
     try {
-      console.log('Attempting Cloudinary upload...');
       const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
 
       if (!dataBuffer) {
@@ -1821,8 +1794,6 @@ exports.uploadProfilePicture = async (req, res) => {
         console.error('❌ Cloudinary returned null URL. Check your environment variables.');
         throw new Error('Cloudinary upload failed - check server configuration');
       }
-
-      console.log('Cloudinary upload success:', imageUrl);
 
       user.profilePicture = imageUrl;
       await user.save();
@@ -1967,7 +1938,6 @@ exports.resetPassword = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
-    console.log(`[Verification] Attempting to verify email: ${email} with code: ${code}`);
 
     const user = await User.findOne({
       email,
@@ -1976,11 +1946,8 @@ exports.verifyEmail = async (req, res) => {
     });
 
     if (!user) {
-      console.log(`[Verification] FAILED: No match for code ${code} or expired for ${email}`);
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
-
-    console.log(`[Verification] SUCCESS: Code matched for ${email}`);
 
     user.isEmailVerified = true;
     user.emailVerificationCode = undefined;

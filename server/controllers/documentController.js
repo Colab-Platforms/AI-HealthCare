@@ -296,7 +296,6 @@ exports.getDocumentDownloadUrl = async (req, res) => {
             return res.status(500).json({ message: 'Failed to generate download URL' });
         }
 
-        console.log('✅ Generated signed download URL for:', filename);
         res.json({ downloadUrl, filename, expiresIn: '1 hour' });
     } catch (error) {
         console.error('❌ Error in getDocumentDownloadUrl:', error.message);
@@ -344,8 +343,6 @@ exports.getDocumentFile = async (req, res) => {
         const fetchOptions = { responseType: 'stream', timeout: 30000 };
 
         const response = await axios.get(fetchUrl, fetchOptions);
-
-        console.log('✅ File fetched successfully, streaming to client');
 
         // Collect stream into buffer to decrypt if needed
         const needsDecrypt = !isReport && (await MedicalDocument.findOne({ _id: req.params.id, userId: req.user._id }))?.isEncrypted;

@@ -293,12 +293,6 @@ exports.analyzeFood = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
 
-    console.log('Analyzing food:', {
-      hasDescription: !!foodDescription,
-      hasImage: !!imageBase64,
-      userId: req.user._id
-    });
-
     if (!foodDescription && !imageBase64) {
       return res.status(400).json({
         success: false,
@@ -312,8 +306,6 @@ exports.analyzeFood = async (req, res) => {
 
     if (imageBase64) {
       // Analyze from image and upload to Cloudinary in PARALLEL to save time
-      console.log('Analyzing from image and uploading to Cloudinary in parallel...');
-
       const [analysisResult, uploadedUrl] = await Promise.all([
         nutritionAI.analyzeFromImage(imageBase64, additionalContext, req.user._id, medicalContext),
         uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals').catch(e => {
@@ -326,8 +318,6 @@ exports.analyzeFood = async (req, res) => {
       imageUrl = uploadedUrl;
     } else {
       // Analyze from text
-      console.log('Analyzing from text...');
-
       // ─── BUILD QUANTITY-AWARE SEARCH KEY ───
       const { additionalContext: ctx } = req.body;
       let qtyFromCtx = '';
@@ -341,10 +331,7 @@ exports.analyzeFood = async (req, res) => {
         ? `${qtyFromCtx} ${foodDescription}`
         : foodDescription;
         
-      console.log('🔑 [Cache Key]:', searchKey);
-      
       // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
-      console.log('Using Pure AI analysis for text/voice log...');
       analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext);
       
       // Save for historical reference but do not use for retrieval next time
@@ -386,7 +373,6 @@ exports.analyzeFood = async (req, res) => {
       }
     }
 
-    console.log('Food analysis completed successfully');
     res.json({
       success: true,
       analysis: {
@@ -437,7 +423,6 @@ exports.logMeal = async (req, res) => {
       let finalDishes = dishes;
 
       if (isEdited === true) {
-        console.log('✏️ [LogMeal] User edited dishes — recalculating nutrition via AI...');
         const recalculated = await nutritionAI.recalculateNutrition(dishes, req.user._id, buildMedicalContextForAI(req.user));
         recalculatedData = recalculated.data;
         finalDishes = recalculated.data.dishes;
@@ -448,8 +433,6 @@ exports.logMeal = async (req, res) => {
         healthBenefitsSummary = recalculated.data.healthBenefitsSummary || recalculated.data.analysis;
         warnings = recalculated.data.warnings;
         alternatives = recalculated.data.alternatives;
-      } else {
-        console.log('✅ [LogMeal] Dishes unedited — skipping AI, logging as-is.');
       }
 
       // Map dishes[] into the FoodLog foodItems[] shape — one foodItem per dish, ingredients preserved
@@ -1221,8 +1204,6 @@ exports.logWeight = async (req, res) => {
   try {
     const { weight, notes, date } = req.body;
 
-    console.log('Logging weight:', { userId: req.user._id, weight, notes, date });
-
     if (!weight) {
       return res.status(400).json({
         success: false,
@@ -1264,9 +1245,7 @@ exports.logWeight = async (req, res) => {
       });
     }
 
-    console.log('Saving weight metric to database...');
     await metric.save({ maxTimeMS: 30000 });
-    console.log('Weight metric saved successfully');
 
     // Also update user profile weight and BMI
     const user = await withTimeout(User.findById(req.user._id));
@@ -1285,7 +1264,6 @@ exports.logWeight = async (req, res) => {
       user.markModified('profile');
       user.markModified('healthMetrics');
       await user.save({ maxTimeMS: 30000 });
-      console.log('User profile weight and BMI updated');
     }
 
     // Update health goal if exists
@@ -1300,7 +1278,6 @@ exports.logWeight = async (req, res) => {
       });
       // Recalculate targets based on new weight
       await healthGoal.save({ maxTimeMS: 30000 });
-      console.log('Health goal weight updated');
 
       // Ensure macroTargets exist before accessing them to avoid crashes
       const proteinGoal = healthGoal.macroTargets?.protein || 100;
@@ -1558,8 +1535,6 @@ exports.getDailySummary = async (req, res) => {
     const queryDate = date ? new Date(date) : new Date();
     const targetDate = new Date(queryDate.toISOString().split('T')[0]);
     targetDate.setUTCHours(0, 0, 0, 0);
-
-    console.log(`Fetching summary for user ${req.user._id} on ${targetDate.toISOString()}`);
 
     const isToday = targetDate.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
     
@@ -1963,9 +1938,6 @@ exports.quickFoodCheck = async (req, res) => {
     let cloudinaryUrls = [];
     const medicalContext = buildMedicalContextForAI(req.user);
 
-    console.log('🏁 [QuickCheck] Start - User ID:', req.user?._id);
-    console.log('📑 [QuickCheck] Headers:', req.headers['content-type']);
-    console.log('📦 [QuickCheck] Body keys:', Object.keys(req.body));
 
     // BUILD QUANTITY-AWARE SEARCH KEY (defined early so save logic can use it)
     const hasLeadingNumber = /^\d/.test(foodDescription || '');
@@ -1988,8 +1960,6 @@ exports.quickFoodCheck = async (req, res) => {
     let imageInputs = []; // [{ data: base64, mediaType }] — one entry per photo
 
     if (uploadedFiles.length > 0) {
-      console.log(`📷 [QuickCheck] ${uploadedFiles.length} file(s) received:`, uploadedFiles.map(f => `${f.originalname} (${f.mimetype}, ${(f.size / 1024).toFixed(0)}KB)`).join(', '));
-
       try {
         for (const file of uploadedFiles) {
           let data;
@@ -2020,7 +1990,6 @@ exports.quickFoodCheck = async (req, res) => {
     }
 
     if (!foodDescription && imageInputs.length === 0) {
-      console.log('⚠️ [QuickCheck] No input provided');
       return res.status(400).json({
         success: false,
         message: 'Please provide a food description or image'
@@ -2030,8 +1999,6 @@ exports.quickFoodCheck = async (req, res) => {
     // ─── STEP 2 & 3: Upload ALL images to Cloudinary & run ONE AI Analysis call, in PARALLEL ───
     if (imageInputs.length > 0) {
       try {
-        console.log(`🔄 [QuickCheck] Starting parallel Upload (${imageInputs.length} image(s)) & AI Analysis...`);
-
         // Combine description and additional context for more accurate AI analysis
         const combinedContext = [foodDescription, additionalContext]
           .filter(c => c && c !== 'Food from image')
@@ -2052,9 +2019,6 @@ exports.quickFoodCheck = async (req, res) => {
         cloudinaryUrls = uploadResults.filter(Boolean);
         analysis = analysisResult;
 
-        const dishNames = (analysis.data?.dishes || []).map(d => d.name).join(', ');
-        console.log('🧠 [QuickCheck] Image analysis successful. Dishes:', dishNames || analysis.data?.foodItem?.name || 'Unknown food');
-        console.log(`☁️ [QuickCheck] Cloudinary finished: ${cloudinaryUrls.length}/${imageInputs.length} uploaded`);
 
         // Check if AI couldn't detect food but returned 200 (special AI-rejection case)
         if (analysis.data?.error === 'UNABLE_TO_DETECT_FOOD' || analysis.data?.isFood === false) {
@@ -2066,7 +2030,6 @@ exports.quickFoodCheck = async (req, res) => {
         }
       } catch (imageError) {
         console.error('❌ [QuickCheck] Parallel processing failed:', imageError.message);
-        console.log('⚠️ [QuickCheck] Falling back to text-only analysis...');
         // Fallback to text analysis if image fails completely
         const fallbackContext = [foodDescription, additionalContext]
           .filter(c => c && c !== 'Food from image')
@@ -2075,7 +2038,6 @@ exports.quickFoodCheck = async (req, res) => {
       }
     } else {
       // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
-      console.log('📝 Using Pure AI analysis for:', foodDescription);
       analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext);
     }
 
@@ -2083,7 +2045,6 @@ exports.quickFoodCheck = async (req, res) => {
       throw new Error('AI failed to return valid data');
     }
 
-    console.log('💾 [QuickCheck] Saving to DB...');
 
     // Consolidate alternatives logic
     const alternativesArray = sanitizeAlternatives(analysis.data.alternatives);
@@ -2161,7 +2122,6 @@ exports.quickFoodCheck = async (req, res) => {
       await foodCheck.save();
     }
 
-    console.log('✅ Food check saved. Cloudinary URLs:', cloudinaryUrls.length ? cloudinaryUrls.join(', ') : 'N/A');
     res.json({
       success: true,
       data: normalizeAnalysisResult(foodCheck),
