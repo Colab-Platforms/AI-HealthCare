@@ -6,6 +6,7 @@
 // lexicographic comparison works fine for ISO date strings.
 
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
+const { detectPatterns } = require('./recoveryPatternService');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
@@ -87,22 +88,59 @@ function resolveWindow(range, { date, startDate: customStart, endDate: customEnd
   return { $gte: startStr, ...(endStr ? { $lte: endStr } : {}) };
 }
 
+// The trend chart's shaded "Personal baseline (78-83)" band is the recent
+// recoveryScore's own mean +/- 1 SD, over the most recent 14 days regardless
+// of which range (7D/30D/90D) the chart itself is displaying — same 14-day
+// window recoveryScoreService uses for its HRV/RHR baselines.
+async function getPersonalBaselineRange(userId) {
+  const recent = await RecoveryDailySummary.find({ user: userId, recoveryScore: { $ne: null } })
+    .select('recoveryScore')
+    .sort({ date: -1 })
+    .limit(14)
+    .lean();
+
+  const scores = recent.map(r => r.recoveryScore).filter(v => typeof v === 'number');
+  if (scores.length < 2) return null;
+
+  const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const variance = scores.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (scores.length - 1);
+  const sd = Math.sqrt(variance);
+
+  return { low: Math.round(mean - sd), high: Math.round(mean + sd) };
+}
+
 async function getRecoveryAnalytics(userId, range = 'daily', options = {}) {
   const dateMatch = resolveWindow(range, options);
 
-  const rows = await RecoveryDailySummary.find({ user: userId, date: dateMatch })
-    .select('date recoveryScore components')
-    .sort({ date: 1 })
-    .lean();
+  const [rows, personalBaselineRange, patterns] = await Promise.all([
+    RecoveryDailySummary.find({ user: userId, date: dateMatch })
+      .select('date recoveryScore band components confidence warnings baselineStatus metricDetails recommendation')
+      .sort({ date: 1 })
+      .lean(),
+    getPersonalBaselineRange(userId),
+    // Computed once per call (last-30-days scan), not per row — patterns
+    // describe the account's recent history overall, not a single day.
+    detectPatterns(userId),
+  ]);
 
+  // band/confidence/warnings/metricDetails/recommendation are additive
+  // (Phase 1/2) — older clients reading only date/recoveryScore/components
+  // see no change; they'll just be undefined/absent for rows computed before
+  // this shipped.
   const entries = rows.map(r => ({
     date: r.date,
     recoveryScore: r.recoveryScore,
-    components: r.components || {}
+    band: r.band,
+    components: r.components || {},
+    confidence: r.confidence,
+    warnings: r.warnings || [],
+    baselineStatus: r.baselineStatus,
+    metricDetails: r.metricDetails,
+    recommendation: r.recommendation
   }));
 
   if (range === 'daily') {
-    return { range, entries };
+    return { range, entries, personalBaselineRange, patterns };
   }
 
   const buckets = {};
@@ -117,11 +155,14 @@ async function getRecoveryAnalytics(userId, range = 'daily', options = {}) {
     return {
       period: key,
       avgRecoveryScore: average(group.map(g => g.recoveryScore)),
-      daysLogged: group.length
+      daysLogged: group.length,
+      // Additive: how many days in this period tripped an absolute
+      // safety-floor warning, regardless of what the score itself said.
+      daysWithWarnings: group.filter(g => (g.warnings || []).length > 0).length
     };
   });
 
-  return { range, summary };
+  return { range, summary, personalBaselineRange, patterns };
 }
 
 module.exports = { getRecoveryAnalytics, RecoveryAnalyticsInputError };

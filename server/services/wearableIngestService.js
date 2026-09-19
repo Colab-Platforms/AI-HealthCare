@@ -275,6 +275,19 @@ async function applyStressSamples(userId, deviceType, source, samples) {
     if (sample.category === 'high') {
       await StressDailySummary.updateOne({ user: userId, deviceType, date }, { $inc: { highStressMinutes: 1 } });
     }
+    // HRV rides on the same sample but is a running average of its own field
+    // (avgHrvMs/hrvReadingCount) — not routed through upsertNumericDailySummary,
+    // which would clobber avgLevel's min/max with HRV's.
+    const hrvValue = Number(sample.hrv);
+    if (Number.isFinite(hrvValue)) {
+      const doc = await StressDailySummary.findOne({ user: userId, deviceType, date });
+      if (doc) {
+        const newCount = (doc.hrvReadingCount || 0) + 1;
+        doc.avgHrvMs = Math.round((((doc.avgHrvMs || 0) * (doc.hrvReadingCount || 0)) + hrvValue) / newCount);
+        doc.hrvReadingCount = newCount;
+        await doc.save();
+      }
+    }
   }
 }
 

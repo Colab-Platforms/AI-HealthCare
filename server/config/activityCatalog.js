@@ -3,6 +3,14 @@
 // are kept unchanged so existing ExerciseLog docs stay valid with no migration —
 // everything past that is additive.
 const ACTIVITY_CATALOG = [
+  // MET values sourced from the 2024 Adult Compendium of Physical Activities
+  // (Ainsworth et al.) — "stretching, mild" and "walking, strolling <2mph"
+  // are both listed at 2.5 MET. Added specifically to give the Recovery
+  // feature's low/very_low bands real light-intensity (<3.0 MET, ACSM)
+  // suggestions beyond Yoga, which was previously the catalog's only entry
+  // in that range.
+  { id: 'stretching_mobility', label: 'Stretching / Mobility', category: 'flexibility', metValue: 2.5 },
+  { id: 'slow_walk', label: 'Slow Walk', category: 'cardio', metValue: 2.5 },
   { id: 'archery', label: 'Archery', category: 'other', metValue: 3.5 },
   { id: 'badminton', label: 'Badminton', category: 'cardio', metValue: 5.5 },
   { id: 'basketball', label: 'Basketball', category: 'cardio', metValue: 6.5 },
@@ -84,6 +92,46 @@ function groupCatalog() {
   return { groups, other };
 }
 
+// Published ACSM/CDC MET-intensity classification (physical activity
+// guidelines): light <3.0 METs, moderate 3.0-5.9 METs, vigorous >=6.0 METs.
+// These two boundary numbers (3.0, 6.0) are the ONLY thresholds used below —
+// nothing here is an invented split.
+const LIGHT_MODERATE_BOUNDARY = 3.0;
+const MODERATE_VIGOROUS_BOUNDARY = 6.0;
+
+function intensityLabel(metValue) {
+  if (metValue < LIGHT_MODERATE_BOUNDARY) return 'Light intensity';
+  if (metValue < MODERATE_VIGOROUS_BOUNDARY) return 'Moderate intensity';
+  return 'Vigorous intensity';
+}
+
+// Recovery band -> allowed ACSM intensity category. Low/very_low both map to
+// the same "Light" category (recovery guidance is "rest or light activity"
+// for both, not a graded MET cutoff between them); moderate and optimal map
+// 1:1 onto the Moderate and Vigorous categories respectively.
+//
+// NOTE: our current catalog's Light bucket (<3.0 MET) is thin — mostly just
+// Yoga — so very_low/low may return only 1-2 suggestions today. That is an
+// honest reflection of the catalog's content coverage, not a logic bug;
+// fixing it means adding more genuinely light-intensity catalog entries
+// (e.g. stretching, slow walking), a content task separate from this filter.
+function metRangeForBand(bandKey) {
+  if (bandKey === 'optimal') return { min: MODERATE_VIGOROUS_BOUNDARY, max: Infinity };
+  if (bandKey === 'moderate') return { min: LIGHT_MODERATE_BOUNDARY, max: MODERATE_VIGOROUS_BOUNDARY };
+  return { min: 0, max: LIGHT_MODERATE_BOUNDARY }; // low, very_low
+}
+
+const RECOVERY_SUGGESTION_COUNT = 4;
+
+function getRecoveryFriendlyActivities(bandKey) {
+  const { min, max } = metRangeForBand(bandKey);
+  return ACTIVITY_CATALOG
+    .filter((a) => a.id !== 'other' && a.metValue >= min && a.metValue < max)
+    .sort((a, b) => a.metValue - b.metValue)
+    .slice(0, RECOVERY_SUGGESTION_COUNT)
+    .map((a) => ({ id: a.id, label: a.label, category: a.category, metValue: a.metValue, intensity: intensityLabel(a.metValue) }));
+}
+
 module.exports = {
   ACTIVITY_CATALOG,
   MET_VALUES,
@@ -92,4 +140,5 @@ module.exports = {
   isValidActivityId,
   getActivityMeta,
   groupCatalog,
+  getRecoveryFriendlyActivities,
 };

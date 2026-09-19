@@ -1,11 +1,40 @@
-// Computes RecoveryDailySummary the same way dailyHealthScoreService computes
-// DailyHealthScore: event-driven (via triggerRecoveryScoreRecompute, fired
-// from log-write endpoints), reads the day's inputs fresh, upserts one row
-// per user per day, and deletes rather than zero-fills a day with no data.
+// Recovery Score — Phase 1 (see team spec "Recovery Score Algorithm — Final
+// Production V1"). Two independent layers, computed and reported separately:
 //
-// Component scoring is a first-pass heuristic (0-100 per component, weighted
-// average) — same "reasonable default, tune later" spirit as
-// sleepAnalyticsService's estimateQualityScore. Not a clinical formula.
+//  1. PERSONAL-BASELINE layer (the score itself): z-scores today's HRV/RHR
+//     against the user's OWN 14-day and 90-day history, converted to a
+//     standard T-score (mean 50, SD 10 — the textbook psychometric
+//     transformation, not an invented constant), then combined. This answers
+//     "how does today compare to MY normal."
+//
+//  2. ABSOLUTE SAFETY-FLOOR layer (independent `warnings`, never folds into
+//     the score): fixed clinical reference thresholds (WHO/AHA-adjacent),
+//     the same for every user regardless of their personal baseline. This
+//     exists because a baseline-relative score cannot detect "this person's
+//     entire observed history has been unhealthy" — if someone's 90-day HRV
+//     average is itself abnormally low, "improved vs. your own pattern" can
+//     read as a good score while the absolute value is still concerning.
+//     Whoop/Oura/Garmin all share this exact blind spot since they are
+//     baseline-relative-only too.
+//
+//  3. RECOVERY CEILING + BASELINE DRIFT: the personal-baseline score alone
+//     can look great purely because the RECENT window improved, even while
+//     the 90-day long-term baseline is still clearly suppressed (someone
+//     chronically unwell whose 90-day average never recovers). The drift
+//     check below reuses the long-term z-scores already computed (no extra
+//     query) to flag this, and the ceiling caps the score rather than only
+//     warning about it.
+//
+// The Recovery Ceiling value and drift threshold below are PLACEHOLDERS —
+// explicitly not calibrated against real outcome data yet (no vendor
+// publishes a validated number for this either). They exist so the
+// mechanism is wired end-to-end now; update the constants, not the logic,
+// once real usage data justifies a specific number.
+//
+// Still genuinely deferred (not just placeholder'd): EMA-smoothed adaptive
+// baselines, and full sleep "Continuity" (needs a per-night wake-event
+// COUNT, which HealthKit sleep stages don't give us — we only have total
+// awakeMinutes, not how many separate times the user woke).
 
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
 const StressDailySummary = require('../models/StressDailySummary');
@@ -14,111 +43,487 @@ const BloodOxygenSample = require('../models/BloodOxygenSample');
 const SleepSession = require('../models/SleepSession');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
+const { getWindowStats, dateOnlyUTC } = require('./recoveryBaselineService');
+const { buildRecommendation } = require('./recoveryRecommendationService');
 
-function dateOnlyUTC(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+// Matches the product design's "compared with your own 14-day baseline"
+// copy (Oura uses the same 14-day recent window against a longer reference).
+const RECENT_WINDOW_DAYS = 14;
+const LONG_WINDOW_DAYS = 90;
+// Activity's "chronic load" reference uses the recent window, not the full
+// 90 days — a newly-onboarded user realistically has activity history long
+// before they have 90 days of HRV/RHR, but requiring 90 days here would
+// leave the Activity modifier unavailable for most users for months.
+const ACUTE_LOAD_WINDOW_DAYS = 7;
+const CHRONIC_LOAD_WINDOW_DAYS = 28;
+
+// Informational only — "Baseline Evolution" (Section: buildBaselineEvolution)
+// shows how the user's own HRV/RHR normal has shifted over 3 distinct zones:
+// short (15d), medium (30d), and the same long-term (90d) the score already
+// uses. Deliberately 3 windows, not 5 — 45d/60d would sit inside the 15-90
+// range as near-duplicates of their neighbors (highly correlated, since
+// they're overlapping subsets of the same 90-day history) without adding
+// distinct information, while costing 2 extra queries per metric. This does
+// NOT feed the score formula — RECENT_WINDOW_DAYS (14) above is unchanged.
+const BASELINE_EVOLUTION_WINDOWS = [15, 30]; // documents the windows used in buildBaselineEvolution() below
+
+// PLACEHOLDER — see file header. -1.5 long-term z (HRV low / RHR high) is a
+// "clearly still off" cut rather than a borderline one; 69 sits just under
+// the Moderate band so a capped day reads as "Low", not merely "less than
+// Optimal". Neither number has been validated against our own outcome data.
+const DRIFT_Z_THRESHOLD = 1.5;
+const RECOVERY_CEILING_WHEN_DRIFTED = 69;
+
+// Standard psychometric T-score transformation (mean 50, SD 10) — the
+// conventional way to put a z-score on a 0-100-ish scale. Not something we
+// invented; the same transform underlies clinical assessments like the MMPI.
+function toTScore(z) {
+  if (z == null) return null;
+  return Math.max(0, Math.min(100, 50 + 10 * z));
 }
 
-// Lower resting HR and higher HRV both read as "more recovered" — score
-// relative to the user's own recent baseline rather than a fixed number,
-// since a healthy resting HR varies a lot person to person.
-function scoreAgainstBaseline(value, baseline, direction) {
-  if (value == null || baseline == null || baseline === 0) return null;
-  const pctDelta = ((value - baseline) / baseline) * 100;
-  const signed = direction === 'lowerIsBetter' ? -pctDelta : pctDelta;
-  return Math.max(0, Math.min(100, Math.round(50 + signed * 5)));
+// Absolute, personal-baseline-independent reference ranges. Deliberately
+// conservative (only flags clearly-outside-normal values) — this is a safety
+// net, not a diagnostic tool, and must never claim "you are sick".
+const SAFETY_FLOOR = {
+  hrvMsLow: 20,           // below this is low for essentially any healthy adult
+  rhrBpmHigh: 100,        // resting tachycardia range
+  rhrBpmLow: 40,          // bradycardia range (excluding trained-athlete context we can't detect)
+  spo2Low: 92,            // WHO/pulse-oximetry hypoxia reference
+};
+
+function zScore(value, mean, sd) {
+  if (value == null || mean == null || !(sd > 0)) return null;
+  return (value - mean) / sd;
+}
+
+// 4-tier band, thresholds matching Oura's published Readiness tiers (85+
+// Optimal, 70-84 Good/Moderate, under 70 progressively lower) rather than an
+// invented split — see the product design's "74 -> Moderate Recovery" copy,
+// which lands squarely in Oura's 70-84 band.
+function classifyRecoveryBand(score) {
+  if (score == null) return null;
+  if (score >= 85) return { key: 'optimal', label: 'Optimal Recovery' };
+  if (score >= 70) return { key: 'moderate', label: 'Moderate Recovery' };
+  if (score >= 50) return { key: 'low', label: 'Low Recovery' };
+  return { key: 'very_low', label: 'Very Low Recovery' };
+}
+
+// Renormalizes a weighted sum over only the sub-scores actually available —
+// same pattern dailyHealthScoreService already uses for its own components,
+// applied here at each domain level (Physiology, RecoveryBase) rather than
+// once globally, so a metric missing in one domain never borrows weight from
+// an unrelated domain.
+function weightedAverage(parts) {
+  const available = parts.filter((p) => p.score != null);
+  if (available.length === 0) return null;
+  const totalWeight = available.reduce((sum, p) => sum + p.weight, 0);
+  return available.reduce((sum, p) => sum + p.score * (p.weight / totalWeight), 0);
+}
+
+async function buildHrvEngine(userId, dateStr) {
+  const today = dateOnlyUTC(dateStr);
+  const [todayDocs, recent, long] = await Promise.all([
+    StressDailySummary.find({ user: userId, date: today }).select('avgHrvMs').lean(),
+    getWindowStats(StressDailySummary, userId, (d) => d.avgHrvMs, dateStr, RECENT_WINDOW_DAYS),
+    getWindowStats(StressDailySummary, userId, (d) => d.avgHrvMs, dateStr, LONG_WINDOW_DAYS),
+  ]);
+
+  const todayValues = todayDocs.map((d) => d.avgHrvMs).filter((v) => Number.isFinite(v));
+  if (todayValues.length === 0) return { available: false };
+  const todayHrv = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
+
+  const recentZ = zScore(todayHrv, recent.mean, recent.sd);
+  const longZ = zScore(todayHrv, long.mean, long.sd);
+  const recentScore = toTScore(recentZ);
+  const longScore = toTScore(longZ);
+
+  // 60% long-term so a single depressed recent window can't quickly redefine
+  // "healthy" — see this file's header note on baseline drift.
+  const score = weightedAverage([
+    { score: recentScore, weight: 0.40 },
+    { score: longScore, weight: 0.60 },
+  ]);
+
+  return {
+    available: true,
+    today: Math.round(todayHrv * 10) / 10,
+    baseline14: recent.mean != null ? Math.round(recent.mean * 10) / 10 : null,
+    baseline90: long.mean != null ? Math.round(long.mean * 10) / 10 : null,
+    // Mean +/- 1 SD over the 14-day window — the range a trend chart shades
+    // as "your usual range" (see the product design's HRV detail screen).
+    range14: (recent.mean != null && recent.sd != null)
+      ? { low: Math.round((recent.mean - recent.sd) * 10) / 10, high: Math.round((recent.mean + recent.sd) * 10) / 10 }
+      : null,
+    recentZ, longTermZ: longZ,
+    score: score != null ? Math.round(score) : null,
+    baselineDays: long.n,
+    sd90: long.sd,
+  };
+}
+
+async function buildRhrEngine(userId, dateStr) {
+  const today = dateOnlyUTC(dateStr);
+  const [todayDocs, recent, long] = await Promise.all([
+    HeartRateDailySummary.find({ user: userId, date: today }).select('restingBpm').lean(),
+    getWindowStats(HeartRateDailySummary, userId, (d) => d.restingBpm?.value, dateStr, RECENT_WINDOW_DAYS),
+    getWindowStats(HeartRateDailySummary, userId, (d) => d.restingBpm?.value, dateStr, LONG_WINDOW_DAYS),
+  ]);
+
+  const todayValues = todayDocs.map((d) => d.restingBpm?.value).filter((v) => Number.isFinite(v));
+  if (todayValues.length === 0) return { available: false };
+  const todayRhr = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
+
+  // Direction flip: for RHR, LOWER than baseline is the good direction.
+  const recentZ = zScore(todayRhr, recent.mean, recent.sd);
+  const longZ = zScore(todayRhr, long.mean, long.sd);
+  const recentScore = toTScore(recentZ != null ? -recentZ : null);
+  const longScore = toTScore(longZ != null ? -longZ : null);
+
+  const score = weightedAverage([
+    { score: recentScore, weight: 0.40 },
+    { score: longScore, weight: 0.60 },
+  ]);
+
+  return {
+    available: true,
+    today: Math.round(todayRhr),
+    baseline14: recent.mean != null ? Math.round(recent.mean) : null,
+    baseline90: long.mean != null ? Math.round(long.mean) : null,
+    range14: (recent.mean != null && recent.sd != null)
+      ? { low: Math.round(recent.mean - recent.sd), high: Math.round(recent.mean + recent.sd) }
+      : null,
+    recentZ, longTermZ: longZ,
+    score: score != null ? Math.round(score) : null,
+    baselineDays: long.n,
+    sd90: long.sd,
+  };
+}
+
+// Respiratory rate: unlike HRV/RHR, deviation in EITHER direction reads as a
+// potential concern (spec: "close to personal range = normal, unexpected
+// elevation = potential stress signal") — so this scores on |z|, not signed
+// z, and skips the recent/long split HRV and RHR use (RR is a stability
+// check, not a trend metric we want to track drift on separately yet).
+async function buildRrEngine(userId, dateStr) {
+  const today = dateOnlyUTC(dateStr);
+  const [todayDocs, recent] = await Promise.all([
+    VitalsDailySummary.find({ user: userId, date: today }).select('avgRespiratoryRate').lean(),
+    getWindowStats(VitalsDailySummary, userId, (d) => d.avgRespiratoryRate, dateStr, RECENT_WINDOW_DAYS),
+  ]);
+
+  const todayValues = todayDocs.map((d) => d.avgRespiratoryRate).filter((v) => Number.isFinite(v));
+  if (todayValues.length === 0) return { available: false };
+  const todayRr = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
+
+  const z = zScore(todayRr, recent.mean, recent.sd);
+  const score = z != null ? toTScore(-Math.abs(z)) : null; // deviation either way lowers the score
+
+  return {
+    available: true,
+    today: Math.round(todayRr * 10) / 10,
+    baseline14: recent.mean != null ? Math.round(recent.mean * 10) / 10 : null,
+    z,
+    score: score != null ? Math.round(score) : null,
+  };
+}
+
+// Sleep: Duration (existing "hours vs. 8h ideal" heuristic) + Efficiency
+// (real data: totalSleepMinutes / (totalSleepMinutes + awakeMinutes), a
+// standard sleep-science ratio — SleepSession already captures awakeMinutes)
+// + Regularity (real data: consistency of bedTime across recent nights).
+// Continuity (wake-event COUNT, not just total awake minutes) is the one
+// sub-component genuinely not buildable — see file header.
+//
+// Weights below follow the team spec's split (Duration 0.45 / Efficiency
+// 0.30 / Regularity 0.15 / Continuity 0.10), renormalized over the 3
+// available parts since Continuity is always missing right now.
+async function buildSleepEngine(userId, dateStr) {
+  const today = dateOnlyUTC(dateStr);
+  const REGULARITY_WINDOW_DAYS = 14;
+  const start = new Date(today); start.setUTCDate(start.getUTCDate() - REGULARITY_WINDOW_DAYS);
+
+  const [tonight, recentNights] = await Promise.all([
+    SleepSession.findOne({ user: userId, date: today }).select('totalSleepMinutes awakeMinutes bedTime').lean(),
+    SleepSession.find({ user: userId, date: { $gte: start, $lt: today } }).select('bedTime').lean(),
+  ]);
+  if (!tonight?.totalSleepMinutes) return { available: false };
+
+  const hours = tonight.totalSleepMinutes / 60;
+  const durationScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(hours - 8) * 15)));
+
+  const timeInBed = tonight.totalSleepMinutes + (tonight.awakeMinutes || 0);
+  const efficiencyPct = timeInBed > 0 ? (tonight.totalSleepMinutes / timeInBed) * 100 : null;
+  // Efficiency is already a 0-100 percentage — no extra scaling needed, it
+  // maps directly onto the score scale (>=85% is the standard sleep-science
+  // "good efficiency" reference; below that, the percentage itself already
+  // reads as a lower score).
+  const efficiencyScore = efficiencyPct != null ? Math.round(Math.max(0, Math.min(100, efficiencyPct))) : null;
+
+  // Regularity: SD of bedtime (minutes-since-midnight) over the last 14
+  // nights. Low variance = consistent schedule = high score. 120 minutes
+  // (2 hours) of night-to-night bedtime swing is used as the "essentially no
+  // regularity" reference point below — a common-sense anchor (a full
+  // school/work-driven schedule swing), not a published clinical threshold.
+  const bedtimeMinutes = recentNights
+    .map((n) => n.bedTime && new Date(n.bedTime))
+    .filter(Boolean)
+    .map((d) => d.getUTCHours() * 60 + d.getUTCMinutes());
+  let regularityScore = null;
+  if (bedtimeMinutes.length >= 3) {
+    const mean = bedtimeMinutes.reduce((a, b) => a + b, 0) / bedtimeMinutes.length;
+    const variance = bedtimeMinutes.reduce((s, v) => s + (v - mean) ** 2, 0) / bedtimeMinutes.length;
+    const sdMinutes = Math.sqrt(variance);
+    regularityScore = Math.round(Math.max(0, Math.min(100, 100 - (sdMinutes / 120) * 100)));
+  }
+
+  const score = weightedAverage([
+    { score: durationScore, weight: 0.45 },
+    { score: efficiencyScore, weight: 0.30 },
+    { score: regularityScore, weight: 0.15 },
+  ]);
+
+  return {
+    available: true,
+    hours: Math.round(hours * 10) / 10,
+    efficiencyPct: efficiencyPct != null ? Math.round(efficiencyPct) : null,
+    durationScore, efficiencyScore, regularityScore,
+    score: score != null ? Math.round(score) : durationScore,
+  };
+}
+
+// Activity is recovery DEMAND, not a "good activity score". Acute (7d) vs
+// chronic (28d) load ratio: near-usual is neutral, well above usual is a
+// penalty, and being very inactive gets no bonus (never negative either).
+async function buildActivityModifier(userId, dateStr) {
+  const today = dateOnlyUTC(dateStr);
+  const acuteStart = new Date(today); acuteStart.setUTCDate(acuteStart.getUTCDate() - ACUTE_LOAD_WINDOW_DAYS);
+  const chronicStart = new Date(today); chronicStart.setUTCDate(chronicStart.getUTCDate() - CHRONIC_LOAD_WINDOW_DAYS);
+
+  const [acuteDocs, chronicDocs] = await Promise.all([
+    DailyActivityMetric.find({ user: userId, date: { $gte: acuteStart, $lt: today } }).select('activeMinutes').lean(),
+    DailyActivityMetric.find({ user: userId, date: { $gte: chronicStart, $lt: today } }).select('activeMinutes').lean(),
+  ]);
+  if (acuteDocs.length === 0 || chronicDocs.length === 0) return { available: false, modifier: 0 };
+
+  const acuteLoad = acuteDocs.reduce((s, d) => s + (d.activeMinutes || 0), 0) / acuteDocs.length;
+  const chronicLoad = chronicDocs.reduce((s, d) => s + (d.activeMinutes || 0), 0) / chronicDocs.length;
+  if (!(chronicLoad > 0)) return { available: false, modifier: 0 };
+
+  const loadRatio = acuteLoad / chronicLoad;
+  let modifier = 0;
+  if (loadRatio > 1.2) {
+    // Overload beyond usual pattern — capped at -12 per the spec's V1 range.
+    modifier = -Math.min(12, Math.round((loadRatio - 1.2) * 20));
+  }
+  // loadRatio <= 1.2 (including very inactive stretches) intentionally stays
+  // at 0 — underactivity is not rewarded with a recovery bonus.
+
+  return { available: true, acuteLoad: Math.round(acuteLoad), chronicLoad: Math.round(chronicLoad), loadRatio: Math.round(loadRatio * 100) / 100, modifier };
+}
+
+// Independent of the score: fixed clinical reference thresholds, the same
+// for every user. Catches the case a purely personal-baseline score cannot —
+// someone whose entire observed history is itself unhealthy (see file header).
+async function buildSafetyWarnings(userId, dateStr, hrv, rhr) {
+  const warnings = [];
+  if (hrv.available && hrv.today < SAFETY_FLOOR.hrvMsLow) {
+    warnings.push({
+      code: 'hrv_below_reference_range',
+      message: 'Your HRV is below the typical range for adults, even if it looks improved compared to your own recent pattern.'
+    });
+  }
+  if (rhr.available && (rhr.today > SAFETY_FLOOR.rhrBpmHigh || rhr.today < SAFETY_FLOOR.rhrBpmLow)) {
+    warnings.push({
+      code: 'rhr_outside_reference_range',
+      message: 'Your resting heart rate is outside the typical range for adults.'
+    });
+  }
+
+  const today = dateOnlyUTC(dateStr);
+  const spo2Agg = await BloodOxygenSample.aggregate([
+    { $match: { user: userId, timestamp: { $gte: today, $lt: new Date(today.getTime() + 86400000) } } },
+    { $group: { _id: null, avg: { $avg: '$percentage' } } }
+  ]);
+  const spo2 = spo2Agg[0]?.avg;
+  if (spo2 != null && spo2 < SAFETY_FLOOR.spo2Low) {
+    warnings.push({
+      code: 'spo2_below_reference_range',
+      message: 'Your blood oxygen reading is below the typical healthy range.'
+    });
+  }
+
+  return warnings;
+}
+
+function confidenceFromBaselineDays(days) {
+  if (days == null || days < 7) return 'insufficient_baseline';
+  if (days < 14) return 'low';
+  if (days < 28) return 'moderate';
+  if (days < 60) return 'good';
+  return 'high';
+}
+
+// Drift = is the RECENT (14-day) baseline itself still meaningfully off from
+// the LONG-term (90-day) reference — using the long-term z-scores the HRV/RHR
+// engines already computed (today vs. 90-day mean/SD), not a fresh query.
+// Reusing longTermZ here means: if TODAY looks fine relative to a 90-day
+// baseline that is itself still suppressed, this alone won't catch it — this
+// check is specifically "how far is my recent NORMAL from my long-term
+// normal," a distinct question from "how does today compare to my normal."
+function computeBaselineDrift(hrv, rhr) {
+  const hrvDrifted = hrv.available && hrv.longTermZ != null && hrv.longTermZ <= -DRIFT_Z_THRESHOLD;
+  const rhrDrifted = rhr.available && rhr.longTermZ != null && rhr.longTermZ >= DRIFT_Z_THRESHOLD;
+  return {
+    status: (hrvDrifted || rhrDrifted) ? 'depressed_recent_baseline' : 'stable',
+    hrvDrifted, rhrDrifted,
+  };
+}
+
+// Informational "Baseline Evolution": mean/SD at 15d, 30d, and 90d (the 90d
+// figure is reused from the already-computed HRV/RHR engine output — see
+// BASELINE_EVOLUTION_WINDOWS comment above for why 45d/60d were left out).
+// Never touches the score; purely for a trend-chart / PDF-style view of how
+// a user's own "normal" has shifted over time.
+async function buildBaselineEvolution(userId, dateStr, hrv, rhr) {
+  const [hrv15, hrv30, rhr15, rhr30] = await Promise.all([
+    getWindowStats(StressDailySummary, userId, (d) => d.avgHrvMs, dateStr, 15),
+    getWindowStats(StressDailySummary, userId, (d) => d.avgHrvMs, dateStr, 30),
+    getWindowStats(HeartRateDailySummary, userId, (d) => d.restingBpm?.value, dateStr, 15),
+    getWindowStats(HeartRateDailySummary, userId, (d) => d.restingBpm?.value, dateStr, 30),
+  ]);
+
+  const round1 = (v) => (v != null ? Math.round(v * 10) / 10 : null);
+  const roundInt = (v) => (v != null ? Math.round(v) : null);
+
+  return {
+    hrv: {
+      day15: { mean: round1(hrv15.mean), sd: round1(hrv15.sd), n: hrv15.n },
+      day30: { mean: round1(hrv30.mean), sd: round1(hrv30.sd), n: hrv30.n },
+      day90: { mean: round1(hrv.baseline90), sd: round1(hrv.sd90), n: hrv.baselineDays },
+    },
+    rhr: {
+      day15: { mean: roundInt(rhr15.mean), sd: round1(rhr15.sd), n: rhr15.n },
+      day30: { mean: roundInt(rhr30.mean), sd: round1(rhr30.sd), n: rhr30.n },
+      day90: { mean: roundInt(rhr.baseline90), sd: round1(rhr.sd90), n: rhr.baselineDays },
+    },
+  };
 }
 
 async function calculateRecoveryScore(userId, dateStr) {
-  const date = dateOnlyUTC(dateStr);
-  const baselineStart = new Date(date);
-  baselineStart.setUTCDate(baselineStart.getUTCDate() - 30);
-
-  const [todayHr, baselineHr, todayStress, todaySleep, todayVitals, baselineVitals, todaySpo2, priorDayActivity, deviceDoc] = await Promise.all([
-    HeartRateDailySummary.findOne({ user: userId, date }).lean(),
-    HeartRateDailySummary.find({ user: userId, date: { $gte: baselineStart, $lt: date } }).select('restingBpm.value').lean(),
-    StressDailySummary.findOne({ user: userId, date }).lean(),
-    SleepSession.findOne({ user: userId, date }).lean(),
-    VitalsDailySummary.findOne({ user: userId, date }).lean(),
-    // Skin temperature is an absolute reading (confirmed: HealthKit reports
-    // actual skin/wrist °C, not a delta) — recovery cares about deviation
-    // from THIS user's own recent normal, same idea as the resting-HR baseline.
-    VitalsDailySummary.find({ user: userId, date: { $gte: baselineStart, $lt: date } }).select('avgSkinTemperatureCelsius').lean(),
-    BloodOxygenSample.aggregate([
-      { $match: { user: userId, timestamp: { $gte: date, $lt: new Date(date.getTime() + 86400000) } } },
-      { $group: { _id: null, avg: { $avg: '$percentage' } } }
-    ]),
-    DailyActivityMetric.findOne({ user: userId, date: new Date(date.getTime() - 86400000) }).lean(),
-    HeartRateDailySummary.findOne({ user: userId, date }).select('deviceType').lean()
+  const [hrv, rhr, rr, sleep, activity] = await Promise.all([
+    buildHrvEngine(userId, dateStr),
+    buildRhrEngine(userId, dateStr),
+    buildRrEngine(userId, dateStr),
+    buildSleepEngine(userId, dateStr),
+    buildActivityModifier(userId, dateStr),
   ]);
 
-  const components = {};
-
-  const baselineRestingValues = baselineHr.map(h => h.restingBpm?.value).filter(v => typeof v === 'number');
-  const baselineResting = baselineRestingValues.length
-    ? baselineRestingValues.reduce((a, b) => a + b, 0) / baselineRestingValues.length
-    : null;
-  if (todayHr?.restingBpm?.value != null) {
-    const score = scoreAgainstBaseline(todayHr.restingBpm.value, baselineResting, 'lowerIsBetter');
-    if (score != null) components.restingHeartRate = score;
-  }
-
-  if (todayStress?.avgLevel != null) {
-    // Stress index is already 0-100 "more stress"; recovery reads the inverse.
-    components.hrv = Math.max(0, Math.min(100, Math.round(100 - todayStress.avgLevel)));
-  }
-
-  const spo2Avg = todaySpo2[0]?.avg;
-  if (spo2Avg != null) {
-    // SpO2 below ~90% is clinically concerning; 95-100% is the normal healthy band.
-    components.spo2 = Math.max(0, Math.min(100, Math.round((spo2Avg - 90) * 20)));
-  }
-
-  if (todayVitals?.avgSkinTemperatureCelsius != null) {
-    const baselineTempValues = baselineVitals.map(v => v.avgSkinTemperatureCelsius).filter(v => typeof v === 'number');
-    const baselineTemp = baselineTempValues.length
-      ? baselineTempValues.reduce((a, b) => a + b, 0) / baselineTempValues.length
-      : null;
-    if (baselineTemp != null) {
-      // Deviation from THIS user's own recent normal in either direction
-      // reads as lower recovery — a fixed ~1°C swing is already a
-      // meaningful signal (illness, poor sleep), unlike resting HR's
-      // percentage-based comparison, so this scores on absolute degrees.
-      const deviation = Math.abs(todayVitals.avgSkinTemperatureCelsius - baselineTemp);
-      components.skinTemperature = Math.max(0, Math.min(100, Math.round(100 - deviation * 25)));
-    }
-  }
-
-  if (todaySleep?.totalSleepMinutes != null) {
-    // Reuse the same "8h ideal, linear penalty" heuristic sleepAnalyticsService uses.
-    const hours = todaySleep.totalSleepMinutes / 60;
-    components.sleepContribution = Math.max(0, Math.min(100, Math.round(100 - Math.abs(hours - 8) * 15)));
-  }
-
-  if (priorDayActivity) {
-    // Heavier activity load yesterday reads as lower recovery today (strain).
-    const activeMinutes = priorDayActivity.activeMinutes || 0;
-    components.strainContribution = Math.max(0, Math.min(100, Math.round(100 - activeMinutes)));
-  }
-
-  const availableKeys = Object.keys(components);
-  if (availableKeys.length === 0) {
+  // Without both core physiological signals there isn't enough evidence to
+  // call this a full Recovery Score (spec section 22).
+  if (!hrv.available && !rhr.available) {
     await RecoveryDailySummary.deleteOne({ user: userId, date: dateStr });
-    return { user: userId, date: dateStr, recoveryScore: null, components: {} };
+    return { user: userId, date: dateStr, recoveryScore: null, status: 'insufficient_physiological_data', components: {} };
   }
 
-  const recoveryScore = Math.round(
-    availableKeys.reduce((sum, k) => sum + components[k], 0) / availableKeys.length
-  );
+  // ANS = HRV + RHR + RR, renormalized over whichever are available (RR is
+  // usually missing today since it's newly wired — weightedAverage already
+  // renormalizes 0.50/0.40 between just HRV+RHR when RR is absent, so this
+  // silently degrades to the same physiology math as before RR existed).
+  const physiology = weightedAverage([
+    { score: hrv.available ? hrv.score : null, weight: 0.50 },
+    { score: rhr.available ? rhr.score : null, weight: 0.40 },
+    { score: rr.available ? rr.score : null, weight: 0.10 },
+  ]);
+
+  const recoveryBase = weightedAverage([
+    { score: physiology, weight: 0.70 },
+    { score: sleep.available ? sleep.score : null, weight: 0.30 },
+  ]);
+
+  const warnings = await buildSafetyWarnings(userId, dateStr, hrv, rhr);
+  const baseline = computeBaselineDrift(hrv, rhr);
+  const baselineDays = Math.max(hrv.baselineDays || 0, rhr.baselineDays || 0);
+  const confidence = confidenceFromBaselineDays(baselineDays);
+
+  // A reading existing today (hrv.available/rhr.available) is not the same as
+  // having a baseline to score it against — z-score/T-score both come back
+  // null with zero baseline history, which can make physiology/recoveryBase
+  // null even though "today" has real numbers. Without this guard, `null +
+  // activityModifier` coerces to 0 in JS and a brand-new user's very first
+  // day would show "Recovery: 0/100" — read as catastrophic, when the honest
+  // answer is "not enough history yet to score against."
+  if (recoveryBase == null) {
+    await RecoveryDailySummary.findOneAndUpdate(
+      { user: userId, date: dateStr },
+      { recoveryScore: null, components: {}, confidence, warnings, baselineStatus: baseline.status, metricDetails: { physiology: { score: null }, hrv, rhr, rr, sleep, activity } },
+      { upsert: true, new: true }
+    );
+    return {
+      user: userId, date: dateStr, recoveryScore: null,
+      status: 'insufficient_baseline', confidence, warnings, baselineStatus: baseline.status,
+      physiology: { score: null }, hrv, rhr, rr, sleep, activity,
+    };
+  }
+
+  const activityModifier = activity.modifier || 0;
+  const recoveryRaw = recoveryBase + activityModifier;
+  let recoveryScore = Math.round(Math.max(0, Math.min(100, recoveryRaw)));
+  let ceilingApplied = false;
+
+  // PLACEHOLDER ceiling (see file header) — only caps DOWN, never raises a
+  // score, and only when the long-term baseline itself is still drifted.
+  if (baseline.status === 'depressed_recent_baseline' && recoveryScore > RECOVERY_CEILING_WHEN_DRIFTED) {
+    recoveryScore = RECOVERY_CEILING_WHEN_DRIFTED;
+    ceilingApplied = true;
+  }
+
+  const band = classifyRecoveryBand(recoveryScore);
+
+  const components = {
+    hrv: hrv.available ? hrv.score : undefined,
+    restingHeartRate: rhr.available ? rhr.score : undefined,
+    respiratoryRate: rr.available ? rr.score : undefined,
+    sleepContribution: sleep.available ? sleep.score : undefined,
+    strainContribution: activity.available ? Math.max(0, Math.min(100, 100 + activityModifier * 4)) : undefined,
+  };
+
+  // Informational only, does not affect recoveryScore — see
+  // buildBaselineEvolution()'s header comment.
+  const baselineEvolution = await buildBaselineEvolution(userId, dateStr, hrv, rhr);
+
+  const metricDetails = {
+    physiology: { score: physiology != null ? Math.round(physiology) : null },
+    hrv, rhr, rr, sleep, activity,
+    ceilingApplied,
+    baselineEvolution,
+  };
+
+  // Rule-based only (lookup table keyed on band + activity load) — not an
+  // AI call. See recoveryRecommendationService.js's header for why this is
+  // a different, much smaller thing than the separately-deferred AI workout
+  // recommendation engine.
+  const recommendation = buildRecommendation({ band, activity, sleepAvailable: sleep.available });
 
   const saved = await RecoveryDailySummary.findOneAndUpdate(
     { user: userId, date: dateStr },
-    { recoveryScore, components, deviceType: deviceDoc?.deviceType },
+    { recoveryScore, band, components, confidence, warnings, baselineStatus: baseline.status, metricDetails, recommendation },
     { upsert: true, new: true }
   );
 
-  return { user: userId, date: dateStr, recoveryScore: saved.recoveryScore, components: saved.components };
+  return {
+    user: userId,
+    date: dateStr,
+    recoveryScore: saved.recoveryScore,
+    band: saved.band,
+    confidence: saved.confidence,
+    warnings: saved.warnings,
+    baselineStatus: saved.baselineStatus,
+    recommendation: saved.recommendation,
+    physiology: metricDetails.physiology,
+    baselineEvolution,
+    hrv, rhr, rr, sleep, activity,
+  };
 }
 
 module.exports = { calculateRecoveryScore };
