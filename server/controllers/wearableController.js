@@ -645,6 +645,8 @@ exports.addSleepData = async (req, res) => {
 };
 
 // Get wearable dashboard data
+const DASHBOARD_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 exports.getWearableDashboard = async (req, res) => {
   try {
     const wearables = await WearableData.find({ user: req.user._id, isConnected: true })
@@ -655,21 +657,37 @@ exports.getWearableDashboard = async (req, res) => {
       return res.json({ connected: false, devices: [] });
     }
 
-    const targetDate = new Date();
-    targetDate.setUTCHours(0, 0, 0, 0);
+    // Optional ?date=YYYY-MM-DD lets the app view any past day, same
+    // date-param convention as the analytics endpoints below. Defaults to
+    // today so existing callers that never pass a date see no change.
+    const { date } = req.query;
+    if (date !== undefined && !DASHBOARD_DATE_RE.test(date)) {
+      return res.status(400).json({ message: 'date must be in YYYY-MM-DD format' });
+    }
+    const targetDate = date ? dateOnlyUTCFromDate(new Date(date)) : dateOnlyUTCFromDate(new Date());
+    // "weekly trend" / "recent sleep" stay a 7-day window ENDING on the
+    // viewed date, not always ending today - so navigating to a past date
+    // shows that week's context, not a mix of past-date + today's week.
     const weekAgoDate = new Date(targetDate);
     weekAgoDate.setUTCDate(weekAgoDate.getUTCDate() - 7);
+    const nextDate = new Date(targetDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
 
     // Bounded at the query level now — DailyActivityMetric/SleepSession are
-    // one right-sized doc per user+device+day, so "today" / "last 7 days"
-    // is a normal indexed range query instead of loading every device's
-    // full history and filtering in JS.
+    // one right-sized doc per user+device+day, so "the viewed day" / "the
+    // 7 days ending on it" is a normal indexed range query instead of
+    // loading every device's full history and filtering in JS. The upper
+    // bound (< nextDate) matters once `date` can be in the past — without
+    // it, "weekly trend" would leak days AFTER the viewed date too.
     const [todayActivity, todaySleep, recentSleep, weeklyTrend, recentStoredHeartRate] = await Promise.all([
       DailyActivityMetric.find({ user: req.user._id, date: targetDate }).lean(),
       SleepSession.find({ user: req.user._id, date: targetDate }).lean(),
-      SleepSession.find({ user: req.user._id, date: { $gte: weekAgoDate } }).sort({ date: -1 }).lean(),
-      DailyActivityMetric.find({ user: req.user._id, date: { $gte: weekAgoDate } }).sort({ date: 1 }).lean(),
-      HeartRateSample.find({ user: req.user._id })
+      SleepSession.find({ user: req.user._id, date: { $gte: weekAgoDate, $lt: nextDate } }).sort({ date: -1 }).lean(),
+      DailyActivityMetric.find({ user: req.user._id, date: { $gte: weekAgoDate, $lt: nextDate } }).sort({ date: 1 }).lean(),
+      HeartRateSample.find({
+        user: req.user._id,
+        timestamp: { $gte: weekAgoDate, $lt: nextDate }
+      })
         .select('deviceType timestamp bpm type source sourceRecordId')
         .sort({ timestamp: -1 })
         .limit(10)
@@ -678,6 +696,11 @@ exports.getWearableDashboard = async (req, res) => {
 
     const dashboard = {
       connected: true,
+      // The date this payload actually represents — additive field so the
+      // app can confirm which day it's looking at once ?date= is in use.
+      // `todayMetrics` below keeps its existing name for backward
+      // compatibility even when it's really "metrics for the viewed date".
+      date: targetDate.toISOString().split('T')[0],
       devices: wearables.map(w => ({
         type: w.deviceType,
         name: w.deviceName,
