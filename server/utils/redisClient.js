@@ -22,7 +22,8 @@ const Redis = require('ioredis');
  *               queued commands until the connection is up instead.
  */
 
-const URL = process.env.REDIS_URL;
+const useStaging = process.env.USE_STAGING_DB === 'true';
+const URL = useStaging ? (process.env.REDIS_URL_STAGING || process.env.REDIS_URL) : process.env.REDIS_URL;
 const isUpstash = !!URL && URL.includes('upstash.io');
 const tls = isUpstash ? { rejectUnauthorized: false } : undefined;
 
