@@ -280,13 +280,19 @@ async function applyStressSamples(userId, deviceType, source, samples) {
     // which would clobber avgLevel's min/max with HRV's.
     const hrvValue = Number(sample.hrv);
     if (Number.isFinite(hrvValue)) {
-      const doc = await StressDailySummary.findOne({ user: userId, deviceType, date });
-      if (doc) {
-        const newCount = (doc.hrvReadingCount || 0) + 1;
-        doc.avgHrvMs = Math.round((((doc.avgHrvMs || 0) * (doc.hrvReadingCount || 0)) + hrvValue) / newCount);
-        doc.hrvReadingCount = newCount;
-        await doc.save();
-      }
+      // upsert: true — an HRV-only sample (no sample.level) never reaches the
+      // upsertNumericDailySummary call above, which bails out on a non-finite
+      // level and never creates the doc. Relying on that doc already existing
+      // here silently dropped every level-less HRV reading (see os-sync HRV bug).
+      const doc = await StressDailySummary.findOneAndUpdate(
+        { user: userId, deviceType, date },
+        { $setOnInsert: { avgHrvMs: 0, hrvReadingCount: 0 } },
+        { upsert: true, new: true }
+      );
+      const newCount = (doc.hrvReadingCount || 0) + 1;
+      doc.avgHrvMs = Math.round((((doc.avgHrvMs || 0) * (doc.hrvReadingCount || 0)) + hrvValue) / newCount);
+      doc.hrvReadingCount = newCount;
+      await doc.save();
     }
   }
 }
