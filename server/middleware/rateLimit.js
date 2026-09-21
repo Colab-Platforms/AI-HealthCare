@@ -54,8 +54,14 @@ const aiLimiter = rateLimit({
 
 // General API limiter for authenticated GET endpoints — prevents scraping/abuse
 // 200 requests per minute per user is generous for normal use but blocks bots
+//
+// Memory-backed on purpose (not Redis): this fires on nearly every read in the
+// app, so it was the single biggest source of Redis command volume and pushed
+// us over Upstash's monthly quota. Anti-scraping on reads doesn't need
+// cross-instance accuracy the way login brute-force or AI-cost protection do,
+// so a per-process counter is an acceptable tradeoff (limit effectively
+// becomes max × instance count on a multi-instance deploy).
 const apiLimiter = rateLimit({
-  store: buildStore('api'),
   windowMs: 60 * 1000, // 1 minute
   max: 200,
   standardHeaders: true,
@@ -66,8 +72,8 @@ const apiLimiter = rateLimit({
 });
 
 // Stricter limiter for expensive DB-read endpoints (dashboard, reports listing)
+// Memory-backed for the same reason as apiLimiter above — see that comment.
 const heavyReadLimiter = rateLimit({
-  store: buildStore('heavy'),
   windowMs: 60 * 1000, // 1 minute
   max: 60,
   standardHeaders: true,
