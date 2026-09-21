@@ -1,5 +1,6 @@
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
 const emailService = require('../services/emailService');
+const metaConversionsService = require('../services/metaConversionsService');
 
 /**
  * Join Waitlist - Public endpoint
@@ -8,7 +9,7 @@ const emailService = require('../services/emailService');
  */
 exports.joinWaitlist = async (req, res) => {
     try {
-        const { email, name } = req.body;
+        const { email, name, eventId, fbp, fbc } = req.body;
 
         // Validation
         if (!email || !name) {
@@ -57,6 +58,20 @@ exports.joinWaitlist = async (req, res) => {
         });
 
         await newEntry.save();
+
+        // Send Lead event to Meta Conversions API (best-effort, fire-and-forget).
+        // Uses the same eventId the frontend passes to fbq() so Meta dedupes
+        // the browser Pixel event against this server event.
+        metaConversionsService.sendLeadEvent({
+            email: newEntry.email,
+            name: newEntry.name,
+            eventId,
+            eventSourceUrl: req.headers.referer,
+            clientIp: req.ip,
+            userAgent: req.headers['user-agent'],
+            fbp,
+            fbc
+        }).catch((err) => console.error('[WaitlistController] Meta CAPI Lead event failed:', err.message));
 
         // Send welcome email (best-effort — failure doesn't block the join)
         try {
