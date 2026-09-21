@@ -97,6 +97,44 @@ function zScore(value, mean, sd) {
   return (value - mean) / sd;
 }
 
+// Population reference values — used ONLY as a fallback until a user has
+// enough of their OWN history (see zScoreWithFallback below). Real published
+// numbers, not invented placeholders:
+//   HRV (RMSSD): Nunan et al. 2010 meta-analysis, 44 studies, 21,438 healthy
+//     adults — mean=42ms, SD=15ms. This is a general-population figure, not
+//     age-adjusted; a real HRV reference varies a lot by age, so this is
+//     deliberately a rough starting point, not a precise personal estimate.
+//   RHR: American Heart Association's published normal range, 60-100 bpm.
+//     AHA reports a RANGE, not a mean/SD, so this converts it using the
+//     standard range-to-SD approximation (mean = midpoint, SD = range/4,
+//     treating the published range as roughly a 2-SD band) — a named,
+//     conventional technique for turning a clinical range into a usable
+//     distribution, not something invented for this app.
+//   Respiratory Rate: standard adult clinical vital-sign range, 12-20
+//     breaths/min, converted the same way.
+const POPULATION_REFERENCE = {
+  hrvMs: { mean: 42, sd: 15 },
+  rhrBpm: { mean: 80, sd: 10 },   // (60+100)/2, (100-60)/4
+  rrBreathsPerMin: { mean: 16, sd: 2 }, // (12+20)/2, (20-12)/4
+};
+
+// Prefers the user's OWN baseline; falls back to the population reference
+// ONLY when there isn't enough personal history yet (sd null/undefined means
+// fewer than 2 valid baseline days — see recoveryBaselineService.computeStats).
+// This is what lets Day 1 show a real, honestly-labeled score instead of
+// nothing — and it silently stops being used the moment real personal data
+// exists, with no separate code path to switch over later.
+function zScoreWithFallback(value, personalMean, personalSd, popRef) {
+  if (value == null) return { z: null, source: null };
+  if (personalMean != null && personalSd > 0) {
+    return { z: (value - personalMean) / personalSd, source: 'personal' };
+  }
+  if (popRef.sd > 0) {
+    return { z: (value - popRef.mean) / popRef.sd, source: 'population' };
+  }
+  return { z: null, source: null };
+}
+
 // 4-tier band, thresholds matching Oura's published Readiness tiers (85+
 // Optimal, 70-84 Good/Moderate, under 70 progressively lower) rather than an
 // invented split — see the product design's "74 -> Moderate Recovery" copy,
@@ -133,8 +171,10 @@ async function buildHrvEngine(userId, dateStr) {
   if (todayValues.length === 0) return { available: false };
   const todayHrv = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
 
-  const recentZ = zScore(todayHrv, recent.mean, recent.sd);
-  const longZ = zScore(todayHrv, long.mean, long.sd);
+  const recentFb = zScoreWithFallback(todayHrv, recent.mean, recent.sd, POPULATION_REFERENCE.hrvMs);
+  const longFb = zScoreWithFallback(todayHrv, long.mean, long.sd, POPULATION_REFERENCE.hrvMs);
+  const recentZ = recentFb.z;
+  const longZ = longFb.z;
   const recentScore = toTScore(recentZ);
   const longScore = toTScore(longZ);
 
@@ -159,6 +199,10 @@ async function buildHrvEngine(userId, dateStr) {
     score: score != null ? Math.round(score) : null,
     baselineDays: long.n,
     sd90: long.sd,
+    // 'personal' if either window used the user's own history, 'population'
+    // if BOTH fell back — i.e. this reflects the user's real data the moment
+    // any of it exists, not an all-or-nothing switch.
+    baselineSource: (recentFb.source === 'personal' || longFb.source === 'personal') ? 'personal' : 'population',
   };
 }
 
@@ -175,8 +219,10 @@ async function buildRhrEngine(userId, dateStr) {
   const todayRhr = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
 
   // Direction flip: for RHR, LOWER than baseline is the good direction.
-  const recentZ = zScore(todayRhr, recent.mean, recent.sd);
-  const longZ = zScore(todayRhr, long.mean, long.sd);
+  const recentFb = zScoreWithFallback(todayRhr, recent.mean, recent.sd, POPULATION_REFERENCE.rhrBpm);
+  const longFb = zScoreWithFallback(todayRhr, long.mean, long.sd, POPULATION_REFERENCE.rhrBpm);
+  const recentZ = recentFb.z;
+  const longZ = longFb.z;
   const recentScore = toTScore(recentZ != null ? -recentZ : null);
   const longScore = toTScore(longZ != null ? -longZ : null);
 
@@ -197,6 +243,7 @@ async function buildRhrEngine(userId, dateStr) {
     score: score != null ? Math.round(score) : null,
     baselineDays: long.n,
     sd90: long.sd,
+    baselineSource: (recentFb.source === 'personal' || longFb.source === 'personal') ? 'personal' : 'population',
   };
 }
 
@@ -216,13 +263,15 @@ async function buildRrEngine(userId, dateStr) {
   if (todayValues.length === 0) return { available: false };
   const todayRr = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
 
-  const z = zScore(todayRr, recent.mean, recent.sd);
+  const fb = zScoreWithFallback(todayRr, recent.mean, recent.sd, POPULATION_REFERENCE.rrBreathsPerMin);
+  const z = fb.z;
   const score = z != null ? toTScore(-Math.abs(z)) : null; // deviation either way lowers the score
 
   return {
     available: true,
     today: Math.round(todayRr * 10) / 10,
     baseline14: recent.mean != null ? Math.round(recent.mean * 10) / 10 : null,
+    baselineSource: fb.source,
     z,
     score: score != null ? Math.round(score) : null,
   };
@@ -356,7 +405,12 @@ async function buildSafetyWarnings(userId, dateStr, hrv, rhr) {
   return warnings;
 }
 
-function confidenceFromBaselineDays(days) {
+// 'population_reference' is a distinct tier from 'insufficient_baseline':
+// the latter means no score at all (see the recoveryBase==null guard below);
+// the former means a real score IS shown, using published population norms
+// because personal history isn't there yet — see zScoreWithFallback.
+function confidenceFromBaselineDays(days, usedPopulationReference) {
+  if (usedPopulationReference) return 'population_reference';
   if (days == null || days < 7) return 'insufficient_baseline';
   if (days < 14) return 'low';
   if (days < 28) return 'moderate';
@@ -371,9 +425,14 @@ function confidenceFromBaselineDays(days) {
 // baseline that is itself still suppressed, this alone won't catch it — this
 // check is specifically "how far is my recent NORMAL from my long-term
 // normal," a distinct question from "how does today compare to my normal."
+// Only meaningful when both z-scores came from the user's OWN history —
+// drifting against a population reference isn't a real personal-drift signal.
 function computeBaselineDrift(hrv, rhr) {
-  const hrvDrifted = hrv.available && hrv.longTermZ != null && hrv.longTermZ <= -DRIFT_Z_THRESHOLD;
-  const rhrDrifted = rhr.available && rhr.longTermZ != null && rhr.longTermZ >= DRIFT_Z_THRESHOLD;
+  if (hrv.baselineSource !== 'personal' && rhr.baselineSource !== 'personal') {
+    return { status: 'stable', hrvDrifted: false, rhrDrifted: false };
+  }
+  const hrvDrifted = hrv.available && hrv.baselineSource === 'personal' && hrv.longTermZ != null && hrv.longTermZ <= -DRIFT_Z_THRESHOLD;
+  const rhrDrifted = rhr.available && rhr.baselineSource === 'personal' && rhr.longTermZ != null && rhr.longTermZ >= DRIFT_Z_THRESHOLD;
   return {
     status: (hrvDrifted || rhrDrifted) ? 'depressed_recent_baseline' : 'stable',
     hrvDrifted, rhrDrifted,
@@ -444,7 +503,12 @@ async function calculateRecoveryScore(userId, dateStr) {
   const warnings = await buildSafetyWarnings(userId, dateStr, hrv, rhr);
   const baseline = computeBaselineDrift(hrv, rhr);
   const baselineDays = Math.max(hrv.baselineDays || 0, rhr.baselineDays || 0);
-  const confidence = confidenceFromBaselineDays(baselineDays);
+  // Population-reference confidence applies only while EVERY available
+  // metric is still falling back to it — the instant any one metric has
+  // real personal history, that's reflected as ordinary day-count confidence.
+  const usedSources = [hrv.available ? hrv.baselineSource : null, rhr.available ? rhr.baselineSource : null].filter(Boolean);
+  const usedPopulationReference = usedSources.length > 0 && usedSources.every((s) => s === 'population');
+  const confidence = confidenceFromBaselineDays(baselineDays, usedPopulationReference);
 
   // A reading existing today (hrv.available/rhr.available) is not the same as
   // having a baseline to score it against — z-score/T-score both come back

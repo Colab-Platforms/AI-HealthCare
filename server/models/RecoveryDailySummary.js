@@ -29,7 +29,11 @@ const recoveryDailySummarySchema = new mongoose.Schema({
   // Newer clients can also read these for the fuller breakdown.
   confidence: {
     type: String,
-    enum: ['insufficient_baseline', 'low', 'moderate', 'good', 'high']
+    // 'population_reference': a real score IS shown, but computed against
+    // published population norms (see recoveryScoreService's
+    // POPULATION_REFERENCE) because the user has no personal history yet —
+    // distinct from 'insufficient_baseline', which means no score at all.
+    enum: ['population_reference', 'insufficient_baseline', 'low', 'moderate', 'good', 'high']
   },
   // 4-tier band matching Oura's published Readiness thresholds (85+/70-84/
   // 50-69/<50) — see recoveryScoreService.js's classifyRecoveryBand.
