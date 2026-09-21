@@ -7,6 +7,16 @@ const dotenv = require("dotenv");
 dotenv.config(); // Works for local dev (CWD = server/)
 dotenv.config({ path: path.join(__dirname, ".env") }); // Works for Railway (CWD = repo root)
 
+// Non-critical subsystems (e.g. the Redis-backed rate limiter) can reject a
+// promise outside any request's try/catch — rate-limit-redis fires its first
+// command at construction time, before Express even exists. Node treats an
+// unhandled rejection as fatal by default, so one bad Redis reply (quota
+// exceeded, transient blip) would otherwise take down the entire API. Log and
+// keep running instead; real failures still surface via health checks.
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️ Unhandled rejection (process kept alive):", reason);
+});
+
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
