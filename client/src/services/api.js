@@ -187,7 +187,7 @@ export const authService = {
 };
 
 export const waitlistService = {
-  join: (name, email) => api.post('waitlist', { name, email }, {
+  join: (name, email, meta = {}) => api.post('waitlist', { name, email, ...meta }, {
     timeout: 15000,
     validateStatus: (status) => status < 500 // Accept all non-5xx responses
   }),

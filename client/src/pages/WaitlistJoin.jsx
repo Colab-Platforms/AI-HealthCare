@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { waitlistService } from "../services/api";
 
+const getCookie = (name) => {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+};
+
 // Dedicated route (not a modal) so reaching the join form is a real
 // navigation — Meta/Google Ads can then track "landed on /waitlist/join"
 // as a plain page-visit signal, on top of the custom JS events.
@@ -52,15 +57,24 @@ export default function WaitlistJoin() {
     setIsSubmitting(true);
     setStatusMessage("");
 
+    // Shared between the browser Pixel Lead event (fired on the thank-you
+    // page) and the server-side Conversions API Lead event, so Meta can
+    // dedupe the two into a single conversion.
+    const eventId = crypto.randomUUID();
+
     try {
-      const response = await waitlistService.join(name.trim(), email.trim());
+      const response = await waitlistService.join(name.trim(), email.trim(), {
+        eventId,
+        fbp: getCookie("_fbp"),
+        fbc: getCookie("_fbc"),
+      });
 
       if (response.status === 201) {
         // New user added — send to the dedicated thank-you route so the
         // conversion is also trackable as a plain "page visited" rule.
         setName("");
         setEmail("");
-        navigate("/waitlist/thank-you");
+        navigate("/waitlist/thank-you", { state: { eventId } });
       } else if (response.status === 200) {
         // Already on waitlist — not a new lead, stay on this page.
         setName("");

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const CONFETTI_COLORS = ["#4872ff", "#6d54eb", "#2dd4bf", "#f59e0b", "#f472b6", "#34d399"];
 
@@ -7,6 +7,7 @@ const CONFETTI_COLORS = ["#4872ff", "#6d54eb", "#2dd4bf", "#f59e0b", "#f472b6", 
 // "page visited" conversion rule (URL contains /waitlist/thank-you),
 // independent of the custom JS events which some browsers/extensions block.
 export default function WaitlistThankYou() {
+  const location = useLocation();
   const [confettiPieces, setConfettiPieces] = useState([]);
 
   useEffect(() => {
@@ -21,7 +22,13 @@ export default function WaitlistThankYou() {
 
     try {
       if (typeof window.fbq === "function") {
-        window.fbq("track", "Lead", { content_name: "waitlist_signup" });
+        const eventId = location.state?.eventId;
+        window.fbq(
+          "track",
+          "Lead",
+          { content_name: "waitlist_signup" },
+          eventId ? { eventID: eventId } : undefined
+        );
       }
     } catch (err) {
       console.error("fbq tracking failed", err);
