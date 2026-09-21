@@ -19,6 +19,7 @@ const {
   getSleepAnalyticsData,
   getActivityAnalyticsData,
   getSleepInsightData,
+  getSleepSummaryData,
   getActivityInsightData,
   getStressAnalyticsData,
   getVitalsAnalyticsData,
@@ -42,6 +43,7 @@ router.post('/sleep', addSleepData);
 router.get('/dashboard', heavyReadLimiter, getWearableDashboard);
 router.get('/sleep/analytics', heavyReadLimiter, getSleepAnalyticsData);
 router.get('/sleep/insight', apiLimiter, getSleepInsightData);
+router.get('/sleep/summary', apiLimiter, getSleepSummaryData);
 router.get('/activity/analytics', heavyReadLimiter, getActivityAnalyticsData);
 router.get('/activity/insight', apiLimiter, getActivityInsightData);
 router.get('/heart-rate/trend', heavyReadLimiter, getHeartRateTrend);

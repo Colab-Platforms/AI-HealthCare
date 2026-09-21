@@ -20,6 +20,7 @@ const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const ExerciseLog = require('../models/ExerciseLog');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
+const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
 // fan-out small and pause between batches rather than burning the quota in
@@ -149,11 +150,6 @@ async function collectOverallData(userId, dateKey) {
 
 const insightData = {
   overall: (data) => data,
-  sleep: (data) => ({
-    date: data.date,
-    sleepHours: data.sleepHours,
-    sleepScore: data.sleepScore,
-  }),
   nutrition: (data) => ({
     date: data.date,
     meals: data.meals,
@@ -176,7 +172,6 @@ const insightData = {
 };
 
 const hasInsightData = (type, data) => {
-  if (type === 'sleep') return data.sleepHours != null || data.sleepScore != null;
   if (type === 'nutrition') return data.meals.length > 0
     || data.calories != null || data.protein != null || data.waterGlasses != null;
   if (type === 'fitness') return data.workouts.length > 0
@@ -199,16 +194,33 @@ Rules you must follow:
 - description: 200-300 characters, written as 3-5 clear sentences — explain what the data says about yesterday and give one specific thing to try today. Stay within this character range.
 - summary: one line, max 15 words, the single takeaway.`;
 
+const SLEEP_SHARED_RULES = `
+Rules you must follow:
+- Warm, positive, encouraging. Never scold, shame, or use alarming language.
+- Speak directly to the user as "you". Lead with lastNight's actual numbers, then use the
+  trend/goal/regularity fields (when present) to explain WHY, and suggest ONE simple thing for TODAY.
+- Only reference numbers and statuses present in the data below. Never invent a number, a trend, or a
+  pattern that isn't explicitly in the data.
+- If tier is "insufficient_data" or "raw_comparison", do NOT claim any trend, debt, or regularity pattern —
+  explicitly acknowledge that there isn't enough history yet and encourage continued tracking instead.
+- This is wellness guidance, not a medical diagnosis. Plain everyday language, no medical jargon, no emojis,
+  never name a disease or mention medicine/dosages.
+- Respond with ONLY this JSON, nothing else:
+{"title": "", "description": "", "summary": ""}
+- title: max 6 words, upbeat headline.
+- description: 200-300 characters, written as 3-5 clear sentences. Stay within this character range.
+- summary: one line, max 15 words, the single takeaway.`;
+
 const INSIGHT_SYSTEMS = {
   overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity from yesterday.${SHARED_RULES}`,
-  sleep: `You are a friendly sleep coach inside the take.health app. Write a daily insight focused only on the user's sleep data from yesterday.${SHARED_RULES}`,
+  sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (last night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
   nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data from yesterday.${SHARED_RULES}`,
   fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity from yesterday.${SHARED_RULES}`,
 };
 
 const INSIGHT_LABELS = {
   overall: "Yesterday's overall health activity",
-  sleep: "Yesterday's sleep data",
+  sleep: "Sleep analysis (last night plus recent context)",
   nutrition: "Yesterday's nutrition and hydration data",
   fitness: "Yesterday's fitness and movement data",
 };
@@ -267,7 +279,7 @@ async function generateForUser(userId, sourceDate, { force = false } = {}) {
   const insightDate = shiftDateKey(sourceDate, 1);
 
   const user = await User.findById(userId)
-    .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel nutritionGoal.goal')
+    .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours nutritionGoal.goal')
     .lean();
 
   const profile = {
@@ -291,9 +303,16 @@ async function generateForUser(userId, sourceDate, { force = false } = {}) {
         if (existing) { result[insightType] = 'already_exists'; continue; }
       }
 
-      const data = overallData && insightData[insightType](overallData);
+      let data;
+      if (insightType === 'sleep') {
+        const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+        const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours });
+        data = analysis.lastNight ? { date: sourceDate, ...analysis } : null;
+      } else {
+        data = overallData && insightData[insightType](overallData);
+      }
 
-      if (!data || !hasInsightData(insightType, overallData)) {
+      if (!data || (insightType !== 'sleep' && !hasInsightData(insightType, overallData))) {
         result[insightType] = 'skipped_no_data';
         continue;
       }

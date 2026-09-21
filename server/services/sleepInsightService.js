@@ -1,4 +1,4 @@
-const WearableData = require('../models/WearableData');
+const SleepSession = require('../models/SleepSession');
 const ExerciseLog = require('../models/ExerciseLog');
 
 const RECENT_WINDOW_DAYS = 3;
@@ -28,24 +28,22 @@ async function getSleepInsight(userId, sleepGoalHours = 8) {
   baselineSince.setUTCDate(baselineSince.getUTCDate() - BASELINE_WINDOW_DAYS);
   baselineSince.setUTCHours(0, 0, 0, 0);
 
-  const wearables = await WearableData.find({ user: userId })
-    .select('sleepData.date sleepData.totalSleepMinutes')
+  const sessions = await SleepSession.find({ user: userId, date: { $gte: baselineSince } })
+    .select('date totalSleepMinutes')
     .lean();
 
   const recentByDate = {};
   const baselineByDate = {}; // the window BEFORE recentSince, so a current dip can't drag down its own baseline
-  for (const w of wearables) {
-    w.sleepData?.forEach(s => {
-      if (!s.date) return;
-      const d = new Date(s.date);
-      const hours = (s.totalSleepMinutes || 0) / 60;
-      const key = d.toISOString().split('T')[0];
-      if (d >= recentSince) {
-        recentByDate[key] = hours;
-      } else if (d >= baselineSince) {
-        baselineByDate[key] = hours;
-      }
-    });
+  for (const s of sessions) {
+    if (!s.date) continue;
+    const d = new Date(s.date);
+    const hours = (s.totalSleepMinutes || 0) / 60;
+    const key = d.toISOString().split('T')[0];
+    if (d >= recentSince) {
+      recentByDate[key] = hours;
+    } else if (d >= baselineSince) {
+      baselineByDate[key] = hours;
+    }
   }
 
   const recentNights = Object.values(recentByDate);

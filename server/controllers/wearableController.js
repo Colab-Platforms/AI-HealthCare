@@ -12,6 +12,7 @@ const { getStressAnalytics, StressAnalyticsInputError } = require('../services/s
 const { getVitalsAnalytics, VitalsAnalyticsInputError } = require('../services/vitalsAnalyticsService');
 const { getRecoveryAnalytics, RecoveryAnalyticsInputError } = require('../services/recoveryAnalyticsService');
 const { getSleepInsight } = require('../services/sleepInsightService');
+const { getSleepClinicalAnalysis, toAppSummary } = require('../services/sleepClinicalAnalysisService');
 const { getActivityInsight } = require('../services/activityInsightService');
 const wearableIngest = require('../services/wearableIngestService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
@@ -856,17 +857,58 @@ exports.getRecoveryAnalyticsData = async (req, res) => {
 };
 
 // Fact-based sleep-goal adherence + a safety note if the user is training
-// while under-slept. No calorie/exercise number is adjusted — see sleepInsightService.
-// Device-agnostic: reads WearableData.sleepData regardless of whether entries
-// came from manual logging or a connected wearable's webhook.
+// while under-slept, plus the tiered clinical analysis (age-aware ideal range,
+// trend, debt, regularity) that also feeds the LLM daily insight. Device-agnostic:
+// reads SleepSession regardless of whether entries came from manual logging or
+// a connected wearable's webhook.
 exports.getSleepInsightData = async (req, res) => {
   try {
     const User = require('../models/User');
-    const user = await User.findById(req.user._id).select('profile.lifestyle.sleepGoalHours').lean();
+    const user = await User.findById(req.user._id)
+      .select('profile.age profile.lifestyle.sleepGoalHours')
+      .lean();
     const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+    const age = user?.profile?.age ?? null;
 
-    const insight = await getSleepInsight(req.user._id, sleepGoalHours);
-    res.json({ success: true, ...insight });
+    const [insight, clinicalAnalysis] = await Promise.all([
+      getSleepInsight(req.user._id, sleepGoalHours),
+      getSleepClinicalAnalysis(req.user._id, { age, sleepGoalHours }),
+    ]);
+
+    res.json({ success: true, ...insight, clinicalAnalysis });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Single-call, render-ready sleep summary for the app: last night's numbers,
+// the tiered clinical analysis reshaped into self-describing sections (each
+// carries its own `available` flag — no tier-name lookups needed client-side),
+// and last night's pre-generated coach message if the nightly cron already
+// wrote one. The coach message is fetched best-effort — a missing/not-yet-
+// generated insight returns null there, it never fails the whole request.
+exports.getSleepSummaryData = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const DailyInsight = require('../models/DailyInsight');
+    const { istDateKey } = require('../services/dailyInsightService');
+
+    const user = await User.findById(req.user._id)
+      .select('profile.age profile.lifestyle.sleepGoalHours')
+      .lean();
+    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+    const age = user?.profile?.age ?? null;
+
+    const [analysis, coachMessage] = await Promise.all([
+      getSleepClinicalAnalysis(req.user._id, { age, sleepGoalHours }),
+      DailyInsight.findOne({
+        userId: req.user._id,
+        insightDate: istDateKey(),
+        insightType: 'sleep',
+      }).select('title description summary').lean(),
+    ]);
+
+    res.json({ success: true, ...toAppSummary(analysis, coachMessage) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
