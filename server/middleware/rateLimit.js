@@ -32,9 +32,18 @@ function buildStore(prefix) {
   });
 }
 
+// Redis-backed limiters fail open on a store error (e.g. Upstash quota
+// exceeded, transient outage): express-rate-limit calls next() and lets the
+// request through, unprotected, rather than 500ing every request. Brute-force
+// or cost-abuse protection is degraded while Redis is unreachable, but that's
+// a better trade than the endpoint being completely unusable — see login
+// returning 500 on every attempt when this wasn't set.
+const REDIS_STORE_OPTIONS = { passOnStoreError: true };
+
 // Brute-force protection for login/signup/OTP/password-reset endpoints
 const authLimiter = rateLimit({
   store: buildStore('auth'),
+  ...REDIS_STORE_OPTIONS,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   standardHeaders: true,
@@ -45,6 +54,7 @@ const authLimiter = rateLimit({
 // Looser limit for expensive AI-backed endpoints (protects Anthropic credit usage from abuse)
 const aiLimiter = rateLimit({
   store: buildStore('ai'),
+  ...REDIS_STORE_OPTIONS,
   windowMs: 60 * 1000, // 1 minute
   max: 15,
   standardHeaders: true,
@@ -86,6 +96,7 @@ const heavyReadLimiter = rateLimit({
 // workers. Keep a separate authenticated limit and tell the client when to retry.
 const wearableSyncLimiter = rateLimit({
   store: buildStore('wearable-sync'),
+  ...REDIS_STORE_OPTIONS,
   windowMs: 15 * 60 * 1000,
   max: 60,
   standardHeaders: true,
@@ -103,6 +114,7 @@ const wearableSyncLimiter = rateLimit({
 // already authenticated, so switching IPs doesn't reset the counter.
 const sensitiveActionLimiter = rateLimit({
   store: buildStore('sensitive'),
+  ...REDIS_STORE_OPTIONS,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   standardHeaders: true,
