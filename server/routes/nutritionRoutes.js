@@ -33,6 +33,7 @@ router.get('/water/history', apiLimiter, nutritionController.getWaterHistory);
 
 // Nutrition Summary - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.get('/summary/daily', apiLimiter, nutritionController.getDailySummary);
+router.get('/nutrition-score', apiLimiter, nutritionController.getNutritionScore);
 router.get('/summary/weekly', apiLimiter, nutritionController.getWeeklySummary);
 router.get('/activity/week', apiLimiter, nutritionController.getActivityWeek);
 router.get('/recommendations', apiLimiter, nutritionController.getRecommendations);

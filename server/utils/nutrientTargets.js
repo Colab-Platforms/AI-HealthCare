@@ -95,6 +95,24 @@ function sodiumCapMg() {
   return 2300;
 }
 
+// National Academies (Institute of Medicine) Dietary Reference Intakes (2005) —
+// Acceptable Macronutrient Distribution Range. Same for all adults, not
+// age/gender-dependent, unlike the targets above. Expressed as % of total
+// daily calories, not grams, because the "right" gram amount depends on how
+// much a person eats overall — the range is about balance, not quantity.
+// A revision is under active review (National Academies "Rethinking the
+// AMDR", 2024-25 letter report) but these are still the current published
+// standard used across US Dietary Guidelines and clinical practice.
+const AMDR_RANGES = {
+  protein: [10, 35],
+  carbs: [45, 65],
+  fat: [20, 35],
+};
+
+function getAmdrRanges() {
+  return AMDR_RANGES;
+}
+
 function normalizeGender(gender) {
   return gender === 'female' ? 'female' : 'male'; // binary DRI tables only exist for male/female; unset defaults to male (the less restrictive of the two for most of these targets)
 }
@@ -124,4 +142,4 @@ function getModerationCaps({ calorieGoal }) {
   };
 }
 
-module.exports = { getAdequacyTargets, getModerationCaps };
+module.exports = { getAdequacyTargets, getModerationCaps, getAmdrRanges };

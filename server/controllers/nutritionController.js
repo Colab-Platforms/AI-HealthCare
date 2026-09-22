@@ -12,6 +12,8 @@ const { logActivity } = require('../utils/activityLogger');
 const { buildMedicalContextForAI } = require('../utils/medicalContext');
 const gamificationService = require('../services/gamificationService');
 const { getWaterAnalytics, WaterAnalyticsInputError } = require('../services/waterAnalyticsService');
+const { calculateDietQualityScore } = require('../services/dietQualityScoreService');
+const { buildNutritionInsight } = require('../services/nutritionInsightService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -1568,6 +1570,65 @@ exports.getDailySummary = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get daily summary',
+      error: error.message
+    });
+  }
+};
+
+// Get Nutrition Score (Healthy Nutrients + Junk Control, out of 100) + insights
+// for a given day. Reuses the same date-handling as getDailySummary above —
+// today is recomputed fresh, a past date is read from its persisted
+// NutritionSummary row (or backfilled if the row is missing).
+exports.getNutritionScore = async (req, res) => {
+  try {
+    const { date } = req.query;
+    const queryDate = date ? new Date(date) : new Date();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const requestedDateStr = isNaN(queryDate.getTime())
+      ? todayStr
+      : queryDate.toISOString().split('T')[0];
+    // Never allow a future date — same guard as getHealthScore.
+    const targetDateStr = requestedDateStr <= todayStr ? requestedDateStr : todayStr;
+    const targetDate = new Date(targetDateStr);
+    targetDate.setUTCHours(0, 0, 0, 0);
+    const isToday = targetDateStr === todayStr;
+
+    let summary;
+    if (isToday) {
+      summary = await updateDailySummary(req.user._id, targetDate);
+    } else {
+      summary = await withTimeout(NutritionSummary.findOne({
+        userId: req.user._id,
+        date: targetDate
+      }));
+      if (!summary) {
+        summary = await createDailySummary(req.user._id, targetDate);
+      }
+    }
+
+    const user = await User.findById(req.user._id).select('profile.age profile.gender').lean();
+    const profile = {
+      age: user?.profile?.age,
+      gender: user?.profile?.gender,
+      calorieGoal: summary?.calorieGoal
+    };
+
+    const scoreResult = calculateDietQualityScore(summary, profile);
+    const insight = buildNutritionInsight(scoreResult);
+
+    res.json({
+      success: true,
+      requestedDate: targetDateStr,
+      isViewingToday: isToday,
+      profileUsed: profile,
+      ...scoreResult,
+      insight
+    });
+  } catch (error) {
+    console.error('Get nutrition score error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get nutrition score',
       error: error.message
     });
   }
