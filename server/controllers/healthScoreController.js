@@ -13,32 +13,50 @@ exports.getHealthScore = async (req, res) => {
     const userId = req.user._id;
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // Optional historical view — the Dashboard's date navigator passes this to
+    // show a previous day's score. Validated strictly (format, not-in-future,
+    // within the 90-day DailyHealthScore retention window the query below
+    // already reads) so a bad/typo'd value falls back to today instead of
+    // silently computing something wrong.
+    const requestedDate = typeof req.query.date === 'string' ? req.query.date : null;
+    const isValidDate = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+      && requestedDate <= todayStr
+      && requestedDate >= daysAgoStr(89);
+    const targetDateStr = isValidDate ? requestedDate : todayStr;
+    const isViewingToday = targetDateStr === todayStr;
+
     // The active config is loaded once here and handed to both engines. They
     // each used to fetch it themselves, which meant two reads per request for a
     // document that changes only when a new version is deliberately activated.
     const config = await getActiveScoreConfig();
 
-    // Today's Daily Score first — the Overall Score now includes it as a
-    // component, so it has to exist and be current before Overall is computed.
-    const todayScore = await calculateDailyScore(userId, todayStr, { config }).catch(() => null);
+    // The requested day's Daily Score first — the Overall Score now includes
+    // today's as a component, so it has to exist and be current before
+    // Overall is computed.
+    const todayScore = await calculateDailyScore(userId, targetDateStr, { config }).catch(() => null);
 
-    // One read of the 90-day score window, reused by everything below. Overall
-    // needs it for Today/Consistency/Trend/history, and this endpoint needs it
-    // again for the week-over-week and day-over-day comparisons — previously
-    // eight separate queries over overlapping ranges of the same collection.
-    // It is read AFTER the daily score above so it includes today's new row.
+    // One read of the 90-day score window (anchored to TODAY, not the
+    // requested date, so week-over-week/last7Days comparisons around an older
+    // requested date still have enough trailing history available), reused by
+    // everything below. Overall needs it for Today/Consistency/Trend/history,
+    // and this endpoint needs it again for the week-over-week and day-over-day
+    // comparisons — previously eight separate queries over overlapping ranges
+    // of the same collection. It is read AFTER the daily score above so it
+    // includes today's new row.
     const dailyRows = await DailyHealthScore.find({
       userId,
       date: { $gte: daysAgoStr(89) },
     }).sort({ date: 1 }).lean();
 
-    // Overall is computed fresh rather than read from the stored snapshot.
-    // It used to be safe to read the stored value because its inputs (the
-    // latest report, a 30-day average) only moved on upload or via the weekly
-    // cron. Now that today's Daily Score is one of its components, a stored
-    // value goes stale the moment the user logs anything — which is exactly
-    // the feedback this change exists to give them.
-    const overall = await calculateLongTermScore(userId, { config, dailyRows }).catch(() => null);
+    // Overall (the 90-day compound score) and the critical-lab-value alert
+    // both represent the user's CURRENT standing, not a snapshot of a past
+    // day — there is no meaningful "Overall Score as of 12 days ago" the way
+    // there is for a Daily Score. Only computed/shown when viewing today;
+    // for a past date they're left null so the client doesn't misattribute
+    // today's overall figure to the day being viewed.
+    const overall = isViewingToday
+      ? await calculateLongTermScore(userId, { config, dailyRows }).catch(() => null)
+      : null;
 
     // A day with no logged components still gets a persisted row (finalScore
     // 0) so the engine has a slot to fill as the day goes on — but 0 there
@@ -48,14 +66,25 @@ exports.getHealthScore = async (req, res) => {
     // before the user's first log of the day.
     const hasComponents = (s) => s && Object.keys(s.components || {}).length > 0;
 
+    // All "N days before" comparisons below are anchored to the DAY BEING
+    // VIEWED, not to today — so navigating to a past date shows that day's
+    // own week-over-week/yesterday context, not today's. Local to this
+    // request only; the exported daysAgoStr (today-anchored) is unaffected
+    // since it's still used elsewhere (validation, the 90-day DB window).
+    const offsetFrom = (dateStr, n) => {
+      const d = new Date(`${dateStr}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - n);
+      return d.toISOString().split('T')[0];
+    };
+
     // Raw week-over-week delta for the UI's "+N this week" pill — separate
     // from the Long-Term Score's own clamped ±15 Trend component, which is
     // meant to be gentle, not a literal display number.
-    const weekStart = daysAgoStr(6);
-    const priorStart = daysAgoStr(13);
-    const recentWeek = dailyRows.filter((d) => d.date >= weekStart);
+    const weekStart = offsetFrom(targetDateStr, 6);
+    const priorStart = offsetFrom(targetDateStr, 13);
+    const recentWeek = dailyRows.filter((d) => d.date >= weekStart && d.date <= targetDateStr);
     const priorWeek = dailyRows.filter((d) => d.date >= priorStart && d.date < weekStart);
-    const yesterdayScore = dailyRows.find((d) => d.date === daysAgoStr(1)) || null;
+    const yesterdayScore = dailyRows.find((d) => d.date === offsetFrom(targetDateStr, 1)) || null;
     const avg = (arr) => {
       const logged = arr.filter(hasComponents);
       return logged.length ? logged.reduce((s, d) => s + d.finalScore, 0) / logged.length : null;
@@ -95,11 +124,17 @@ exports.getHealthScore = async (req, res) => {
       recentWeek.filter(hasComponents).map((d) => [d.date, d.finalScore]),
     );
     const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = daysAgoStr(6 - i);
+      const date = offsetFrom(targetDateStr, 6 - i);
       return { date, value: weekByDate.has(date) ? weekByDate.get(date) : null };
     });
 
     res.json({
+      // Echoes back which date this payload is actually for — the client
+      // sent a `date` query param that may have been invalid/out-of-range and
+      // silently fell back to today, so it reads this instead of assuming.
+      requestedDate: targetDateStr,
+      isViewingToday,
+
       // Named explicitly (not `daily`/`longTerm`) so it's unambiguous to any
       // dev/app-team consumer reading the response cold, without needing to
       // cross-reference docs for what "daily" vs "longTerm" means here.
