@@ -495,7 +495,8 @@ exports.logMeal = async (req, res) => {
       fats: 0,
       fiber: 0,
       sugar: 0,
-      sodium: 0
+      sodium: 0,
+      saturatedFat: 0
     };
 
     foodItems.forEach(item => {
@@ -507,15 +508,17 @@ exports.logMeal = async (req, res) => {
         totalNutrition.fiber += Number(item.nutrition.fiber) || 0;
         totalNutrition.sugar += Number(item.nutrition.sugar) || 0;
         totalNutrition.sodium += Number(item.nutrition.sodium) || 0;
+        totalNutrition.saturatedFat += Number(item.nutrition.saturatedFat) || 0;
       }
     });
 
     // Extract vitamins and minerals from micronutrients array into totalNutrition
     // This ensures they are tracked in the summary and dashboard correctly
     totalNutrition.vitamins = {
-      vitaminA: 0, vitaminC: 0, vitaminD: 0, vitaminB12: 0, iron: 0, calcium: 0
+      vitaminA: 0, vitaminC: 0, vitaminD: 0, vitaminB12: 0, iron: 0, calcium: 0,
+      potassium: 0, magnesium: 0, omega3: 0
     };
-    
+
     sanitizedMicronutrients.forEach(m => {
       const name = (m.name || '').toLowerCase();
       const val = Number(parseFloat(String(m.value || '0').replace(/[^0-9.]/g, ''))) || 0;
@@ -525,11 +528,15 @@ exports.logMeal = async (req, res) => {
       else if (name.includes('vitamin b12')) totalNutrition.vitamins.vitaminB12 += val;
       else if (name.includes('iron')) totalNutrition.vitamins.iron += val;
       else if (name.includes('calcium')) totalNutrition.vitamins.calcium += val;
-      
-      // Backup sync for fiber/sugar/sodium if they weren't in the main nutrition block
+      else if (name.includes('potassium')) totalNutrition.vitamins.potassium += val;
+      else if (name.includes('magnesium')) totalNutrition.vitamins.magnesium += val;
+      else if (name.includes('omega')) totalNutrition.vitamins.omega3 += val;
+
+      // Backup sync for fiber/sugar/sodium/saturatedFat if they weren't in the main nutrition block
       if (name.includes('fiber') && totalNutrition.fiber === 0) totalNutrition.fiber = val;
       if (name.includes('sugar') && totalNutrition.sugar === 0) totalNutrition.sugar = val;
       if (name.includes('sodium') && totalNutrition.sodium === 0) totalNutrition.sodium = val;
+      if (name.includes('saturated fat') && totalNutrition.saturatedFat === 0) totalNutrition.saturatedFat = val;
     });
 
     const foodLog = new FoodLog({
@@ -1796,9 +1803,10 @@ async function updateDailySummary(userId, date) {
     // Aggregate nutrition totals in JS (handles totalNutrition + foodItems fallback + micronutrients array)
     const totals = {
       totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFats: 0,
-      totalFiber: 0, totalSugar: 0, totalSodium: 0,
+      totalFiber: 0, totalSugar: 0, totalSodium: 0, totalSaturatedFat: 0,
       totalVitaminA: 0, totalVitaminC: 0, totalVitaminD: 0,
       totalVitaminB12: 0, totalIron: 0, totalCalcium: 0,
+      totalPotassium: 0, totalMagnesium: 0, totalOmega3: 0,
       averageHealthScore: 0, healthyFoodsCount: 0, junkFoodsCount: 0, totalFoodsCount: 0,
       caloriesBurned
     };
@@ -1834,6 +1842,7 @@ async function updateDailySummary(userId, date) {
       totals.totalFiber += fiber;
       totals.totalSugar += Number(logNutrition.sugar) || 0;
       totals.totalSodium += Number(logNutrition.sodium) || 0;
+      totals.totalSaturatedFat += Number(logNutrition.saturatedFat) || 0;
 
       if (logNutrition.vitamins) {
         totals.totalVitaminA  += Number(logNutrition.vitamins.vitaminA)  || 0;
@@ -1842,6 +1851,9 @@ async function updateDailySummary(userId, date) {
         totals.totalVitaminB12 += Number(logNutrition.vitamins.vitaminB12) || 0;
         totals.totalIron      += Number(logNutrition.vitamins.iron)      || 0;
         totals.totalCalcium   += Number(logNutrition.vitamins.calcium)   || 0;
+        totals.totalPotassium += Number(logNutrition.vitamins.potassium) || 0;
+        totals.totalMagnesium += Number(logNutrition.vitamins.magnesium) || 0;
+        totals.totalOmega3    += Number(logNutrition.vitamins.omega3)    || 0;
       } else if (log.micronutrients?.length > 0) {
         for (const m of log.micronutrients) {
           const name = (m.name || '').toLowerCase();
@@ -1852,9 +1864,13 @@ async function updateDailySummary(userId, date) {
           else if (name.includes('vitamin b12')) totals.totalVitaminB12 += val;
           else if (name.includes('iron'))    totals.totalIron      += val;
           else if (name.includes('calcium')) totals.totalCalcium   += val;
+          else if (name.includes('potassium')) totals.totalPotassium += val;
+          else if (name.includes('magnesium')) totals.totalMagnesium += val;
+          else if (name.includes('omega'))   totals.totalOmega3    += val;
           else if (name.includes('fiber'))   totals.totalFiber     += val;
           else if (name.includes('sugar'))   totals.totalSugar     += val;
           else if (name.includes('sodium'))  totals.totalSodium    += val;
+          else if (name.includes('saturated fat')) totals.totalSaturatedFat += val;
         }
       }
 

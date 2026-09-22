@@ -1,5 +1,35 @@
 const mongoose = require('mongoose');
 
+// Shared shape for every meal-slot option below — was duplicated 5x with
+// only calories/protein/carbs/fats, which meant fiber/sugar/sodium/
+// saturatedFat and the Diet Quality Score's micronutrients were silently
+// stripped by Mongoose's default strict mode even though dietRecommendationAI.js
+// generates them (undeclared fields never survive .save()). Defined once now
+// so all 5 slots stay in sync.
+const mealOptionSchema = {
+  name: String,
+  description: String,
+  portionSize: String,
+  calories: Number,
+  protein: Number,
+  carbs: Number,
+  fats: Number,
+  benefits: String,
+  fiber: Number,
+  sugar: Number,
+  sodium: Number,
+  saturatedFat: Number,
+  vitaminA: Number,
+  vitaminC: Number,
+  vitaminD: Number,
+  vitaminB12: Number,
+  iron: Number,
+  calcium: Number,
+  potassium: Number,
+  magnesium: Number,
+  omega3: Number
+};
+
 const personalizedDietPlanSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -68,56 +98,11 @@ const personalizedDietPlanSchema = new mongoose.Schema({
   },
 
   mealPlan: {
-    breakfast: [{
-      name: String,
-      description: String,
-      portionSize: String,
-      calories: Number,
-      protein: Number,
-      carbs: Number,
-      fats: Number,
-      benefits: String
-    }],
-    midMorningSnack: [{
-      name: String,
-      description: String,
-      portionSize: String,
-      calories: Number,
-      protein: Number,
-      carbs: Number,
-      fats: Number,
-      benefits: String
-    }],
-    lunch: [{
-      name: String,
-      description: String,
-      portionSize: String,
-      calories: Number,
-      protein: Number,
-      carbs: Number,
-      fats: Number,
-      benefits: String
-    }],
-    eveningSnack: [{
-      name: String,
-      description: String,
-      portionSize: String,
-      calories: Number,
-      protein: Number,
-      carbs: Number,
-      fats: Number,
-      benefits: String
-    }],
-    dinner: [{
-      name: String,
-      description: String,
-      portionSize: String,
-      calories: Number,
-      protein: Number,
-      carbs: Number,
-      fats: Number,
-      benefits: String
-    }]
+    breakfast: [mealOptionSchema],
+    midMorningSnack: [mealOptionSchema],
+    lunch: [mealOptionSchema],
+    eveningSnack: [mealOptionSchema],
+    dinner: [mealOptionSchema]
   },
 
   keyFoods: [{

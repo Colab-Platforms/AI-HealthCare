@@ -160,19 +160,20 @@ STRUCTURE:
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
     "breakfast": [
-      {"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0},
+      {"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
       ... 7 items total
     ],
     "lunch": [
-      {"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0},
+      {"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
       ... 7 items total
     ],
     "dinner": [
-      {"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0},
+      {"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
       ... 7 items total
     ]
   }
 }
+NUTRIENT PRECISION (MANDATORY): Every meal object must include real, non-zero-unless-genuinely-absent estimates (from USDA/IFCT) for fiber, sugar, sodium, saturatedFat, and all 8 listed vitamins/minerals — the same rigor as calories/protein/carbs/fats. These feed the app's Diet Quality Score; do not default them to 0 as a shortcut. Units: vitaminA/vitaminD/vitaminB12 in mcg, vitaminC/iron/calcium/potassium/magnesium in mg, omega3/saturatedFat/sugar/fiber in g, sodium in mg.
 USER DATA:
 - Profile: ${age}y ${gender}, Weight: ${weight}kg, Height: ${height}cm, BMI: ${currentBMI}
 - Goal: ${bmiGoal}

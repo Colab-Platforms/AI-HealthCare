@@ -377,10 +377,20 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
           mealTypes.forEach(m => {
             const item = (aiDietPlan.mealPlan[m] || [])[i];
             if (item) {
-              if (item.calories) item.calories = Math.round(item.calories * scaleFactor);
-              if (item.protein) item.protein = Math.round(item.protein * scaleFactor);
-              if (item.carbs) item.carbs = Math.round(item.carbs * scaleFactor);
-              if (item.fats) item.fats = Math.round(item.fats * scaleFactor);
+              // Scale every AI-generated numeric nutrient by the same factor as
+              // calories, not just macros — otherwise fiber/sodium/vitamins etc.
+              // stay at their pre-scale values while calories shrink, which would
+              // silently inflate the Diet Quality Score's nutrient-density math
+              // (MAR compares nutrient totals against calorie-derived targets).
+              const scaledFields = [
+                'calories', 'protein', 'carbs', 'fats',
+                'fiber', 'sugar', 'sodium', 'saturatedFat',
+                'vitaminA', 'vitaminC', 'vitaminD', 'vitaminB12',
+                'iron', 'calcium', 'potassium', 'magnesium', 'omega3'
+              ];
+              scaledFields.forEach(field => {
+                if (item[field]) item[field] = Math.round(item[field] * scaleFactor * 100) / 100;
+              });
             }
           });
         }

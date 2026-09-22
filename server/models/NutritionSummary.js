@@ -27,6 +27,12 @@ const nutritionSummarySchema = new mongoose.Schema({
   totalVitaminB12: { type: Number, default: 0 },
   totalIron: { type: Number, default: 0 },
   totalCalcium: { type: Number, default: 0 },
+  // Diet Quality Score additions — see nutrientTargets.js for the age/gender-
+  // aware NIH ODS/AHA targets these are compared against.
+  totalSaturatedFat: { type: Number, default: 0 },
+  totalPotassium: { type: Number, default: 0 },
+  totalMagnesium: { type: Number, default: 0 },
+  totalOmega3: { type: Number, default: 0 },
   averageHealthScore: { type: Number, default: 0 },
   
   // Quality breakdown

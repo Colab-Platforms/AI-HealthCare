@@ -8,13 +8,22 @@ const nutritionSchema = new mongoose.Schema({
   fiber: { type: Number, default: 0 }, // grams
   sugar: { type: Number, default: 0 }, // grams
   sodium: { type: Number, default: 0 }, // mg
+  // Moderation nutrient (Diet Quality Score) — grams, top-level like sugar/
+  // sodium rather than under `vitamins`, since it's not a vitamin/mineral.
+  saturatedFat: { type: Number, default: 0 },
   vitamins: {
     vitaminA: { type: Number, default: 0 },
     vitaminC: { type: Number, default: 0 },
     vitaminD: { type: Number, default: 0 },
     vitaminB12: { type: Number, default: 0 },
     iron: { type: Number, default: 0 },
-    calcium: { type: Number, default: 0 }
+    calcium: { type: Number, default: 0 },
+    // Added for Diet Quality Score's Adequacy component (NIH ODS-sourced
+    // targets — see nutrientTargets.js). Field name stays "vitamins" for
+    // backward compatibility even though potassium/magnesium are minerals.
+    potassium: { type: Number, default: 0 },  // mg
+    magnesium: { type: Number, default: 0 },  // mg
+    omega3: { type: Number, default: 0 }      // grams (ALA)
   }
 });
 
@@ -106,13 +115,17 @@ foodLogSchema.pre('save', function (next) {
       fiber: 0,
       sugar: 0,
       sodium: 0,
+      saturatedFat: 0,
       vitamins: {
         vitaminA: 0,
         vitaminC: 0,
         vitaminD: 0,
         vitaminB12: 0,
         iron: 0,
-        calcium: 0
+        calcium: 0,
+        potassium: 0,
+        magnesium: 0,
+        omega3: 0
       }
     };
 
@@ -125,6 +138,7 @@ foodLogSchema.pre('save', function (next) {
         total.fiber += item.nutrition.fiber || 0;
         total.sugar += item.nutrition.sugar || 0;
         total.sodium += item.nutrition.sodium || 0;
+        total.saturatedFat += item.nutrition.saturatedFat || 0;
 
         if (item.nutrition.vitamins) {
           total.vitamins.vitaminA += item.nutrition.vitamins.vitaminA || 0;
@@ -133,6 +147,9 @@ foodLogSchema.pre('save', function (next) {
           total.vitamins.vitaminB12 += item.nutrition.vitamins.vitaminB12 || 0;
           total.vitamins.iron += item.nutrition.vitamins.iron || 0;
           total.vitamins.calcium += item.nutrition.vitamins.calcium || 0;
+          total.vitamins.potassium += item.nutrition.vitamins.potassium || 0;
+          total.vitamins.magnesium += item.nutrition.vitamins.magnesium || 0;
+          total.vitamins.omega3 += item.nutrition.vitamins.omega3 || 0;
         }
       }
     });

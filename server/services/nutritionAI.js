@@ -111,6 +111,10 @@ class NutritionAI {
         * 1g Fat = 9 kcal
       For every ingredient, every dish, and the meal total: (Protein*4 + Carbs*4 + Fats*9) MUST closely match the calories returned.
     - FIBER PRECISION (MANDATORY): Never default fiber to 0 unless the food genuinely contains none (e.g., oil, sugar, plain meat). Estimate fiber from real food-composition data (USDA, IFCT) for every ingredient with the same rigor as protein/carbs/fats — grains, legumes, vegetables, and fruits all carry meaningful fiber and must reflect it.
+    - SATURATED FAT PRECISION (MANDATORY): For every ingredient/dish/meal total, estimate saturatedFat (grams) from real food-composition data with the same rigor as fiber — never default to 0 for anything containing oil, ghee, butter, dairy, or meat.
+    - MICRONUTRIENTS (MANDATORY, FIXED LIST): The "micronutrients" array MUST contain exactly these 10 entries for EVERY meal, in this exact order, using these EXACT name strings (needed for downstream parsing) — estimate real values from USDA/IFCT even when small, never omit an entry:
+      Vitamin A (mcg), Vitamin C (mg), Vitamin D (mcg), Vitamin B12 (mcg), Iron (mg), Calcium (mg), Potassium (mg), Magnesium (mg), Omega-3 (g), Saturated Fat (g).
+      Use "percentage" = % of a standard adult RDA (approximate is fine here; exact personalized % is computed server-side).
     - COMPOSITE DECOMPOSITION (MANDATORY): For EVERY dish, list its real component ingredients with individual quantity + nutrition (e.g., "Egg Curry" → Boiled Egg, Onion-Tomato Gravy, Cooking Oil, Spices). Never return a dish with zero or exactly one vague ingredient when it's clearly a composite dish — decompose it like a nutritionist would. Do not use generic "combo meal" averages.
     - EXCLUSIVITY: Account for the specific preparation mentioned (oils, frying, etc.) rather than generic assumptions.
 
@@ -126,22 +130,33 @@ class NutritionAI {
             {
               "name": "Ingredient name",
               "quantity": "Estimated quantity (e.g., 100g, 1 tsp)",
-              "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
+              "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 }
             }
           ],
-          "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+          "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 },
           "healthScore": 0-100
         }
       ],
       "foodItem": {
         "name": "All dish names joined with ', ' (or the single dish name if only one)",
         "quantity": "Combined portion summary across all dishes",
-        "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
+        "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 }
       },
-      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 },
       "healthScore": 0-100,
       "analysis": "Short 2-sentence summary of the FULL meal's health impact",
-      "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
+      "micronutrients": [
+        { "name": "Vitamin A", "amount": "120", "unit": "mcg", "percentage": 13 },
+        { "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 },
+        { "name": "Vitamin D", "amount": "1", "unit": "mcg", "percentage": 7 },
+        { "name": "Vitamin B12", "amount": "0.3", "unit": "mcg", "percentage": 13 },
+        { "name": "Iron", "amount": "2", "unit": "mg", "percentage": 25 },
+        { "name": "Calcium", "amount": "80", "unit": "mg", "percentage": 8 },
+        { "name": "Potassium", "amount": "300", "unit": "mg", "percentage": 9 },
+        { "name": "Magnesium", "amount": "40", "unit": "mg", "percentage": 10 },
+        { "name": "Omega-3", "amount": "0.1", "unit": "g", "percentage": 7 },
+        { "name": "Saturated Fat", "amount": "3", "unit": "g", "percentage": 15 }
+      ],
       "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
       "healthBenefitsSummary": "Positive impact summary for the whole meal",
       "warnings": ["Disadvantages if genuinely unhealthy for this meal specifically. Follow the MEDICAL WARNING RULES above strictly if a USER MEDICAL CONTEXT block is present — most meals should have zero or one medical warning, not a full checklist of every condition on file."],
@@ -274,16 +289,27 @@ class NutritionAI {
         {
           "name": "(same name as given — do not change)",
           "quantity": "(same quantity as given — do not change)",
-          "ingredients": [{ "name": "(same as given)", "quantity": "(same as given)", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 } }],
-          "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+          "ingredients": [{ "name": "(same as given)", "quantity": "(same as given)", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 } }],
+          "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 },
           "healthScore": 0-100
         }
       ],
-      "foodItem": { "name": "All dish names joined with ', '", "quantity": "Combined portion summary", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 } },
-      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+      "foodItem": { "name": "All dish names joined with ', '", "quantity": "Combined portion summary", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 } },
+      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0 },
       "healthScore": 0-100,
       "analysis": "Short 2-sentence summary of the full meal's health impact",
-      "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
+      "micronutrients": [
+        { "name": "Vitamin A", "amount": "120", "unit": "mcg", "percentage": 13 },
+        { "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 },
+        { "name": "Vitamin D", "amount": "1", "unit": "mcg", "percentage": 7 },
+        { "name": "Vitamin B12", "amount": "0.3", "unit": "mcg", "percentage": 13 },
+        { "name": "Iron", "amount": "2", "unit": "mg", "percentage": 25 },
+        { "name": "Calcium", "amount": "80", "unit": "mg", "percentage": 8 },
+        { "name": "Potassium", "amount": "300", "unit": "mg", "percentage": 9 },
+        { "name": "Magnesium", "amount": "40", "unit": "mg", "percentage": 10 },
+        { "name": "Omega-3", "amount": "0.1", "unit": "g", "percentage": 7 },
+        { "name": "Saturated Fat", "amount": "3", "unit": "g", "percentage": 15 }
+      ],
       "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
       "healthBenefitsSummary": "Positive impact summary for the whole meal",
       "warnings": ["Disadvantages if genuinely unhealthy for this meal specifically. Follow the MEDICAL WARNING RULES above strictly if a USER MEDICAL CONTEXT block is present — most meals should have zero or one medical warning, not a full checklist of every condition on file."],
