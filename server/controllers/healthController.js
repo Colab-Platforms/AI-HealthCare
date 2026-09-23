@@ -54,16 +54,24 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     // Ensure we have a buffer for vision/document analysis if it's not provided
     if (!dataBuffer) {
       const updatedReport = await HealthReport.findById(reportId);
-      // originalFile's schema only persists `path` (not `cloudinaryUrl` — it gets
-      // stripped by Mongoose strict mode), so fall back to `path` like the other
-      // readers of this field already do (see rawUrl lookups elsewhere in this file).
+      // `cloudinaryUrl` is now declared on the schema (it used to be silently
+      // stripped by Mongoose strict mode, which made this always undefined —
+      // see the model's comment), so it's populated on every report from here
+      // on. `path` is kept only as a fallback for reports created before that
+      // fix, whose stored document never got a cloudinaryUrl to begin with.
       const storedUrl = updatedReport?.originalFile?.cloudinaryUrl || updatedReport?.originalFile?.path;
       if (storedUrl) {
         console.log(`📥 [BG] Fetching file from Cloudinary for analysis: ${storedUrl}`);
         const axios = require('axios');
-        // Use signed URL — files are now type:'authenticated' and need a valid signature to fetch
-        const fetchUrl = cloudinary.generateSignedUrl(storedUrl) || storedUrl;
-        const response = await axios.get(fetchUrl, { responseType: 'arraybuffer' });
+        // Use the URL exactly as Cloudinary returned it at upload time — it
+        // already carries a valid signature for this server-to-server fetch
+        // (see the "internal fetches: use the raw cloudinaryUrl directly"
+        // note on generateSignedUrl below). Regenerating one via
+        // generateSignedUrl() defaults resource_type to 'auto', which
+        // Cloudinary accepts for uploads but rejects for delivery — every
+        // background analysis was 400ing on this fetch until this reverted
+        // to using the stored URL as-is.
+        const response = await axios.get(storedUrl, { responseType: 'arraybuffer' });
         dataBuffer = Buffer.from(response.data);
       }
     }
