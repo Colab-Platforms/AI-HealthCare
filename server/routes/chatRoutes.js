@@ -11,6 +11,10 @@ const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const HealthReport = require('../models/HealthReport');
+const HeartRateDailySummary = require('../models/HeartRateDailySummary');
+const BloodOxygenSample = require('../models/BloodOxygenSample');
+const BodyCompositionSample = require('../models/BodyCompositionSample');
+const { buildDashboardData } = require('../controllers/healthController');
 const cache = require('../utils/cache');
 const { userKeys } = require('../utils/cacheKeys');
 const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
@@ -116,14 +120,18 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
     let dietPlanContext = '';
     let behaviorContext = '';
     let reportContext = '';
+    let wearableVitalsContext = '';
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     try {
       const objectId = new mongoose.Types.ObjectId(String(user._id));
-      const [userLogs, recentMetrics, dashboardCache, todaysAgg, lastMeal, activePlan, latestReports] = await Promise.all([
-        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
+      let [
+        userLogs, recentMetrics, dashboardCache, todaysAgg, lastMeal, activePlan, latestReports,
+        latestHeartRate, latestSpo2, latestBodyComp,
+      ] = await Promise.all([
+        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle nutritionGoal').lean(),
         HealthMetric.find({ userId: user._id }).sort({ recordedAt: -1 }).limit(10).lean(),
         cache.get(`dashboard:${user._id}`),
         // Totals and a capped item list computed in the DB rather than pulled
@@ -149,7 +157,9 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
         // The single most recently logged meal, regardless of which day it
         // fell on — answers "what was my last meal" even if it was yesterday.
         FoodLog.findOne({ userId: user._id }).sort({ timestamp: -1 }).lean(),
-        PersonalizedDietPlan.findOne({ userId: user._id, isActive: true }).select('dailyTargets').lean(),
+        PersonalizedDietPlan.findOne({ userId: user._id, isActive: true })
+          .select('dailyCalorieTarget macroTargets mealPlan.breakfast mealPlan.lunch mealPlan.dinner mealPlan.midMorningSnack mealPlan.eveningSnack')
+          .lean(),
         // Fetched by the server (not forwarded by the client on every
         // message) and cached briefly, so repeated turns in a conversation
         // don't re-pay for report tokens or a DB round trip each time.
@@ -160,8 +170,22 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
             .select('reportType reportDate aiAnalysis.summary aiAnalysis.doctorSummary aiAnalysis.metrics')
             .lean();
           return { reports };
-        }, 300)
+        }, 300),
+        HeartRateDailySummary.findOne({ user: user._id }).sort({ date: -1 }).lean(),
+        BloodOxygenSample.findOne({ user: user._id }).sort({ timestamp: -1 }).lean(),
+        BodyCompositionSample.findOne({ user: user._id }).sort({ timestamp: -1 }).lean(),
       ]);
+
+      // The dashboard cache is only warm if the user opened the dashboard
+      // recently (5 min TTL) — rebuild it from source rather than showing the
+      // chat bot a fake "everything is 0" activity log when it's simply cold.
+      if (!dashboardCache) {
+        try {
+          dashboardCache = await buildDashboardData(user, String(user._id), `dashboard:${user._id}`);
+        } catch (e) {
+          console.error('Chat context: dashboard rebuild failed:', e.message);
+        }
+      }
 
       if (userLogs) {
         behaviorContext = `\n[Behavior Trackers]\n- ${buildAlcoholContextForAI(userLogs.alcoholLog, userLogs.profile?.lifestyle || lifestyle)}\n- ${buildSmokeContextForAI(userLogs.smokeLog)}`;
@@ -171,26 +195,84 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
         recentVitalsContext = `\n[Recent Logged Vitals/Health Metrics]\n` + recentMetrics.map(m => `- ${m.type}: ${m.value} ${m.unit} on ${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : 'recent'}`).join('\n');
       }
 
+      const freshLifestyle = userLogs?.profile?.lifestyle || lifestyle;
+      const goalsFromProfile = userLogs?.nutritionGoal || goals;
+      const dashGoals = dashboardCache?.goals || {
+        steps: freshLifestyle.stepGoal || 10000,
+        sleep: freshLifestyle.sleepGoalHours || 8,
+        water: freshLifestyle.waterGoalMl || 2000,
+        calories: goalsFromProfile.calorieGoal || 2100,
+        protein: goalsFromProfile.proteinGoal || 150,
+        carbs: goalsFromProfile.carbsGoal || 200,
+        fats: goalsFromProfile.fatGoal || 65,
+      };
+
       if (dashboardCache) {
-        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${dashboardCache.stepsToday ?? 0}/${dashboardCache.goals?.steps || 10000}\n- Water: ${dashboardCache.nutritionData?.waterIntake || 0}/${dashboardCache.goals?.water || 2000} ml\n- Sleep: ${dashboardCache.sleepToday ?? 0}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${dashboardCache.todayMetrics?.caloriesBurned || 0} kcal`;
+        const waterToday = dashboardCache.history?.[dashboardCache.history.length - 1]?.water ?? 0;
+        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${dashboardCache.stepsToday ?? 0}/${dashGoals.steps} steps\n- Water: ${waterToday}/${dashGoals.water} ml\n- Sleep: ${dashboardCache.sleepToday ?? 0}/${dashGoals.sleep} hours\n- Wearable connected: ${dashboardCache.hasWearableConnected ? 'Yes' : 'No'}`;
       } else {
-        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
+        activityContext = `\n[Today's Activity Log & Progress]\n(Could not load today's steps/water/sleep — treat as unknown, do not assume zero)`;
       }
 
       const totals = todaysAgg?.[0]?.totals?.[0];
       if (totals) {
         const items = (todaysAgg[0].items || []).map(fi => `${fi.quantity || ''} ${fi.name}`.trim());
-        recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totals.totalCal || 0)} kcal\n- Carbs: ${Math.round(totals.totalCarb || 0)}g, Protein: ${Math.round(totals.totalProtein || 0)}g, Fats: ${Math.round(totals.totalFat || 0)}g\n- Foods Consumed Today: ${items.join(', ') || 'None logged yet'}`;
+        const consumedCal = Math.round(totals.totalCal || 0);
+        const remaining = dashGoals.calories - consumedCal;
+        recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${consumedCal} kcal\n- Carbs: ${Math.round(totals.totalCarb || 0)}g, Protein: ${Math.round(totals.totalProtein || 0)}g, Fats: ${Math.round(totals.totalFat || 0)}g\n- Foods Consumed Today: ${items.join(', ') || 'None logged yet'}\n- Daily Calorie Goal: ${dashGoals.calories} kcal\n- Calories Remaining Today: ${remaining} kcal${remaining < 0 ? ' (goal already exceeded)' : ''}\n- Daily Macro Goals -> Protein: ${dashGoals.protein}g, Carbs: ${dashGoals.carbs}g, Fats: ${dashGoals.fats}g`;
+      } else {
+        recentDietContext = `\n[Today's Nutrition Consumed]\n- Nothing logged yet today\n- Daily Calorie Goal: ${dashGoals.calories} kcal\n- Calories Remaining Today: ${dashGoals.calories} kcal\n- Daily Macro Goals -> Protein: ${dashGoals.protein}g, Carbs: ${dashGoals.carbs}g, Fats: ${dashGoals.fats}g`;
       }
 
       if (lastMeal) {
-        const mealDate = lastMeal.timestamp ? new Date(lastMeal.timestamp).toLocaleString() : 'unknown time';
+        const mealTimestamp = lastMeal.timestamp ? new Date(lastMeal.timestamp) : null;
+        const mealDate = mealTimestamp ? mealTimestamp.toLocaleString() : 'unknown time';
+        const isFromToday = mealTimestamp && mealTimestamp >= startOfDay;
+        const recencyFlag = isFromToday
+          ? "TODAY — this IS part of today's eaten total above"
+          : `NOT today (${Math.max(1, Math.round((startOfDay - mealTimestamp) / 86400000))} day(s) ago) — do NOT describe this as eaten today or count it in today's totals`;
+        const originNote = lastMeal.source === 'meal_plan'
+          ? ' [added from a diet-plan suggestion the user chose to log — it IS a real logged meal, not a pending recommendation]'
+          : '';
         const itemNames = joinCapped(lastMeal.foodItems, fi => `${fi.quantity || ''} ${fi.name}`.trim());
-        lastMealContext = `\n[User's Last Logged Meal — most recent regardless of date]\n- Logged: ${mealDate} (${lastMeal.mealType || 'meal'})\n- Items: ${itemNames || 'N/A'}\n- Calories: ${Math.round(lastMeal.totalNutrition?.calories || 0)} kcal, Carbs: ${Math.round(lastMeal.totalNutrition?.carbs || 0)}g, Protein: ${Math.round(lastMeal.totalNutrition?.protein || 0)}g, Fats: ${Math.round(lastMeal.totalNutrition?.fats || 0)}g${lastMeal.healthScore != null ? `\n- Health Score: ${lastMeal.healthScore}/100` : ''}${lastMeal.healthBenefitsSummary ? `\n- Summary: ${lastMeal.healthBenefitsSummary}` : ''}${lastMeal.warnings?.length ? `\n- Warnings: ${joinCapped(lastMeal.warnings)}` : ''}`;
+        lastMealContext = `\n[User's Last Logged Meal — most recently logged meal in their history, may be from a previous day]\n- When: ${mealDate} — ${recencyFlag}${originNote}\n- Meal type: ${lastMeal.mealType || 'meal'}\n- Items: ${itemNames || 'N/A'}\n- Calories: ${Math.round(lastMeal.totalNutrition?.calories || 0)} kcal, Carbs: ${Math.round(lastMeal.totalNutrition?.carbs || 0)}g, Protein: ${Math.round(lastMeal.totalNutrition?.protein || 0)}g, Fats: ${Math.round(lastMeal.totalNutrition?.fats || 0)}g${lastMeal.healthScore != null ? `\n- Health Score: ${lastMeal.healthScore}/100` : ''}${lastMeal.healthBenefitsSummary ? `\n- Summary: ${lastMeal.healthBenefitsSummary}` : ''}${lastMeal.warnings?.length ? `\n- Warnings: ${joinCapped(lastMeal.warnings)}` : ''}\n\nIMPORTANT: A "logged meal" here means the user (or the app on their explicit action) actually recorded eating it. It is never the same as a diet-plan recommendation the user hasn't logged — never call an unlogged suggestion from [Current Assigned Diet Plan] a "logged meal."`;
       }
 
-      if (activePlan?.dailyTargets) {
-        dietPlanContext = `\n[Current Assigned Diet Plan Targets]\n- Target Calories: ${activePlan.dailyTargets.calories || 'N/A'} kcal\n- Target Macros -> C: ${activePlan.dailyTargets.macros?.carbs || 0}g, P: ${activePlan.dailyTargets.macros?.protein || 0}g, F: ${activePlan.dailyTargets.macros?.fats || 0}g`;
+      if (activePlan?.dailyCalorieTarget || activePlan?.mealPlan) {
+        const macros = activePlan.macroTargets || {};
+        const firstOf = (slot) => activePlan.mealPlan?.[slot]?.[0];
+        const slotLine = (label, slot) => {
+          const m = firstOf(slot);
+          return m ? `- ${label}: ${m.name}${m.calories ? ` (${Math.round(m.calories)} kcal)` : ''}` : '';
+        };
+        const recommended = [
+          slotLine('Breakfast', 'breakfast'),
+          slotLine('Mid-morning snack', 'midMorningSnack'),
+          slotLine('Lunch', 'lunch'),
+          slotLine('Evening snack', 'eveningSnack'),
+          slotLine('Dinner', 'dinner'),
+        ].filter(Boolean).join('\n');
+        dietPlanContext = `\n[Current Assigned Diet Plan]\n- Target Calories: ${activePlan.dailyCalorieTarget || 'N/A'} kcal\n- Target Macros -> C: ${macros.carbs || 0}g, P: ${macros.protein || 0}g, F: ${macros.fats || 0}g${recommended ? `\n- Recommended Meals Today:\n${recommended}` : ''}`;
+      }
+
+      const wearableLines = [];
+      if (latestHeartRate) {
+        const d = latestHeartRate.date ? new Date(latestHeartRate.date).toLocaleDateString() : 'recent';
+        wearableLines.push(`- Heart Rate (${d}): avg ${latestHeartRate.avgBpm || 'N/A'} bpm, min ${latestHeartRate.min?.value ?? 'N/A'} bpm, max ${latestHeartRate.max?.value ?? 'N/A'} bpm${latestHeartRate.restingBpm?.value != null ? `, resting ${latestHeartRate.restingBpm.value} bpm` : ''}`);
+      }
+      if (latestSpo2) {
+        wearableLines.push(`- Blood Oxygen (SpO2): ${latestSpo2.percentage}% on ${new Date(latestSpo2.timestamp).toLocaleString()}`);
+      }
+      if (latestBodyComp) {
+        const parts = [];
+        if (latestBodyComp.weightKg != null) parts.push(`Weight ${latestBodyComp.weightKg} kg`);
+        if (latestBodyComp.bodyFatPercentage != null) parts.push(`Body Fat ${latestBodyComp.bodyFatPercentage}%`);
+        if (latestBodyComp.bmi != null) parts.push(`BMI ${latestBodyComp.bmi}`);
+        if (latestBodyComp.leanBodyMassKg != null) parts.push(`Lean Mass ${latestBodyComp.leanBodyMassKg} kg`);
+        if (parts.length) wearableLines.push(`- Body Composition (${new Date(latestBodyComp.timestamp).toLocaleDateString()}): ${parts.join(', ')}`);
+      }
+      if (wearableLines.length) {
+        wearableVitalsContext = `\n[Latest Wearable/Device Vitals]\n${wearableLines.join('\n')}`;
       }
 
       const reports = latestReports?.reports || [];
@@ -230,6 +312,7 @@ Examples:
 REAL-TIME USER LOGS & PLANS
 Below is the user's latest logged health vitals, active health tabs, nutrition limits, and daily progress:
 ${recentVitalsContext}
+${wearableVitalsContext}
 ${activityContext}
 ${dietPlanContext}
 ${recentDietContext}

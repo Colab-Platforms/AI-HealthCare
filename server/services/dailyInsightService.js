@@ -27,7 +27,10 @@ const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 // the first 30 seconds and failing everyone else.
 const BATCH_SIZE = 5;
 const BATCH_PAUSE_MS = 1500;
-const MAX_TOKENS = 700;
+// Some free-tier models (e.g. nemotron-3-super-120b-a12b) narrate chain-of-thought
+// straight into message.content instead of a separate reasoning field, ignoring
+// reasoning.max_tokens:0 — so the budget has to cover that narration plus the JSON.
+const MAX_TOKENS = 1600;
 
 const IST_OFFSET = '+05:30'; // Asia/Kolkata has no DST — a fixed offset is safe here
 
