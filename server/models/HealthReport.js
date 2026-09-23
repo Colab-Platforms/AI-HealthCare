@@ -11,7 +11,7 @@ const healthReportSchema = new mongoose.Schema({
   patientName: { type: String, description: 'Patient name extracted from report for validation' },
   patientAge: { type: Number, description: 'Patient age extracted from report' },
   patientGender: { type: String, description: 'Patient gender extracted from report' },
-  originalFile: { filename: String, path: String, mimetype: String },
+  originalFile: { filename: String, path: String, mimetype: String, cloudinaryUrl: String },
   extractedText: String,
   reportDate: { type: Date, description: 'Date mentioned in the report (Reported On)' },
   // New fields for past medical history

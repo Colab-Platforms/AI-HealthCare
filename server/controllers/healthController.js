@@ -54,10 +54,15 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     // Ensure we have a buffer for vision/document analysis if it's not provided
     if (!dataBuffer) {
       const updatedReport = await HealthReport.findById(reportId);
-      if (updatedReport && updatedReport.originalFile?.cloudinaryUrl) {
+      // originalFile's schema only persists `path` (not `cloudinaryUrl` — it gets
+      // stripped by Mongoose strict mode), so fall back to `path` like the other
+      // readers of this field already do (see rawUrl lookups elsewhere in this file).
+      const storedUrl = updatedReport?.originalFile?.cloudinaryUrl || updatedReport?.originalFile?.path;
+      if (storedUrl) {
+        console.log(`📥 [BG] Fetching file from Cloudinary for analysis: ${storedUrl}`);
         const axios = require('axios');
         // Use signed URL — files are now type:'authenticated' and need a valid signature to fetch
-        const fetchUrl = cloudinary.generateSignedUrl(updatedReport.originalFile.cloudinaryUrl) || updatedReport.originalFile.cloudinaryUrl;
+        const fetchUrl = cloudinary.generateSignedUrl(storedUrl) || storedUrl;
         const response = await axios.get(fetchUrl, { responseType: 'arraybuffer' });
         dataBuffer = Buffer.from(response.data);
       }
