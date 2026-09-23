@@ -56,9 +56,15 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       const updatedReport = await HealthReport.findById(reportId);
       if (updatedReport && updatedReport.originalFile?.cloudinaryUrl) {
         const axios = require('axios');
-        // Use signed URL — files are now type:'authenticated' and need a valid signature to fetch
-        const fetchUrl = cloudinary.generateSignedUrl(updatedReport.originalFile.cloudinaryUrl) || updatedReport.originalFile.cloudinaryUrl;
-        const response = await axios.get(fetchUrl, { responseType: 'arraybuffer' });
+        // Use the URL exactly as Cloudinary returned it at upload time — it
+        // already carries a valid signature for this server-to-server fetch
+        // (see the "internal fetches: use the raw cloudinaryUrl directly"
+        // note on generateSignedUrl below). Regenerating one via
+        // generateSignedUrl() defaults resource_type to 'auto', which
+        // Cloudinary accepts for uploads but rejects for delivery — every
+        // background analysis was 400ing on this fetch until this reverted
+        // to using the stored URL as-is.
+        const response = await axios.get(updatedReport.originalFile.cloudinaryUrl, { responseType: 'arraybuffer' });
         dataBuffer = Buffer.from(response.data);
       }
     }
