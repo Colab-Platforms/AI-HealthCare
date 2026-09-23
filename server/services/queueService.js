@@ -48,7 +48,7 @@ exports.enqueueTask = async (taskType, payload, customBaseUrl = null) => {
           'Authorization': `Bearer ${qstashToken}`,
           'Content-Type': 'application/json',
           'Upstash-Retries': '2',
-          'Upstash-Timeout': '300' // Wait up to 5 minutes for endpoint response
+          'Upstash-Timeout': '300s' // Wait up to 5 minutes for endpoint response — QStash requires a unit suffix (e.g. "300s"), a bare number is rejected as "missing unit in duration"
         }
       }
     );

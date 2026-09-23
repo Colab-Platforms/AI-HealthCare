@@ -143,9 +143,26 @@ const makeAnthropicRequestDetailed = async (messages, maxTokens = 4096, modelOve
     throw new Error('Invalid response');
 
   } catch (error) {
-    const errorMsg = error.response?.data?.error?.message || error.message;
+    // When the request used responseType:'stream' (maxTokens > STREAM_THRESHOLD),
+    // an error response's body arrives as an unconsumed Readable, not parsed
+    // JSON — error.response.data.error.message is always undefined in that
+    // case, silently swallowing the real reason and leaving only axios's
+    // generic "Request failed with status code 400" in the logs. Buffer and
+    // parse it here so streaming failures are as debuggable as non-streaming ones.
+    let parsedErrorData = error.response?.data;
+    if (parsedErrorData && typeof parsedErrorData.pipe === 'function') {
+      try {
+        const chunks = [];
+        for await (const chunk of parsedErrorData) chunks.push(chunk);
+        parsedErrorData = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      } catch (streamReadErr) {
+        parsedErrorData = null;
+      }
+    }
+
+    const errorMsg = parsedErrorData?.error?.message || error.message;
     const status = error.response?.status;
-    const errorType = error.response?.data?.error?.type;
+    const errorType = parsedErrorData?.error?.type;
 
     // Only a genuine "this model does not exist" is worth retrying elsewhere.
     // Matching /model/i caught overload and rate-limit messages too, silently
