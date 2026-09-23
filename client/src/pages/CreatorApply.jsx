@@ -176,21 +176,7 @@ export default function CreatorApply() {
         message: "Please enter your follower count as a number.",
         ref: followerCountRef,
       },
-      {
-        valid: !!form.signature.trim(),
-        message: "Please sign with your full legal name.",
-        ref: signatureRef,
-      },
-      {
-        valid: form.agreedToAgreement,
-        message: "Please agree to the Creator Program Agreement.",
-        ref: agreedToAgreementRef,
-      },
-      {
-        valid: form.agreedToPolicies,
-        message: "Please agree to the policy consent to continue.",
-        ref: agreedToPoliciesRef,
-      },
+      // Signature/agreement/policy consent checks disabled for now — sections are commented out above.
     ];
 
     const firstInvalid = fieldValidations.find((field) => !field.valid);
@@ -252,7 +238,7 @@ export default function CreatorApply() {
           <h1 className="mt-5 text-2xl font-bold text-gray-900">Application submitted</h1>
           <p className="mt-3 text-sm leading-relaxed text-gray-600">
             Thanks for applying to the TAKE Creator Program. We review every application by hand
-            — you'll hear from us by email either way.
+             you'll hear from us by email either way.
           </p>
           <Link
             to="/"
@@ -412,6 +398,7 @@ export default function CreatorApply() {
           </section>
 
           {/* Agreement */}
+          {/*
           <section className="flex flex-col gap-4">
             <h3 className="border-b border-gray-200 pb-3 text-xl font-semibold text-gray-900">Creator Program Agreement</h3>
             <div className="max-h-56 overflow-y-auto whitespace-pre-line rounded-md border border-gray-200 bg-gray-50 p-4 text-xs leading-relaxed text-gray-600">
@@ -430,8 +417,10 @@ export default function CreatorApply() {
               </span>
             </label>
           </section>
+          */}
 
           {/* Application updates */}
+          {/*
           <section className="flex flex-col gap-3">
             <h3 className="border-b border-gray-200 pb-3 text-xl font-semibold text-gray-900">Application updates</h3>
             <label className="flex items-start gap-2.5 text-sm text-gray-600">
@@ -445,8 +434,10 @@ export default function CreatorApply() {
               </span>
             </label>
           </section>
+          */}
 
           {/* Policy consent */}
+          {/*
           <section className="flex flex-col gap-3">
             <h3 className="text-xl font-semibold text-gray-900">Policy consent</h3>
             <label className="flex items-start gap-2.5 text-sm text-gray-600">
@@ -459,6 +450,7 @@ export default function CreatorApply() {
               </span>
             </label>
           </section>
+          */}
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 

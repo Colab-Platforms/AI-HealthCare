@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 
-let submitApplication, listApplications;
+let submitApplication, listApplications, exportApplications;
 try {
     const controller = require('../controllers/creatorController');
     submitApplication = controller.submitApplication;
     listApplications = controller.listApplications;
+    exportApplications = controller.exportApplications;
     console.log('[CreatorRoutes] ✅ Controllers loaded successfully');
 } catch (err) {
     console.error('[CreatorRoutes] ❌ Failed to load controllers:', err.message);
@@ -35,6 +36,12 @@ router.get('/health', (req, res) => {
 router.post('/', authLimiter, (req, res, next) => {
     console.log('[CreatorRoutes] POST / received:', { name: req.body.name, email: req.body.email });
     submitApplication(req, res).catch(next);
+});
+
+// Admin route - export applications as a formatted Excel workbook
+router.get('/export', protect, admin, (req, res, next) => {
+    console.log('[CreatorRoutes] GET /export received');
+    exportApplications(req, res).catch(next);
 });
 
 // Admin route - list applications

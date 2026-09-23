@@ -70,19 +70,15 @@ const creatorResponseSchema = new mongoose.Schema({
         default: ''
     },
 
-    // Agreement
+    // Agreement (disabled for now — signature/agreement/policy sections are commented out on the form)
     signature: {
         type: String,
-        required: [true, 'Signature is required'],
+        default: '',
         trim: true
     },
     agreedToAgreement: {
         type: Boolean,
-        required: [true, 'You must agree to the Creator Program Agreement'],
-        validate: {
-            validator: (v) => v === true,
-            message: 'You must agree to the Creator Program Agreement'
-        }
+        default: false
     },
 
     // Consents
@@ -92,11 +88,7 @@ const creatorResponseSchema = new mongoose.Schema({
     },
     agreedToPolicies: {
         type: Boolean,
-        required: [true, 'You must agree to the policy consent'],
-        validate: {
-            validator: (v) => v === true,
-            message: 'You must agree to the policy consent'
-        }
+        default: false
     },
 
     // Review workflow

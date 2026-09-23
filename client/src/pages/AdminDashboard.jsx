@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Zap,
+  UserPlus,
 } from "lucide-react";
 import {
   AreaChart,
@@ -155,6 +156,7 @@ export default function AdminDashboard() {
     { label: "Food DB", path: "/admin/food-cache", icon: Utensils },
     { label: "Health Reports", path: "/admin/reports", icon: FileText },
     { label: "AI Usage & Cost", path: "/admin/ai-usage", icon: Zap },
+    { label: "Creator Applications", path: "/admin/creator-applications", icon: UserPlus },
     // { label: "Subscriptions & Billing", path: "/admin/subscriptions", icon: CreditCard },
   ];
 
