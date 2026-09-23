@@ -745,6 +745,8 @@ exports.getDashboardData = async (req, res) => {
   }
 };
 
+exports.buildDashboardData = buildDashboardData;
+
 async function buildDashboardData(reqUser, userId, cacheKey) {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
