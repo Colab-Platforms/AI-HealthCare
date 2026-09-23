@@ -14,6 +14,7 @@ const gamificationService = require('../services/gamificationService');
 const { getWaterAnalytics, WaterAnalyticsInputError } = require('../services/waterAnalyticsService');
 const { calculateDietQualityScore } = require('../services/dietQualityScoreService');
 const { buildNutritionInsight } = require('../services/nutritionInsightService');
+const { classifyCalendarBand } = require('../utils/calendarBand');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -1579,8 +1580,69 @@ exports.getDailySummary = async (req, res) => {
 // for a given day. Reuses the same date-handling as getDailySummary above —
 // today is recomputed fresh, a past date is read from its persisted
 // NutritionSummary row (or backfilled if the row is missing).
+const NUTRITION_SCORE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const NUTRITION_SCORE_MAX_SPAN_DAYS = 100; // generous headroom over a single calendar month
+
+// GET /api/nutrition/nutrition-score?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+// Lightweight per-day { date, score, band } array for the mobile Score
+// Calendar — one call for a whole month instead of 30 single-day calls.
+// Only reads EXISTING NutritionSummary rows (never backfills/creates one
+// per day like the single-date path below does) — a day with no row is
+// "not logged" on the calendar, not a freshly-materialized zero score.
+async function getNutritionScoreRange(req, res) {
+  const { startDate, endDate } = req.query;
+  if (!NUTRITION_SCORE_DATE_RE.test(startDate) || !NUTRITION_SCORE_DATE_RE.test(endDate)) {
+    return res.status(400).json({ success: false, message: 'startDate and endDate must be in YYYY-MM-DD format' });
+  }
+  if (endDate < startDate) {
+    return res.status(400).json({ success: false, message: 'endDate must not be before startDate' });
+  }
+  const spanDays = (new Date(endDate) - new Date(startDate)) / 86400000;
+  if (spanDays > NUTRITION_SCORE_MAX_SPAN_DAYS) {
+    return res.status(400).json({ success: false, message: `Date range too large — max ${NUTRITION_SCORE_MAX_SPAN_DAYS} days` });
+  }
+
+  const start = new Date(startDate);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setUTCHours(0, 0, 0, 0);
+
+  const [user, summaries] = await Promise.all([
+    User.findById(req.user._id).select('profile.age profile.gender').lean(),
+    NutritionSummary.find({
+      userId: req.user._id,
+      date: { $gte: start, $lte: end }
+    }).select('date totalCalories totalProtein totalCarbs totalFats totalFiber totalSugar totalSodium totalSaturatedFat totalVitaminA totalVitaminC totalVitaminD totalVitaminB12 totalIron totalCalcium totalPotassium totalMagnesium totalOmega3 calorieGoal').lean()
+  ]);
+
+  const profileBase = { age: user?.profile?.age, gender: user?.profile?.gender };
+
+  const days = summaries
+    .filter((s) => s.totalCalories > 0) // a persisted-but-empty row is still "not logged" for the calendar
+    .map((s) => {
+      const scoreResult = calculateDietQualityScore(s, { ...profileBase, calorieGoal: s.calorieGoal });
+      return {
+        date: s.date.toISOString().split('T')[0],
+        score: scoreResult.score,
+        // Calendar-only 3-tier band (optimal/good/low) — see calendarBand.js.
+        // Not buildNutritionInsight()'s 4-tier band: that one drives headline
+        // copy on the single-day endpoint and would also cost a wasted
+        // gaps/excesses/recommendations computation per day for a value this
+        // range response doesn't use.
+        band: classifyCalendarBand(scoreResult.score)
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  res.json({ success: true, startDate, endDate, days });
+}
+
 exports.getNutritionScore = async (req, res) => {
   try {
+    if (req.query.startDate || req.query.endDate) {
+      return await getNutritionScoreRange(req, res);
+    }
+
     const { date } = req.query;
     const queryDate = date ? new Date(date) : new Date();
     const todayStr = new Date().toISOString().split('T')[0];

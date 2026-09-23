@@ -1,5 +1,7 @@
 const WearableData = require('../models/WearableData');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
+const DailyHealthScore = require('../models/DailyHealthScore');
+const { classifyCalendarBand } = require('../utils/calendarBand');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
@@ -87,16 +89,35 @@ function resolveWindow(range, { date, startDate: customStart, endDate: customEnd
 async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   const dateMatch = resolveWindow(range, options);
 
+  // Same window as dateMatch above but as YYYY-MM-DD strings — DailyHealthScore
+  // stores `date` as a string (matching RecoveryDailySummary's convention),
+  // not a Date, so it needs its own bounds rather than reusing dateMatch.
+  const startStr = dateMatch.$gte.toISOString().split('T')[0];
+  const endStr = (dateMatch.$lte || new Date()).toISOString().split('T')[0];
+
   // Connection status still lives on the lightweight WearableData registry
   // doc; the actual day-by-day numbers now live in their own right-sized
   // collection, queried directly by date range instead of pulling every
   // device's full history and filtering in JS.
-  const [devices, dailyEntries] = await Promise.all([
+  const [devices, dailyEntries, dailyScores] = await Promise.all([
     WearableData.find({ user: userId }).select('isConnected').lean(),
-    DailyActivityMetric.find({ user: userId, date: dateMatch }).select('date steps caloriesBurned').lean()
+    DailyActivityMetric.find({ user: userId, date: dateMatch }).select('date steps caloriesBurned').lean(),
+    // The Activity Score itself (steps + active minutes + logged exercise,
+    // WHO/CDC-guideline-based, sigmoid-saturating to each goal) is already
+    // computed and persisted once per day by dailyHealthScoreService — read
+    // it here rather than recomputing, same pattern recoveryAnalyticsService
+    // uses for RecoveryDailySummary.recoveryScore.
+    DailyHealthScore.find({ userId, date: { $gte: startStr, $lte: endStr } }).select('date components.activity').lean()
   ]);
 
   const hasWearableConnected = devices.some(w => w.isConnected);
+
+  const activityScoreByDate = {};
+  for (const row of dailyScores) {
+    if (typeof row.components?.activity === 'number') {
+      activityScoreByDate[row.date] = row.components.activity;
+    }
+  }
 
   // Merge same-day entries across every device — the has-entry map is what
   // lets us tell "no data" apart from "measured, and it was zero".
@@ -107,12 +128,24 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
     byDate[d].steps += entry.steps || 0;
     byDate[d].caloriesBurned += entry.caloriesBurned || 0;
   }
+  // A day can have an Activity Score (e.g. from logged exercise alone) with
+  // no DailyActivityMetric row at all — include those dates too, so the
+  // calendar doesn't drop a real "good day" just because no device synced.
+  for (const date of Object.keys(activityScoreByDate)) {
+    if (!byDate[date]) byDate[date] = { steps: 0, caloriesBurned: 0 };
+  }
 
-  const entries = Object.keys(byDate).sort().map(date => ({
-    date,
-    steps: byDate[date].steps,
-    caloriesBurned: byDate[date].caloriesBurned,
-  }));
+  const entries = Object.keys(byDate).sort().map(date => {
+    const activityScore = activityScoreByDate[date];
+    return {
+      date,
+      steps: byDate[date].steps,
+      caloriesBurned: byDate[date].caloriesBurned,
+      activityScore: typeof activityScore === 'number' ? Math.round(activityScore * 10) / 10 : null,
+      // 3-tier band for the mobile Score Calendar's dots — see calendarBand.js.
+      calendarBand: typeof activityScore === 'number' ? classifyCalendarBand(activityScore) : null,
+    };
+  });
 
   if (range === 'daily') {
     return { range, hasWearableConnected, entries };

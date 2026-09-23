@@ -2,6 +2,46 @@ const DailyHealthScore = require('../models/DailyHealthScore');
 const { calculateDailyScore } = require('../services/dailyHealthScoreService');
 const { calculateLongTermScore, daysAgoStr } = require('../services/longTermHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
+const { classifyCalendarBand } = require('../utils/calendarBand');
+
+const HEALTH_SCORE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HEALTH_SCORE_MAX_SPAN_DAYS = 100; // generous headroom over a single calendar month
+
+// GET /api/health/score?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+// Lightweight per-day { date, score, band } array for the mobile Score
+// Calendar — one call for a whole month instead of one request per day.
+// Reads only PERSISTED DailyHealthScore rows (no live recompute, unlike the
+// single-date path below) — a day with no row, or a row with no logged
+// components, is "not logged" on the calendar, not a live-computed value.
+async function getHealthScoreRange(req, res) {
+  const { startDate, endDate } = req.query;
+  if (!HEALTH_SCORE_DATE_RE.test(startDate) || !HEALTH_SCORE_DATE_RE.test(endDate)) {
+    return res.status(400).json({ success: false, message: 'startDate and endDate must be in YYYY-MM-DD format' });
+  }
+  if (endDate < startDate) {
+    return res.status(400).json({ success: false, message: 'endDate must not be before startDate' });
+  }
+  const spanDays = (new Date(endDate) - new Date(startDate)) / 86400000;
+  if (spanDays > HEALTH_SCORE_MAX_SPAN_DAYS) {
+    return res.status(400).json({ success: false, message: `Date range too large — max ${HEALTH_SCORE_MAX_SPAN_DAYS} days` });
+  }
+
+  const rows = await DailyHealthScore.find({
+    userId: req.user._id,
+    date: { $gte: startDate, $lte: endDate },
+  }).select('date finalScore components').lean();
+
+  const days = rows
+    .filter((r) => r.components && Object.keys(r.components).length > 0)
+    .map((r) => ({
+      date: r.date,
+      score: r.finalScore,
+      band: classifyCalendarBand(r.finalScore),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  res.json({ success: true, startDate, endDate, days });
+}
 
 // GET /api/health/score — powers the Dashboard's Health Score ring + sub-cards.
 // Ensures today's Daily Score is fresh (the user is actively waiting on this
@@ -10,6 +50,10 @@ const { getActiveScoreConfig } = require('../utils/scoreConfig');
 // few minutes or may not have fired yet if today's first log hasn't happened).
 exports.getHealthScore = async (req, res) => {
   try {
+    if (req.query.startDate || req.query.endDate) {
+      return await getHealthScoreRange(req, res);
+    }
+
     const userId = req.user._id;
     const todayStr = new Date().toISOString().split('T')[0];
 

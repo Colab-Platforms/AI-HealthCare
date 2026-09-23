@@ -7,6 +7,7 @@
 
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const { detectPatterns } = require('./recoveryPatternService');
+const { classifyCalendarBand } = require('../utils/calendarBand');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
@@ -131,6 +132,10 @@ async function getRecoveryAnalytics(userId, range = 'daily', options = {}) {
     date: r.date,
     recoveryScore: r.recoveryScore,
     band: r.band,
+    // 3-tier band for the mobile Score Calendar's dots — see calendarBand.js.
+    // Separate from `band` above (Recovery's own 4-tier optimal/moderate/low/
+    // very_low, which still drives the recommendation copy elsewhere).
+    calendarBand: classifyCalendarBand(r.recoveryScore),
     components: r.components || {},
     confidence: r.confidence,
     warnings: r.warnings || [],
