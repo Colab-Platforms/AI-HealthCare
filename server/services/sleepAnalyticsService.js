@@ -1,4 +1,5 @@
 const SleepSession = require('../models/SleepSession');
+const { classifyCalendarBand } = require('../utils/calendarBand');
 
 // Fallback score jab device se sleepScore na aaye (manual entry).
 // NSF guideline: 8hrs ideal, deviation se linearly penalize karta hai.
@@ -42,6 +43,9 @@ function enrichEntry(raw) {
     efficiency,
     sleepScore: typeof raw.sleepScore === 'number' ? raw.sleepScore : estimateQualityScore(total),
     scoreType: typeof raw.sleepScore === 'number' ? 'device' : 'estimated',
+    // 3-tier band for the mobile Score Calendar's dots — see calendarBand.js.
+    // Additive field; anything reading only the fields above is unaffected.
+    calendarBand: classifyCalendarBand(typeof raw.sleepScore === 'number' ? raw.sleepScore : estimateQualityScore(total)),
   };
 }
 
