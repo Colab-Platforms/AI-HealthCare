@@ -11,7 +11,13 @@ const healthReportSchema = new mongoose.Schema({
   patientName: { type: String, description: 'Patient name extracted from report for validation' },
   patientAge: { type: Number, description: 'Patient age extracted from report' },
   patientGender: { type: String, description: 'Patient gender extracted from report' },
-  originalFile: { filename: String, path: String, mimetype: String },
+  // cloudinaryUrl was missing here even though uploadReport has always set it —
+  // Mongoose's default strict mode silently drops undeclared fields on save,
+  // so it never persisted. processReportInternal's background re-fetch
+  // (`if (updatedReport.originalFile?.cloudinaryUrl)`) was therefore always
+  // false, skipping the file fetch entirely and failing every report with
+  // "Report content unavailable" regardless of whether the upload was valid.
+  originalFile: { filename: String, path: String, mimetype: String, cloudinaryUrl: String },
   extractedText: String,
   reportDate: { type: Date, description: 'Date mentioned in the report (Reported On)' },
   // New fields for past medical history
