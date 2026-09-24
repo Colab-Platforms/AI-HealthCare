@@ -72,8 +72,14 @@ const notificationPreferenceSchema = new mongoose.Schema({
         enabled: { type: Boolean, default: true },
         reminderBefore: { type: Number, default: 24 } // hours before appointment
     },
-    // General notification settings
-    timezone: { type: String, default: 'UTC' },
+    // General notification settings. Default is 'Asia/Kolkata', not 'UTC' —
+    // this field was never actually being read when it defaulted to 'UTC'
+    // (see notificationService.js's currentTimeFor fix), and the app's user
+    // base is overwhelmingly Indian (IFCT food data, doctor-availability
+    // defaults elsewhere in this codebase already assume the same). A client
+    // that sends the device's real IANA zone still overrides this via
+    // notificationPreferenceController.js — this is only the fallback.
+    timezone: { type: String, default: 'Asia/Kolkata' },
     quietHours: {
         enabled: { type: Boolean, default: false },
         startTime: { type: String }, // HH:MM format

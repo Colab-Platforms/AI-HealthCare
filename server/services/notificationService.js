@@ -92,8 +92,28 @@ class NotificationService {
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            const now = new Date();
-            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            // Per-user local clock, not the server's. NotificationPreference has
+            // carried a `timezone` field since it was added, but this loop used to
+            // compare every user's reminder time against the SERVER's local clock
+            // instead — invisible in local dev (a dev machine set to IST matches
+            // Indian users by coincidence) but wrong in production, where Render
+            // runs UTC by default: an "08:00" breakfast reminder only fired at
+            // 08:00 UTC (1:30pm IST), long after anyone was looking for it.
+            const timeFormatters = new Map(); // tz string -> cached Intl formatter
+            const currentTimeFor = (timezone) => {
+                const tz = timezone || 'UTC';
+                let formatter = timeFormatters.get(tz);
+                if (!formatter) {
+                    try {
+                        formatter = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+                    } catch (e) {
+                        // Unknown/invalid IANA zone string — fall back to UTC rather than throwing.
+                        formatter = timeFormatters.get('UTC') || new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', hour12: false });
+                    }
+                    timeFormatters.set(tz, formatter);
+                }
+                return formatter.format(new Date());
+            };
 
             await this.loadSentToday(today);
             const preferences = await this.getPreferencesWithCache();
@@ -105,10 +125,13 @@ class NotificationService {
             const dueAdherence = [];        // userId[]
             const dueInsight = [];          // userId[]
 
-            const isDue = (time) => Boolean(time) && currentTime >= time;
+            const isDue = (time, currentTime) => Boolean(time) && currentTime >= time;
             const notSent = (userId, type, mealType) => !this.sentToday.has(sentKey(userId, type, mealType));
 
             for (const [userId, pref] of preferences) {
+                // Each user's own local clock — see currentTimeFor above.
+                const currentTime = currentTimeFor(pref.timezone);
+
                 // Quiet hours (Do Not Disturb)
                 if (pref.quietHours?.enabled) {
                     const { startTime, endTime } = pref.quietHours;
@@ -124,23 +147,23 @@ class NotificationService {
                 if (pref.mealReminders?.enabled) {
                     const meals = new Set();
                     for (const mealType of MEAL_TYPES) {
-                        if (isDue(pref.mealReminders[mealType]) && notSent(userId, 'food_reminder', mealType)) {
+                        if (isDue(pref.mealReminders[mealType], currentTime) && notSent(userId, 'food_reminder', mealType)) {
                             meals.add(mealType);
                         }
                     }
                     if (meals.size) dueMeals.set(userId, meals);
                 }
 
-                if (pref.sleepReminder?.enabled && isDue(pref.sleepReminder.time) && notSent(userId, 'sleep_reminder')) {
+                if (pref.sleepReminder?.enabled && isDue(pref.sleepReminder.time, currentTime) && notSent(userId, 'sleep_reminder')) {
                     dueSleep.set(userId, pref.sleepReminder.targetSleepHours);
                 }
-                if (pref.macroUpdate?.enabled && isDue(pref.macroUpdate.time) && notSent(userId, 'macro_update')) {
+                if (pref.macroUpdate?.enabled && isDue(pref.macroUpdate.time, currentTime) && notSent(userId, 'macro_update')) {
                     dueMacro.push(userId);
                 }
-                if (pref.dietAdherence?.enabled && isDue(pref.dietAdherence.time) && notSent(userId, 'diet_adherence')) {
+                if (pref.dietAdherence?.enabled && isDue(pref.dietAdherence.time, currentTime) && notSent(userId, 'diet_adherence')) {
                     dueAdherence.push(userId);
                 }
-                if (pref.healthInsights?.enabled && isDue(pref.healthInsights.time) && notSent(userId, 'health_insight')) {
+                if (pref.healthInsights?.enabled && isDue(pref.healthInsights.time, currentTime) && notSent(userId, 'health_insight')) {
                     dueInsight.push(userId);
                 }
             }
@@ -296,11 +319,16 @@ class NotificationService {
 
         // Fetch from database
         console.log('🔄 Refreshing preferences cache');
-        // quietHours belongs in this projection — the tick reads pref.quietHours to
-        // honour Do Not Disturb, and without it here the field was always undefined,
-        // so quiet hours were silently ignored for every user.
+        // quietHours AND timezone both belong in this projection — same mistake
+        // twice now. quietHours was added to the schema without being added here,
+        // silently disabling Do Not Disturb for every user (fixed previously).
+        // timezone had the identical bug: present on the schema and populated in
+        // the DB, but never selected here, so pref.timezone was always undefined
+        // in the tick loop and currentTimeFor() silently fell back to UTC for
+        // every user regardless of what was actually saved — see notificationService's
+        // currentTimeFor and the migration that backfilled real users' timezone.
         const preferences = await NotificationPreference.find({})
-            .select('userId mealReminders sleepReminder macroUpdate dietAdherence healthInsights quietHours')
+            .select('userId mealReminders sleepReminder macroUpdate dietAdherence healthInsights quietHours timezone')
             .lean(); // Use lean() for faster queries
 
         // Build cache map
