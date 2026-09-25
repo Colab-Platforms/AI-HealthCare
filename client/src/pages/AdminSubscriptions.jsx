@@ -236,8 +236,9 @@ export default function AdminSubscriptions() {
               className="px-3 py-2.5 border border-slate-100 rounded-lg text-sm bg-white shadow-sm"
             >
               <option value="all">All Plans</option>
-              <option value="basic">Basic</option>
-              <option value="premium">Premium</option>
+              <option value="take_plus">Take Plus</option>
+              <option value="basic">Basic (legacy)</option>
+              <option value="premium">Premium (legacy)</option>
             </select>
             <select
               value={statusFilter}
@@ -456,8 +457,9 @@ export default function AdminSubscriptions() {
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
                   >
                     <option value="free">Free</option>
-                    <option value="basic">Basic</option>
-                    <option value="premium">Premium</option>
+                    <option value="take_plus">Take Plus</option>
+                    <option value="basic">Basic (legacy)</option>
+                    <option value="premium">Premium (legacy)</option>
                   </select>
                 </div>
 

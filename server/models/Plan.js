@@ -4,7 +4,8 @@ const planSchema = new mongoose.Schema({
     key: {
         type: String,
         required: true,
-        enum: ['free', 'free_trial', 'basic', 'premium'],
+        // 'basic'/'premium' (Pro/Pro Plus) kept only so pre-existing plan docs stay valid — retired in favor of 'take_plus'.
+        enum: ['free', 'free_trial', 'basic', 'premium', 'take_plus'],
     },
     name: { type: String, required: true },
     billingCycle: {

@@ -31,8 +31,12 @@ async function ensureSrvResolvable(uri) {
     }
 }
 
-// Every paid feature, on both Pro and Pro Plus — the two tiers are identical in
-// features and differ only in billing duration (1 month vs 3 months per charge).
+// Retired tiers — Pro and Pro Plus are replaced by the single Take Plus plan below.
+// Kept here only so this script actively disables any still-active Plan record for
+// them; existing subscribers on these keep their current access until it lapses.
+const RETIRED_PLAN_KEYS = ['basic', 'premium'];
+
+// Every paid feature — Take Plus is the only paid tier now.
 const PAID_FEATURES = {
     // Free features, included on paid tiers too:
     waterLogging: true, healthScore: true, activityStepLogging: true, alcoholTracking: true,
@@ -70,13 +74,8 @@ const PLAN_DEFINITIONS = [
         features: PAID_FEATURES,
     },
     {
-        // "Pro" — 1 month per charge.
-        key: 'basic', name: 'Pro', billingCycle: 'monthly', price: 1,
-        features: PAID_FEATURES,
-    },
-    {
-        // "Pro Plus" — 3 months per charge. TODO: confirm price (placeholder below).
-        key: 'premium', name: 'Pro Plus', billingCycle: 'quarterly', price: 2,
+        // "Take Plus" — replaces Pro/Pro Plus as the only paid tier.
+        key: 'take_plus', name: 'Take Plus', billingCycle: 'monthly', price: 299,
         features: PAID_FEATURES,
     },
 ];
@@ -159,6 +158,17 @@ async function run() {
             await plan.save();
             console.log(`Plan ${def.key}/${def.billingCycle} unchanged — updated features only`);
         }
+    }
+
+    // Disable retired tiers (Pro/Pro Plus) — new signups can no longer pick them,
+    // existing subscribers on them keep access until their current period lapses
+    // (cancelSubscription/webhook flows don't check isActive).
+    const retiredResult = await Plan.updateMany(
+        { key: { $in: RETIRED_PLAN_KEYS }, isActive: true },
+        { $set: { isActive: false } }
+    );
+    if (retiredResult.modifiedCount) {
+        console.log(`Disabled ${retiredResult.modifiedCount} retired plan(s): ${RETIRED_PLAN_KEYS.join(', ')}`);
     }
 
     // Feature-gating middleware caches Plan lookups for 5 min (utils/cache) —

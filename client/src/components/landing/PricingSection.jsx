@@ -1,8 +1,7 @@
-import { Crown, Check, Zap, Star } from "lucide-react";
+import { Check, Zap, Star } from "lucide-react";
 
-// Free is lifetime access; Pro and Pro Plus are separate plans (not the same plan
-// billed two ways) — Pro autopays every month, Pro Plus every 3 months. There is no
-// monthly/yearly toggle: each tier has exactly one fixed billing cadence.
+// Free is lifetime access; Take Plus is the only paid tier (replaces the former
+// Pro / Pro Plus two-tier setup) — one fixed monthly billing cadence.
 const plans = [
   {
     id: "free",
@@ -20,8 +19,8 @@ const plans = [
     ],
   },
   {
-    id: "basic",
-    name: "Pro",
+    id: "take_plus",
+    name: "Take Plus",
     tagline: "Built for people actively tracking their health.",
     price: 299,
     billingCycle: "monthly",
@@ -37,21 +36,6 @@ const plans = [
       "Goal planner",
     ],
   },
-  {
-    id: "premium",
-    name: "Pro Plus",
-    tagline: "Same Pro features, billed quarterly — save vs. paying monthly.",
-    price: 799,
-    billingCycle: "quarterly",
-    cadenceLabel: "billed every 3 months",
-    icon: Crown,
-    features: [
-      "Everything in Pro",
-      "Same features as Pro",
-      "3 months of access per charge",
-      "Fewer renewal charges",
-    ],
-  },
 ];
 
 export { plans };
@@ -64,7 +48,7 @@ export default function PricingSection({
   return (
     <div className="space-y-10">
       {/* Plans Grid */}
-      <div className="grid md:grid-cols-3 gap-6 items-stretch max-w-5xl mx-auto">
+      <div className="grid md:grid-cols-2 gap-6 items-stretch max-w-3xl mx-auto">
         {plans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = currentPlan === plan.id;

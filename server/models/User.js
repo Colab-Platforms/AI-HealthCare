@@ -190,7 +190,8 @@ const userSchema = new mongoose.Schema({
     lastUpdated: Date
   },
   subscription: {
-    plan: { type: String, enum: ['free', 'free_trial', 'basic', 'premium'], default: 'free' },
+    // 'basic'/'premium' (Pro/Pro Plus) kept only so existing subscribers' records stay valid — retired in favor of 'take_plus'.
+    plan: { type: String, enum: ['free', 'free_trial', 'basic', 'premium', 'take_plus'], default: 'free' },
     status: { type: String, enum: ['active', 'inactive', 'expired', 'past_due', 'cancelled'], default: 'active' },
     billingCycle: { type: String, enum: ['monthly', 'quarterly', 'yearly'], default: 'monthly' }, // basic(Pro)=monthly, premium(Pro Plus)=quarterly
     startDate: Date,

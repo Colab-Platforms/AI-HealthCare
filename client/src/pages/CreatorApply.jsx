@@ -235,10 +235,10 @@ export default function CreatorApply() {
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-900/5 text-3xl">
             🎉
           </span>
-          <h1 className="mt-5 text-2xl font-bold text-gray-900">Application submitted</h1>
+          <h1 className="mt-5 text-2xl font-bold text-gray-900">Thanks for applying</h1>
           <p className="mt-3 text-sm leading-relaxed text-gray-600">
-            Thanks for applying to the TAKE Creator Program. We review every application by hand
-             you'll hear from us by email either way.
+            You're one step closer to becoming part of the TAKE Health Creator community.
+            Our team will review your application and contact you by email with an update.
           </p>
           <Link
             to="/"

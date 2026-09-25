@@ -804,7 +804,7 @@ export default function AdminUsers() {
                         <div className="flex justify-between text-xs">
                           <span className="text-slate-500">Plan:</span>
                           <span
-                            className={`font-bold ${userDetail.subscription?.plan === "premium" ? "text-amber-600" : "text-slate-700"}`}
+                            className={`font-bold ${["premium", "take_plus"].includes(userDetail.subscription?.plan) ? "text-amber-600" : "text-slate-700"}`}
                           >
                             {userDetail.subscription?.plan?.toUpperCase() ||
                               "FREE"}

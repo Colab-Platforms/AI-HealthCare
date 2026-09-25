@@ -1754,7 +1754,7 @@ exports.createAdmin = async (req, res) => {
       email,
       password,
       role: 'admin',
-      subscription: { plan: 'premium', status: 'active', startDate: new Date() }
+      subscription: { plan: 'take_plus', status: 'active', startDate: new Date() }
     });
 
     res.status(201).json({

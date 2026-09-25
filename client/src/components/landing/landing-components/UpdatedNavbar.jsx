@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 const navLinks = [
   { label: "ABOUT US", to: "/about" },
   { label: "HOW IT WORKS", to: "/how-it-works" },
+  { label: "CREATOR CLUB", to: "/creator" },
   { label: "FAQ", to: "/", hash: "faqs-section" },
 ];
 
