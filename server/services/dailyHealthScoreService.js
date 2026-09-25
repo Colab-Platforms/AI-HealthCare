@@ -6,6 +6,7 @@ const ExerciseLog = require('../models/ExerciseLog');
 const User = require('../models/User');
 const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
+const { calculateDietQualityScore } = require('./dietQualityScoreService');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
 // it uses the population-to-personal baseline blend below. Steps and
@@ -75,7 +76,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     WearableData.find({ user: userId }).lean(),
     User.findById(userId)
-      .select('smokeLog alcoholLog profile.gender profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
+      .select('smokeLog alcoholLog profile.age profile.gender profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
       .lean(),
     ExerciseLog.find({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } })
       .select('duration caloriesBurned').lean(),
@@ -231,21 +232,34 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   if (nutritionSummary && nutritionSummary.totalFoodsCount > 0) {
     const mealsLogged = ['breakfast', 'lunch', 'dinner'].filter((m) => nutritionSummary.mealsLogged?.[m]).length;
     const loggingCompleteness = mealsLogged / 3;
-    // Quality comes from `averageHealthScore` — the calorie-weighted average of
-    // the analyser's own 0-100 rating for each meal.
+    // Quality comes from the Nutrition Score (dietQualityScoreService) — a
+    // published-methodology (MAR + AMDR + HEI-2020 moderation) rating of the
+    // day's actual nutrient intake, computed fresh here rather than read from
+    // NutritionSummary's write-through snapshot (which only exists once the
+    // user has opened the Nutrition Score screen, and would be stale/absent
+    // otherwise).
     //
-    // It used to be healthyFoodsCount / totalFoodsCount, which was wrong twice
-    // over. Those counters increment once per MEAL, not per food item (see
-    // nutritionController.updateDailySummary), so the "share of foods rated
-    // healthy" this claimed to measure was never that. And healthyFoodsCount
-    // only counts meals scoring 7/10 or better, so it collapsed a continuous
-    // rating into a pass/fail: a day of 6.9-out-of-10 meals scored 0% quality
-    // while 7.0 scored 100%, and the real number sitting right beside it in the
-    // same document was thrown away. Falls back to the old ratio if an older
-    // summary has no averageHealthScore.
-    const mealQuality = typeof nutritionSummary.averageHealthScore === 'number' && nutritionSummary.averageHealthScore > 0
-      ? Math.min(1, nutritionSummary.averageHealthScore / 100)
-      : Math.min(1, (nutritionSummary.healthyFoodsCount || 0) / nutritionSummary.totalFoodsCount);
+    // Before this, quality came from `averageHealthScore` — the calorie-
+    // weighted average of the food-analyser AI's own subjective 0-100 rating
+    // per meal. Before THAT, it was healthyFoodsCount / totalFoodsCount, which
+    // was wrong twice over: those counters increment once per MEAL, not per
+    // food item, and healthyFoodsCount only counts meals scoring 7/10+, so it
+    // collapsed a continuous rating into a pass/fail. Falls back to
+    // averageHealthScore, then the old ratio, if the formula can't produce a
+    // score (e.g. no age/gender on the profile yet).
+    let mealQuality;
+    try {
+      const dietScoreResult = calculateDietQualityScore(nutritionSummary, {
+        age: user?.profile?.age,
+        gender: user?.profile?.gender,
+        calorieGoal: user?.nutritionGoal?.calorieGoal,
+      });
+      mealQuality = Math.min(1, dietScoreResult.score / 100);
+    } catch (e) {
+      mealQuality = typeof nutritionSummary.averageHealthScore === 'number' && nutritionSummary.averageHealthScore > 0
+        ? Math.min(1, nutritionSummary.averageHealthScore / 100)
+        : Math.min(1, (nutritionSummary.healthyFoodsCount || 0) / nutritionSummary.totalFoodsCount);
+    }
 
     raw.mealsLogged = mealsLogged;
     raw.mealsGoal = 3;

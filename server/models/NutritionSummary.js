@@ -34,6 +34,19 @@ const nutritionSummarySchema = new mongoose.Schema({
   totalMagnesium: { type: Number, default: 0 },
   totalOmega3: { type: Number, default: 0 },
   averageHealthScore: { type: Number, default: 0 },
+
+  // Nutrition Score (MAR/AMDR/HEI formula, dietQualityScoreService.js) is
+  // still computed live on every read — that's deliberate, so a future fix to
+  // the formula applies retroactively to every past day without a backfill
+  // migration. These fields are a write-through snapshot of the last computed
+  // result, kept only so the score is visible directly on the record (Compass,
+  // analytics scripts, etc.) without re-running the formula or hitting the
+  // API. Never read these back as the source of truth inside the app itself.
+  dietQualityScore: { type: Number, default: null },
+  dietQualityHealthyNutrientsScore: { type: Number, default: null },
+  dietQualityJunkControlScore: { type: Number, default: null },
+  dietQualityBand: { type: String, enum: ['excellent', 'good', 'fair', 'needs_attention', null], default: null },
+  dietQualityComputedAt: { type: Date, default: null },
   
   // Quality breakdown
   healthyFoodsCount: { type: Number, default: 0 },
