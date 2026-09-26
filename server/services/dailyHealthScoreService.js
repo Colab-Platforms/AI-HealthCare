@@ -2,22 +2,33 @@ const UserMetricBaseline = require('../models/UserMetricBaseline');
 const DailyHealthScore = require('../models/DailyHealthScore');
 const NutritionSummary = require('../models/NutritionSummary');
 const WearableData = require('../models/WearableData');
+const SleepSession = require('../models/SleepSession');
 const ExerciseLog = require('../models/ExerciseLog');
 const User = require('../models/User');
+const HealthGoal = require('../models/HealthGoal');
 const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
+const { getExerciseGuidance } = require('./exerciseGuidanceService');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
-// it uses the population-to-personal baseline blend below. Steps and
-// hydration are different: this app already shows the user a single fixed
-// goal for both elsewhere (Nutrition.jsx target: 8 glasses, Dashboard
-// goals.steps: 10000) — using a *self-learning* baseline for those would let
-// the score quietly adapt to match the user's actual (possibly poor) habit
-// and reward it with 100, instead of measuring against the goal they
-// actually see in the app. Fixed goals here, matching those exactly.
+// it uses the population-to-personal baseline blend below. Hydration is
+// different: this app already shows the user a single fixed goal elsewhere
+// (Nutrition.jsx target: 8 glasses) — using a *self-learning* baseline for it
+// would let the score quietly adapt to match the user's actual (possibly
+// poor) habit and reward it with 100, instead of measuring against the goal
+// they actually see in the app. Fixed goal here, matching that exactly.
+//
+// Steps used to be fixed at 10,000 for every user here too, but that number
+// has no age-based backing (unlike the WHO/ACSM/CDC minutes-based guidance
+// below) — it's not even a health guideline at all, it originated from a
+// 1965 Japanese pedometer ad ("manpo-kei" = "10,000-step meter"). It's now
+// age-banded via getExerciseGuidance()'s stepsGoal, sourced from a 2025
+// peer-reviewed steps/day translation of WHO's MVPA guideline (see that
+// file's comment) — a real target, not a self-learning one, so the
+// "don't reward a bad habit" concern above doesn't apply to it.
 const POPULATION_NORMS = { sleepHours: 7.5 };
-const FIXED_GOALS = { steps: 10000, waterGlasses: 8 };
+const FIXED_GOALS = { waterGlasses: 8 };
 
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 ``
@@ -72,14 +83,37 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-  const [nutritionSummary, wearables, user, exerciseLogs] = await Promise.all([
+  const [nutritionSummary, wearables, sleepSession, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     WearableData.find({ user: userId }).lean(),
+    // SleepSession, not WearableData.sleepData[] — that legacy embedded array
+    // never deduplicates same-day pushes the way SleepSession does (via
+    // sourceRecordId), so a day synced more than once accumulates multiple
+    // entries there. findDailyEntry() below used to grab whichever one
+    // happened to match first, which could be a stale/duplicate ~18-19hr
+    // entry instead of the real ~6-7hr one — SleepSession has exactly one,
+    // correct, deduplicated row per user per day.
+    SleepSession.findOne({ user: userId, date: dayStart }).lean(),
     User.findById(userId)
       .select('smokeLog alcoholLog profile.age profile.gender profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
       .lean(),
     ExerciseLog.find({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } })
-      .select('duration caloriesBurned').lean(),
+      .select('duration caloriesBurned category').lean(),
+    // Only age + goalType are needed for getExerciseGuidance() below — not the
+    // full doc. Falls back to User.profile.age (already fetched above) and no
+    // goal-type override if the user hasn't set an active goal yet.
+    HealthGoal.findOne({ userId, isActive: true }).select('age goalType').lean(),
+    // Rolling 7-day window, not "did they train today" — strength guidance is
+    // 2-3 sessions/WEEK, not daily, so a single day's yes/no reads a correctly-
+    // spaced rest day as a failure. A trailing week gives every day of a
+    // consistent weekly routine the same accurate "on track" answer instead of
+    // oscillating 100/0/100/0 through the week. Same rolling-window principle
+    // recoveryScoreService.js already uses for HRV/RHR baselines.
+    ExerciseLog.countDocuments({
+      userId,
+      category: 'strength',
+      timestamp: { $gte: new Date(dayEnd.getTime() - 7 * 86400000), $lt: dayEnd },
+    }),
   ]);
 
   const components = {};
@@ -88,10 +122,19 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // "8000 steps" next to "activity: 87" instead of the number alone.
   const raw = {};
 
+  // Age/goal-personalized steps/cardio/strength targets — real, published
+  // (WHO/ACSM/CDC) guidance, not self-learning (see exerciseGuidanceService.js).
+  // Falls back to User.profile.age when there's no active HealthGoal yet
+  // (getExerciseGuidance defaults goalType to no override in that case).
+  const guidance = getExerciseGuidance(
+    healthGoal?.age ?? user?.profile?.age,
+    healthGoal?.goalType ?? null,
+  );
+  const dailyCardioTarget = guidance.cardioMinutesPerWeek / 7;
+
   // --- Sleep ---
-  const sleepEntry = findDailyEntry(wearables, 'sleepData', dateStr);
-  if (sleepEntry?.totalSleepMinutes) {
-    const hours = sleepEntry.totalSleepMinutes / 60;
+  if (sleepSession?.totalSleepMinutes) {
+    const hours = sleepSession.totalSleepMinutes / 60;
     raw.sleepHours = Math.round(hours * 10) / 10;
     const blended = await updateAndBlend(userId, 'sleepHours', hours, POPULATION_NORMS.sleepHours, config.personalBaselineTau.sleep, dateStr);
     // Clamp the personalised target into the clinically endorsed range.
@@ -154,51 +197,99 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const mobilityLimited = conditions.some((c) =>
     (config.mobilityLimitedConditions || []).some((mc) => c.includes(mc)),
   );
-  const activityCfg = config.activity || { activeMinutesGoal: 30, stepsShare: 0.6 };
-
+  // Activity = one flat EQUAL-weighted average over up to 4 independent
+  // signals (Steps, Active Minutes, Cardio, Strength), each scored against
+  // its own real WHO/ACSM/CDC-sourced target (see exerciseGuidanceService.js).
+  // The TARGETS are published guidance; the WEIGHTING between them is not —
+  // no medical body or industry player publishes a formula for combining
+  // these into one number. Checked: Apple Watch (Move/Exercise/Stand),
+  // Fitbit (Steps, Active Zone Minutes) and Garmin (Intensity Minutes) all
+  // keep these as SEPARATE metrics/rings rather than blending them, precisely
+  // because there's no agreed way to weight one against another. Equal
+  // weighting is therefore the most defensible choice here, not because it's
+  // proven better than any alternative split, but because no alternative
+  // split has any basis either — this is the "principle of indifference":
+  // absent evidence favouring one weighting over another, treat them equally
+  // rather than pick an unjustifiable number. Renormalized over whichever
+  // signals are actually available that day (see the loop below), the same
+  // pattern used for the config-driven weights this replaces.
   const stepsEntry = findDailyEntry(wearables, 'dailyMetrics', dateStr);
-  if (stepsEntry) {
-    const parts = [];
+  const activityParts = [];
+  // Grouped under raw.activity (not flat raw.xxx like Sleep/Hydration/
+  // Nutrition above) specifically because the flat names here were
+  // ambiguous in practice — "exerciseMinutes", "cardioExerciseMinutes" and
+  // "exerciseMinutesGoal" read as three unrelated numbers, and the goal was
+  // actually paired with the wrong one of the three by name. Every metric
+  // below is an explicit {actual, goal} pair so neither question ("is this
+  // logged-by-the-user or a target?", "which actual does this goal belong
+  // to?") requires reading the code to answer.
+  raw.activity = {};
 
-    if (stepsEntry.steps && !mobilityLimited) {
-      raw.steps = stepsEntry.steps;
-      raw.stepsGoal = FIXED_GOALS.steps;
-      parts.push({ weight: activityCfg.stepsShare, score: saturatingToGoal(stepsEntry.steps, FIXED_GOALS.steps) });
-    }
-
-    if (stepsEntry.activeMinutes) {
-      raw.activeMinutes = stepsEntry.activeMinutes;
-      raw.activeMinutesGoal = activityCfg.activeMinutesGoal;
-      parts.push({ weight: 1 - activityCfg.stepsShare, score: saturatingToGoal(stepsEntry.activeMinutes, activityCfg.activeMinutesGoal) });
-    }
-
-    if (parts.length > 0) {
-      const total = parts.reduce((s, p) => s + p.weight, 0);
-      components.activity = parts.reduce((s, p) => s + p.score * (p.weight / total), 0);
-    }
+  if (stepsEntry?.steps && !mobilityLimited) {
+    raw.activity.steps = { actual: stepsEntry.steps, goal: guidance.stepsGoal, source: 'device' };
+    activityParts.push(saturatingToGoal(stepsEntry.steps, guidance.stepsGoal));
   }
 
-  // Deliberate logged exercise (running, gym, yoga, etc. via ExerciseLog) is a
-  // signal independent of the wearable's passive step/active-minute tracking —
-  // not folded into activeMinutes above, since a workout a device auto-detected
-  // AND the user separately logged would otherwise double-count the same
-  // minutes. Scored against the same activeMinutesGoal (WHO's daily activity
-  // guidance applies just as directly to deliberate exercise), unaffected by
-  // the mobility exclusion above — exercise a wheelchair user logs still counts
-  // in full, unlike step-counting.
+  // Cardio-minutes from deliberately logged exercise (running, gym, yoga,
+  // etc. via ExerciseLog) — cardio-category only, so a pure strength session
+  // doesn't count toward this goal too (strength has its own signal below).
+  const cardioMinutes = exerciseLogs
+    .filter((log) => log.category === 'cardio')
+    .reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+  const exerciseMinutes = exerciseLogs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+
+  // Movement/cardio signal: device's passive active-minutes tracking takes
+  // priority over manually-logged cardio-minutes, not blended with it —
+  // both can describe the SAME real workout (a run the wearable detected as
+  // elevated heart-rate AND the user separately logged), and scoring them as
+  // two independent parts of the average let that one effort count twice.
+  // Manual cardio is used ONLY as a fallback for a day the device reports
+  // nothing at all (no wearable worn, or genuinely no passive signal) —
+  // never averaged alongside a device reading that already exists. `source`
+  // is surfaced on the field itself so the client can show which it was.
+  const deviceActiveMinutes = stepsEntry?.activeMinutes || 0;
+  if (deviceActiveMinutes > 0) {
+    raw.activity.movementMinutes = { actual: deviceActiveMinutes, goal: Math.round(dailyCardioTarget * 10) / 10, source: 'device' };
+    activityParts.push(saturatingToGoal(deviceActiveMinutes, dailyCardioTarget));
+  } else if (cardioMinutes > 0) {
+    raw.activity.movementMinutes = { actual: cardioMinutes, goal: Math.round(dailyCardioTarget * 10) / 10, source: 'manual' };
+    activityParts.push(saturatingToGoal(cardioMinutes, dailyCardioTarget));
+  }
+
   if (exerciseLogs.length > 0) {
-    const exerciseMinutes = exerciseLogs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    raw.exerciseMinutes = exerciseMinutes;
-    raw.exerciseMinutesGoal = activityCfg.activeMinutesGoal;
-    raw.exerciseSessionsCount = exerciseLogs.length;
-    raw.exerciseCaloriesBurned = exerciseLogs.reduce((sum, log) => sum + (Number(log.caloriesBurned) || 0), 0);
+    // Display-only — every logged category, regardless of whether cardio
+    // minutes ended up feeding the score above (device may have taken
+    // priority). Lets the UI still show "here's what you logged today" even
+    // on a day the device's reading won the movement slot.
+    raw.activity.loggedExercise = {
+      cardioMinutes,
+      totalMinutes: exerciseMinutes,
+      sessionsCount: exerciseLogs.length,
+      caloriesBurned: exerciseLogs.reduce((sum, log) => sum + (Number(log.caloriesBurned) || 0), 0),
+      source: 'manual',
+    };
+  }
 
-    const exerciseScore = saturatingToGoal(exerciseMinutes, activityCfg.activeMinutesGoal);
-    const exerciseShare = activityCfg.exerciseShare ?? 0.35; // per-field fallback: older configs may predate this field
+  // Strength: a rolling 7-day window, not "did they train today" — strength
+  // guidance is 2-3 sessions/WEEK, not daily, so a single day's yes/no reads a
+  // correctly-spaced rest day as a failure. A trailing week gives every day of
+  // a consistent weekly routine the same accurate "on track" answer instead of
+  // oscillating 100/0/100/0 through the week (see the ExerciseLog.countDocuments
+  // call above). Only scored when there's been recent exercise activity at all
+  // (today's log or a strength session this week) — a user who simply doesn't
+  // use exercise-logging isn't penalised on a signal they've never engaged with.
+  if (exerciseLogs.length > 0 || strengthSessionsLast7Days > 0) {
+    raw.activity.strengthSessions = {
+      actual: strengthSessionsLast7Days,
+      goal: guidance.strengthSessionsPerWeek,
+      window: 'last_7_days',
+      source: 'manual',
+    };
+    activityParts.push(Math.min(100, (strengthSessionsLast7Days / guidance.strengthSessionsPerWeek) * 100));
+  }
 
-    components.activity = components.activity === undefined
-      ? exerciseScore
-      : (components.activity * (1 - exerciseShare)) + (exerciseScore * exerciseShare);
+  if (activityParts.length > 0) {
+    components.activity = activityParts.reduce((sum, score) => sum + score, 0) / activityParts.length;
   }
 
   // --- Hydration — scored against the app's fixed water goal (glasses, not
