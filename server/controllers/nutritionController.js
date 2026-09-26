@@ -1589,6 +1589,137 @@ const NUTRITION_SCORE_MAX_SPAN_DAYS = 100; // generous headroom over a single ca
 // Only reads EXISTING NutritionSummary rows (never backfills/creates one
 // per day like the single-date path below does) — a day with no row is
 // "not logged" on the calendar, not a freshly-materialized zero score.
+// --- Weekly/Monthly Nutrition Score ("how did this week/month go overall") ---
+// Same shape family as activityAnalyticsService's weekly/monthly summary:
+// bucket the period's logged days, average their nutrient TOTALS first (not
+// their per-day scores), then run the real score+insight formula ONCE on
+// that averaged day. Averaging totals-then-scoring (rather than
+// scoring-then-averaging) keeps the nutrient-level breakdown available, which
+// is what buildNutritionInsight() needs to say WHICH nutrient was short over
+// the period, not just "your average score was X".
+const NUTRITION_PERIOD_MAX_SPAN_DAYS = 370; // headroom over a year, mirrors activityAnalyticsService's cap
+const NUTRITION_TOTAL_FIELDS = [
+  'totalCalories', 'totalProtein', 'totalCarbs', 'totalFats',
+  'totalFiber', 'totalSugar', 'totalSodium', 'totalSaturatedFat',
+  'totalVitaminA', 'totalVitaminC', 'totalVitaminD', 'totalVitaminB12',
+  'totalIron', 'totalCalcium', 'totalPotassium', 'totalMagnesium', 'totalOmega3',
+];
+
+function nutritionAverage(nums) {
+  const valid = nums.filter((n) => typeof n === 'number' && !Number.isNaN(n));
+  if (!valid.length) return 0;
+  return valid.reduce((a, b) => a + b, 0) / valid.length;
+}
+
+// Same ISO-week/month bucketing activityAnalyticsService.js uses, kept as its
+// own copy here (not extracted to a shared util) so nutrition's period
+// boundaries can't silently drift if one file's version is edited later
+// without touching the other.
+function nutritionCurrentWeekStartUTC() {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  monday.setUTCDate(monday.getUTCDate() - diffToMonday);
+  return monday;
+}
+
+function nutritionBucketKey(dateStr, range) {
+  const d = new Date(dateStr);
+  if (range === 'weekly') {
+    const onejan = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((d - onejan) / 86400000) + onejan.getUTCDay() + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+  }
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+class NutritionPeriodInputError extends Error {}
+
+async function computeNutritionScorePeriod(userId, range, { startDate: customStart, endDate: customEnd }) {
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  for (const [label, val] of [['startDate', customStart], ['endDate', customEnd]]) {
+    if (val !== undefined && !DATE_RE.test(val)) {
+      throw new NutritionPeriodInputError(`${label} must be in YYYY-MM-DD format`);
+    }
+  }
+
+  let matchStart;
+  let matchEnd;
+  if (customStart || customEnd) {
+    matchStart = customStart ? new Date(customStart) : new Date(0);
+    matchEnd = customEnd ? new Date(customEnd) : new Date();
+    matchStart.setUTCHours(0, 0, 0, 0);
+    matchEnd.setUTCHours(23, 59, 59, 999);
+    if (matchEnd < matchStart) {
+      throw new NutritionPeriodInputError('endDate must not be before startDate');
+    }
+    const spanDays = (matchEnd - matchStart) / 86400000;
+    if (spanDays > NUTRITION_PERIOD_MAX_SPAN_DAYS) {
+      throw new NutritionPeriodInputError(`Date range too large — max ${NUTRITION_PERIOD_MAX_SPAN_DAYS} days`);
+    }
+  } else if (range === 'monthly') {
+    const now = new Date();
+    matchStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    matchEnd = new Date();
+    matchEnd.setUTCHours(23, 59, 59, 999);
+  } else {
+    matchStart = nutritionCurrentWeekStartUTC();
+    matchEnd = new Date();
+    matchEnd.setUTCHours(23, 59, 59, 999);
+  }
+
+  const [user, summaries] = await Promise.all([
+    User.findById(userId).select('profile.age profile.gender').lean(),
+    NutritionSummary.find({
+      userId,
+      date: { $gte: matchStart, $lte: matchEnd },
+      totalCalories: { $gt: 0 }, // a persisted-but-empty row isn't a "logged" day — see getNutritionScoreRange
+    }).select(`date calorieGoal ${NUTRITION_TOTAL_FIELDS.join(' ')}`).lean(),
+  ]);
+
+  const profileBase = { age: user?.profile?.age, gender: user?.profile?.gender };
+
+  const buckets = {};
+  for (const s of summaries) {
+    const key = nutritionBucketKey(s.date.toISOString().split('T')[0], range);
+    if (!buckets[key]) buckets[key] = [];
+    buckets[key].push(s);
+  }
+
+  const summary = Object.keys(buckets).sort().map((key) => {
+    const group = buckets[key];
+
+    // Average this period's LOGGED days into one "average day" of nutrient
+    // totals, then score that single averaged day — see the file-level
+    // comment above for why this order (not average-of-daily-scores).
+    const averagedTotals = {};
+    for (const field of NUTRITION_TOTAL_FIELDS) {
+      averagedTotals[field] = nutritionAverage(group.map((s) => Number(s[field]) || 0));
+    }
+    const avgCalorieGoal = nutritionAverage(group.map((s) => Number(s.calorieGoal) || 0)) || undefined;
+
+    const scoreResult = calculateDietQualityScore(averagedTotals, { ...profileBase, calorieGoal: avgCalorieGoal });
+    const insight = buildNutritionInsight(scoreResult);
+
+    return {
+      period: key,
+      daysLogged: group.length,
+      avgScore: scoreResult.score,
+      avgHealthyNutrientsScore: scoreResult.healthyNutrientsScore,
+      avgJunkControlScore: scoreResult.junkControlScore,
+      insight,
+    };
+  });
+
+  return {
+    range,
+    startDate: matchStart.toISOString().split('T')[0],
+    endDate: matchEnd.toISOString().split('T')[0],
+    summary,
+  };
+}
+
 async function getNutritionScoreRange(req, res) {
   const { startDate, endDate } = req.query;
   if (!NUTRITION_SCORE_DATE_RE.test(startDate) || !NUTRITION_SCORE_DATE_RE.test(endDate)) {
@@ -1661,6 +1792,30 @@ async function getNutritionScoreRange(req, res) {
 
 exports.getNutritionScore = async (req, res) => {
   try {
+    // range=weekly/monthly — the aggregated "how did this week/month go"
+    // view (averaged nutrient totals + one insight per bucket). Checked
+    // before the plain startDate/endDate branch below, which stays the
+    // existing lightweight per-day calendar list (score+band only, no
+    // insight) — unchanged, so the Score Calendar UI keeps working exactly
+    // as it did before this field was added.
+    if (['weekly', 'monthly'].includes(req.query.range)) {
+      const { range, startDate, endDate } = req.query;
+      const cacheKey = `nutrition_score_period:${req.user._id}:${range}:${startDate || ''}:${endDate || ''}`;
+      try {
+        const data = await cache.getOrSet(
+          cacheKey,
+          () => computeNutritionScorePeriod(req.user._id, range, { startDate, endDate }),
+          300
+        );
+        return res.json({ success: true, ...data });
+      } catch (error) {
+        if (error instanceof NutritionPeriodInputError) {
+          return res.status(400).json({ success: false, message: error.message });
+        }
+        throw error;
+      }
+    }
+
     if (req.query.startDate || req.query.endDate) {
       return await getNutritionScoreRange(req, res);
     }
