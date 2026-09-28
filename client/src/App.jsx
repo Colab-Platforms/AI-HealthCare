@@ -133,7 +133,7 @@ export default function App() {
           <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route
-            path="/pages/manufacturer-details"
+            path="/pages/manufacturers-details"
             element={<ManufacturerDetails />}
           />
           <Route path="/delete-account" element={<DeleteAccount />} />
@@ -170,7 +170,7 @@ export default function App() {
           "/how-it-works",
           "/terms-and-conditions",
           "/privacy-policy",
-          "/pages/manufacturer-details",
+          "/pages/manufacturers-details",
           "/forgot-password",
           "/demo",
           "/creator",

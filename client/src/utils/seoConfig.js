@@ -377,8 +377,8 @@ export const seoConfig = {
       description:
         "Manufacturer information and FSSAI licensing details for take.health products.",
       keywords: "manufacturer details, FSSAI license, product manufacturer",
-      path: "/pages/manufacturer-details",
-      canonical: `${baseURL}/pages/manufacturer-details`,
+      path: "/pages/manufacturers-details",
+      canonical: `${baseURL}/pages/manufacturers-details`,
     },
 
     termsAndConditions: {
