@@ -41,6 +41,8 @@ const usageLogSchema = new mongoose.Schema({
         // Current nightly insight categories
         'daily_insight_overall', 'daily_insight_sleep',
         'daily_insight_nutrition', 'daily_insight_fitness',
+        'daily_insight_recovery', 'daily_insight_smoking',
+        'daily_insight_alcohol', 'daily_insight_hydration',
         // Retained for historical usage records
         'daily_insight_activity', 'daily_insight_medical', 'other'
     ]},

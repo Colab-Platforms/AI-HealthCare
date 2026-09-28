@@ -3,6 +3,7 @@ const { calculateDailyScore } = require('../services/dailyHealthScoreService');
 const { calculateLongTermScore, daysAgoStr } = require('../services/longTermHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { classifyCalendarBand } = require('../utils/calendarBand');
+const { getScoreBreakdown } = require('../services/healthScoreBreakdownService');
 
 const HEALTH_SCORE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HEALTH_SCORE_MAX_SPAN_DAYS = 100; // generous headroom over a single calendar month
@@ -222,5 +223,31 @@ exports.getHealthScore = async (req, res) => {
   } catch (error) {
     console.error('getHealthScore error:', error.message);
     res.status(500).json({ message: 'Failed to load health score' });
+  }
+};
+
+// GET /api/health/score/breakdown?range=daily|weekly|monthly&date=YYYY-MM-DD
+// Powers the "explain this score" page reached by tapping the Unified Health
+// Score ring — per-component scores/weights/contributions plus an AI insight
+// for each, sourced from already-persisted DailyHealthScore rows and
+// DailyInsight docs (see healthScoreBreakdownService.js for how those are
+// combined). `date` defaults to today and is the END of the window; range
+// defaults to 'daily'.
+exports.getScoreBreakdown = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly'].includes(req.query.range) ? req.query.range : 'daily';
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const requestedDate = typeof req.query.date === 'string' ? req.query.date : null;
+    const isValidDate = requestedDate && HEALTH_SCORE_DATE_RE.test(requestedDate)
+      && requestedDate <= todayStr
+      && requestedDate >= daysAgoStr(89);
+    const dateStr = isValidDate ? requestedDate : todayStr;
+
+    const result = await getScoreBreakdown(req.user._id, range, dateStr);
+    res.json(result);
+  } catch (error) {
+    console.error('getScoreBreakdown error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to load health score breakdown' });
   }
 };

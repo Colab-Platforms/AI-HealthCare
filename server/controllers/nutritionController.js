@@ -1404,17 +1404,18 @@ exports.logWater = async (req, res) => {
     const targetDate = new Date(queryDate.toISOString().split('T')[0]);
     targetDate.setUTCHours(0, 0, 0, 0);
 
-    let summary = await NutritionSummary.findOne({
-      userId: req.user._id,
-      date: targetDate
-    });
-
-    if (!summary) {
-      summary = new NutritionSummary({
-        userId: req.user._id,
-        date: targetDate
-      });
-    }
+    // Atomic get-or-create: a plain findOne + `new Model()` + save() has a gap
+    // between the check and the insert where two concurrent requests (e.g. a
+    // double-tap) can both see "no summary yet" and both try to create one,
+    // tripping the userId+date unique index (E11000). findOneAndUpdate with
+    // upsert:true does the get-or-create as a single atomic DB operation, so
+    // only one request can ever create the document; the later .save() below
+    // is then always an update to an existing doc, never a second insert.
+    const summary = await NutritionSummary.findOneAndUpdate(
+      { userId: req.user._id, date: targetDate },
+      { $setOnInsert: { userId: req.user._id, date: targetDate } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     summary.waterIntake = waterAmount;
     await summary.save();
@@ -2234,18 +2235,22 @@ async function updateDailySummary(userId, date) {
     const targetDateStr = targetDate.toISOString().split('T')[0];
     const { triggerDailyScoreRecompute } = require('../utils/scoreRecompute');
 
-    if (existingSummary) {
-      Object.assign(existingSummary, totals, { mealsLogged }, goalData);
-      if (typeof existingSummary.calculateStatus === 'function') existingSummary.calculateStatus();
-      await existingSummary.save();
-      triggerDailyScoreRecompute(userId, targetDateStr);
-      return existingSummary;
-    }
-
-    const newSummary = new NutritionSummary({ userId, date: targetDate, ...totals, mealsLogged, ...goalData });
-    await newSummary.save();
+    // Same race as logWater above: `existingSummary` was read earlier in this
+    // function's Promise.all, but two concurrent calls can both read null
+    // there and both fall into the "create" branch, tripping the unique
+    // index. findOneAndUpdate with upsert:true makes the get-or-create atomic
+    // regardless of what the earlier read saw, so only one insert ever
+    // happens; the field assignment + .save() below is then always an update.
+    const summary = await NutritionSummary.findOneAndUpdate(
+      { userId, date: targetDate },
+      { $setOnInsert: { userId, date: targetDate } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    Object.assign(summary, totals, { mealsLogged }, goalData);
+    if (typeof summary.calculateStatus === 'function') summary.calculateStatus();
+    await summary.save();
     triggerDailyScoreRecompute(userId, targetDateStr);
-    return newSummary;
+    return summary;
 
   } catch (error) {
     console.error('Update daily summary error:', error);
