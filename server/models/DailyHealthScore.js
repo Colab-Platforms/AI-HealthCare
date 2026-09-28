@@ -19,6 +19,7 @@ const dailyHealthScoreSchema = new mongoose.Schema({
     smoking: Number,
     alcohol: Number,
     hydration: Number,
+    recovery: Number, // HRV+RHR+RR physiology sub-score only — see dailyHealthScoreService.js
   },
 
   configVersion: { type: Number, required: true }, // traces this score to the weights that produced it

@@ -14,9 +14,14 @@ const dailyInsightSchema = new mongoose.Schema({
   insightDate: { type: String, required: true }, // 'YYYY-MM-DD' IST — the display day
   sourceDate: { type: String, required: true },  // 'YYYY-MM-DD' IST — the day analysed
 
+  // 'fitness' (not 'activity') for historical reasons — predates the Unified
+  // Health Score's 'activity' component name. The health-score breakdown
+  // endpoint maps 'fitness' insights onto the 'activity' component; kept as
+  // 'fitness' here rather than renamed, since the home-screen insight card
+  // already queries this value and a rename would silently break it.
   insightType: {
     type: String,
-    enum: ['overall', 'sleep', 'nutrition', 'fitness'],
+    enum: ['overall', 'sleep', 'nutrition', 'fitness', 'recovery', 'smoking', 'alcohol', 'hydration'],
     required: true,
   },
 
@@ -37,10 +42,14 @@ const dailyInsightSchema = new mongoose.Schema({
 dailyInsightSchema.index({ userId: 1, insightDate: 1, insightType: 1 }, { unique: true });
 dailyInsightSchema.index({ userId: 1, insightDate: -1 });
 
-// Users only ever look at "today's" and maybe "yesterday's" insight — MongoDB's
-// TTL monitor auto-deletes the doc 2 days after createdAt (upsert never touches
-// createdAt, so this counts from when the insight was first generated). Same
-// pattern as FCMToken/Notification/RefreshToken/Otp — no cron needed.
-dailyInsightSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2 * 24 * 60 * 60 });
+// Originally 2 days (home screen only ever showed "today's"/"yesterday's"
+// insight). Now also read by the Unified Health Score breakdown page's
+// monthly view (see healthScoreBreakdownService.js), which needs up to ~30
+// days of history, so the window is 40 days — a small buffer past a full
+// month. MongoDB's TTL monitor auto-deletes the doc after this many seconds
+// past createdAt (upsert never touches createdAt, so this counts from when
+// the insight was first generated). Same pattern as
+// FCMToken/Notification/RefreshToken/Otp — no cron needed.
+dailyInsightSchema.index({ createdAt: 1 }, { expireAfterSeconds: 40 * 24 * 60 * 60 });
 
 module.exports = mongoose.model('DailyInsight', dailyInsightSchema);

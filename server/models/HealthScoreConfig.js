@@ -13,19 +13,35 @@ const healthScoreConfigSchema = new mongoose.Schema({
   // Weights reflect each factor's evidence-based contribution to modifiable
   // health risk, not how easy it is to measure. Smoking is the single largest
   // modifiable mortality risk (Jha et al., NEJM 2013 — ~10 years of life
-  // expectancy), so it carries its own weight rather than sharing one with
-  // alcohol. Hydration, which has close to no mortality signal in healthy
-  // adults, is deliberately small — it's habit-tracking, not a health measure.
+  // expectancy; all-cause mortality HR ~2-3x), so it carries its own weight
+  // rather than sharing one with alcohol. Hydration, which has close to no
+  // mortality signal in healthy adults, is deliberately small — it's
+  // habit-tracking, not a health measure.
+  //
+  // Sleep sits below smoking despite being the largest single weight in the
+  // original v1 split: a 79-cohort meta-analysis puts short/long sleep's
+  // all-cause mortality HR at only ~1.14-1.34 (GeroScience 2025), roughly an
+  // order of magnitude smaller effect than smoking's — v1 over-weighted it
+  // relative to its actual evidence base.
+  //
+  // Recovery (physiology sub-score only — HRV+RHR+RR from
+  // recoveryScoreService.js, NOT the full recoveryScore) is new here. It
+  // deliberately excludes that engine's Sleep/Activity sub-components since
+  // those are already scored independently below — including the full
+  // recoveryScore would double-count them. No vendor (Oura/Whoop/Garmin)
+  // publishes a validated weight for this, so 0.12 is a placeholder judgment
+  // call (meaningful but not dominant), not a calibrated figure.
   //
   // Consistency is intentionally absent here — it describes the user's
   // history, not their day, and is scored once in longTermWeights instead.
   dailyWeights: {
-    sleep: { type: Number, default: 0.22 },
-    nutrition: { type: Number, default: 0.21 },
-    activity: { type: Number, default: 0.21 },
-    smoking: { type: Number, default: 0.20 },
-    alcohol: { type: Number, default: 0.11 },
-    hydration: { type: Number, default: 0.05 },
+    sleep: { type: Number, default: 0.15 },
+    nutrition: { type: Number, default: 0.19 },
+    activity: { type: Number, default: 0.19 },
+    smoking: { type: Number, default: 0.22 },
+    alcohol: { type: Number, default: 0.09 },
+    hydration: { type: Number, default: 0.04 },
+    recovery: { type: Number, default: 0.12 },
   },
 
   longTermWeights: {

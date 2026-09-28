@@ -49,6 +49,7 @@ router.get('/reports', protect, heavyReadLimiter, getReports);
 router.get('/history', protect, apiLimiter, getHealthHistory);
 router.get('/dashboard', protect, heavyReadLimiter, getDashboardData);
 router.get('/score', protect, heavyReadLimiter, require('../controllers/healthScoreController').getHealthScore);
+router.get('/score/breakdown', protect, heavyReadLimiter, require('../controllers/healthScoreController').getScoreBreakdown);
 router.get('/report-comparison', protect, apiLimiter, getReportComparison);
 router.get('/reports/:id/status', protect, apiLimiter, getReportStatus);
 router.get('/reports/:id/file-url', protect, apiLimiter, getReportFileUrl);

@@ -19,6 +19,7 @@ const WearableData = require('../models/WearableData');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const ExerciseLog = require('../models/ExerciseLog');
+const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 
@@ -172,6 +173,22 @@ const insightData = {
     caloriesBurned: data.caloriesBurned,
     completedTasks: data.completedTasks,
   }),
+  // smoking/alcohol/hydration all pull from the fields collectOverallData
+  // already gathers (User.smokeLog/alcoholLog, NutritionSummary.waterIntake)
+  // — no separate query needed.
+  smoking: (data) => ({
+    date: data.date,
+    cigarettes: data.cigarettes,
+    cigarettesResisted: data.cigarettesResisted,
+  }),
+  alcohol: (data) => ({
+    date: data.date,
+    alcoholUnits: data.alcoholUnits,
+  }),
+  hydration: (data) => ({
+    date: data.date,
+    waterGlasses: data.waterGlasses,
+  }),
 };
 
 const hasInsightData = (type, data) => {
@@ -179,29 +196,67 @@ const hasInsightData = (type, data) => {
     || data.calories != null || data.protein != null || data.waterGlasses != null;
   if (type === 'fitness') return data.workouts.length > 0
     || data.steps != null || data.activeMinutes != null || data.completedTasks > 0;
+  if (type === 'smoking') return data.cigarettes != null;
+  if (type === 'alcohol') return data.alcoholUnits != null;
+  if (type === 'hydration') return data.waterGlasses != null;
   return data != null;
 };
 
+// Recovery pulls from RecoveryDailySummary, not the shared overallData
+// collector — separate query, mirroring how sleep already has its own
+// dedicated collector (getSleepClinicalAnalysis) rather than reusing
+// collectOverallData. Only the physiology sub-scores are exposed here
+// (matching what components.recovery in the Unified Health Score uses;
+// Sleep/Activity contributions are deliberately excluded to avoid the insight
+// text overlapping with the separately-generated sleep/fitness insights).
+async function collectRecoveryData(userId, dateKey) {
+  const doc = await RecoveryDailySummary.findOne({ user: userId, date: dateKey }).lean();
+  if (!doc || doc.recoveryScore == null) return null;
+
+  const hrv = doc.metricDetails?.hrv;
+  const rhr = doc.metricDetails?.rhr;
+  const rr = doc.metricDetails?.rr;
+
+  return {
+    date: dateKey,
+    recoveryBand: doc.band?.label ?? null,
+    physiologyScore: doc.metricDetails?.physiology?.score ?? null,
+    hrvToday: hrv?.today ?? null,
+    hrvBaseline14: hrv?.baseline14 ?? null,
+    rhrToday: rhr?.today ?? null,
+    rhrBaseline14: rhr?.baseline14 ?? null,
+    respiratoryRateToday: rr?.today ?? null,
+    confidence: doc.confidence ?? null,
+    warnings: (doc.warnings || []).map((w) => w.message),
+  };
+}
+
 // ------------------------------------------------------------------- prompts
 
+// Wording is deliberately date-anchored ("On {date}") rather than "yesterday" —
+// this same insight object is read in two different contexts: the home
+// screen's next-morning card (where "on {date}" still reads naturally, one
+// day back) AND the Unified Health Score breakdown page's weekly/monthly
+// trend (where a day could be up to ~30 days back, and "yesterday" would be
+// flatly wrong). One wording serves both without needing two insight variants.
 const SHARED_RULES = `
 Rules you must follow:
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
-- Speak directly to the user as "you". Reference YESTERDAY's actual numbers, then suggest ONE simple thing for TODAY.
+- Speak directly to the user as "you". Reference the actual numbers from the date given, then suggest ONE simple thing to try next.
 - Only use facts present in the data. Never invent numbers, foods, or symptoms.
 - Plain everyday language, no medical jargon, no emojis.
 - Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, upbeat headline.
-- description: 200-300 characters, written as 3-5 clear sentences — explain what the data says about yesterday and give one specific thing to try today. Stay within this character range.
+- description: 200-300 characters, written as 3-5 clear sentences — explain what the data says about that day and give one specific thing to try next. Stay within this character range.
 - summary: one line, max 15 words, the single takeaway.`;
 
 const SLEEP_SHARED_RULES = `
 Rules you must follow:
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
-- Speak directly to the user as "you". Lead with lastNight's actual numbers, then use the
-  trend/goal/regularity fields (when present) to explain WHY, and suggest ONE simple thing for TODAY.
+- Speak directly to the user as "you". Lead with that night's actual numbers, then use the
+  trend/goal/regularity fields (when present) to explain WHY, and suggest ONE simple thing to try next.
 - Only reference numbers and statuses present in the data below. Never invent a number, a trend, or a
   pattern that isn't explicitly in the data.
 - If tier is "insufficient_data" or "raw_comparison", do NOT claim any trend, debt, or regularity pattern —
@@ -215,24 +270,38 @@ Rules you must follow:
 - summary: one line, max 15 words, the single takeaway.`;
 
 const INSIGHT_SYSTEMS = {
-  overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity from yesterday.${SHARED_RULES}`,
-  sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (last night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
-  nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data from yesterday.${SHARED_RULES}`,
-  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity from yesterday.${SHARED_RULES}`,
+  overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity for the given date.${SHARED_RULES}`,
+  sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (that night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
+  nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data for the given date.${SHARED_RULES}`,
+  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date.${SHARED_RULES}`,
+  recovery: `You are a friendly recovery coach inside the take.health app, reasoning like a sports-science clinician: you are given that day's HRV, resting heart rate, and respiratory-rate readings (each as a T-score, 0-100, compared against the user's own personal baseline where available) and must explain what they mean for the user's physical readiness that day.${SHARED_RULES}`,
+  smoking: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged cigarette count (and cigarettes resisted, if present) for the given date. Frame any zero or reduced count as a genuine win; never shame a logged count.${SHARED_RULES}`,
+  alcohol: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged alcohol units for the given date. Frame any zero or moderate count as a genuine win; never shame a logged count.${SHARED_RULES}`,
+  hydration: `You are a friendly health coach inside the take.health app. Write a daily insight focused only on the user's logged water intake for the given date, compared against their goal when known.${SHARED_RULES}`,
 };
 
+// Single source of truth for which types generateForUser loops over and how
+// many a failed-user counts as in runDailyInsightCron's stats — was
+// hardcoded as 4 in two places before recovery/smoking/alcohol/hydration
+// were added, which silently under-counted failures once the list grew.
+const INSIGHT_TYPES = ['overall', 'sleep', 'nutrition', 'fitness', 'recovery', 'smoking', 'alcohol', 'hydration'];
+
 const INSIGHT_LABELS = {
-  overall: "Yesterday's overall health activity",
-  sleep: "Sleep analysis (last night plus recent context)",
-  nutrition: "Yesterday's nutrition and hydration data",
-  fitness: "Yesterday's fitness and movement data",
+  overall: "Overall health activity for the given date",
+  sleep: "Sleep analysis (that night plus recent context)",
+  nutrition: "Nutrition and hydration data for the given date",
+  fitness: "Fitness and movement data for the given date",
+  recovery: "Recovery physiology data (HRV, resting heart rate, respiratory rate) for the given date",
+  smoking: "Smoking log for the given date",
+  alcohol: "Alcohol log for the given date",
+  hydration: "Water intake for the given date",
 };
 
 const buildUserPrompt = (profile, label, data) => `User profile: ${JSON.stringify(profile)}
-${label} for ${data.date} (yesterday, from the user's point of view today):
+${label} for ${data.date}:
 ${JSON.stringify(data)}
 
-Write today's insight.`;
+Write the insight for this date.`;
 
 // ---------------------------------------------------------------- generation
 
@@ -274,48 +343,66 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
   );
 }
 
-/**
- * Generates four independent insights for one user. Missing category data only
- * skips that category; it does not prevent the other insights from generating.
- */
-async function generateForUser(userId, sourceDate, { force = false } = {}) {
-  const insightDate = shiftDateKey(sourceDate, 1);
+// Types with their OWN data source (not collectOverallData) — 'sleep' had
+// this before 'recovery' was added. Each is fetched once, not gated on
+// overallData existing, since a user can have wearable HRV/RHR data on a day
+// they logged nothing else.
+const OWN_SOURCE_TYPES = new Set(['sleep', 'recovery']);
 
+async function buildProfile(userId) {
   const user = await User.findById(userId)
     .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours nutritionGoal.goal')
     .lean();
 
-  const profile = {
-    name: user?.name?.split(' ')[0] || null,
-    age: user?.profile?.age ?? null,
-    gender: user?.profile?.gender ?? null,
-    goals: user?.profile?.goals || [],
-    conditions: [...(user?.profile?.healthConditions || []), ...(user?.profile?.chronicConditions || [])],
-    activityLevel: user?.profile?.activityLevel ?? null,
-    nutritionGoal: user?.nutritionGoal?.goal ?? null,
+  return {
+    user,
+    profile: {
+      name: user?.name?.split(' ')[0] || null,
+      age: user?.profile?.age ?? null,
+      gender: user?.profile?.gender ?? null,
+      goals: user?.profile?.goals || [],
+      conditions: [...(user?.profile?.healthConditions || []), ...(user?.profile?.chronicConditions || [])],
+      activityLevel: user?.profile?.activityLevel ?? null,
+      nutritionGoal: user?.nutritionGoal?.goal ?? null,
+    },
   };
+}
+
+/** Fetches (or null) the type-specific data payload a given insightType needs. */
+async function collectDataForType(insightType, userId, sourceDate, { user, profile, overallData }) {
+  if (insightType === 'sleep') {
+    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+    const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours });
+    return analysis.lastNight ? { date: sourceDate, ...analysis } : null;
+  }
+  if (insightType === 'recovery') {
+    return collectRecoveryData(userId, sourceDate);
+  }
+  return overallData && insightData[insightType](overallData);
+}
+
+/**
+ * Generates all eight independent insight types for one user. Missing
+ * category data only skips that category; it does not prevent the other
+ * insights from generating.
+ */
+async function generateForUser(userId, sourceDate, { force = false } = {}) {
+  const insightDate = shiftDateKey(sourceDate, 1);
+  const { user, profile } = await buildProfile(userId);
+  const overallData = await collectOverallData(userId, sourceDate);
 
   const result = {};
 
-  const overallData = await collectOverallData(userId, sourceDate);
-
-  for (const insightType of ['overall', 'sleep', 'nutrition', 'fitness']) {
+  for (const insightType of INSIGHT_TYPES) {
     try {
       if (!force) {
         const existing = await DailyInsight.exists({ userId, insightDate, insightType });
         if (existing) { result[insightType] = 'already_exists'; continue; }
       }
 
-      let data;
-      if (insightType === 'sleep') {
-        const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
-        const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours });
-        data = analysis.lastNight ? { date: sourceDate, ...analysis } : null;
-      } else {
-        data = overallData && insightData[insightType](overallData);
-      }
-
-      if (!data || (insightType !== 'sleep' && !hasInsightData(insightType, overallData))) {
+      const data = await collectDataForType(insightType, userId, sourceDate, { user, profile, overallData });
+      const hasData = OWN_SOURCE_TYPES.has(insightType) ? data != null : hasInsightData(insightType, overallData);
+      if (!data || !hasData) {
         result[insightType] = 'skipped_no_data';
         continue;
       }
@@ -329,6 +416,40 @@ async function generateForUser(userId, sourceDate, { force = false } = {}) {
   }
 
   return result;
+}
+
+/**
+ * On-demand, single-type generation — used by the Unified Health Score
+ * breakdown page when it asks for a day the nightly cron never covered (a
+ * historical day from before this feature existed, or a day the cron failed
+ * on). Returns the existing DailyInsight if one is already cached (or
+ * `force` is off and one exists), otherwise generates just this one type
+ * synchronously and returns it. Returns null (never throws) when there's
+ * simply no data for this user/type/date — that's a normal, expected state,
+ * not a failure.
+ */
+async function ensureInsight(userId, insightType, sourceDate, { force = false } = {}) {
+  if (!INSIGHT_TYPES.includes(insightType)) {
+    throw new Error(`Unknown insightType: ${insightType}`);
+  }
+  const insightDate = shiftDateKey(sourceDate, 1);
+
+  if (!force) {
+    const existing = await DailyInsight.findOne({ userId, insightDate, insightType }).select('-dataSnapshot').lean();
+    if (existing) return existing;
+  }
+
+  const { user, profile } = await buildProfile(userId);
+  const overallData = insightType === 'sleep' || insightType === 'recovery'
+    ? null // these two never read overallData - skip the query entirely
+    : await collectOverallData(userId, sourceDate);
+
+  const data = await collectDataForType(insightType, userId, sourceDate, { user, profile, overallData });
+  const hasData = OWN_SOURCE_TYPES.has(insightType) ? data != null : hasInsightData(insightType, overallData);
+  if (!data || !hasData) return null;
+
+  const doc = await generateOne({ userId, profile, insightType, sourceDate, insightDate, data });
+  return doc.toObject ? doc.toObject() : doc;
 }
 
 /**
@@ -349,7 +470,7 @@ async function runDailyInsightCron(sourceDate = istDateKey(), { force = false } 
     );
 
     results.forEach((r) => {
-      if (r.status !== 'fulfilled') { stats.failed += 4; return; }
+      if (r.status !== 'fulfilled') { stats.failed += INSIGHT_TYPES.length; return; }
       Object.values(r.value).forEach((outcome) => {
         if (outcome === 'generated') stats.generated++;
         else if (outcome.startsWith('failed')) stats.failed++;
@@ -369,7 +490,9 @@ async function runDailyInsightCron(sourceDate = istDateKey(), { force = false } 
 module.exports = {
   runDailyInsightCron,
   generateForUser,
+  ensureInsight,
   collectOverallData,
+  INSIGHT_TYPES,
   istDateKey,
   shiftDateKey,
 };

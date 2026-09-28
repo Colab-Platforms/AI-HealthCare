@@ -4,6 +4,7 @@ const NutritionSummary = require('../models/NutritionSummary');
 const WearableData = require('../models/WearableData');
 const SleepSession = require('../models/SleepSession');
 const ExerciseLog = require('../models/ExerciseLog');
+const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const User = require('../models/User');
 const HealthGoal = require('../models/HealthGoal');
 const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
@@ -436,6 +437,22 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     raw.drinks = drinks;
     raw.alcoholUnits = units;
     components.alcohol = scoreAlcohol(units, user?.profile?.gender);
+  }
+
+  // Recovery: ONLY the physiology sub-score (HRV+RHR+RR) from
+  // recoveryScoreService.js, never the full recoveryScore. That engine's own
+  // Sleep (30%) and Activity-load modifier would double-count against the
+  // `sleep`/`activity` components already scored above from the same day's
+  // data — this reads the pre-computed, already-persisted number instead of
+  // recomputing it, since calculateDailyScore can fire many times a day (see
+  // updateAndBlend's header) and Recovery already runs its own event-driven
+  // recompute on its own summary document.
+  const recoveryDoc = await RecoveryDailySummary.findOne({ user: userId, date: dateStr })
+    .select('metricDetails.physiology.score')
+    .lean();
+  const physiologyScore = recoveryDoc?.metricDetails?.physiology?.score;
+  if (physiologyScore != null) {
+    components.recovery = physiologyScore;
   }
 
   // Consistency deliberately does NOT live in the Daily Score.
