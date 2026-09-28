@@ -26,6 +26,7 @@ const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));
 const TermsAndCondition = lazy(() => import("./pages/TermsAndCondition"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const ManufacturerDetails = lazy(() => import("./pages/ManufacturerDetails"));
 const DeleteAccount = lazy(() => import("./pages/DeleteAccount"));
 const Support = lazy(() => import("./pages/Support"));
 const DemoPreview = lazy(() => import("./pages/DemoPreview"));
@@ -131,6 +132,10 @@ export default function App() {
           {/* <Route path="/pricing" element={<Pricing />} /> */}
           <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route
+            path="/pages/manufacturer-details"
+            element={<ManufacturerDetails />}
+          />
           <Route path="/delete-account" element={<DeleteAccount />} />
           <Route path="/support" element={<Support />} />
           <Route
@@ -165,6 +170,7 @@ export default function App() {
           "/how-it-works",
           "/terms-and-conditions",
           "/privacy-policy",
+          "/pages/manufacturer-details",
           "/forgot-password",
           "/demo",
           "/creator",

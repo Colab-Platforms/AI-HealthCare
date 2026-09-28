@@ -372,6 +372,15 @@ export const seoConfig = {
       canonical: `${baseURL}/privacy-policy`,
     },
 
+    manufacturerDetails: {
+      title: "Manufacturer Details | take.health",
+      description:
+        "Manufacturer information and FSSAI licensing details for take.health products.",
+      keywords: "manufacturer details, FSSAI license, product manufacturer",
+      path: "/pages/manufacturer-details",
+      canonical: `${baseURL}/pages/manufacturer-details`,
+    },
+
     termsAndConditions: {
       title: "Terms & Conditions | take.health",
       description:
