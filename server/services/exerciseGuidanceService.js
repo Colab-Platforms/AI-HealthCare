@@ -22,20 +22,31 @@
 function getExerciseGuidance(age, goalType, profession = null) {
   const ageBucket = age <= 17 ? 'youth' : age <= 64 ? 'adult' : 'older_adult';
 
+  // stepsGoal: age-banded, from a 2025 peer-reviewed translation of WHO's
+  // MVPA guideline into steps/day (Frontiers in Public Health, "Goal setting
+  // for WHO guideline adherence: accelerometer steps/day translation of MVPA
+  // in older adults") plus the CDC/WHO youth 60-min/day MVPA equivalent and
+  // the widely-cited 7,500-10,000/day adult range for overall health and
+  // longevity. NOT goal-type-adjusted — no published source varies a step
+  // target by weight_loss/muscle_gain the way cardio-minutes/strength-sessions
+  // do, so goalType intentionally has no effect on this one field.
   const base = {
     youth: {
       cardioMinutesPerWeek: 420, // 60 min/day, mostly aerobic play or sport
       strengthSessionsPerWeek: 3, // bodyweight/bone-building focus
+      stepsGoal: 7000, // CDC/WHO 60-min/day MVPA equivalent (6,000-8,000 range, midpoint)
       note: 'Avoid heavy weight-loading — growth plates still developing',
     },
     adult: {
       cardioMinutesPerWeek: 150, // WHO's lower bound for moderate-intensity — the safe baseline target
       strengthSessionsPerWeek: 2, // major muscle groups
+      stepsGoal: 7500, // lower bound of the 7,500-10,000/day range for overall health/longevity
       note: null,
     },
     older_adult: {
       cardioMinutesPerWeek: 150, // low-impact preferred
       strengthSessionsPerWeek: 3, // more important at this age, not less
+      stepsGoal: 8602, // exact steps/day translation of WHO's 30-min/day MVPA for older adults
       note: 'Include balance training for fall prevention',
     },
   }[ageBucket];

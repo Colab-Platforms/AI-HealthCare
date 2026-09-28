@@ -1617,10 +1617,28 @@ async function getNutritionScoreRange(req, res) {
 
   const profileBase = { age: user?.profile?.age, gender: user?.profile?.gender };
 
+  const snapshotWrites = [];
   const days = summaries
     .filter((s) => s.totalCalories > 0) // a persisted-but-empty row is still "not logged" for the calendar
     .map((s) => {
       const scoreResult = calculateDietQualityScore(s, { ...profileBase, calorieGoal: s.calorieGoal });
+      // Write-through snapshot only (see schema comment) — dietQualityBand is
+      // deliberately left untouched here since it comes from
+      // buildNutritionInsight(), which this range path skips on purpose for
+      // every day in a month-sized batch.
+      snapshotWrites.push({
+        updateOne: {
+          filter: { _id: s._id },
+          update: {
+            $set: {
+              dietQualityScore: scoreResult.score,
+              dietQualityHealthyNutrientsScore: scoreResult.healthyNutrientsScore,
+              dietQualityJunkControlScore: scoreResult.junkControlScore,
+              dietQualityComputedAt: new Date(),
+            }
+          }
+        }
+      });
       return {
         date: s.date.toISOString().split('T')[0],
         score: scoreResult.score,
@@ -1633,6 +1651,10 @@ async function getNutritionScoreRange(req, res) {
       };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (snapshotWrites.length > 0) {
+    NutritionSummary.bulkWrite(snapshotWrites).catch((e) => console.error('Diet quality snapshot bulk write failed:', e.message));
+  }
 
   res.json({ success: true, startDate, endDate, days });
 }
@@ -1677,6 +1699,19 @@ exports.getNutritionScore = async (req, res) => {
 
     const scoreResult = calculateDietQualityScore(summary, profile);
     const insight = buildNutritionInsight(scoreResult);
+
+    // Write-through snapshot only — see the schema comment on these fields.
+    // Fire-and-forget: never let a logging failure here affect the response
+    // the user is actually waiting on.
+    NutritionSummary.updateOne({ _id: summary._id }, {
+      $set: {
+        dietQualityScore: scoreResult.score,
+        dietQualityHealthyNutrientsScore: scoreResult.healthyNutrientsScore,
+        dietQualityJunkControlScore: scoreResult.junkControlScore,
+        dietQualityBand: insight.band,
+        dietQualityComputedAt: new Date(),
+      }
+    }).catch((e) => console.error('Diet quality snapshot write failed:', e.message));
 
     res.json({
       success: true,
