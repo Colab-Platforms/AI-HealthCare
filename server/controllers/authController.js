@@ -610,8 +610,7 @@ exports.verifyPhone = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, password, role, profile, nutritionGoal, otp, device_id, firebasePhoneToken } = req.body;
-    let phone = req.body.phone;
+    const { name, phone, password, role, profile, nutritionGoal, otp, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
     const state = (req.body.state ?? profile?.state ?? req.body.foodPreferences?.state ?? '')
       .toString().trim() || null;
@@ -628,37 +627,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'You must agree to the Privacy Policy and Terms of Service to create an account' });
     }
 
-    // Phone-OTP signup path: a Firebase Phone Auth ID token proves the user
-    // already completed SMS OTP verification client-side. The token's
-    // phone_number claim is the only cryptographically-verified value here —
-    // it's trusted over whatever `phone` the client also put in the body.
-    let isPhoneVerifiedViaFirebase = false;
-    if (firebasePhoneToken) {
-      const { getFirebaseApp } = require('../config/firebase');
-      const firebaseApp = getFirebaseApp();
-      if (!firebaseApp) {
-        return res.status(503).json({ message: 'Phone verification is temporarily unavailable. Please try again shortly.' });
-      }
-      // firebase-admin v14 is modular-only — there's no admin.auth() namespace,
-      // same reason fcmService.js pulls in getMessaging() rather than admin.messaging().
-      const { getAuth } = require('firebase-admin/auth');
-      let decodedToken;
-      try {
-        decodedToken = await getAuth(firebaseApp).verifyIdToken(firebasePhoneToken);
-      } catch (err) {
-        console.error('Firebase phone token verification failed:', err.message);
-        return res.status(400).json({ message: 'Invalid or expired phone verification. Please verify your number again.' });
-      }
-      if (!decodedToken.phone_number) {
-        return res.status(400).json({ message: 'This verification token is not linked to a phone number' });
-      }
-      // Firebase returns E.164 (e.g. "+918878756433") — strip the +91 country
-      // code to match the 10-digit format stored everywhere else in this schema.
-      phone = decodedToken.phone_number.replace(/^\+91/, '');
-      isPhoneVerifiedViaFirebase = true;
-    }
-
-    // Phone number validation (exactly 10 digits)
+    // Phone number validation (exactly 0 digits)
     const phoneRegex = /^\d{10}$/;
     if (phone && !phoneRegex.test(phone)) {
       return res.status(400).json({ message: 'Phone number must be exactly 10 digits' });
@@ -691,17 +660,13 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: `An account with this ${conflictField} already exists` });
     }
 
-    // ✅ VALIDATE OTP before registration — skipped when the phone was
-    // already verified via the Firebase token above, which serves the same
-    // anti-abuse purpose for this signup.
-    if (!isPhoneVerifiedViaFirebase) {
-      if (!otp) return res.status(400).json({ message: 'Verification code is required' });
-      const otpRecord = await Otp.findOne({ email, code: otp });
-      if (!otpRecord) return res.status(400).json({ message: 'Invalid or expired verification code' });
+    // ✅ VALIDATE OTP before registration
+    if (!otp) return res.status(400).json({ message: 'Verification code is required' });
+    const otpRecord = await Otp.findOne({ email, code: otp });
+    if (!otpRecord) return res.status(400).json({ message: 'Invalid or expired verification code' });
 
-      // Delete OTP after validation
-      await Otp.deleteOne({ _id: otpRecord._id });
-    }
+    // Delete OTP after validation
+    await Otp.deleteOne({ _id: otpRecord._id });
 
     // Determine role - default to user
     const userRole = role === 'doctor' ? 'doctor' : 'user';
@@ -753,7 +718,6 @@ exports.register = async (req, res) => {
         password,
         role: userRole,
         isEmailVerified: true,
-        isPhoneVerified: isPhoneVerifiedViaFirebase,
         device_id: device_id || null,
         fcmToken: getIncomingFcmToken(req),
         profile: profile || {},
