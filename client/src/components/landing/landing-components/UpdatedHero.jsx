@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Star, ShieldCheck, Timer, Users } from "lucide-react";
 import UpdatedNavbar from "./UpdatedNavbar";
@@ -79,15 +78,34 @@ const UpdatedHero = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col items-center gap-1.5 mb-4 sm:mb-8 w-full"
           >
-            <Link
-              to="/waitlist"
-              className="w-full max-w-[280px] sm:w-auto sm:px-12 py-3.5 bg-white hover:bg-white/90 text-[#1B47B9] font-bold text-base sm:text-lg rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-xl border border-white text-center inline-block"
-            >
-              Let's Start
-            </Link>
-            <span className="text-white text-xs sm:text-sm font-semibold tracking-wide">
-              *No Credit Card Required
-            </span>
+            <div className="flex flex-row items-center justify-center gap-3 sm:gap-4">
+              <a
+                href="https://apps.apple.com/in/app/take-health/id6809424667"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Download on the App Store"
+                className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 bg-white hover:bg-white/90 text-black rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-xl"
+              >
+                <img src="/updated-landing/Apple.svg" alt="" className="h-6 sm:h-8 w-auto" />
+                <span className="flex flex-col items-start leading-tight text-left">
+                  <span className="text-[9px] sm:text-xs font-medium">Download on the</span>
+                  <span className="text-base sm:text-xl font-semibold">App Store</span>
+                </span>
+              </a>
+              <a
+                href="https://play.google.com/store/apps/details?id=com.takehealth.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Get it on Google Play"
+                className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 bg-white hover:bg-white/90 text-black rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-xl"
+              >
+                <img src="/updated-landing/Playstore.svg" alt="" className="h-6 sm:h-8 w-auto" />
+                <span className="flex flex-col items-start leading-tight text-left">
+                  <span className="text-[9px] sm:text-xs font-medium">GET IT ON</span>
+                  <span className="text-base sm:text-xl font-semibold">Google Play</span>
+                </span>
+              </a>
+            </div>
           </motion.div>
 
           {/* Spacer so the Hand holding Phone graphic sits cleanly below without overlapping text */}
