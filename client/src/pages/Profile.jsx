@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { INDIAN_STATES } from "../constants/indianStates";
 import {
   User,
   Save,
@@ -156,8 +157,9 @@ export default function Profile() {
       },
     },
     foodPreferences: {
-      region: user?.foodPreferences?.region || "other",
+      // `region` is intentionally absent: the server derives it from `state`.
       country: user?.foodPreferences?.country || "India",
+      state: user?.foodPreferences?.state || "",
       city: user?.foodPreferences?.city || "",
       preferredFoods: user?.foodPreferences?.preferredFoods || [],
       foodsToAvoid: user?.foodPreferences?.foodsToAvoid || [],
@@ -170,6 +172,11 @@ export default function Profile() {
       },
     },
   });
+
+  // The state dropdown only lists Indian states, so outside India fall back to
+  // a free-text field rather than offering a list that cannot match.
+  const isIndia =
+    (formData.foodPreferences.country || "").trim().toLowerCase() === "india";
 
   const fetchHealthGoal = async () => {
     try {
@@ -282,8 +289,10 @@ export default function Profile() {
               : undefined,
         },
         foodPreferences: {
-          region: formData.foodPreferences.region,
+          // No `region` — the server derives it from `state` so the two can
+          // never disagree.
           country: formData.foodPreferences.country,
+          state: formData.foodPreferences.state,
           city: formData.foodPreferences.city,
           preferredFoods: formData.foodPreferences.preferredFoods || [],
           foodsToAvoid: formData.foodPreferences.foodsToAvoid || [],
@@ -965,24 +974,6 @@ export default function Profile() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                              Region
-                            </label>
-                            <select
-                              name="foodPreferences.region"
-                              value={formData.foodPreferences.region}
-                              onChange={handleChange}
-                              className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
-                            >
-                              <option value="north">North</option>
-                              <option value="south">South</option>
-                              <option value="east">East</option>
-                              <option value="west">West</option>
-                              <option value="northeast">Northeast</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
                               Country
                             </label>
                             <input
@@ -992,6 +983,39 @@ export default function Profile() {
                               className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
                               placeholder="e.g. India, USA, UK"
                             />
+                          </div>
+                          {/* State replaces the old Region dropdown: region is
+                              derived from this on the server, so asking for both
+                              only let them disagree. */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                              State
+                            </label>
+                            {isIndia ? (
+                              <select
+                                name="foodPreferences.state"
+                                value={formData.foodPreferences.state}
+                                onChange={handleChange}
+                                className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
+                              >
+                                <option value="">Select state</option>
+                                {INDIAN_STATES.map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              // Outside India the list does not apply, and the
+                              // server stores state free-form for exactly this.
+                              <input
+                                name="foodPreferences.state"
+                                value={formData.foodPreferences.state}
+                                onChange={handleChange}
+                                className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
+                                placeholder="e.g. California, Bavaria"
+                              />
+                            )}
                           </div>
                           <div className="col-span-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
@@ -1004,6 +1028,9 @@ export default function Profile() {
                               className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
                               placeholder="e.g. Kochi, Mumbai, New York"
                             />
+                            <p className="text-[9px] text-slate-400 mt-1.5 ml-1 italic">
+                              Used to suggest meals you can actually find nearby.
+                            </p>
                           </div>
                         </div>
                       </div>

@@ -10,6 +10,20 @@ const notificationService = require('../services/notificationService');
 const emailService = require('../services/emailService');
 
 /**
+ * Why a user rejected a suggested meal, sent with a regenerate-meal request.
+ *
+ * The reason is optional: without one, regenerating is a one-off swap and the
+ * dish can come back later. With one, the dish goes into `foodsToAvoid` and is
+ * excluded from every future plan — so this is the difference between "give me
+ * something else today" and "stop suggesting this".
+ *
+ * All values are treated the same way today; they are kept distinct so the
+ * reasons can be reported on, and so "can't get it here" can later feed
+ * availability per region rather than only per user.
+ */
+const MEAL_REJECTION_REASONS = ['not_available', 'dont_know_it', 'too_expensive', 'dont_like'];
+
+/**
  * Generate personalized diet plan based on comprehensive health data
  */
 exports.generatePersonalizedDietPlan = async (req, res) => {
@@ -255,17 +269,25 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
       : '';
     
-    // Add region and country-specific instructions
+    // Add region and country-specific instructions.
+    //
+    // `region` is only a fallback for when we have no state/city: it is derived
+    // from `state` now, so once a state is known the region line adds nothing.
+    // It also used to contradict the STATE FOCUS line below — region 'other'
+    // (the default, and what an unmapped state resolves to) emitted "focus on
+    // diverse Indian cuisine from all regions", which is what gave users
+    // dishes from the far side of the country. Mirrors the same decision in
+    // services/dietRecommendationAI.js.
+    const hasSpecificLocation = Boolean(state || city);
+
     if (country === 'India') {
-      if (region !== 'other') {
+      if (!hasSpecificLocation && region !== 'other') {
         promptEx += `\nREGION FOCUS: Prioritize ${region} Indian cuisine and regional specialties. Include traditional ${region} dishes.`;
-      } else {
-        promptEx += '\nCUISINE: Focus on diverse Indian cuisine from all regions.';
       }
     } else {
       // For other countries
       promptEx += `\nCOUNTRY FOCUS: User is from ${country}. Suggest cuisine popular in ${country} that aligns with their dietary preferences.`;
-      if (region !== 'other') {
+      if (!hasSpecificLocation && region !== 'other') {
         promptEx += `\nREGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
       }
     }
@@ -496,7 +518,7 @@ exports.processDietBG = async (req, res) => {
 exports.regenerateMealSlot = async (req, res) => {
   try {
     const { planId } = req.params;
-    const { mealType, dayIndex } = req.body;
+    const { mealType, dayIndex, reason } = req.body;
     const userId = req.user._id;
 
     if (!['breakfast', 'lunch', 'dinner'].includes(mealType)) {
@@ -504,6 +526,12 @@ exports.regenerateMealSlot = async (req, res) => {
     }
     if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6) {
       return res.status(400).json({ success: false, message: 'dayIndex must be an integer between 0 and 6' });
+    }
+    if (reason !== undefined && !MEAL_REJECTION_REASONS.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: `reason must be one of: ${MEAL_REJECTION_REASONS.join(', ')}`
+      });
     }
 
     const dietPlan = await PersonalizedDietPlan.findOne({ _id: planId, userId });
@@ -535,9 +563,40 @@ exports.regenerateMealSlot = async (req, res) => {
     // Avoid-list scoped to this meal type across the whole week — small prompt,
     // still gives variety across days (see design discussion: whole-plan avoid
     // list would be unnecessarily large and irrelevant to what's being replaced).
+    //
+    // The slot being replaced is included rather than skipped: the user asked
+    // for something else, so handing back the same dish is the one outcome that
+    // definitely fails. It used to be excluded, which left that possible.
     const avoidNames = (dietPlan.mealPlan?.[mealType] || [])
-      .map((m, i) => (i === dayIndex ? null : m?.name))
+      .map((m) => m?.name)
       .filter(Boolean);
+
+    // With a `reason`, the rejected dish is remembered rather than just swapped:
+    // without this, the same unavailable dish comes back in next week's plan and
+    // the user rejects it again forever. `foodsToAvoid` already feeds the prompt
+    // as a hard exclusion (see dietRecommendationAI), so this reuses the
+    // existing mechanism instead of adding a parallel one.
+    const rejectedName = dietPlan.mealPlan?.[mealType]?.[dayIndex]?.name;
+    let foodsToAvoid = req.user.foodPreferences?.foodsToAvoid || [];
+
+    if (reason && rejectedName) {
+      const alreadyAvoided = foodsToAvoid.some(
+        (f) => typeof f === 'string' && f.trim().toLowerCase() === rejectedName.trim().toLowerCase()
+      );
+
+      if (!alreadyAvoided) {
+        foodsToAvoid = [...foodsToAvoid, rejectedName];
+        // Targeted $addToSet rather than a read-modify-save: req.user comes from
+        // a cached .lean() read (see middleware/auth), so it is not a live
+        // document, and two quick rejections would otherwise race and lose one.
+        // The post('updateOne') hook in models/User.js drops the cached copy.
+        await User.updateOne(
+          { _id: userId },
+          { $addToSet: { 'foodPreferences.foodsToAvoid': rejectedName } }
+        );
+        console.log(`[DietPlan] User ${userId} rejected "${rejectedName}" (${reason}) — added to foodsToAvoid`);
+      }
+    }
 
     await PersonalizedDietPlan.findByIdAndUpdate(planId, {
       pendingMealRegeneration: { mealType, dayIndex, status: 'generating', requestedAt: new Date() }
@@ -547,10 +606,14 @@ exports.regenerateMealSlot = async (req, res) => {
       dietaryPreference: dietPlan.inputData?.dietaryPreference,
       allergies: dietPlan.inputData?.allergies,
       medicalConditions: dietPlan.inputData?.medicalConditions,
-      foodPreferences: req.user.foodPreferences,
+      // Carries the dish just rejected, so the replacement can't be the same one.
+      foodPreferences: { ...(req.user.foodPreferences || {}), foodsToAvoid },
       country: req.user.foodPreferences?.country,
       region: req.user.foodPreferences?.region,
       state: req.user.foodPreferences?.state,
+      // Was missing: the whole-plan path passes city, so regenerating a single
+      // meal used to silently drop the most specific location signal we have.
+      city: req.user.foodPreferences?.city,
     };
 
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);

@@ -8,7 +8,11 @@ const { verifyQStash } = require('../middleware/qstashAuth');
 function getAuthenticatedUserId(req) {
   if (!req?.user) return null;
   if (req.user._id) return req.user._id.toString();
-  if (req.user._id) return req.user._id.toString();
+  // Was a duplicate `_id` check (copy-paste slip), which left this fallback
+  // dead. `protect` loads the user with .lean(), so `_id` is always present and
+  // the bug never fired on the normal path — but plainer shapes that carry only
+  // `id` reach here, and the existing test has been asserting this all along.
+  if (req.user.id) return req.user.id.toString();
   if (req.user.userId) return req.user.userId.toString();
   return null;
 }

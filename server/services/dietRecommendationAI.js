@@ -7,6 +7,65 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-6'; 
 const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5';
 
+/**
+ * Build the location block of the diet prompt.
+ *
+ * Ordering is deliberate, broadest first: country, then region, then state,
+ * then city — each later line is a stronger signal and says so, so the model
+ * resolves conflicts towards the most specific one.
+ *
+ * `region` is only a fallback for when no state or city is known. It is derived
+ * from `state` (see config/indiaRegions), so once a state is present the region
+ * line is redundant — and it used to be actively harmful. The old code emitted
+ * "focus on diverse Indian cuisine from all regions" whenever region was
+ * 'other', which is both the schema default and what an unmapped or misspelt
+ * state resolves to. That line told the model to range over the whole country
+ * while the STATE FOCUS line below told it the opposite, and the contradiction
+ * is what produced Andhra breakfasts for users in Rajasthan.
+ *
+ * With no location at all we now say nothing rather than inviting the model to
+ * pick from anywhere: it should fall back on the signals we do trust, namely
+ * dietary preference and the user's own preferred foods.
+ *
+ * Extracted and exported so this is unit-testable without calling the model.
+ *
+ * @param {{country?: string, region?: string, state?: string, city?: string}} location
+ * @returns {string} prompt fragment, '' when there is nothing useful to say
+ */
+function buildLocationInstructions({ country, region, state, city } = {}) {
+  let instructions = '';
+  const userCountry = country || 'India';
+  const userRegion = region || 'other';
+  const userState = typeof state === 'string' ? state.trim() : '';
+  const userCity = typeof city === 'string' ? city.trim() : '';
+
+  const hasSpecificLocation = Boolean(userState || userCity);
+  const useRegionFallback = !hasSpecificLocation && userRegion !== 'other';
+
+  if (userCountry === 'India') {
+    if (useRegionFallback) {
+      instructions = `\n- REGION FOCUS: Prioritize ${userRegion} Indian cuisine and regional specialties. Include traditional ${userRegion} dishes.`;
+    }
+  } else {
+    instructions = `\n- COUNTRY FOCUS: User is from ${userCountry}. Suggest cuisine popular in ${userCountry} that aligns with their dietary preferences.`;
+    if (useRegionFallback) {
+      instructions += `\n- REGION PREFERENCE: User prefers ${userRegion} style cuisine if available in ${userCountry}.`;
+    }
+  }
+
+  // State beats region because "south" spans Kerala and Tamil Nadu, whose
+  // staples differ enough that the broader hint alone is misleading.
+  if (userState) {
+    instructions += `\n- STATE FOCUS (highest priority): User is from ${userState}, ${userCountry}. Prefer everyday home-style dishes, staple grains, and local ingredients specific to ${userState}. Where a ${userState} dish and a generic ${userCountry} dish both fit the calorie and preference constraints, choose the ${userState} one.`;
+  }
+
+  if (userCity) {
+    instructions += `\n- CITY FOCUS (most specific cuisine signal): User is from ${userCity}, ${userState ? `${userState}, ` : ''}${userCountry}. Prefer familiar local dishes, ingredients, and everyday meal styles from ${userCity} when they fit the calorie and preference constraints.`;
+  }
+
+  return instructions;
+}
+
 class DietRecommendationAI {
   constructor() {
     this.apiKey = process.env.ANTHROPIC_API_KEY;
@@ -123,37 +182,8 @@ class DietRecommendationAI {
     };
     const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || dietTypeInstructions['non-vegetarian'];
     
-    // Build region/country specific instructions
-    let regionCountryInstructions = '';
-    const userCountry = country || 'India';
-    const userRegion = region || 'other';
-    const userState = typeof state === 'string' ? state.trim() : '';
-    const userCity = typeof city === 'string' ? city.trim() : '';
+    const regionCountryInstructions = buildLocationInstructions({ country, region, state, city });
 
-    if (userCountry === 'India') {
-      if (userRegion && userRegion !== 'other') {
-        regionCountryInstructions = `\n- REGION FOCUS: Prioritize ${userRegion} Indian cuisine and regional specialties. Include traditional ${userRegion} dishes.`;
-      } else {
-        regionCountryInstructions = '\n- CUISINE: Focus on diverse Indian cuisine from all regions.';
-      }
-    } else {
-      regionCountryInstructions = `\n- COUNTRY FOCUS: User is from ${userCountry}. Suggest cuisine popular in ${userCountry} that aligns with their dietary preferences.`;
-      if (userRegion && userRegion !== 'other') {
-        regionCountryInstructions += `\n- REGION PREFERENCE: User prefers ${userRegion} style cuisine if available in ${userCountry}.`;
-      }
-    }
-
-    // State is the most specific location signal we have, so it goes last and
-    // is stated as taking precedence — "south" spans Kerala and Tamil Nadu,
-    // whose staples differ enough that the broader hint alone is misleading.
-    if (userState) {
-      regionCountryInstructions += `\n- STATE FOCUS (highest priority): User is from ${userState}, ${userCountry}. Prefer everyday home-style dishes, staple grains, and local ingredients specific to ${userState}. Where a ${userState} dish and a generic ${userCountry} dish both fit the calorie and preference constraints, choose the ${userState} one.`;
-    }
-
-    if (userCity) {
-      regionCountryInstructions += `\n- CITY FOCUS (most specific cuisine signal): User is from ${userCity}, ${userState ? `${userState}, ` : ''}${userCountry}. Prefer familiar local dishes, ingredients, and everyday meal styles from ${userCity} when they fit the calorie and preference constraints.`;
-    }
-    
     const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan with 7 daily options per meal (one for each day of the week).
 STRUCTURE:
 {
@@ -239,7 +269,7 @@ JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
    * relevant to what's actually being replaced.
    */
   async regenerateSingleMeal({ mealType, remainingCalories, userData, avoidNames = [] }) {
-    const { dietaryPreference, allergies, medicalConditions, foodPreferences, country, region, state } = userData;
+    const { dietaryPreference, allergies, medicalConditions, foodPreferences, country, region, state, city } = userData;
 
     const dietTypeInstructions = {
       'vegetarian': 'STRICT VEGETARIAN: must be 100% vegetarian. NEVER meat, poultry, fish, or eggs. Dairy allowed.',
@@ -250,33 +280,55 @@ JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
     };
     const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || dietTypeInstructions['non-vegetarian'];
 
-    const userState = typeof state === 'string' ? state.trim() : '';
-    const locationLine = userState
-      ? `User is from ${userState}, ${country || 'India'} — prefer everyday home-style dishes native to ${userState}.`
-      : (region && region !== 'other' ? `Prioritize ${region} Indian cuisine.` : 'Focus on diverse Indian cuisine.');
+    // Same location block as whole-plan generation, rather than a second,
+    // weaker phrasing. The old inline version dropped `city` entirely and fell
+    // back to "Focus on diverse Indian cuisine" — the instruction to range over
+    // the whole country that this feature exists to remove.
+    const locationBlock = buildLocationInstructions({ country, region, state, city });
 
     const favorites = foodPreferences?.mealPreferences?.[mealType];
     const favoritesLine = favorites?.length ? `User's ${mealType} favorites (build around these where the calorie budget allows): ${favorites.join(', ')}.` : '';
-    const avoidLine = avoidNames.length ? `Do NOT suggest any of these — already used this week: ${avoidNames.join(', ')}.` : '';
+    const avoidLine = avoidNames.length ? `Do NOT suggest any of these — already used this week or just rejected: ${avoidNames.join(', ')}.` : '';
 
+    // Dishes the user has permanently rejected (see MEAL_REJECTION_REASONS).
+    // The whole-plan prompt already treats this as a hard exclusion; without it
+    // here, the replacement for a rejected meal could be something the user has
+    // already told us they can't get.
+    const permanentlyAvoided = foodPreferences?.foodsToAvoid || [];
+    const neverLine = permanentlyAvoided.length
+      ? `NEVER suggest these — the user has excluded them permanently: ${permanentlyAvoided.join(', ')}.`
+      : '';
+
+    // Must request every field in mealOptionSchema (models/PersonalizedDietPlan).
+    // The replacement is written with $set on the whole array element, so any
+    // field missing here is not just absent from the new meal — it is deleted
+    // from the slot. This prompt used to ask for 8 of the 21 fields, so every
+    // regeneration silently stripped fiber, sodium and all 8 micronutrients from
+    // that meal, and the Diet Quality Score then read zeros for it.
     const prompt = `Indian Clinical Nutritionist. Generate ONE ${mealType} option as JSON.
 STRUCTURE:
-{ "name": "Meal Name", "description": "one line", "portionSize": "1 bowl (200g)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "benefits": "one line" }
+{ "name": "Meal Name", "description": "one line", "portionSize": "1 bowl (200g)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "benefits": "one line", "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0 }
+
+NUTRIENT PRECISION (MANDATORY): Include real, non-zero-unless-genuinely-absent estimates (from USDA/IFCT) for fiber, sugar, sodium, saturatedFat, and all 8 listed vitamins/minerals — the same rigor as calories/protein/carbs/fats. These feed the app's Diet Quality Score; do not default them to 0 as a shortcut. Units: vitaminA/vitaminD/vitaminB12 in mcg, vitaminC/iron/calcium/potassium/magnesium in mg, omega3/saturatedFat/sugar/fiber in g, sodium in mg.
 
 REQUIREMENTS:
 1. CRITICAL: calories must equal ${remainingCalories} kcal, within ±30 kcal. This is fixed by the OTHER two meals already planned for this day — do not deviate.
 2. Dietary Type: ${dietTypeInstruction}
 3. Allergies — NEVER include: ${allergies?.join(', ') || 'None'}
 4. Medical conditions to keep in mind: ${medicalConditions?.join(', ') || 'None'}
-5. ${locationLine}
-6. ${favoritesLine}
-7. ${avoidLine}
-8. Must be a genuinely different dish from anything just listed as already-used.
+5. LOCATION:${locationBlock || ' not specified — rely on the dietary preference and favourites below.'}
+6. ${neverLine}
+7. ${favoritesLine}
+8. ${avoidLine}
+9. Must be a genuinely different dish from anything just listed as already-used.
 
 JSON output ONLY. No markdown. Exact calorie match is mandatory.`;
 
     const aiResponse = await this.makeAIRequest({
-      max_tokens: 500,
+      // Raised from 500 when the structure grew from 8 fields to the full 21:
+      // a truncated response fails robustJsonParse and the whole regeneration
+      // reports as failed, so the headroom is worth more than the tokens.
+      max_tokens: 1200,
       system: 'Expert Clinical Dietitian. Generate one precise, calorie-accurate Indian meal suggestion as strict JSON.',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8 // higher than whole-plan gen — this call exists specifically because the user wants something DIFFERENT
@@ -317,4 +369,10 @@ JSON output ONLY. No markdown. Exact calorie match is mandatory.`;
   }
 }
 
-module.exports = new DietRecommendationAI();
+// Every caller does `require(...)` then calls methods on the instance, so the
+// singleton export stays exactly as it was; the pure helper is hung off it so
+// tests can reach it without instantiating the class or hitting the API.
+const dietRecommendationAI = new DietRecommendationAI();
+dietRecommendationAI.buildLocationInstructions = buildLocationInstructions;
+
+module.exports = dietRecommendationAI;

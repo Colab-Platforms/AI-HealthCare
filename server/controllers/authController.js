@@ -12,6 +12,7 @@ const gamificationService = require('../services/gamificationService');
 const RefreshToken = require('../models/RefreshToken');
 const FCMToken = require('../models/FCMToken');
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
+const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -1531,11 +1532,33 @@ exports.updateProfile = async (req, res) => {
 
       // Handle foodPreferences update
       if (req.body.foodPreferences) {
-        user.foodPreferences = {
+        // `region` is derived from `state`, never taken from the request — the
+        // two used to be collected as separate inputs and could contradict each
+        // other ("south" + "Rajasthan"), and both then went into the diet
+        // prompt. Dropped here so this path agrees with
+        // userController.saveFoodPreferences, which also ignores it.
+        const { region: _ignoredRegion, ...incomingPrefs } = req.body.foodPreferences;
+
+        const merged = {
           ...user.foodPreferences,
-          ...req.body.foodPreferences,
+          ...incomingPrefs,
           lastUpdated: new Date()
         };
+
+        if (merged.state !== undefined && merged.state !== null) {
+          merged.state = canonicalizeStateName(merged.state) || null;
+        }
+        // Only derive when a state is actually present: users who set the old
+        // Region dropdown before `state` existed have a region and no state,
+        // and deriving unconditionally would reset them to 'other' and discard
+        // the only location signal they ever gave us.
+        if (merged.state) {
+          merged.region = deriveRegionFromState(merged.state);
+        } else if (!merged.region) {
+          merged.region = 'other';
+        }
+
+        user.foodPreferences = merged;
         user.markModified('foodPreferences');
       }
 
