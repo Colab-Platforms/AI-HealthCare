@@ -155,6 +155,12 @@ class EmailService {
     return this.sendEmail({ to: email, subject: "You're on the Take waitlist", html });
   }
 
+  // App-launch announcement — bulk send to registered users (see scripts/sendAppLaunchAnnouncement.js)
+  async sendAppLaunchAnnouncement(email, name, userId) {
+    const html = this.getAppLaunchAnnouncementTemplate(name, userId);
+    return this.sendEmail({ to: email, subject: "Take is now live. Your wait is over.", html });
+  }
+
   // Marketing emails (tips, newsletters, promotions) — skipped if user opted out
   async sendMarketingEmail(userId, email, subject, html) {
     try {
@@ -918,6 +924,108 @@ class EmailService {
                 <tr>
                   <td align="center" style="padding: 0 32px 32px 32px; color:#ffffff; font-size:12px; line-height:1.6;">
                     &copy; 2026 NSE &amp; BSE Listed<br/>India
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+  }
+
+  getAppLaunchAnnouncementTemplate(name, userId) {
+    const heroImageUrl = 'https://res.cloudinary.com/dvgg1i1ck/image/upload/v1791014456/App_live_img_jnfo56.jpg';
+    const greetName = name ? name.split(' ')[0] : 'username';
+    const appStoreUrl = 'https://apps.apple.com/in/app/take-health/id6809424667';
+    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.takehealth.app';
+    const appUrl = process.env.APP_URL && process.env.APP_URL.startsWith('http') && !process.env.APP_URL.includes('localhost') && !process.env.APP_URL.includes('192.168')
+      ? process.env.APP_URL
+      : 'https://take.health';
+    const unsubscribeUrl = userId ? `${appUrl}/api/users/${userId}/unsubscribe-marketing` : `${appUrl}/privacy-settings`;
+
+    const socialIcon = (href, imgSrc) => `
+      <a href="${href}" style="display:inline-block; margin: 0 12px; text-decoration:none;">
+        <img src="${imgSrc}" width="20" height="20" alt="Social Icon" style="display:block; border:none;" />
+      </a>`;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Take is now live. Your wait is over.</title>
+      </head>
+      <body style="margin:0; padding:0; background-color:#f4f4f7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;">
+          <tr>
+            <td align="center" style="padding: 20px 0;">
+              <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background-color:#ffffff; border-radius:16px; overflow:hidden; font-family: 'Segoe UI', Arial, sans-serif;">
+                <tr>
+                  <td>
+                    <img src="${heroImageUrl}" alt="Take" width="480" style="display:block; width:100%; height:auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 24px 32px 12px 32px; color:#1a1a2e; font-size:15px; line-height:1.6; text-align: left;">
+                    <p style="margin:0 0 4px 0; font-weight: 500;">Hi ${greetName},</p>
+                    <p style="margin:0 0 24px 0; font-weight: 500;">You've been on the Take waitlist. Now, it's time to take the next step.</p>
+
+                    <p style="margin:0 0 24px 0; font-weight: 500;">Take is officially live on the App Store and Google Play.</p>
+
+                    <p style="margin:0 0 24px 0; font-weight: 500;">Bring your health data together, understand your reports, track what matters, and start building a clearer picture of your health - all in one place.</p>
+
+                    <p style="margin:0 0 4px 0; font-weight: 500;">Your health is changing every day.</p>
+                    <p style="margin:0 0 24px 0; font-weight: 500;">Now, you can understand it.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 32px 8px 32px; color:#1a1a2e; font-size:13px; font-weight:600;">
+                    Download Take:
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 32px 28px 32px;">
+                    <a href="${appStoreUrl}" style="display:inline-block; margin: 0 6px 12px 6px; padding: 8px 16px; border-radius:8px; background-color:#1a1a2e; text-decoration:none;">
+                      <img src="https://img.icons8.com/ios-filled/50/ffffff/mac-os.png" width="18" height="18" alt="" style="display:inline-block; vertical-align:middle; margin-right:6px;" />
+                      <span style="color:#ffffff; font-size:13px; font-weight:600; vertical-align:middle;">App Store</span>
+                    </a>
+                    <a href="${playStoreUrl}" style="display:inline-block; margin: 0 6px 12px 6px; padding: 8px 16px; border-radius:8px; background-color:#1a1a2e; text-decoration:none;">
+                      <img src="https://img.icons8.com/ios-filled/50/ffffff/google-play.png" width="18" height="18" alt="" style="display:inline-block; vertical-align:middle; margin-right:6px;" />
+                      <span style="color:#ffffff; font-size:13px; font-weight:600; vertical-align:middle;">Google Play</span>
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 32px 28px 32px;">
+                    <div style="font-size:18px; font-weight:800; letter-spacing:2px; color:#1a1a2e;">TAKE</div>
+                    <div style="margin-top:4px; font-size:12px; color:#6b6b7a;">Your health. Finally connected.</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 32px;">
+                    <hr style="border:none; border-top:1px solid #e5e5ea; margin:0;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 24px 32px;">
+                    ${socialIcon('https://www.facebook.com', 'https://img.icons8.com/ios-filled/50/1a1a2e/facebook-new.png')}
+                    ${socialIcon('https://www.instagram.com/takehealth_', 'https://img.icons8.com/ios-filled/50/1a1a2e/instagram-new.png')}
+                    ${socialIcon('https://x.com/Take_Limited', 'https://img.icons8.com/ios-filled/50/1a1a2e/twitterx.png')}
+                    ${socialIcon('https://www.youtube.com', 'https://img.icons8.com/ios-filled/50/1a1a2e/youtube-play.png')}
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 32px 24px 32px; color:#6b6b7a; font-size:12px; line-height:1.6;">
+                    &copy; 2026 NSE &amp; BSE Listed<br/>India
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 32px 32px 32px; color:#9a9aa8; font-size:11px; line-height:1.6;">
+                    You're receiving this because you registered on take.health.<br/>
+                    <a href="${unsubscribeUrl}" style="color:#6b6b7a; text-decoration:underline;">Unsubscribe</a>
                   </td>
                 </tr>
               </table>

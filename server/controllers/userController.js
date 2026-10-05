@@ -121,4 +121,37 @@ exports.saveFcmToken = async (req, res) => {
   }
 };
 
+// Public unsubscribe link (clicked from marketing/announcement emails, no auth —
+// the user isn't logged in from their inbox). Reuses the existing
+// privacySettings.marketingEnabled flag rather than inventing a parallel one.
+exports.unsubscribeMarketing = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndUpdate(
+      id,
+      { $set: { 'privacySettings.marketingEnabled': false } },
+      { new: true }
+    ).select('email');
+
+    const message = user
+      ? "You've been unsubscribed from marketing emails. You can still log in and change this anytime in Privacy Settings."
+      : "This unsubscribe link is invalid.";
+
+    res.status(200).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><title>Unsubscribed</title></head>
+      <body style="font-family: 'Segoe UI', Arial, sans-serif; background:#f4f4f7; padding:60px 20px; text-align:center;">
+        <div style="max-width:420px; margin:0 auto; background:#ffffff; border-radius:16px; padding:32px; color:#1a1a2e;">
+          <h2 style="margin:0 0 12px 0;">Take</h2>
+          <p style="margin:0; color:#4a4a58;">${message}</p>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    res.status(500).send('Something went wrong. Please try again later.');
+  }
+};
+
 module.exports = exports;
