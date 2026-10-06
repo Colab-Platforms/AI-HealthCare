@@ -356,6 +356,19 @@ async function applyVitalsSamples(userId, deviceType, source, samples) {
 
 async function applyGenericMetric(userId, deviceType, provider, samples, { wearable } = {}) {
   for (const sample of samples) {
+    // OpenWearables emits a "group" event (e.g. heart_rate.created) and a
+    // "granular" event (e.g. series.resting_heart_rate.created) for the same
+    // underlying sample, and neither carries a sourceRecordId — so dedupe on
+    // the sample's own identity (same user+device+series+time+value) instead.
+    const exists = await WearableMetricSample.exists({
+      user: userId,
+      'meta.deviceType': deviceType,
+      'meta.seriesType': sample.seriesType,
+      timestamp: sample.timestamp,
+      value: sample.value
+    });
+    if (exists) continue;
+
     await WearableMetricSample.create({
       user: userId,
       meta: { deviceType, seriesType: sample.seriesType, provider, device: sample.device },
@@ -364,7 +377,11 @@ async function applyGenericMetric(userId, deviceType, provider, samples, { weara
       unit: sample.unit
     });
 
-    if (wearable) {
+    if (wearable && !wearable.metrics.some(m =>
+      m.seriesType === sample.seriesType &&
+      new Date(m.timestamp).getTime() === new Date(sample.timestamp).getTime() &&
+      m.value === sample.value
+    )) {
       wearable.metrics.push({ seriesType: sample.seriesType, value: sample.value, unit: sample.unit, timestamp: sample.timestamp, provider, device: sample.device });
     }
   }
