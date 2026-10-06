@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 const UsageLog = require('../models/UsageLog');
+const { checkMealForDiet } = require('../utils/dietGuard');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 // 🚨 USER SPECIFIC MODEL - The user insists on using 'claude-sonnet-4-6'
@@ -64,6 +65,36 @@ function buildLocationInstructions({ country, region, state, city } = {}) {
   }
 
   return instructions;
+}
+
+// Diet rule placed in the SYSTEM prompt so the model treats it as a hard
+// constraint, not one line among many in the user message. Null diet means the
+// caller failed to resolve it; that must never reach generation.
+const DIET_SYSTEM_RULES = {
+  vegetarian: 'STRICT VEGETARIAN: Every dish must be 100% vegetarian. NEVER include meat, poultry, fish, seafood or eggs. Dairy is allowed.',
+  vegan: 'STRICT VEGAN: Every dish must be 100% vegan. NEVER include meat, poultry, fish, seafood, eggs, dairy or honey.',
+  eggetarian: 'EGGETARIAN: Every dish must be vegetarian, but eggs are allowed. NEVER include meat, poultry or fish.',
+  'non-vegetarian': 'The user is NON-VEGETARIAN: meat, poultry, fish and eggs are allowed.',
+  other: 'Diet type is unspecified: do not assume a diet beyond the user\'s listed restrictions.',
+};
+
+function dietSystemRule(dietaryPreference) {
+  const rule = DIET_SYSTEM_RULES[dietaryPreference];
+  if (!rule) throw new Error(`Diet type is required for generation (got "${dietaryPreference}")`);
+  return rule;
+}
+
+// Returns every meal whose text breaks the diet. Empty array = clean.
+function findDietViolations(dietaryPreference, mealPlan) {
+  const violations = [];
+  for (const meals of Object.values(mealPlan || {})) {
+    if (!Array.isArray(meals)) continue;
+    for (const meal of meals) {
+      const { ok } = checkMealForDiet(dietaryPreference, meal);
+      if (!ok) violations.push(meal);
+    }
+  }
+  return violations;
 }
 
 class DietRecommendationAI {
@@ -180,8 +211,8 @@ class DietRecommendationAI {
       'non-vegetarian': 'NON-VEGETARIAN: User eats meat, poultry, fish, and eggs — feel free to include them alongside vegetarian options for variety.',
       'other': ''
     };
-    const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || dietTypeInstructions['non-vegetarian'];
-    
+    const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || '';
+
     const regionCountryInstructions = buildLocationInstructions({ country, region, state, city });
 
     const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan with 7 daily options per meal (one for each day of the week).
@@ -214,7 +245,7 @@ USER DATA:
 - Alcohol / Lifestyle: ${alcoholLine}
 - Profile alcohol flag: ${lifestyle?.alcohol ? `Yes (${lifestyle.alcoholFrequency || 'unspecified'})` : 'No or not set'}
 - Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
-- Dietary Type: ${dietaryPreference || 'non-vegetarian'}${prefContext}${regionCountryInstructions}
+- Dietary Type: ${dietaryPreference}${prefContext}${regionCountryInstructions}
 
 REQUIREMENTS:
 1. CRITICAL CALORIE RULE: Each breakfast+lunch+dinner COMBO (same array index across all three meals) MUST total exactly ${nutritionGoals?.dailyCalories || 2000} kcal ± 50 kcal. So breakfast[0].calories + lunch[0].calories + dinner[0].calories = target. Same for index 1, 2, 3, 4, 5, 6. NEVER let any single day's combo exceed ${nutritionGoals?.dailyCalories || 2000} kcal.
@@ -230,24 +261,35 @@ REQUIREMENTS:
 
 JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
 
-    try {
+    const systemPrompt = `Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on the user's city, state, region, country, and food preferences. When a city is given, treat it as the most specific cuisine signal; otherwise use state, then region, then country. Favour familiar local dishes and ingredients while respecting all nutrition and dietary constraints. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory. ${dietSystemRule(dietaryPreference)} ${dietaryConstraintSystem}`;
+
+    // Up to two attempts. The guard catches non-veg output the prompt failed to
+    // prevent; a second attempt is told exactly which dishes were rejected.
+    let retryNote = '';
+    for (let attempt = 1; attempt <= 2; attempt++) {
       const aiResponse = await this.makeAIRequest({
         max_tokens: 8000,
-        system: `Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on the user's city, state, region, country, and food preferences. When a city is given, treat it as the most specific cuisine signal; otherwise use state, then region, then country. Favour familiar local dishes and ingredients while respecting all nutrition and dietary constraints. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory. ${dietaryConstraintSystem}`,
-        messages: [{ role: 'user', content: prompt }],
+        system: systemPrompt,
+        messages: [{ role: 'user', content: retryNote ? `${prompt}\n\n${retryNote}` : prompt }],
         temperature: 0.7
       });
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (!jsonMatch) return null;
       const parsed = robustJsonParse(jsonMatch[0]);
+      if (!parsed?.mealPlan) return parsed;
+
       // Warn in logs if AI returned fewer than 7 items (helps diagnose future issues)
-      if (parsed?.mealPlan) {
-        const counts = ['breakfast', 'lunch', 'dinner'].map(m => (parsed.mealPlan[m] || []).length);
-        const minCount = Math.min(...counts);
-        if (minCount < 7) console.warn(`[DietAI] Warning: AI returned only ${minCount} items per meal type (expected 7). Model: check logs.`);
-      }
-      return parsed;
-    } catch (error) { throw error; }
+      const counts = ['breakfast', 'lunch', 'dinner'].map(m => (parsed.mealPlan[m] || []).length);
+      const minCount = Math.min(...counts);
+      if (minCount < 7) console.warn(`[DietAI] Warning: AI returned only ${minCount} items per meal type (expected 7). Model: check logs.`);
+
+      const violations = findDietViolations(dietaryPreference, parsed.mealPlan);
+      if (violations.length === 0) return parsed;
+
+      console.warn(`[DietAI] Diet guard rejected ${violations.length} meal(s) for "${dietaryPreference}" (attempt ${attempt}):`, violations.map(v => v.name).join(', '));
+      retryNote = `REJECTED: these dishes break the ${dietaryPreference} rule and must not appear again: ${violations.map(v => `"${v.name}"`).join(', ')}.`;
+    }
+    throw new Error(`Generated meal plan still violated the ${dietaryPreference} diet after retry`);
   }
 
   /**
@@ -271,14 +313,7 @@ JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
   async regenerateSingleMeal({ mealType, remainingCalories, userData, avoidNames = [] }) {
     const { dietaryPreference, allergies, medicalConditions, foodPreferences, country, region, state, city } = userData;
 
-    const dietTypeInstructions = {
-      'vegetarian': 'STRICT VEGETARIAN: must be 100% vegetarian. NEVER meat, poultry, fish, or eggs. Dairy allowed.',
-      'vegan': 'STRICT VEGAN: must be 100% vegan. NEVER meat, poultry, fish, eggs, dairy, or any animal-derived ingredient.',
-      'eggetarian': 'EGGETARIAN: must be vegetarian, but eggs are allowed. NEVER meat, poultry, or fish.',
-      'non-vegetarian': 'NON-VEGETARIAN: meat, poultry, fish, and eggs are all fine.',
-      'other': ''
-    };
-    const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || dietTypeInstructions['non-vegetarian'];
+    const dietTypeInstruction = dietSystemRule(dietaryPreference);
 
     // Same location block as whole-plan generation, rather than a second,
     // weaker phrasing. The old inline version dropped `city` entirely and fell
@@ -324,19 +359,30 @@ REQUIREMENTS:
 
 JSON output ONLY. No markdown. Exact calorie match is mandatory.`;
 
-    const aiResponse = await this.makeAIRequest({
-      // Raised from 500 when the structure grew from 8 fields to the full 21:
-      // a truncated response fails robustJsonParse and the whole regeneration
-      // reports as failed, so the headroom is worth more than the tokens.
-      max_tokens: 1200,
-      system: 'Expert Clinical Dietitian. Generate one precise, calorie-accurate Indian meal suggestion as strict JSON.',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.8 // higher than whole-plan gen — this call exists specifically because the user wants something DIFFERENT
-    });
+    const systemPrompt = `Expert Clinical Dietitian. Generate one precise, calorie-accurate Indian meal suggestion as strict JSON. ${dietSystemRule(dietaryPreference)}`;
 
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    return robustJsonParse(jsonMatch[0]);
+    // Same guard as the whole-plan path: one retry that names the rejected dish.
+    let retryNote = '';
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const aiResponse = await this.makeAIRequest({
+        // Raised from 500 when the structure grew from 8 fields to the full 21:
+        // a truncated response fails robustJsonParse and the whole regeneration
+        // reports as failed, so the headroom is worth more than the tokens.
+        max_tokens: 1200,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: retryNote ? `${prompt}\n\n${retryNote}` : prompt }],
+        temperature: 0.8 // higher than whole-plan gen — this call exists specifically because the user wants something DIFFERENT
+      });
+
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return null;
+      const meal = robustJsonParse(jsonMatch[0]);
+      if (checkMealForDiet(dietaryPreference, meal).ok) return meal;
+
+      console.warn(`[DietAI] Diet guard rejected single meal "${meal?.name}" for "${dietaryPreference}" (attempt ${attempt})`);
+      retryNote = `REJECTED: "${meal?.name}" breaks the ${dietaryPreference} rule. Suggest a different dish.`;
+    }
+    throw new Error(`Regenerated ${mealType} still violated the ${dietaryPreference} diet after retry`);
   }
 
 

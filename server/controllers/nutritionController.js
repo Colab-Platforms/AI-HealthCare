@@ -8,6 +8,7 @@ const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
 const fs = require('fs');
 const cache = require('../utils/cache');
+const { resolveDietaryPreference } = require('../utils/dietaryPreference');
 const { logActivity } = require('../utils/activityLogger');
 const { buildMedicalContextForAI } = require('../utils/medicalContext');
 const gamificationService = require('../services/gamificationService');
@@ -2508,8 +2509,20 @@ exports.getHealthyAlternatives = async (req, res) => {
       date: today
     });
 
+    // Profile is the source of truth for diet type. HealthGoal used to win here
+    // and carried a silent 'non-vegetarian' default, which is how this endpoint
+    // suggested non-veg foods to vegetarian users.
+    const diet = resolveDietaryPreference(user);
+    if (!diet.value) {
+      return res.status(422).json({
+        success: false,
+        code: 'DIETARY_PREFERENCE_REQUIRED',
+        message: 'Please set your diet type in your profile to get suitable alternatives.'
+      });
+    }
+
     const userPreferences = {
-      dietaryPreference: healthGoal?.dietaryPreference || user.profile?.dietaryPreference,
+      dietaryPreference: diet.value,
       allergies: healthGoal?.allergies || user.profile?.allergies || [],
       goal: healthGoal?.goalType,
       remainingCalories: healthGoal && todaySummary
