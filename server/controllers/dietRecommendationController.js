@@ -6,8 +6,23 @@ const dietRecommendationAI = require('../services/dietRecommendationAI');
 const { calculateNutritionGoals, getDietRecommendations } = require('../services/nutritionGoalCalculator');
 const queueService = require('../services/queueService');
 const cache = require('../utils/cache');
+const { resolveDietaryPreference } = require('../utils/dietaryPreference');
 const notificationService = require('../services/notificationService');
 const emailService = require('../services/emailService');
+
+/**
+ * Why a user rejected a suggested meal, sent with a regenerate-meal request.
+ *
+ * The reason is optional: without one, regenerating is a one-off swap and the
+ * dish can come back later. With one, the dish goes into `foodsToAvoid` and is
+ * excluded from every future plan — so this is the difference between "give me
+ * something else today" and "stop suggesting this".
+ *
+ * All values are treated the same way today; they are kept distinct so the
+ * reasons can be reported on, and so "can't get it here" can later feed
+ * availability per region rather than only per user.
+ */
+const MEAL_REJECTION_REASONS = ['not_available', 'dont_know_it', 'too_expensive', 'dont_like'];
 
 /**
  * Generate personalized diet plan based on comprehensive health data
@@ -20,6 +35,17 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Refuse to generate without a known diet type. Guessing non-veg here is
+    // how vegetarian users got non-veg plans.
+    const diet = resolveDietaryPreference(user);
+    if (!diet.value) {
+      return res.status(422).json({
+        success: false,
+        code: 'DIETARY_PREFERENCE_REQUIRED',
+        message: 'Please set your diet type (vegetarian, vegan, eggetarian or non-vegetarian) in your profile before generating a diet plan.'
+      });
     }
 
     // Get latest health reports - ensure we use the correct field 'user'
@@ -164,7 +190,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       country: user.foodPreferences?.country || 'India',  // ← Country
       state: user.foodPreferences?.state || null,  // ← State (null when not set; no default guess)
       city: user.foodPreferences?.city || null,  // ← City (null when not set; no default guess)
-      dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
+      dietaryPreference: diet.value,
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
       primaryFitnessGoal: fitnessProfile.primaryGoal || '',
@@ -255,17 +281,25 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
       : '';
     
-    // Add region and country-specific instructions
+    // Add region and country-specific instructions.
+    //
+    // `region` is only a fallback for when we have no state/city: it is derived
+    // from `state` now, so once a state is known the region line adds nothing.
+    // It also used to contradict the STATE FOCUS line below — region 'other'
+    // (the default, and what an unmapped state resolves to) emitted "focus on
+    // diverse Indian cuisine from all regions", which is what gave users
+    // dishes from the far side of the country. Mirrors the same decision in
+    // services/dietRecommendationAI.js.
+    const hasSpecificLocation = Boolean(state || city);
+
     if (country === 'India') {
-      if (region !== 'other') {
+      if (!hasSpecificLocation && region !== 'other') {
         promptEx += `\nREGION FOCUS: Prioritize ${region} Indian cuisine and regional specialties. Include traditional ${region} dishes.`;
-      } else {
-        promptEx += '\nCUISINE: Focus on diverse Indian cuisine from all regions.';
       }
     } else {
       // For other countries
       promptEx += `\nCOUNTRY FOCUS: User is from ${country}. Suggest cuisine popular in ${country} that aligns with their dietary preferences.`;
-      if (region !== 'other') {
+      if (!hasSpecificLocation && region !== 'other') {
         promptEx += `\nREGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
       }
     }
@@ -342,9 +376,13 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
       console.error('[BG-DIET] AI Error:', aiError.message);
 
       // Fallback: reactivate last good plan instead of leaving user empty-handed
+      // Only fall back to a plan built for the SAME diet type. Otherwise a
+      // vegetarian user whose generation failed could be reactivated onto an
+      // older non-veg plan, which is exactly the harm this fix prevents.
       const lastGoodPlan = await PersonalizedDietPlan.findOne({
         userId,
         status: 'completed',
+        'inputData.dietaryPreference': userData.dietaryPreference,
         _id: { $ne: dietPlanId }
       }).sort({ generatedAt: -1 });
 
@@ -496,7 +534,7 @@ exports.processDietBG = async (req, res) => {
 exports.regenerateMealSlot = async (req, res) => {
   try {
     const { planId } = req.params;
-    const { mealType, dayIndex } = req.body;
+    const { mealType, dayIndex, reason } = req.body;
     const userId = req.user._id;
 
     if (!['breakfast', 'lunch', 'dinner'].includes(mealType)) {
@@ -504,6 +542,12 @@ exports.regenerateMealSlot = async (req, res) => {
     }
     if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6) {
       return res.status(400).json({ success: false, message: 'dayIndex must be an integer between 0 and 6' });
+    }
+    if (reason !== undefined && !MEAL_REJECTION_REASONS.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: `reason must be one of: ${MEAL_REJECTION_REASONS.join(', ')}`
+      });
     }
 
     const dietPlan = await PersonalizedDietPlan.findOne({ _id: planId, userId });
@@ -535,22 +579,70 @@ exports.regenerateMealSlot = async (req, res) => {
     // Avoid-list scoped to this meal type across the whole week — small prompt,
     // still gives variety across days (see design discussion: whole-plan avoid
     // list would be unnecessarily large and irrelevant to what's being replaced).
+    //
+    // The slot being replaced is included rather than skipped: the user asked
+    // for something else, so handing back the same dish is the one outcome that
+    // definitely fails. It used to be excluded, which left that possible.
     const avoidNames = (dietPlan.mealPlan?.[mealType] || [])
-      .map((m, i) => (i === dayIndex ? null : m?.name))
+      .map((m) => m?.name)
       .filter(Boolean);
+
+    // With a `reason`, the rejected dish is remembered rather than just swapped:
+    // without this, the same unavailable dish comes back in next week's plan and
+    // the user rejects it again forever. `foodsToAvoid` already feeds the prompt
+    // as a hard exclusion (see dietRecommendationAI), so this reuses the
+    // existing mechanism instead of adding a parallel one.
+    // Checked before any write below, so a refused request leaves no trace.
+    const diet = resolveDietaryPreference(req.user, dietPlan);
+    if (!diet.value) {
+      return res.status(422).json({
+        success: false,
+        code: 'DIETARY_PREFERENCE_REQUIRED',
+        message: 'Please set your diet type in your profile before regenerating a meal.'
+      });
+    }
+    if (diet.source === 'plan') {
+      console.warn(`[DietPlan] User ${userId} has no profile diet type; regenerating from plan inputData ("${diet.value}")`);
+    }
+
+    const rejectedName = dietPlan.mealPlan?.[mealType]?.[dayIndex]?.name;
+    let foodsToAvoid = req.user.foodPreferences?.foodsToAvoid || [];
+
+    if (reason && rejectedName) {
+      const alreadyAvoided = foodsToAvoid.some(
+        (f) => typeof f === 'string' && f.trim().toLowerCase() === rejectedName.trim().toLowerCase()
+      );
+
+      if (!alreadyAvoided) {
+        foodsToAvoid = [...foodsToAvoid, rejectedName];
+        // Targeted $addToSet rather than a read-modify-save: req.user comes from
+        // a cached .lean() read (see middleware/auth), so it is not a live
+        // document, and two quick rejections would otherwise race and lose one.
+        // The post('updateOne') hook in models/User.js drops the cached copy.
+        await User.updateOne(
+          { _id: userId },
+          { $addToSet: { 'foodPreferences.foodsToAvoid': rejectedName } }
+        );
+        console.log(`[DietPlan] User ${userId} rejected "${rejectedName}" (${reason}) — added to foodsToAvoid`);
+      }
+    }
 
     await PersonalizedDietPlan.findByIdAndUpdate(planId, {
       pendingMealRegeneration: { mealType, dayIndex, status: 'generating', requestedAt: new Date() }
     });
 
     const userData = {
-      dietaryPreference: dietPlan.inputData?.dietaryPreference,
+      dietaryPreference: diet.value,
       allergies: dietPlan.inputData?.allergies,
       medicalConditions: dietPlan.inputData?.medicalConditions,
-      foodPreferences: req.user.foodPreferences,
+      // Carries the dish just rejected, so the replacement can't be the same one.
+      foodPreferences: { ...(req.user.foodPreferences || {}), foodsToAvoid },
       country: req.user.foodPreferences?.country,
       region: req.user.foodPreferences?.region,
       state: req.user.foodPreferences?.state,
+      // Was missing: the whole-plan path passes city, so regenerating a single
+      // meal used to silently drop the most specific location signal we have.
+      city: req.user.foodPreferences?.city,
     };
 
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
@@ -814,7 +906,7 @@ exports.generateSupplementRecommendations = async (req, res) => {
       deficiencies,
       age: user.profile?.age || user.age,
       gender: user.profile?.gender || user.gender,
-      dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
+      dietaryPreference: resolveDietaryPreference(user).value,
       medicalConditions: user.profile?.medicalConditions || [],
       currentMedications: user.profile?.currentMedications || []
     };
@@ -1038,6 +1130,14 @@ exports.generateDietAfterReport = async (userId) => {
     const alcoholSummary = getAlcoholSummary(user.alcoholLog || {});
     const lifestyle = user.profile?.lifestyle || {};
 
+    // Background path: no user is waiting to see an error, so skip rather than
+    // guess. The user gets a plan once they set a diet type.
+    const diet = resolveDietaryPreference(user);
+    if (!diet.value) {
+      console.warn(`[AutoDiet] Skipped for user ${userId}: no diet type set in profile`);
+      return;
+    }
+
     const userData = {
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',
@@ -1045,7 +1145,7 @@ exports.generateDietAfterReport = async (userId) => {
       height,
       currentBMI: currentBMI.toFixed(1),
       bmiGoal,
-      dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
+      dietaryPreference: diet.value,
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
       region: user.foodPreferences?.region || 'other',

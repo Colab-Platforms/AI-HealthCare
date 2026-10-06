@@ -167,4 +167,13 @@ const personalizedDietPlanSchema = new mongoose.Schema({
 // Index for efficient queries
 personalizedDietPlanSchema.index({ userId: 1, isActive: 1, generatedAt: -1 });
 
-module.exports = mongoose.model('PersonalizedDietPlan', personalizedDietPlanSchema);
+const PersonalizedDietPlan = mongoose.model('PersonalizedDietPlan', personalizedDietPlanSchema);
+
+// The fields a single meal option stores. Every prompt that produces a meal has
+// to ask for all of them: single-meal regeneration writes the replacement with
+// $set on the whole array element, so a field the prompt omits is deleted from
+// that slot rather than left alone. Exported so a test can assert that from the
+// schema instead of a hand-maintained copy.
+PersonalizedDietPlan.mealOptionFields = Object.keys(mealOptionSchema);
+
+module.exports = PersonalizedDietPlan;

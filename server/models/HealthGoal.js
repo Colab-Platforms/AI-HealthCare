@@ -96,7 +96,8 @@ const healthGoalSchema = new mongoose.Schema({
   dietaryPreference: {
     type: String,
     enum: ['vegetarian', 'vegan', 'non-vegetarian', 'eggetarian', 'paleo', 'keto', 'other'],
-    default: 'non-vegetarian'
+    // No default: a silent 'non-vegetarian' here was read as the user's diet.
+    // Diet type is resolved from the profile (utils/dietaryPreference.js).
   },
   allergies: [String],
   dislikedFoods: [String],
