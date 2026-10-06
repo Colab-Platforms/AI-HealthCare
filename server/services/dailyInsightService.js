@@ -305,6 +305,18 @@ Write the insight for this date.`;
 
 // ---------------------------------------------------------------- generation
 
+// Models overshoot the "200-300 characters" instruction, so a bare slice cuts
+// mid-word. Cut to the limit, then back up to the last full sentence. If the
+// only sentence end is too early (under minKeep), keep the hard cut rather
+// than return a stub.
+const trimToSentence = (text, max, minKeep = 150) => {
+  const str = String(text).trim();
+  if (str.length <= max) return str;
+  const cut = str.slice(0, max);
+  const lastEnd = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'));
+  return lastEnd >= minKeep ? cut.slice(0, lastEnd + 1) : cut.trimEnd();
+};
+
 async function generateOne({ userId, profile, insightType, sourceDate, insightDate, data }) {
   const { text, model } = await chatCompletionWithFallback({
     system: INSIGHT_SYSTEMS[insightType],
@@ -332,7 +344,7 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
     {
       userId, insightDate, sourceDate, insightType,
       title: String(parsed.title).slice(0, 120),
-      description: String(parsed.description).slice(0, 300),
+      description: trimToSentence(parsed.description, 300),
       summary: String(parsed.summary || parsed.title).slice(0, 200),
       dataSnapshot: data,
       model,
