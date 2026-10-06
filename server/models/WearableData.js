@@ -120,7 +120,11 @@ const wearableDataSchema = new mongoose.Schema({
   // a single event with its own start/end and stats.
   workouts: [{
     workoutId: String,
-    type: String,
+    // Wrapped as {type: String} rather than bare `type: String` — Mongoose
+    // treats a bare `type` key in a subdocument object as the SchemaType
+    // descriptor for the whole object, not a field named "type", which
+    // silently collapsed this entire array to [String] regardless of provider.
+    type: { type: String },
     startTime: Date,
     endTime: Date,
     durationSeconds: Number,
