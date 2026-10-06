@@ -226,25 +226,57 @@ exports.getHealthScore = async (req, res) => {
   }
 };
 
+const SCORE_BREAKDOWN_MAX_SPAN_DAYS = 90; // matches HealthScoreBreakdown's own RangeInsight TTL headroom
+
 // GET /api/health/score/breakdown?range=daily|weekly|monthly&date=YYYY-MM-DD
+// GET /api/health/score/breakdown?range=weekly&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 // Powers the "explain this score" page reached by tapping the Unified Health
 // Score ring — per-component scores/weights/contributions plus an AI insight
 // for each, sourced from already-persisted DailyHealthScore rows and
-// DailyInsight docs (see healthScoreBreakdownService.js for how those are
-// combined). `date` defaults to today and is the END of the window; range
-// defaults to 'daily'.
+// DailyInsight/RangeInsight docs (see healthScoreBreakdownService.js).
+//
+// Two ways to pick the window, same convention as nutritionController's
+// getNutritionScore (computeNutritionScorePeriod):
+//   1. `startDate`+`endDate` (either one is enough) - an EXPLICIT custom
+//      window, e.g. a specific past week that doesn't end today.
+//   2. `range` + `date` - `range` picks the window SIZE (1/7/30 days) and
+//      `date` anchors its END; omitting `date` means "ending today".
+// `range` defaults to 'daily' either way, since it's read for `range` in the
+// response even when startDate/endDate decide the actual dates.
 exports.getScoreBreakdown = async (req, res) => {
   try {
     const range = ['daily', 'weekly', 'monthly'].includes(req.query.range) ? req.query.range : 'daily';
-
     const todayStr = new Date().toISOString().split('T')[0];
+    const minDateStr = daysAgoStr(89);
+
+    const { startDate: rawStart, endDate: rawEnd } = req.query;
+    if (rawStart !== undefined || rawEnd !== undefined) {
+      for (const [label, val] of [['startDate', rawStart], ['endDate', rawEnd]]) {
+        if (val !== undefined && !HEALTH_SCORE_DATE_RE.test(val)) {
+          return res.status(400).json({ success: false, message: `${label} must be in YYYY-MM-DD format` });
+        }
+      }
+      const startDate = rawStart && rawStart >= minDateStr ? rawStart : minDateStr;
+      const endDate = rawEnd && rawEnd <= todayStr ? rawEnd : todayStr;
+      if (endDate < startDate) {
+        return res.status(400).json({ success: false, message: 'endDate must not be before startDate' });
+      }
+      const spanDays = (new Date(endDate) - new Date(startDate)) / 86400000;
+      if (spanDays > SCORE_BREAKDOWN_MAX_SPAN_DAYS) {
+        return res.status(400).json({ success: false, message: `Date range too large — max ${SCORE_BREAKDOWN_MAX_SPAN_DAYS} days` });
+      }
+
+      const result = await getScoreBreakdown(req.user._id, range, { startDate, endDate });
+      return res.json(result);
+    }
+
     const requestedDate = typeof req.query.date === 'string' ? req.query.date : null;
     const isValidDate = requestedDate && HEALTH_SCORE_DATE_RE.test(requestedDate)
       && requestedDate <= todayStr
-      && requestedDate >= daysAgoStr(89);
+      && requestedDate >= minDateStr;
     const dateStr = isValidDate ? requestedDate : todayStr;
 
-    const result = await getScoreBreakdown(req.user._id, range, dateStr);
+    const result = await getScoreBreakdown(req.user._id, range, { date: dateStr });
     res.json(result);
   } catch (error) {
     console.error('getScoreBreakdown error:', error.message);

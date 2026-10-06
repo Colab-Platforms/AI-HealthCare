@@ -9,7 +9,9 @@
 //      via ensureInsight() when the nightly cron never covered a requested day
 const DailyHealthScore = require('../models/DailyHealthScore');
 const HealthScoreConfig = require('../models/HealthScoreConfig');
+const User = require('../models/User');
 const { ensureInsight } = require('./dailyInsightService');
+const { collectRangeData, ensureRangeInsightForType } = require('./rangeInsightService');
 
 const RANGE_DAYS = { daily: 1, weekly: 7, monthly: 30 };
 
@@ -90,12 +92,17 @@ function buildComponentBreakdown(rows, weightsByVersion, currentWeights) {
 
 /**
  * @param {string} userId
- * @param {'daily'|'weekly'|'monthly'} range
- * @param {string} dateStr - 'YYYY-MM-DD', the END of the window (defaults handled by caller)
+ * @param {'daily'|'weekly'|'monthly'} range - used for the response's `range`
+ *   field and (when `date` mode is used) the window size; irrelevant to the
+ *   actual dates when `startDate`/`endDate` are given directly.
+ * @param {{date?: string, startDate?: string, endDate?: string}} window
+ *   Either `date` (window size comes from `range`, ending on this day) or an
+ *   explicit `startDate`/`endDate` pair (any custom span, validated by the
+ *   controller) — see getScoreBreakdown's JSDoc in healthScoreController.js.
  */
-async function getScoreBreakdown(userId, range, dateStr) {
-  const windowDays = RANGE_DAYS[range];
-  const startDate = offsetFrom(dateStr, windowDays - 1);
+async function getScoreBreakdown(userId, range, { date, startDate: explicitStart, endDate: explicitEnd }) {
+  const dateStr = explicitEnd || date;
+  const startDate = explicitStart || offsetFrom(dateStr, RANGE_DAYS[range] - 1);
 
   const [rows, activeConfig] = await Promise.all([
     DailyHealthScore.find({ userId, date: { $gte: startDate, $lte: dateStr } })
@@ -120,16 +127,55 @@ async function getScoreBreakdown(userId, range, dateStr) {
 
   const componentBreakdown = buildComponentBreakdown(loggedRows, weightsByVersion, currentWeights);
 
-  // AI insights are only ever fetched/generated for the single END date of
-  // the window (not once per day in range) - a weekly/monthly view shows
-  // ONE current narrative, not up to 30 AI calls. ensureInsight() itself
-  // returns the cached DailyInsight if the nightly cron already generated
-  // it, and only calls the model when it's genuinely missing.
   const insightTypesPresent = componentBreakdown.map((c) => COMPONENT_TO_INSIGHT_TYPE[c.component]);
-  const [overallInsightDoc, ...componentInsightDocs] = await Promise.all([
-    ensureInsight(userId, 'overall', dateStr).catch(() => null),
-    ...insightTypesPresent.map((t) => ensureInsight(userId, t, dateStr).catch(() => null)),
-  ]);
+
+  let overallInsightDoc;
+  let componentInsightDocs;
+
+  if (range === 'daily') {
+    // Single day: dailyInsightService's normal single-night/day insight is
+    // already exactly what's needed - no aggregation involved.
+    [overallInsightDoc, ...componentInsightDocs] = await Promise.all([
+      ensureInsight(userId, 'overall', dateStr).catch(() => null),
+      ...insightTypesPresent.map((t) => ensureInsight(userId, t, dateStr).catch(() => null)),
+    ]);
+  } else {
+    // Weekly/monthly: a single day's insight text ("On Sept 23, you slept
+    // 5.8 hours...") reads as wrong/misleading here, since the window can
+    // span up to 30 days. rangeInsightService collects AGGREGATE facts
+    // (averages, trend, days logged) across the whole window instead, and
+    // caches the result separately (RangeInsight, keyed by range+endDate) -
+    // one AI call per component per window end-date, not one per day.
+    const user = await User.findById(userId).select('smokeLog alcoholLog').lean();
+    const rangeData = await collectRangeData(userId, startDate, dateStr, user);
+
+    const scoreTrendSummary = {
+      daysLogged: loggedRows.length,
+      avgScore: loggedRows.length
+        ? Math.round((loggedRows.reduce((s, r) => s + r.finalScore, 0) / loggedRows.length) * 10) / 10
+        : null,
+      trendPoints: finalScoreTrend,
+    };
+
+    const RANGE_COMPONENT_DATA = {
+      sleep: rangeData.sleep,
+      activity: rangeData.activity,
+      nutrition: rangeData.nutrition,
+      hydration: rangeData.hydration,
+      recovery: rangeData.recovery,
+      smoking: rangeData.smoking,
+      alcohol: rangeData.alcohol,
+    };
+
+    [overallInsightDoc, ...componentInsightDocs] = await Promise.all([
+      ensureRangeInsightForType(userId, 'overall', range, startDate, dateStr, { scoreTrendSummary }).catch(() => null),
+      ...componentBreakdown.map((c) =>
+        ensureRangeInsightForType(userId, COMPONENT_TO_INSIGHT_TYPE[c.component], range, startDate, dateStr, {
+          data: RANGE_COMPONENT_DATA[c.component],
+        }).catch(() => null)
+      ),
+    ]);
+  }
 
   const insightByComponent = new Map(
     componentBreakdown.map((c, i) => [c.component, componentInsightDocs[i]]),

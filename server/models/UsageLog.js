@@ -43,6 +43,11 @@ const usageLogSchema = new mongoose.Schema({
         'daily_insight_nutrition', 'daily_insight_fitness',
         'daily_insight_recovery', 'daily_insight_smoking',
         'daily_insight_alcohol', 'daily_insight_hydration',
+        // Weekly/monthly Unified Health Score breakdown insights (rangeInsightService.js)
+        'range_insight_overall', 'range_insight_sleep',
+        'range_insight_nutrition', 'range_insight_fitness',
+        'range_insight_recovery', 'range_insight_smoking',
+        'range_insight_alcohol', 'range_insight_hydration',
         // Retained for historical usage records
         'daily_insight_activity', 'daily_insight_medical', 'other'
     ]},
