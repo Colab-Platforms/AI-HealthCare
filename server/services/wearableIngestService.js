@@ -356,6 +356,7 @@ async function applyVitalsSamples(userId, deviceType, source, samples) {
 // --- Generic catch-all (replaces WearableData.metrics[]) -------------------
 
 async function applyGenericMetric(userId, deviceType, provider, samples, { wearable } = {}) {
+  let savedCount = 0;
   for (const sample of samples) {
     // OpenWearables emits a "group" event (e.g. heart_rate.created) and a
     // "granular" event (e.g. series.resting_heart_rate.created) for the same
@@ -377,6 +378,7 @@ async function applyGenericMetric(userId, deviceType, provider, samples, { weara
       value: sample.value,
       unit: sample.unit
     });
+    savedCount += 1;
 
     if (wearable && !wearable.metrics.some(m =>
       m.seriesType === sample.seriesType &&
@@ -386,6 +388,7 @@ async function applyGenericMetric(userId, deviceType, provider, samples, { weara
       wearable.metrics.push({ seriesType: sample.seriesType, value: sample.value, unit: sample.unit, timestamp: sample.timestamp, provider, device: sample.device });
     }
   }
+  return savedCount;
 }
 
 // --- Health scores (Recovery / Strain / Sleep performance) -----------------

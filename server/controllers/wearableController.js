@@ -16,6 +16,7 @@ const { getSleepClinicalAnalysis, toAppSummary } = require('../services/sleepCli
 const { getActivityInsight } = require('../services/activityInsightService');
 const wearableIngest = require('../services/wearableIngestService');
 const { syncScoreForConnection } = require('../services/wearableScoreSyncService');
+const { syncTimeseriesForConnection } = require('../services/wearableTimeseriesSyncService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
@@ -1367,6 +1368,13 @@ exports.handleWebhook = async (req, res) => {
       case 'sync.completed': {
         syncScoreForConnection(data.user_id, data.provider).catch((error) => {
           console.error(`[Wearables] sync.completed score fetch failed for provider=${data.provider}: ${error.message}`);
+        });
+        // Steps (and similar) have the opposite problem from scores: Open
+        // Wearables DOES webhook them, but from a daemon thread that doesn't
+        // reliably survive to deliver — see wearableTimeseriesSyncService.js.
+        // Same trigger, same fire-and-forget treatment, different data.
+        syncTimeseriesForConnection(data.user_id, data.provider).catch((error) => {
+          console.error(`[Wearables] sync.completed timeseries fetch failed for provider=${data.provider}: ${error.message}`);
         });
         break;
       }

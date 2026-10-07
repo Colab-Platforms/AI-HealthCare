@@ -20,6 +20,10 @@ const wearableDataSchema = new mongoose.Schema({
   // scores have no webhook, so we poll — this marks how far that poll has
   // gotten, so each run only asks Open Wearables for what's new since last time).
   lastScoreSyncAt: { type: Date },
+  // Cursor for wearableTimeseriesSyncService's periodic pull (steps, and any
+  // other series_type Open Wearables' webhook thread unreliably delivers —
+  // see that service's file comment for why this exists alongside webhooks).
+  lastTimeseriesSyncAt: { type: Date },
 
   // Open Wearables service ka internal user ID — webhook se aane wale data ko
   // isi field se match karke pata chalega ye kis user ka data hai

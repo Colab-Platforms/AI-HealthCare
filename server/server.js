@@ -510,6 +510,7 @@ if (!process.env.VERCEL) {
   // a dropped webhook, a retry that never landed — so 30 min is fine; it's
   // no longer the thing freshness depends on.
   const { runWearableScoreSync, reconcileConnectionStatuses } = require('./services/wearableScoreSyncService');
+  const { runTimeseriesSync } = require('./services/wearableTimeseriesSyncService');
   cron.schedule('*/30 * * * *', async () => {
     try {
       await runWearableScoreSync();
@@ -524,6 +525,13 @@ if (!process.env.VERCEL) {
       await reconcileConnectionStatuses();
     } catch (error) {
       console.error('[WearableScoreSync] connection reconcile tick failed:', error.message);
+    }
+    try {
+      // Safety net for steps (and similar) — the event-triggered path in
+      // handleWebhook is primary, this catches whatever it misses.
+      await runTimeseriesSync();
+    } catch (error) {
+      console.error('[WearableTimeseriesSync] cron tick failed:', error.message);
     }
   });
 
