@@ -15,6 +15,7 @@ const { getSleepInsight } = require('../services/sleepInsightService');
 const { getSleepClinicalAnalysis, toAppSummary } = require('../services/sleepClinicalAnalysisService');
 const { getActivityInsight } = require('../services/activityInsightService');
 const wearableIngest = require('../services/wearableIngestService');
+const { syncScoreForConnection } = require('../services/wearableScoreSyncService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
@@ -1353,6 +1354,20 @@ exports.handleWebhook = async (req, res) => {
           { new: true }
         );
         console.log(`[Wearables] connection.revoked: record ${updated?._id} (mongo user=${updated?.user}) set isConnected=false, reason=${data.reason || 'unspecified'}`);
+        break;
+      }
+
+      // Recovery/Strain/Sleep-performance scores are the one data type Open
+      // Wearables computes but never webhooks out directly — this event
+      // ("a sync just finished") is our signal to go pull them ourselves,
+      // right when they're freshest instead of waiting for the next cron
+      // tick. Failure here must not fail the webhook ack — the cron safety
+      // net (wearableScoreSyncService's runWearableScoreSync) will catch
+      // whatever this misses.
+      case 'sync.completed': {
+        syncScoreForConnection(data.user_id, data.provider).catch((error) => {
+          console.error(`[Wearables] sync.completed score fetch failed for provider=${data.provider}: ${error.message}`);
+        });
         break;
       }
 
