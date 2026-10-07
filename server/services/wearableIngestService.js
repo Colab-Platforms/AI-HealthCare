@@ -22,6 +22,7 @@ const BloodOxygenSample = require('../models/BloodOxygenSample');
 const StressSample = require('../models/StressSample');
 const VitalsSample = require('../models/VitalsSample');
 const WearableMetricSample = require('../models/WearableMetricSample');
+const WearableScoreSample = require('../models/WearableScoreSample');
 const HeartRateSample = require('../models/HeartRateSample');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
 const StressDailySummary = require('../models/StressDailySummary');
@@ -387,6 +388,30 @@ async function applyGenericMetric(userId, deviceType, provider, samples, { weara
   }
 }
 
+// --- Health scores (Recovery / Strain / Sleep performance) -----------------
+// Pulled, not pushed — see wearableScoreSyncService.js. Dedup is by Open
+// Wearables' own health_score row id (externalId), since this is a
+// time-series collection and can't carry a unique secondary index.
+async function applyScores(userId, deviceType, provider, scores) {
+  let savedCount = 0;
+  for (const score of scores) {
+    const exists = await WearableScoreSample.exists({ user: userId, externalId: score.externalId });
+    if (exists) continue;
+
+    await WearableScoreSample.create({
+      user: userId,
+      meta: { deviceType, category: score.category, provider },
+      externalId: score.externalId,
+      timestamp: score.timestamp,
+      value: score.value,
+      qualifier: score.qualifier,
+      components: score.components
+    });
+    savedCount += 1;
+  }
+  return savedCount;
+}
+
 module.exports = {
   applyHeartRateSamples,
   applySleepSessions,
@@ -396,5 +421,6 @@ module.exports = {
   applyBloodOxygenSamples,
   applyStressSamples,
   applyVitalsSamples,
-  applyGenericMetric
+  applyGenericMetric,
+  applyScores
 };

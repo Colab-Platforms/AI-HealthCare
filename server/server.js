@@ -502,6 +502,18 @@ if (!process.env.VERCEL) {
     await runDeletionReminderCron();
   });
 
+  // Wearable health scores (Recovery/Strain/Sleep) — Open Wearables computes
+  // these but never webhooks them out, so we poll. Every 10 min, matching
+  // how often Open Wearables itself refreshes from the provider.
+  const { runWearableScoreSync } = require('./services/wearableScoreSyncService');
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      await runWearableScoreSync();
+    } catch (error) {
+      console.error('[WearableScoreSync] cron tick failed:', error.message);
+    }
+  });
+
   // Privacy Policy retention schedule — consent records (5yr post-deletion),
   // support tickets (3yr), transaction records (8yr, statutory). Independent
   // of the 30-day account-erasure cron and each other; daily is fine, these

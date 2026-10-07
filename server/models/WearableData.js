@@ -16,6 +16,10 @@ const wearableDataSchema = new mongoose.Schema({
   deviceName: String,
   isConnected: { type: Boolean, default: true },
   lastSyncedAt: { type: Date, default: Date.now },
+  // Cursor for wearableScoreSyncService's periodic pull (Recovery/Strain/Sleep
+  // scores have no webhook, so we poll — this marks how far that poll has
+  // gotten, so each run only asks Open Wearables for what's new since last time).
+  lastScoreSyncAt: { type: Date },
 
   // Open Wearables service ka internal user ID — webhook se aane wale data ko
   // isi field se match karke pata chalega ye kis user ka data hai
