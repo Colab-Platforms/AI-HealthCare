@@ -23,10 +23,20 @@ const wearableIngest = require('./wearableIngestService');
 const cache = require('../utils/cache');
 
 // deviceTypes whose Open Wearables provider integration computes health
-// scores server-side. Add a provider here once its strategy maps
-// HealthScoreCategory (recovery/strain/sleep/...) — see coverage.py on the
-// Open Wearables side for a given provider.
-const SCORE_CAPABLE_DEVICE_TYPES = ['whoop'];
+// scores server-side — confirmed by HealthScoreCategory entries in that
+// provider's coverage.py on the Open Wearables side. Only Whoop has actually
+// been connected/tested end-to-end so far; the rest are wired in ahead of
+// time since this code path needs no per-provider changes, just an entry
+// here once that provider is connected.
+//   whoop:      sleep, recovery, strain
+//   garmin:     sleep, stress, body_battery
+//   oura:       activity, readiness, sleep
+//   polar:      sleep, strain, recovery, readiness
+//   sensorbio:  recovery, activity, sleep
+//   suunto:     recovery
+// Apple and Google have no health-score concept in Open Wearables at all —
+// never add them here, their health-scores call would just 0-result forever.
+const SCORE_CAPABLE_DEVICE_TYPES = ['whoop', 'garmin', 'oura', 'polar', 'sensorbio', 'suunto'];
 
 const CONCURRENCY = 5;
 const FIRST_RUN_LOOKBACK_MS = 24 * 60 * 60 * 1000; // 24h — bounds the very first poll for a newly-connected user
