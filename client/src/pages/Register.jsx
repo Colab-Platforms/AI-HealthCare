@@ -35,7 +35,11 @@ export default function Register() {
     activityLevel: "sedentary",
     allergies: "",
     isDiabetic: "no",
-    dietaryPreference: "non-vegetarian",
+    // No default — a pre-selected value meant most users never touched this
+    // dropdown, so a vegetarian user's account silently saved as non-vegetarian
+    // (the actual root cause of meal recommendations ignoring their diet).
+    // Left blank so `required` below forces an explicit choice.
+    dietaryPreference: "",
   });
 
   const [verificationCode, setVerificationCode] = useState([
@@ -881,8 +885,11 @@ export default function Register() {
                     className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base shadow-sm"
                     required
                   >
-                    <option value="non-vegetarian">Non-Vegetarian</option>
+                    <option value="" disabled>
+                      Select your diet preference
+                    </option>
                     <option value="vegetarian">Vegetarian</option>
+                    <option value="non-vegetarian">Non-Vegetarian</option>
                     <option value="vegan">Vegan</option>
                     <option value="eggetarian">Eggetarian</option>
                   </select>

@@ -13,6 +13,8 @@ const RefreshToken = require('../models/RefreshToken');
 const FCMToken = require('../models/FCMToken');
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
+const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const { normalizeDietaryPreference } = require('../utils/dietaryPreference');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -680,6 +682,12 @@ exports.register = async (req, res) => {
       if (consentError) return res.status(403).json({ message: consentError, requiresGuardianConsent: true });
     }
 
+    // Same guard updateProfile already applies: an empty string is not
+    // "unset" to Mongoose (only `undefined` triggers the schema default), so
+    // it would fail the enum validator outright instead of registration
+    // succeeding with no diet type recorded.
+    if (profile?.dietaryPreference === '') delete profile.dietaryPreference;
+
     // Calculate nutrition goals if profile data is provided
     let calculatedGoals = null;
     if (profile && profile.age && profile.gender && profile.weight && profile.height && nutritionGoal) {
@@ -778,6 +786,22 @@ exports.register = async (req, res) => {
         } catch (goalError) {
           console.error('Failed to create initial HealthGoal:', goalError.message);
           // Don't fail the whole registration if this fails
+        }
+
+        // First diet plan, generated in the background right after signup —
+        // same trigger used when a diet-type change makes an existing plan
+        // stale (see updateProfile above). Without this, a brand-new user's
+        // Diet Plan screen is just an empty "Generate" button until they
+        // press it themselves; this gets a plan ready before they even open
+        // that screen. Same gate as the HealthGoal above (profile.age present)
+        // so this only fires for a signup that completed the full profile
+        // step, not a bare name/email/password account finishing profile later.
+        const signupDiet = normalizeDietaryPreference(profile.dietaryPreference);
+        if (signupDiet) {
+          const { generateDietAfterReport } = require('./dietRecommendationController');
+          setImmediate(() => generateDietAfterReport(user._id).catch((e) =>
+            console.error(`[DietPlan] First-plan generation failed for user ${user._id}:`, e.message)
+          ));
         }
       }
     } catch (createError) {
@@ -1496,6 +1520,7 @@ exports.updateProfile = async (req, res) => {
     if (user) {
       const oldHeight = user.profile?.height;
       const oldWeight = user.profile?.weight;
+      const oldDietaryPreference = normalizeDietaryPreference(user.profile?.dietaryPreference);
 
       captureFcmToken(user, req);
 
@@ -1678,6 +1703,25 @@ exports.updateProfile = async (req, res) => {
       if (bmiChanged) user.markModified('healthMetrics');
 
       const updatedUser = await user.save();
+
+      // Diet type changed -> any already-generated plan was built for the OLD
+      // preference and its 21 stored meals can include dishes that now break
+      // the new one (e.g. non-veg dishes left over after switching to veg —
+      // see the complaint this was built for). Regenerating per meal only
+      // fixes the slot touched, so the whole plan is rebuilt in the background
+      // instead. Only fires when there's an active plan to replace, and only
+      // on a REAL change (not every profile save) to avoid needless AI spend.
+      const newDietaryPreference = normalizeDietaryPreference(updatedUser.profile?.dietaryPreference);
+      if (newDietaryPreference && newDietaryPreference !== oldDietaryPreference) {
+        PersonalizedDietPlan.exists({ userId: updatedUser._id, isActive: true, status: 'completed' })
+          .then((hasActivePlan) => {
+            if (!hasActivePlan) return;
+            console.log(`[DietPlan] User ${updatedUser._id} changed diet type ${oldDietaryPreference || 'unset'} -> ${newDietaryPreference}; regenerating active plan in background`);
+            const { generateDietAfterReport } = require('./dietRecommendationController');
+            return generateDietAfterReport(updatedUser._id);
+          })
+          .catch((e) => console.error(`[DietPlan] Background regenerate on diet-type change failed for user ${updatedUser._id}:`, e.message));
+      }
 
       const responseBody = {
         ...updatedUser.toObject(),
