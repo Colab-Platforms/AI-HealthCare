@@ -17,6 +17,7 @@ const { getActivityInsight } = require('../services/activityInsightService');
 const wearableIngest = require('../services/wearableIngestService');
 const { syncScoreForConnection } = require('../services/wearableScoreSyncService');
 const { syncTimeseriesForConnection } = require('../services/wearableTimeseriesSyncService');
+const { syncSleepForConnection } = require('../services/wearableSleepSyncService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
@@ -1375,6 +1376,13 @@ exports.handleWebhook = async (req, res) => {
         // Same trigger, same fire-and-forget treatment, different data.
         syncTimeseriesForConnection(data.user_id, data.provider).catch((error) => {
           console.error(`[Wearables] sync.completed timeseries fetch failed for provider=${data.provider}: ${error.message}`);
+        });
+        // Sleep's 'sleep.created' webhook (below) is the only path that ever
+        // wrote a SleepSession — no safety net if that delivery dropped or
+        // arrived before the full stage breakdown was ready. Confirmed missing
+        // live for a real session before this was added. Same trigger treatment.
+        syncSleepForConnection(data.user_id, data.provider).catch((error) => {
+          console.error(`[Wearables] sync.completed sleep fetch failed for provider=${data.provider}: ${error.message}`);
         });
         break;
       }

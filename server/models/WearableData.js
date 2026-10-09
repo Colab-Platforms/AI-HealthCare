@@ -24,6 +24,12 @@ const wearableDataSchema = new mongoose.Schema({
   // other series_type Open Wearables' webhook thread unreliably delivers —
   // see that service's file comment for why this exists alongside webhooks).
   lastTimeseriesSyncAt: { type: Date },
+  // Cursor for wearableSleepSyncService's periodic pull — applySleepSessions
+  // was previously reachable only via the 'sleep.created' webhook, with no
+  // REST-pull safety net; this mirrors the lastScoreSyncAt/lastTimeseriesSyncAt
+  // pattern for the same reason (a dropped/incomplete webhook delivery had no
+  // way to ever self-correct — confirmed missing live for a real session).
+  lastSleepSyncAt: { type: Date },
 
   // Open Wearables service ka internal user ID — webhook se aane wale data ko
   // isi field se match karke pata chalega ye kis user ka data hai

@@ -511,6 +511,7 @@ if (!process.env.VERCEL) {
   // no longer the thing freshness depends on.
   const { runWearableScoreSync, reconcileConnectionStatuses } = require('./services/wearableScoreSyncService');
   const { runTimeseriesSync } = require('./services/wearableTimeseriesSyncService');
+  const { runWearableSleepSync } = require('./services/wearableSleepSyncService');
   cron.schedule('*/30 * * * *', async () => {
     try {
       await runWearableScoreSync();
@@ -532,6 +533,13 @@ if (!process.env.VERCEL) {
       await runTimeseriesSync();
     } catch (error) {
       console.error('[WearableTimeseriesSync] cron tick failed:', error.message);
+    }
+    try {
+      // Safety net for sleep sessions — previously only reachable via the
+      // 'sleep.created' webhook with no backstop; same treatment as the two above.
+      await runWearableSleepSync();
+    } catch (error) {
+      console.error('[WearableSleepSync] cron tick failed:', error.message);
     }
   });
 
