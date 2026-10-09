@@ -376,7 +376,8 @@ async function applyGenericMetric(userId, deviceType, provider, samples, { weara
       meta: { deviceType, seriesType: sample.seriesType, provider, device: sample.device },
       timestamp: sample.timestamp,
       value: sample.value,
-      unit: sample.unit
+      unit: sample.unit,
+      isDailyTotal: sample.isDailyTotal || undefined
     });
     savedCount += 1;
 

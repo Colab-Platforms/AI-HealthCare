@@ -22,7 +22,24 @@ const cache = require('../utils/cache');
 // unreliable over the webhook path — everything else (energy, heart_rate,
 // body composition, ...) has been observed arriving fine via webhook, and
 // pulling it too would just be redundant load for no benefit.
-const TIMESERIES_PULL_TYPES = ['steps'];
+// Added heart_rate_variability_rmssd/resting_heart_rate/oxygen_saturation/
+// skin_temperature per WHOOP_MISSING_METRICS_DIAGNOSTIC.md: Open Wearables
+// already normalizes and persists all four as standalone samples (verified
+// live against its /timeseries endpoint), but this service never asked for
+// them — only 'steps' was listed — so they had no safety net if their
+// webhook delivery hit the same daemon-thread reliability gap steps did.
+// respiratory_rate is listed too (currently a no-op — Open Wearables' WHOOP
+// adapter doesn't emit it standalone yet, only nested in the Sleep score's
+// components; see the diagnostic's Phase C/Fix 3) so this pull list needs no
+// further edit once that separate, not-yet-applied adapter fix lands.
+const TIMESERIES_PULL_TYPES = [
+  'steps',
+  'heart_rate_variability_rmssd',
+  'resting_heart_rate',
+  'oxygen_saturation',
+  'skin_temperature',
+  'respiratory_rate',
+];
 
 // deviceTypes whose provider integration can report the above via Open
 // Wearables' generic /timeseries endpoint. Whoop confirmed (cycle.step_count,
@@ -62,7 +79,18 @@ function normalizeSample(raw) {
     value: raw.value,
     unit: raw.unit,
     timestamp: raw.timestamp,
-    device: raw.source?.device
+    device: raw.source?.device,
+    // Informational only right now — WearableMetricSample is a time-series
+    // collection, which MongoDB does not allow updating/upserting a single
+    // timestamped measurement on (verified empirically: findOneAndUpdate,
+    // updateOne, and updateMany+upsert all rejected it; update/delete on this
+    // collection type can only filter by the metaField, never by timestamp).
+    // So an evolving daily-total value (e.g. WHOOP's open-cycle step_count)
+    // correctly accumulates as multiple same-day rows under the existing
+    // dedup, same as WearableScoreSample already does for same-day Strain —
+    // this flag exists so a future reader knows to take the latest row per
+    // day for this seriesType rather than sum or expect exactly one.
+    isDailyTotal: raw.is_daily_total === true
   };
 }
 

@@ -15,7 +15,14 @@ const wearableMetricSampleSchema = new mongoose.Schema({
   },
   timestamp: { type: Date, required: true },
   value: Number,
-  unit: String
+  unit: String,
+  // True for a provider-reported running daily total (e.g. WHOOP's open-cycle
+  // step_count) rather than a point-in-time reading. Informational only — see
+  // wearableTimeseriesSyncService.js's normalizeSample for why this can't be
+  // upserted in place on a time-series collection, and accumulates as
+  // multiple same-day rows by design; a reader should take the latest row
+  // per day for such a seriesType, not sum or expect exactly one.
+  isDailyTotal: Boolean
 }, {
   timeseries: { timeField: 'timestamp', metaField: 'meta', granularity: 'minutes' },
   expireAfterSeconds: 90 * 24 * 60 * 60
