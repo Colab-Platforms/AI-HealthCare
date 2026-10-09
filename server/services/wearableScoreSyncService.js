@@ -46,6 +46,16 @@ const OAUTH_PROVIDERS = ['google', 'whoop', 'garmin', 'oura', 'polar', 'suunto',
 
 const CONCURRENCY = 5;
 const FIRST_RUN_LOOKBACK_MS = 24 * 60 * 60 * 1000; // 24h — bounds the very first poll for a newly-connected user
+// Trailing buffer subtracted from an EXISTING cursor only (not the first-run
+// lookback above, which already covers a fresh connection). Without this, the
+// cursor advances to "now" on every run regardless of whether anything was
+// found, so a provider record whose own timestamp predates "now minus a few
+// seconds" — e.g. a still-open physiological cycle, or a score the provider
+// finalizes hours after we last checked — can never be re-asked for again.
+// Mirrors the fix applied on the Open Wearables side for the identical
+// pattern (see WHOOP_SAME_DAY_SYNC_DIAGNOSTIC.md, PULL_SYNC_LOOKBACK).
+const SYNC_LOOKBACK_MS = 48 * 60 * 60 * 1000; // 48h
+const PAGE_LIMIT = 100;
 
 let isRunning = false;
 // Per-wearable guard — separate from isRunning (the batch run's overlap
@@ -81,20 +91,49 @@ function normalizeScore(raw) {
   };
 }
 
+// Fetches every page for the window — health-scores pagination is offset-
+// based (confirmed against Open Wearables' openapi schema: start_date/
+// end_date/limit/offset, no cursor param on this endpoint). Throws on any
+// page failure rather than returning whatever was fetched so far — the
+// caller must not advance the cursor on a partial result, or the unfetched
+// remainder is silently treated as "nothing there."
+async function fetchAllScores(openWearablesUserId, since, until) {
+  const all = [];
+  let offset = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data } = await openWearablesClient.get(
+      `/users/${openWearablesUserId}/health-scores`,
+      { params: { start_date: since.toISOString(), end_date: until.toISOString(), limit: PAGE_LIMIT, offset } }
+    );
+    const page = data?.data || [];
+    all.push(...page);
+    if (!data?.pagination?.has_more || page.length === 0) break;
+    offset += page.length;
+  }
+  return all;
+}
+
 async function syncOneWearable(wearable) {
-  const since = wearable.lastScoreSyncAt || new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   const now = new Date();
+  // First-run lookback (no cursor yet) is unchanged. The 48h trailing buffer
+  // applies only on top of an EXISTING cursor — a fresh connection already
+  // gets the wider FIRST_RUN_LOOKBACK_MS window, it doesn't need both.
+  const since = wearable.lastScoreSyncAt
+    ? new Date(wearable.lastScoreSyncAt.getTime() - SYNC_LOOKBACK_MS)
+    : new Date(now.getTime() - FIRST_RUN_LOOKBACK_MS);
 
-  const { data } = await openWearablesClient.get(
-    `/users/${wearable.openWearablesUserId}/health-scores`,
-    { params: { start_date: since.toISOString(), end_date: now.toISOString() } }
-  );
+  // Raises on any page failure — caught by the caller (syncOneWearableGuarded's
+  // callers), which must not save lastScoreSyncAt below if this throws, so a
+  // partial fetch is retried in full next run rather than treated as done.
+  const raw = await fetchAllScores(wearable.openWearablesUserId, since, now);
 
-  const scores = (data?.data || []).map(normalizeScore);
+  const scores = raw.map(normalizeScore);
   const savedCount = await wearableIngest.applyScores(wearable.user, wearable.deviceType, wearable.deviceType, scores);
 
-  // Advance the cursor even when nothing new was found — "checked up to now,
-  // found nothing" still means the next run shouldn't re-ask for this window.
+  // Advance the cursor only after every page was fetched successfully —
+  // "checked up to now, found nothing" still means the next run shouldn't
+  // re-ask for this exact window, but a thrown error above never reaches here.
   wearable.lastScoreSyncAt = now;
   await wearable.save();
 

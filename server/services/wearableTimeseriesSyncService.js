@@ -31,6 +31,11 @@ const TIMESERIES_CAPABLE_DEVICE_TYPES = ['whoop'];
 
 const CONCURRENCY = 5;
 const FIRST_RUN_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+// Trailing buffer subtracted from an EXISTING cursor only — see the identical
+// comment in wearableScoreSyncService.js and WHOOP_SAME_DAY_SYNC_DIAGNOSTIC.md
+// for the full rationale (same unconditional-cursor-advance pattern, same fix).
+const SYNC_LOOKBACK_MS = 48 * 60 * 60 * 1000; // 48h
+const PAGE_LIMIT = 100;
 
 let isRunning = false;
 const inFlightWearableIds = new Set();
@@ -61,25 +66,53 @@ function normalizeSample(raw) {
   };
 }
 
+// Fetches every page for the window — timeseries pagination is cursor-based
+// (confirmed against Open Wearables' openapi schema: the endpoint takes a
+// `cursor` param, fed from the previous response's `pagination.next_cursor`).
+// Throws on any page failure rather than returning a partial result — the
+// caller must not advance the cursor on a partial fetch.
+async function fetchAllSamples(openWearablesUserId, since, until) {
+  const all = [];
+  let cursor;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    // Built manually, not passed via axios `params` — axios's default array
+    // serialization (types[]=steps) silently doesn't match what FastAPI's
+    // list[SeriesType] query param expects (repeated types=steps&types=x),
+    // so the filter was being ignored outright and the endpoint returned
+    // every series type instead of just the ones in TIMESERIES_PULL_TYPES.
+    const query = new URLSearchParams();
+    query.append('start_time', since.toISOString());
+    query.append('end_time', until.toISOString());
+    query.append('limit', String(PAGE_LIMIT));
+    for (const type of TIMESERIES_PULL_TYPES) query.append('types', type);
+    if (cursor) query.append('cursor', cursor);
+
+    const { data } = await openWearablesClient.get(
+      `/users/${openWearablesUserId}/timeseries?${query.toString()}`
+    );
+    const page = data?.data || [];
+    all.push(...page);
+    if (!data?.pagination?.has_more || !data?.pagination?.next_cursor) break;
+    cursor = data.pagination.next_cursor;
+  }
+  return all;
+}
+
 async function syncOneWearable(wearable) {
-  const since = wearable.lastTimeseriesSyncAt || new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   const now = new Date();
+  // First-run lookback (no cursor yet) is unchanged. The 48h trailing buffer
+  // applies only on top of an EXISTING cursor — see wearableScoreSyncService.js
+  // for the full rationale (identical pattern, identical fix).
+  const since = wearable.lastTimeseriesSyncAt
+    ? new Date(wearable.lastTimeseriesSyncAt.getTime() - SYNC_LOOKBACK_MS)
+    : new Date(now.getTime() - FIRST_RUN_LOOKBACK_MS);
 
-  // Built manually, not passed via axios `params` — axios's default array
-  // serialization (types[]=steps) silently doesn't match what FastAPI's
-  // list[SeriesType] query param expects (repeated types=steps&types=x),
-  // so the filter was being ignored outright and the endpoint returned
-  // every series type instead of just the ones in TIMESERIES_PULL_TYPES.
-  const query = new URLSearchParams();
-  query.append('start_time', since.toISOString());
-  query.append('end_time', now.toISOString());
-  for (const type of TIMESERIES_PULL_TYPES) query.append('types', type);
+  // Raises on any page failure — never reaches the cursor-save below, so a
+  // partial fetch is retried in full next run rather than treated as done.
+  const raw = await fetchAllSamples(wearable.openWearablesUserId, since, now);
 
-  const { data } = await openWearablesClient.get(
-    `/users/${wearable.openWearablesUserId}/timeseries?${query.toString()}`
-  );
-
-  const samples = (data?.data || []).map(normalizeSample);
+  const samples = raw.map(normalizeSample);
   const savedCount = await wearableIngest.applyGenericMetric(
     wearable.user,
     wearable.deviceType,
