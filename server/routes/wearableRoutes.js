@@ -25,6 +25,7 @@ const {
   getVitalsAnalyticsData,
   getRecoveryAnalyticsData
 } = require('../controllers/wearableController');
+const { getRawMetricsData, getRawScoresData } = require('../controllers/wearableRawController');
 
 // No auth — Open Wearables/Svix calls this directly, verified by signature instead of JWT
 router.post('/webhook', handleWebhook);
@@ -50,6 +51,8 @@ router.get('/heart-rate/trend', heavyReadLimiter, getHeartRateTrend);
 router.get('/stress/analytics', heavyReadLimiter, getStressAnalyticsData);
 router.get('/vitals/analytics', heavyReadLimiter, getVitalsAnalyticsData);
 router.get('/recovery/analytics', heavyReadLimiter, getRecoveryAnalyticsData);
+router.get('/metrics/raw', heavyReadLimiter, getRawMetricsData);
+router.get('/scores/raw', heavyReadLimiter, getRawScoresData);
 router.post('/demo-data', generateDemoData);
 
 module.exports = router;
