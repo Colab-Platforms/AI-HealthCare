@@ -14,6 +14,7 @@ const FCMToken = require('../models/FCMToken');
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const NotificationPreference = require('../models/NotificationPreference');
 const { normalizeDietaryPreference } = require('../utils/dietaryPreference');
 const crypto = require('crypto')
 
@@ -758,6 +759,21 @@ exports.register = async (req, res) => {
       });
 
       markWaitlistConverted(waitlistEntry);
+
+      // Default notification preferences (all reminder types on, schema
+      // defaults) — unconditional, no profile dependency. Without this, a
+      // user whose app shows an "ON" toggle that was never actually saved
+      // has no document for the reminder cron to find at all (see
+      // notificationPreferenceController.getPreferences' lazy upsert, which
+      // only fires once the Settings screen is opened — a real account hit
+      // this: reminders looked enabled but zero had ever been sent).
+      // Same atomic upsert pattern as that lazy path, so a double-submit
+      // signup can't throw a duplicate-key error on the unique userId index.
+      await NotificationPreference.findOneAndUpdate(
+        { userId: user._id },
+        { $setOnInsert: { userId: user._id } },
+        { upsert: true }
+      ).catch((e) => console.error(`[NotificationPreference] Default creation failed for user ${user._id}:`, e.message));
 
       const ConsentLog = require('../models/ConsentLog');
       await ConsentLog.create({
