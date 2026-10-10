@@ -1272,6 +1272,17 @@ function dateOnlyUTC(isoString) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+// Same "calendar-day marker" shape as dateOnlyUTC (a UTC-midnight Date whose
+// Y-M-D is stored as the day key), but the Y-M-D itself comes from the
+// instant's Asia/Kolkata calendar date, not UTC. Used for overnight sleep
+// sessions specifically — a session is bucketed by the user's local
+// wake-up day, not by whichever UTC date its bed time happens to fall on.
+function dateOnlyIST(isoString) {
+  const { istDateKey } = require('../services/dailyInsightService');
+  const key = istDateKey(new Date(isoString)); // 'YYYY-MM-DD' in IST
+  return new Date(`${key}T00:00:00.000Z`);
+}
+
 // Receive events pushed by Open Wearables (via Svix) once an endpoint is
 // registered — see server/scripts/registerOpenWearablesWebhook.js for setup.
 // No auth middleware on this route — Svix calls it directly, not the browser.
@@ -1391,7 +1402,12 @@ exports.handleWebhook = async (req, res) => {
         const wearable = await findWearableDoc(data.user_id, data.source?.provider);
         if (wearable) {
           await wearableIngest.applySleepSessions(wearable.user, wearable.deviceType, 'open_wearables', [{
-            date: dateOnlyUTC(data.start_time),
+            // Bucketed by wake-up day in IST, not bed-time's UTC date — an
+            // overnight session (e.g. bed 10:45 PM IST, wake 6:30 AM IST)
+            // belongs to the morning the user actually experiences it as,
+            // which is also the wake-time's calendar date in every normal
+            // case (bed time is always the prior IST evening).
+            date: dateOnlyIST(data.end_time),
             totalSleepMinutes: Math.round(data.duration_seconds / 60),
             deepSleepMinutes: data.stages?.deep_minutes,
             lightSleepMinutes: data.stages?.light_minutes,

@@ -88,8 +88,37 @@ test('sleepSync: a fetched session is normalized correctly (stages, bedTime/wake
   assert.strictEqual(sessions[0].awakeMinutes, 37);
   assert.strictEqual(sessions[0].totalSleepMinutes, Math.round(28633 / 60));
   assert.strictEqual(sessions[0].sourceRecordId, 'sleep-abc');
+  // Bed 7 Oct 10:45 PM IST -> wake 8 Oct 6:42 AM IST: must bucket to 8 Oct
+  // (wake day), not 7 Oct (the old UTC-bed-time behavior).
+  assert.strictEqual(sessions[0].date.toISOString(), '2026-10-08T00:00:00.000Z');
   assert.strictEqual(sessions[0].bedTime, '2026-10-07T17:15:18.940Z');
   assert.strictEqual(sessions[0].wakeTime, '2026-10-08T01:12:32.370Z');
+});
+
+test('sleepSync: a very-late IST bedtime (crosses the UTC date line but not the IST one) still buckets to the wake day', async () => {
+  delete require.cache[require.resolve('../services/wearableSleepSyncService')];
+  // Bed 12:30 AM IST on 9 Oct == 2026-10-08T19:00:00Z (still 8 Oct in UTC).
+  // Wake 7:00 AM IST on 9 Oct == 2026-10-09T01:30:00Z. The whole session is
+  // IST-9-Oct throughout, but a UTC-start-time bucketing would have wrongly
+  // filed it under 8 Oct.
+  mock.method(openWearablesClient, 'get', async () => ({
+    data: {
+      data: [{
+        id: 'sleep-late', start_time: '2026-10-08T19:00:00.000Z', end_time: '2026-10-09T01:30:00.000Z',
+        duration_seconds: 23400, stages: {},
+      }],
+      pagination: { has_more: false, next_cursor: null },
+    },
+  }));
+  const applyMock = mock.method(wearableIngest, 'applySleepSessions', async () => {});
+  const { syncSleepForConnection } = require('../services/wearableSleepSyncService');
+  const WearableData = require('../models/WearableData');
+  mock.method(WearableData, 'findOne', async () => makeWearable({ lastSleepSyncAt: new Date() }));
+
+  await syncSleepForConnection('ow-1', 'whoop');
+
+  const sessions = applyMock.mock.calls[0].arguments[3];
+  assert.strictEqual(sessions[0].date.toISOString(), '2026-10-09T00:00:00.000Z');
 });
 
 test('sleepSync: a page failure does not advance the cursor', async () => {

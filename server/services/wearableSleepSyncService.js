@@ -44,14 +44,19 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
-function dateOnlyUTC(value) {
-  const d = new Date(value);
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+// Bucketed by wake-up day in IST, not bed-time's UTC date — mirrors the
+// identical fix in wearableController.js's 'sleep.created' webhook handler
+// (same reasoning, kept in sync so the webhook path and this REST-pull
+// safety net never disagree on which day a session belongs to).
+function dateOnlyIST(value) {
+  const { istDateKey } = require('./dailyInsightService');
+  const key = istDateKey(new Date(value));
+  return new Date(`${key}T00:00:00.000Z`);
 }
 
 function normalizeSleepEvent(raw) {
   return {
-    date: dateOnlyUTC(raw.start_time),
+    date: dateOnlyIST(raw.end_time),
     totalSleepMinutes: Math.round(raw.duration_seconds / 60),
     deepSleepMinutes: raw.stages?.deep_minutes,
     lightSleepMinutes: raw.stages?.light_minutes,
