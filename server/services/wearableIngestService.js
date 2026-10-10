@@ -27,6 +27,56 @@ const HeartRateSample = require('../models/HeartRateSample');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
 const StressDailySummary = require('../models/StressDailySummary');
 const VitalsDailySummary = require('../models/VitalsDailySummary');
+const crypto = require('crypto');
+const { getClient: getRedisClient } = require('../utils/redisClient');
+
+// Cross-process lock for applyScores' find->delete->create sequence.
+// inFlightWearableIds (wearableScoreSyncService.js) only serializes calls
+// within ONE Node process; it does nothing across Render instances/workers,
+// and a real two-connection race against this exact identity has been
+// reproduced in staging (duplicate doc created). SET NX PX is atomic in
+// Redis regardless of how many processes call it, which is what the
+// in-memory Set can't give us. Falls back to running unlocked if Redis is
+// down, same fail-open posture as utils/cache.js — losing the lock only
+// reopens the same narrow window that already existed before this fix, it
+// doesn't make anything worse.
+const SCORE_LOCK_TTL_MS = 10000;
+const SCORE_LOCK_RETRY_DELAY_MS = 100;
+const SCORE_LOCK_MAX_WAIT_MS = 5000;
+const SCORE_UNLOCK_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`;
+
+function scoreLockKey(userId, deviceType, category, timestamp) {
+  return `lock:score:${userId}:${deviceType}:${category}:${new Date(timestamp).getTime()}`;
+}
+
+async function withScoreLock(key, fn) {
+  const redis = getRedisClient();
+  if (!redis) return fn();
+
+  const token = crypto.randomUUID();
+  const deadline = Date.now() + SCORE_LOCK_MAX_WAIT_MS;
+  let acquired = false;
+  while (Date.now() < deadline) {
+    const result = await redis.set(key, token, 'NX', 'PX', SCORE_LOCK_TTL_MS);
+    if (result === 'OK') { acquired = true; break; }
+    await new Promise(r => setTimeout(r, SCORE_LOCK_RETRY_DELAY_MS));
+  }
+  if (!acquired) {
+    throw new Error(`applyScores: could not acquire lock for ${key} within ${SCORE_LOCK_MAX_WAIT_MS}ms`);
+  }
+
+  try {
+    return await fn();
+  } finally {
+    await redis.eval(SCORE_UNLOCK_SCRIPT, 1, key, token).catch(() => {});
+  }
+}
 
 function dateOnlyUTC(value) {
   const d = new Date(value);
@@ -393,25 +443,75 @@ async function applyGenericMetric(userId, deviceType, provider, samples, { weara
 }
 
 // --- Health scores (Recovery / Strain / Sleep performance) -----------------
-// Pulled, not pushed — see wearableScoreSyncService.js. Dedup is by Open
-// Wearables' own health_score row id (externalId), since this is a
-// time-series collection and can't carry a unique secondary index.
+// Pulled, not pushed — see wearableScoreSyncService.js.
+//
+// Dedup/identity is (user, deviceType, category, timestamp) — NOT
+// externalId. Confirmed from Open Wearables' own source
+// (event_record_service.py's _recompute_sleep_scores): every sleep-session
+// save/merge deletes and recreates that date's sleep HealthScore row with a
+// brand-new id, specifically because its own unique constraint keys on
+// recorded_at, not id ("a second convention here produces a duplicate score
+// instead of replacing the existing one" — their docstring). externalId
+// therefore churns on every recompute while the real identity (timestamp)
+// doesn't; deduping on externalId let the same logical score re-insert as a
+// new document on every sync, which is the exact bug this fixes (confirmed
+// live: 24 duplicate Mongo rows for one sleep score, one row in Postgres).
+// deviceType scopes this per-provider, so two providers legitimately
+// computing a score in the same category at a coincidentally-identical
+// instant still can't collide; Strain's multiple-per-day entries keep their
+// own genuinely-distinct timestamps, so they're unaffected.
+//
+// Time-series collections can't update a single document in place (verified
+// empirically: findOneAndUpdate/updateOne/updateMany+upsert are all
+// rejected) but do support delete — so a changed value is applied via
+// delete-old + insert-new under the same logical identity, not a true atomic
+// upsert. This is a small, accepted race window, consistent with every other
+// dedup in this file (time-series collections can't carry a unique index).
 async function applyScores(userId, deviceType, provider, scores) {
   let savedCount = 0;
   for (const score of scores) {
-    const exists = await WearableScoreSample.exists({ user: userId, externalId: score.externalId });
-    if (exists) continue;
-
-    await WearableScoreSample.create({
+    const identity = {
       user: userId,
-      meta: { deviceType, category: score.category, provider },
-      externalId: score.externalId,
-      timestamp: score.timestamp,
-      value: score.value,
-      qualifier: score.qualifier,
-      components: score.components
+      'meta.deviceType': deviceType,
+      'meta.category': score.category,
+      timestamp: score.timestamp
+    };
+    const lockKey = scoreLockKey(userId, deviceType, score.category, score.timestamp);
+
+    const changed = await withScoreLock(lockKey, async () => {
+      const existing = await WearableScoreSample.findOne(identity).lean();
+
+      if (existing) {
+        const valueChanged = existing.value !== score.value;
+        const componentsChanged = JSON.stringify(existing.components || null) !== JSON.stringify(score.components || null);
+        if (!valueChanged && !componentsChanged) return false; // genuinely the same score, nothing to do
+
+        await WearableScoreSample.deleteOne({ _id: existing._id });
+        await WearableScoreSample.create({
+          user: userId,
+          meta: { deviceType, category: score.category, provider },
+          externalId: score.externalId,
+          timestamp: score.timestamp,
+          value: score.value,
+          qualifier: score.qualifier,
+          components: score.components
+        });
+        return true; // a real change — caller's cache invalidation must still fire
+      }
+
+      await WearableScoreSample.create({
+        user: userId,
+        meta: { deviceType, category: score.category, provider },
+        externalId: score.externalId,
+        timestamp: score.timestamp,
+        value: score.value,
+        qualifier: score.qualifier,
+        components: score.components
+      });
+      return true;
     });
-    savedCount += 1;
+
+    if (changed) savedCount += 1;
   }
   return savedCount;
 }
