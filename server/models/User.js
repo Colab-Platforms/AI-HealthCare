@@ -51,7 +51,11 @@ const userSchema = new mongoose.Schema({
   profile: {
     age: { type: Number, min: 0, max: 120 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
-    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },
+    // No default — a client (web or mobile) that omits this field during
+    // signup must leave it unset, not silently become 'non-vegetarian'. The
+    // resolver (utils/dietaryPreference.js) treats unset as "ask the user",
+    // which is the whole point of removing this default.
+    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'] },
     height: { type: Number, min: 0, max: 300 }, // in cm
     weight: { type: Number, min: 0, max: 500 }, // in kg
     bloodGroup: String,

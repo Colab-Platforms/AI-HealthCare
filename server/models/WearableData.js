@@ -16,6 +16,20 @@ const wearableDataSchema = new mongoose.Schema({
   deviceName: String,
   isConnected: { type: Boolean, default: true },
   lastSyncedAt: { type: Date, default: Date.now },
+  // Cursor for wearableScoreSyncService's periodic pull (Recovery/Strain/Sleep
+  // scores have no webhook, so we poll — this marks how far that poll has
+  // gotten, so each run only asks Open Wearables for what's new since last time).
+  lastScoreSyncAt: { type: Date },
+  // Cursor for wearableTimeseriesSyncService's periodic pull (steps, and any
+  // other series_type Open Wearables' webhook thread unreliably delivers —
+  // see that service's file comment for why this exists alongside webhooks).
+  lastTimeseriesSyncAt: { type: Date },
+  // Cursor for wearableSleepSyncService's periodic pull — applySleepSessions
+  // was previously reachable only via the 'sleep.created' webhook, with no
+  // REST-pull safety net; this mirrors the lastScoreSyncAt/lastTimeseriesSyncAt
+  // pattern for the same reason (a dropped/incomplete webhook delivery had no
+  // way to ever self-correct — confirmed missing live for a real session).
+  lastSleepSyncAt: { type: Date },
 
   // Open Wearables service ka internal user ID — webhook se aane wale data ko
   // isi field se match karke pata chalega ye kis user ka data hai
@@ -120,7 +134,11 @@ const wearableDataSchema = new mongoose.Schema({
   // a single event with its own start/end and stats.
   workouts: [{
     workoutId: String,
-    type: String,
+    // Wrapped as {type: String} rather than bare `type: String` — Mongoose
+    // treats a bare `type` key in a subdocument object as the SchemaType
+    // descriptor for the whole object, not a field named "type", which
+    // silently collapsed this entire array to [String] regardless of provider.
+    type: { type: String },
     startTime: Date,
     endTime: Date,
     durationSeconds: Number,

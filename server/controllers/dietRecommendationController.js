@@ -753,9 +753,19 @@ exports.getActiveDietPlan = async (req, res) => {
       });
     }
 
+    // Safety net alongside the background regenerate triggered on profile save
+    // (see authController.js) — if that fire-and-forget trigger ever failed to
+    // fire, this still tells the client the stored plan was built for a diet
+    // type the user has since changed, instead of silently serving old meals.
+    // Computed at read time, not stored, so it can never itself go stale.
+    const currentDiet = resolveDietaryPreference(req.user).value;
+    const isStale = !!(currentDiet && dietPlan.inputData?.dietaryPreference && dietPlan.inputData.dietaryPreference !== currentDiet);
+
     res.json({
       success: true,
-      dietPlan
+      dietPlan,
+      isStale,
+      ...(isStale ? { staleReason: 'dietary_preference_changed' } : {})
     });
   } catch (error) {
     console.error('Get diet plan error:', error);
