@@ -2,6 +2,14 @@ const { getFirebaseApp } = require('../config/firebase');
 const { getMessaging } = require('firebase-admin/messaging');
 const FCMToken = require('../models/FCMToken');
 
+// Must match the Android notification channel the Flutter app actually
+// creates. It doesn't create one called 'health_reminders' — on Android 8+
+// (API 26+), a 'notification' message naming a channel the app never
+// registered is delivered to the device (FCM reports success, lastUsedAt
+// updates) but the OS silently drops it instead of showing it. This is the
+// app's manifest default, confirmed with the app dev.
+const ANDROID_NOTIFICATION_CHANNEL_ID = 'take_health_high_importance';
+
 const getMsg = () => {
   const app = getFirebaseApp();
   if (!app) return null;
@@ -54,7 +62,7 @@ const sendToUser = async (userId, { title, body, data = {}, imageUrl } = {}) => 
       tokens,
       notification: { title, body, ...(imageUrl && { imageUrl }) },
       data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-      android: { priority: 'high', notification: { sound: 'default', channelId: 'health_reminders' } },
+      android: { priority: 'high', notification: { sound: 'default', channelId: ANDROID_NOTIFICATION_CHANNEL_ID } },
       apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       webpush: { notification: { icon: 'https://take.health/logo192.png', badge: 'https://take.health/badge.png' } }
     };
@@ -111,7 +119,7 @@ const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } =
         tokens,
         notification: { title, body, ...(imageUrl && { imageUrl }) },
         data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-        android: { priority: 'high', notification: { sound: 'default', channelId: 'health_reminders' } },
+        android: { priority: 'high', notification: { sound: 'default', channelId: ANDROID_NOTIFICATION_CHANNEL_ID } },
         apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       });
       response.responses.forEach((r, i) => {
