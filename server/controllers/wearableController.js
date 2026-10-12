@@ -1283,6 +1283,28 @@ function dateOnlyIST(isoString) {
   return new Date(`${key}T00:00:00.000Z`);
 }
 
+// WHOOP's steps.created/calories.created samples arrive timestamped at the
+// CYCLE's start — which is literally that night's bedtime (confirmed by
+// cross-referencing against sleep.created events for the same user: the two
+// timestamps are identical down to the millisecond). The cycle itself,
+// though, is "the day you were awake for", which WHOOP's own app labels by
+// the wake-up that follows — the same convention dateOnlyIST already uses
+// for sleep. A bedtime can fall anywhere from early evening to the small
+// hours after midnight IST, so neither a flat UTC date nor a flat IST date
+// of the raw timestamp lines up with WHOOP's label on its own. Shifting the
+// instant forward 12h before taking its IST calendar date does: it reframes
+// the day boundary from midnight to noon IST, which always falls inside
+// that night's sleep window regardless of how late the bedtime was,
+// landing on the one calendar day both the bedtime and its following
+// wake-up are "closest to" from WHOOP's perspective. Verified against 3
+// consecutive real cycles (all three matched WHOOP's own per-day totals
+// exactly) before shipping.
+exports.dateOnlyWhoopCycleDay = dateOnlyWhoopCycleDay;
+function dateOnlyWhoopCycleDay(isoString) {
+  const shifted = new Date(new Date(isoString).getTime() + 12 * 60 * 60 * 1000);
+  return dateOnlyIST(shifted.toISOString());
+}
+
 // Receive events pushed by Open Wearables (via Svix) once an endpoint is
 // registered — see server/scripts/registerOpenWearablesWebhook.js for setup.
 // No auth middleware on this route — Svix calls it directly, not the browser.
@@ -1513,7 +1535,15 @@ exports.handleWebhook = async (req, res) => {
           // Only additive when the provider gives intraday samples (is_daily_total: false);
           // a true daily total should replace, not add to, the day's figure.
           for (const sample of data.samples) {
-            const date = dateOnlyUTC(sample.timestamp);
+            // WHOOP's daily-total steps sample is timestamped at the cycle's
+            // start (that night's bedtime, not "now") — see
+            // dateOnlyWhoopCycleDay's comment. Other providers' intraday
+            // samples carry a real measurement time, so only WHOOP's daily
+            // totals get the cycle-day remap; everything else keeps the
+            // plain UTC date it already had.
+            const date = (data.provider === 'whoop' && sample.is_daily_total)
+              ? dateOnlyWhoopCycleDay(sample.timestamp)
+              : dateOnlyUTC(sample.timestamp);
             let entry = wearable.dailyMetrics.find(
               m => dateOnlyUTC(m.date).getTime() === date.getTime()
             );
@@ -1542,7 +1572,11 @@ exports.handleWebhook = async (req, res) => {
         const wearable = await findWearableDoc(data.user_id, data.provider);
         if (wearable) {
           for (const sample of data.samples) {
-            const date = dateOnlyUTC(sample.timestamp);
+            // Same cycle-start-timestamp quirk as steps.created above —
+            // only WHOOP's daily totals need the remap.
+            const date = (data.provider === 'whoop' && sample.is_daily_total)
+              ? dateOnlyWhoopCycleDay(sample.timestamp)
+              : dateOnlyUTC(sample.timestamp);
             let entry = wearable.dailyMetrics.find(
               m => dateOnlyUTC(m.date).getTime() === date.getTime()
             );

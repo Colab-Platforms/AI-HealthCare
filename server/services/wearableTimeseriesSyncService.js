@@ -15,8 +15,11 @@
 
 const openWearablesClient = require('../config/openWearables');
 const WearableData = require('../models/WearableData');
+const DailyActivityMetric = require('../models/DailyActivityMetric');
+const WearableMetricSample = require('../models/WearableMetricSample');
 const wearableIngest = require('./wearableIngestService');
 const cache = require('../utils/cache');
+const { istDateKey } = require('./dailyInsightService');
 
 // series_types to pull this way. Keep this list to the ones actually proven
 // unreliable over the webhook path — everything else (energy, heart_rate,
@@ -127,6 +130,72 @@ async function fetchAllSamples(openWearablesUserId, since, until) {
   return all;
 }
 
+// Same math as wearableController.js's dateOnlyWhoopCycleDay, duplicated
+// rather than imported (this codebase keeps these small day-math helpers
+// local to each file — see dateOnlyUTC's own separate copies). WHOOP's
+// daily-total steps sample is timestamped at the cycle's start, i.e. that
+// night's bedtime, not "now" — confirmed by matching it millisecond-for-
+// millisecond against the matching sleep.created event's bedTime. Shifting
+// +12h before taking the IST calendar date reframes the day boundary from
+// midnight to noon IST, which always falls inside that night's sleep
+// window regardless of how late the bedtime was.
+function dateOnlyWhoopCycleDay(isoString) {
+  const shifted = new Date(new Date(isoString).getTime() + 12 * 60 * 60 * 1000);
+  const key = istDateKey(shifted);
+  return new Date(`${key}T00:00:00.000Z`);
+}
+
+const STEPS_BACKFILL_LOOKBACK_MS = 4 * 24 * 60 * 60 * 1000; // 4 days — covers a cycle whose steps.created webhook never arrived at all
+
+// DailyActivityMetric.steps (what /dashboard and /activity/analytics
+// actually read) is populated ONLY by the steps.created webhook in
+// wearableController.js — and that webhook is the one confirmed unreliable
+// enough to need this same service's raw-sample pull as its own safety net
+// (see the file header comment). But the raw-sample pull only ever lands in
+// WearableMetricSample; nothing was re-deriving DailyActivityMetric from it
+// when the webhook dropped entirely, so a day's steps could go permanently
+// missing from the app even though the raw numbers were sitting right here.
+// Runs after every WHOOP timeseries pull (webhook-triggered or cron) and
+// re-derives each recent day's total from whatever raw samples exist,
+// taking the max per day since WHOOP's intraday snapshots only grow over
+// the day (same reasoning WearableScoreSample's reader notes use for
+// same-day Strain). $max makes this safe regardless of run order or overlap
+// with a webhook write that's already ahead of it.
+async function backfillWhoopDailySteps(wearable) {
+  const since = new Date(Date.now() - STEPS_BACKFILL_LOOKBACK_MS);
+  const samples = await WearableMetricSample.find({
+    user: wearable.user,
+    'meta.deviceType': 'whoop',
+    'meta.seriesType': 'steps',
+    isDailyTotal: true,
+    timestamp: { $gte: since }
+  }).select('timestamp value').lean();
+
+  if (samples.length === 0) {
+    return { datesChecked: 0 };
+  }
+
+  const byDate = new Map();
+  for (const s of samples) {
+    const dateMs = dateOnlyWhoopCycleDay(s.timestamp).getTime();
+    const existing = byDate.get(dateMs) || 0;
+    if (s.value > existing) byDate.set(dateMs, s.value);
+  }
+
+  for (const [dateMs, steps] of byDate) {
+    await DailyActivityMetric.findOneAndUpdate(
+      { user: wearable.user, deviceType: 'whoop', date: new Date(dateMs) },
+      { $max: { steps } },
+      { upsert: true }
+    );
+  }
+
+  cache.delete(`dashboard:${wearable.user}`);
+  cache.deletePattern(`activity_analytics:${wearable.user}:*`);
+
+  return { datesChecked: byDate.size };
+}
+
 async function syncOneWearable(wearable) {
   const now = new Date();
   // First-run lookback (no cursor yet) is unchanged. The 48h trailing buffer
@@ -156,7 +225,12 @@ async function syncOneWearable(wearable) {
     cache.delete(`dashboard:${wearable.user}`);
   }
 
-  return { wearableId: wearable._id, fetched: samples.length, saved: savedCount };
+  let stepsBackfill = null;
+  if (wearable.deviceType === 'whoop') {
+    stepsBackfill = await backfillWhoopDailySteps(wearable);
+  }
+
+  return { wearableId: wearable._id, fetched: samples.length, saved: savedCount, stepsBackfill };
 }
 
 async function syncOneWearableGuarded(wearable) {
@@ -239,4 +313,4 @@ async function runTimeseriesSync() {
   }
 }
 
-module.exports = { runTimeseriesSync, syncTimeseriesForConnection, TIMESERIES_CAPABLE_DEVICE_TYPES };
+module.exports = { runTimeseriesSync, syncTimeseriesForConnection, TIMESERIES_CAPABLE_DEVICE_TYPES, backfillWhoopDailySteps, dateOnlyWhoopCycleDay };
