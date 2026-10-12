@@ -221,15 +221,15 @@ STRUCTURE:
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
     "breakfast": [
-      {"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
+      {"name": "Meal Name", "description": "one short line", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
       ... 7 items total
     ],
     "lunch": [
-      {"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
+      {"name": "Meal Name", "description": "one short line", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
       ... 7 items total
     ],
     "dinner": [
-      {"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
+      {"name": "Meal Name", "description": "one short line", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0, "saturatedFat": 0, "vitaminA": 0, "vitaminC": 0, "vitaminD": 0, "vitaminB12": 0, "iron": 0, "calcium": 0, "potassium": 0, "magnesium": 0, "omega3": 0},
       ... 7 items total
     ]
   }
@@ -257,7 +257,8 @@ REQUIREMENTS:
 7. MANDATORY PREFERENCE RULE: If user listed Breakfast Favorites, minimum 5 out of 7 breakfast options MUST be built around those exact ingredients (e.g. if user likes "Toast" → "Masala Toast with Egg", "Peanut Butter Toast", "Avocado Toast", "Toast with Dal", "French Toast" — all count). Same rule for Lunch and Dinner favorites — minimum 5 out of 7 must feature them. If user listed only 1-2 items, repeat them across different preparations to meet the 5/7 minimum. General Preferred Foods must appear across at least 5 days total. NEVER suggest foods from their "MUST AVOID" list.
 8. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
 9. ${elevatedNote} ${diabeticAlcoholNote}
-10. ${promptExtension}
+10. DISH NAMING (MANDATORY): "name" is the dish name ONLY — never append a location suffix like "- Alibag Style", "- Authentic", "- Homestyle", or a region/city name. If the dish's common name is in a regional language, an English gloss may follow in parentheses, capped at 3 words (e.g. "Kolambi Pohe (Prawn Flattened Rice)"), not a full restaurant-menu phrase. Keep "name" under ~45 characters. Put any regional/cultural context (e.g. "A Konkan coastal classic from the user's city") in "description" instead — never in "name".
+11. ${promptExtension}
 
 JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
 
