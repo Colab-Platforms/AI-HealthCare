@@ -1,7 +1,7 @@
 const UserMetricBaseline = require('../models/UserMetricBaseline');
 const DailyHealthScore = require('../models/DailyHealthScore');
 const NutritionSummary = require('../models/NutritionSummary');
-const WearableData = require('../models/WearableData');
+const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const ExerciseLog = require('../models/ExerciseLog');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
@@ -84,9 +84,17 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-  const [nutritionSummary, wearables, sleepSession, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
+  const [nutritionSummary, activityMetrics, sleepSession, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
-    WearableData.find({ user: userId }).lean(),
+    // DailyActivityMetric, not the legacy WearableData.dailyMetrics[] array —
+    // that array is no longer reliably kept in sync (WHOOP and some other
+    // sync paths write only to DailyActivityMetric now), so a user could have
+    // today's steps correctly synced and visible on the Activity tab while
+    // this score silently dropped the whole activity component because the
+    // legacy array had a gap for that day. One doc per user+deviceType+day,
+    // same model activityAnalyticsService.js already reads — merged below
+    // the same way it merges multiple connected devices for one day.
+    DailyActivityMetric.find({ user: userId, date: dayStart }).select('steps activeMinutes').lean(),
     // SleepSession, not WearableData.sleepData[] — that legacy embedded array
     // never deduplicates same-day pushes the way SleepSession does (via
     // sourceRecordId), so a day synced more than once accumulates multiple
@@ -214,7 +222,15 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // rather than pick an unjustifiable number. Renormalized over whichever
   // signals are actually available that day (see the loop below), the same
   // pattern used for the config-driven weights this replaces.
-  const stepsEntry = findDailyEntry(wearables, 'dailyMetrics', dateStr);
+  // Sum across every connected device for the day (same merge
+  // activityAnalyticsService.js uses) — a user with two synced devices isn't
+  // scored on only whichever happened to be fetched first.
+  const stepsEntry = activityMetrics.length
+    ? activityMetrics.reduce((acc, m) => ({
+        steps: acc.steps + (m.steps || 0),
+        activeMinutes: acc.activeMinutes + (m.activeMinutes || 0),
+      }), { steps: 0, activeMinutes: 0 })
+    : null;
   const activityParts = [];
   // Grouped under raw.activity (not flat raw.xxx like Sleep/Hydration/
   // Nutrition above) specifically because the flat names here were
@@ -535,17 +551,6 @@ function lookupTrackerEntry(log, dateStr) {
   const nextDay = new Date(`${dateStr}T00:00:00.000Z`);
   nextDay.setUTCDate(nextDay.getUTCDate() + 1);
   return log[nextDay.toISOString().split('T')[0]] || null;
-}
-
-function findDailyEntry(wearables, arrayField, dateStr) {
-  for (const w of wearables) {
-    const match = (w[arrayField] || []).find((entry) => {
-      const d = new Date(entry.date);
-      return d.toISOString().split('T')[0] === dateStr;
-    });
-    if (match) return match;
-  }
-  return null;
 }
 
 module.exports = { calculateDailyScore };
