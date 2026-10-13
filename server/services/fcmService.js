@@ -103,8 +103,8 @@ const sendToUser = async (userId, { title, body, data = {}, imageUrl } = {}) => 
 // paid once per batch instead of once per notification.
 const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } = {}) => {
   const messaging = getMsg();
-  if (!messaging) return { successCount: 0, total: entries.length, reason: 'FCM not configured' };
-  if (entries.length === 0) return { successCount: 0, total: 0 };
+  if (!messaging) return { successCount: 0, total: entries.length, reason: 'FCM not configured', results: entries.map(() => ({ successCount: 0, total: 0, error: 'FCM not configured' })) };
+  if (entries.length === 0) return { successCount: 0, total: 0, results: [] };
 
   const userIds = [...new Set(entries.map((e) => e.userId.toString()))];
   const tokenDocs = await FCMToken.find({ userId: { $in: userIds }, isActive: true }).lean();
@@ -119,10 +119,18 @@ const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } =
   let successCount = 0;
   const usedTokens = [];
   const allResponses = []; // { token, success, code }
+  // Index-aligned with `entries` so the caller can map each result back to
+  // the Notification document it was built from — see Notification model's
+  // pushDelivery field. Assigned by index (not .push()) because sendOne runs
+  // concurrently; push() order would not match entries order.
+  const entryResults = new Array(entries.length);
 
-  const sendOne = async (entry) => {
+  const sendOne = async (entry, idx) => {
     const tokens = tokensByUser.get(entry.userId.toString());
-    if (!tokens || tokens.length === 0) return;
+    if (!tokens || tokens.length === 0) {
+      entryResults[idx] = { successCount: 0, total: 0, error: 'no_active_token' };
+      return;
+    }
 
     const { title, body, data = {}, imageUrl } = entry.payload || {};
     try {
@@ -133,18 +141,23 @@ const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } =
         android: { priority: 'high', notification: { sound: 'default' } },
         apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       });
+      let entrySuccess = 0;
+      let firstError = null;
       response.responses.forEach((r, i) => {
         allResponses.push({ token: tokens[i], success: r.success, code: r.error?.code });
-        if (r.success) { successCount++; usedTokens.push(tokens[i]); }
+        if (r.success) { successCount++; usedTokens.push(tokens[i]); entrySuccess++; }
+        else if (!firstError) firstError = r.error?.code || r.error?.message || 'unknown';
       });
+      entryResults[idx] = { successCount: entrySuccess, total: tokens.length, error: entrySuccess === 0 ? firstError : null };
     } catch (error) {
       console.error(`FCM sendToUsersBulk error (userId: ${entry.userId}):`, error.message);
+      entryResults[idx] = { successCount: 0, total: tokens.length, error: error.message };
     }
   };
 
   for (let i = 0; i < entries.length; i += concurrency) {
     const wave = entries.slice(i, i + concurrency);
-    await Promise.allSettled(wave.map(sendOne));
+    await Promise.allSettled(wave.map((entry, j) => sendOne(entry, i + j)));
   }
 
   await cleanupInvalidTokens(
@@ -156,7 +169,7 @@ const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } =
   }
 
   console.log(`✅ FCM sendToUsersBulk: ${successCount} pushes delivered across ${userIds.length} users`);
-  return { successCount, total: entries.length };
+  return { successCount, total: entries.length, results: entryResults };
 };
 
 // Send to multiple users — batched multicast (500 tokens per batch)

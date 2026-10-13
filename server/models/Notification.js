@@ -35,6 +35,18 @@ const notificationSchema = new mongoose.Schema({
     read: { type: Boolean, default: false },
     actionUrl: String, // Where clicking the notification should navigate
     metadata: mongoose.Schema.Types.Mixed, // Additional data (e.g., macro values)
+    // Result of the actual FCM push attempt for this record, written right
+    // after dispatchPush resolves — without this, "push never arrived" was
+    // only diagnosable by reading live Render logs at the exact minute it
+    // happened (see the debugging history that led here). successCount/total
+    // are per-device (one user can have several tokens); error is the first
+    // FCM error code hit when successCount is 0. Absent on older records and
+    // on notification types that never push (e.g. nothing to diagnose there).
+    pushDelivery: {
+        successCount: Number,
+        total: Number,
+        error: String
+    },
     expiresAt: Date // Auto-expire notifications
 }, {
     timestamps: true

@@ -244,12 +244,17 @@ class NotificationService {
 
             const processChunk = async ({ chunk, chunkPushes }) => {
                 try {
-                    await Notification.insertMany(chunk, { ordered: false });
+                    // insertMany's returned array carries the generated _ids in the
+                    // same order as `chunk` (true whenever every doc inserts cleanly,
+                    // which these always do — they're built by this file, not user
+                    // input) — used below to write each one's own push result back.
+                    const inserted = await Notification.insertMany(chunk, { ordered: false });
                     // Only mark as sent once it is durably stored — a failed chunk is
                     // retried on the next tick rather than silently dropped.
                     for (const p of chunkPushes) this.sentToday.add(p.key);
-                    await this.dispatchPush(chunkPushes);
-                    return chunk.length;
+                    const pushResult = await this.dispatchPush(chunkPushes);
+                    await this.recordPushDelivery(inserted, pushResult?.results);
+                    return inserted.length;
                 } catch (error) {
                     console.error(`Notification insert chunk failed (${chunk.length} docs):`, error.message);
                     return 0;
@@ -301,9 +306,28 @@ class NotificationService {
     // not stop the rest of the batch or retry the DB write.
     async dispatchPush(entries) {
         try {
-            await sendToUsersBulk(entries);
+            return await sendToUsersBulk(entries);
         } catch (error) {
             console.error('FCM bulk push failed:', error.message);
+            return null;
+        }
+    }
+
+    // Persists each notification's own push result (see Notification model's
+    // pushDelivery field) so "did this one actually push, and why not" is a
+    // DB read instead of hunting the exact minute in Render's live logs —
+    // that gap was the real cost in the debugging that led here. Best-effort:
+    // wrapped in its own catch so a write failure here never affects delivery
+    // itself, which has already happened by this point either way.
+    async recordPushDelivery(inserted, results) {
+        if (!results || results.length !== inserted.length) return;
+        try {
+            const ops = inserted
+                .map((doc, i) => results[i] ? { updateOne: { filter: { _id: doc._id }, update: { pushDelivery: results[i] } } } : null)
+                .filter(Boolean);
+            if (ops.length) await Notification.bulkWrite(ops, { ordered: false });
+        } catch (error) {
+            console.error('[Notification] pushDelivery write failed:', error.message);
         }
     }
 
