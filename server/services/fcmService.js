@@ -2,14 +2,25 @@ const { getFirebaseApp } = require('../config/firebase');
 const { getMessaging } = require('firebase-admin/messaging');
 const FCMToken = require('../models/FCMToken');
 
-// Must match the Android notification channel the Flutter app actually
-// creates. It doesn't create one called 'health_reminders' — on Android 8+
-// (API 26+), a 'notification' message naming a channel the app never
-// registered is delivered to the device (FCM reports success, lastUsedAt
-// updates) but the OS silently drops it instead of showing it. This is the
-// app's manifest default, confirmed with the app dev.
-const ANDROID_NOTIFICATION_CHANNEL_ID = 'take_health_high_importance';
-
+// Deliberately NO android.notification.channelId override below.
+//
+// History: this was 'health_reminders' (wrong — app never created that
+// channel, so Android silently dropped the notification), then
+// 'take_health_high_importance' per the app dev's claim of the manifest
+// default (also wrong in practice — same silent-drop symptom: in-app record
+// created, FCM reports delivered, nothing shown). Both times the failure was
+// invisible from the server side; the only thing that actually proved
+// anything was a live side-by-side test: sendToToken (below, never set a
+// channelId) showed a real system push, while sendToUser/sendToUsersBulk
+// (with an explicit channelId) didn't, on the same device, same app build.
+//
+// Omitting channelId lets Android/FCM fall back to the app's own default
+// notification channel (its AndroidManifest.xml
+// com.google.firebase.messaging.default_notification_channel_id meta-data,
+// or the Firebase SDK's built-in default if the app didn't declare one) —
+// that's the channel this proved actually exists and is visible. If the app
+// is later confirmed (by testing, not by a relayed channel name) to use a
+// specific non-default channel, set it here with that evidence, not before.
 const getMsg = () => {
   const app = getFirebaseApp();
   if (!app) return null;
@@ -62,7 +73,7 @@ const sendToUser = async (userId, { title, body, data = {}, imageUrl } = {}) => 
       tokens,
       notification: { title, body, ...(imageUrl && { imageUrl }) },
       data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-      android: { priority: 'high', notification: { sound: 'default', channelId: ANDROID_NOTIFICATION_CHANNEL_ID } },
+      android: { priority: 'high', notification: { sound: 'default' } },
       apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       webpush: { notification: { icon: 'https://take.health/logo192.png', badge: 'https://take.health/badge.png' } }
     };
@@ -119,7 +130,7 @@ const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } =
         tokens,
         notification: { title, body, ...(imageUrl && { imageUrl }) },
         data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-        android: { priority: 'high', notification: { sound: 'default', channelId: ANDROID_NOTIFICATION_CHANNEL_ID } },
+        android: { priority: 'high', notification: { sound: 'default' } },
         apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       });
       response.responses.forEach((r, i) => {
