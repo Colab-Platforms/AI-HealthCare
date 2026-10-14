@@ -319,7 +319,7 @@ exports.syncOsHealthData = async (req, res) => {
       return res.status(400).json({ message: 'batchSequence must be a non-negative integer' });
     }
 
-    const metricGroups = ['dailyMetrics', 'heartRate', 'sleepData', 'bloodOxygen', 'bodyComposition', 'stress', 'vitals'];
+    const metricGroups = ['dailyMetrics', 'heartRate', 'sleepData', 'bloodOxygen', 'bodyComposition', 'stress', 'vitals', 'workouts'];
     const records = metricGroups.flatMap(group => Array.isArray(metrics[group]) ? metrics[group] : []);
     if (records.length > 1000) {
       return res.status(413).json({ message: 'A maximum of 1000 records is allowed per sync batch' });
@@ -411,6 +411,27 @@ exports.syncOsHealthData = async (req, res) => {
         return res.status(400).json({ message: 'vitals.ecgClassification is invalid' });
       }
     }
+    // Structured workout sessions (Apple Watch Workout app / HealthKit,
+    // Android Health Connect ExerciseSessionRecord) — previously had no
+    // field in this payload at all, so a logged workout had no way to reach
+    // the server. `type` is validated only as a string: the device's raw
+    // workout-type vocabulary is large and grows over time, and
+    // mapWorkoutTypeToCategory() already falls back to 'other' for anything
+    // unrecognized rather than needing a hard enum kept in sync here.
+    for (const workout of metrics.workouts || []) {
+      requireRecordId(workout, 'workouts');
+      validateTimestamp(workout.startTime, 'workouts.startTime');
+      if (workout.endTime !== undefined) validateTimestamp(workout.endTime, 'workouts.endTime');
+      if (workout.type !== undefined && typeof workout.type !== 'string') {
+        return res.status(400).json({ message: 'workouts.type must be a string' });
+      }
+      validateNumber(workout.durationSeconds, 'workouts.durationSeconds', 0, 86400);
+      validateNumber(workout.caloriesKcal, 'workouts.caloriesKcal', 0, 10000);
+      validateNumber(workout.distanceMeters, 'workouts.distanceMeters', 0, 1000000);
+      validateNumber(workout.avgHeartRateBpm, 'workouts.avgHeartRateBpm', 20, 250);
+      validateNumber(workout.maxHeartRateBpm, 'workouts.maxHeartRateBpm', 20, 250);
+      validateNumber(workout.elevationGainMeters, 'workouts.elevationGainMeters', 0, 20000);
+    }
 
     session = await mongoose.startSession();
     let result;
@@ -467,6 +488,9 @@ exports.syncOsHealthData = async (req, res) => {
       await wearableIngest.applyHeartRateSamples(req.user._id, provider, source, metrics.heartRate || [], { session, wearable });
       await wearableIngest.applySleepSessions(req.user._id, provider, source, metrics.sleepData || [], { session, wearable });
       await wearableIngest.applyBodyComposition(req.user._id, provider, source, metrics.bodyComposition || [], { session, wearable });
+      // ExerciseLog, not time-series — a regular collection, so (unlike
+      // blood oxygen/stress/vitals below) it can join this transaction.
+      await wearableIngest.applyExerciseWorkouts(req.user._id, provider, source, metrics.workouts || [], { session });
 
       wearable.lastSyncedAt = new Date();
       await wearable.save({ session });
@@ -494,6 +518,11 @@ exports.syncOsHealthData = async (req, res) => {
     cache.deletePattern(`stress_analytics:${req.user._id}:*`);
     cache.deletePattern(`vitals_analytics:${req.user._id}:*`);
     cache.deletePattern(`recovery_analytics:${req.user._id}:*`);
+    // Daily Health/Activity Score recompute was missing here — this is the
+    // route Apple HealthKit/Android Health Connect actually syncs through,
+    // so a user's Activity Score (steps, and now workouts) could sit stale
+    // until some unrelated action (a food log, say) happened to trigger it.
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
     require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(req.user._id);
     return res.json(result);
   } catch (error) {

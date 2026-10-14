@@ -88,6 +88,14 @@ const exerciseLogSchema = new mongoose.Schema({
   source: { type: String, enum: ['manual', 'wearable_sync', 'hybrid'], default: 'manual' },
   notes: String,
 
+  // Device-sync dedup key (HealthKit/Health Connect workout id, via
+  // /os-sync) — unset for manual entries. Same application-level dedup
+  // pattern as StressSample/BloodOxygenSample: checked with .exists() before
+  // insert, since a sparse index alone doesn't stop a caller that skips the
+  // check. Sparse so manual logs (which never set this) aren't constrained
+  // by the uniqueness.
+  sourceRecordId: { type: String },
+
   timestamp: {
     type: Date,
     default: Date.now,
@@ -98,6 +106,7 @@ const exerciseLogSchema = new mongoose.Schema({
 });
 
 exerciseLogSchema.index({ userId: 1, timestamp: -1 });
+exerciseLogSchema.index({ userId: 1, sourceRecordId: 1 }, { unique: true, sparse: true });
 
 exerciseLogSchema.pre('save', function (next) {
   if (!this.category) {

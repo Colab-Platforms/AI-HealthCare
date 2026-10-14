@@ -17,6 +17,8 @@
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const Workout = require('../models/Workout');
+const ExerciseLog = require('../models/ExerciseLog');
+const { mapWorkoutTypeToCategory } = require('../utils/workoutTypeMapping');
 const BodyCompositionSample = require('../models/BodyCompositionSample');
 const BloodOxygenSample = require('../models/BloodOxygenSample');
 const StressSample = require('../models/StressSample');
@@ -265,6 +267,53 @@ async function applyWorkouts(userId, deviceType, provider, workouts, { session, 
       wearable.markModified('workouts');
     }
   }
+}
+
+// Structured workout sessions (Apple Watch Workout app via HealthKit,
+// Android Health Connect's ExerciseSessionRecord) from the /os-sync bridge —
+// a separate path from applyWorkouts() above, which only ever receives
+// Open Wearables' webhook data (third-party devices like WHOOP/Garmin).
+// Before this existed, /os-sync had no `workouts` field at all: a device
+// workout like a logged "Core Training" session had no way to reach the
+// server, and even Open Wearables' Workout collection was never read by
+// the Activity Score. ExerciseLog already had source:'wearable_sync' and
+// every field a workout needs (duration, category, heart rate, distance,
+// elevation) sitting unused for exactly this — so a synced workout writes
+// there directly instead of into a second collection nothing else reads,
+// and the existing cardio-minutes / rolling-7-day-strength-count logic in
+// dailyHealthScoreService.js picks it up with no further wiring.
+async function applyExerciseWorkouts(userId, deviceType, source, workouts, { session } = {}) {
+  let saved = 0;
+  for (const w of workouts) {
+    if (w.sourceRecordId) {
+      const exists = await ExerciseLog.exists({ userId, sourceRecordId: w.sourceRecordId }).session(session || null);
+      if (exists) continue;
+    }
+
+    const durationMinutes = Math.round((Number(w.durationSeconds) || 0) / 60);
+    if (durationMinutes <= 0) continue; // a 0-duration/malformed record isn't a real session
+
+    await ExerciseLog.create([{
+      userId,
+      activityType: w.type || 'other',
+      category: mapWorkoutTypeToCategory(w.type),
+      duration: durationMinutes,
+      distance: w.distanceMeters != null ? w.distanceMeters / 1000 : undefined,
+      avgHeartRate: w.avgHeartRateBpm,
+      maxHeartRate: w.maxHeartRateBpm,
+      elevationGain: w.elevationGainMeters,
+      caloriesBurned: Math.round(Number(w.caloriesKcal) || 0),
+      startTime: w.startTime,
+      endTime: w.endTime,
+      // Mirrors the real session time, not the sync time — a workout synced
+      // hours later must still score against the day it actually happened.
+      timestamp: w.startTime || new Date(),
+      source: 'wearable_sync',
+      sourceRecordId: w.sourceRecordId,
+    }], { session });
+    saved += 1;
+  }
+  return saved;
 }
 
 // --- Blood oxygen ----------------------------------------------------------
@@ -522,6 +571,7 @@ module.exports = {
   applyDailyActivity,
   applyBodyComposition,
   applyWorkouts,
+  applyExerciseWorkouts,
   applyBloodOxygenSamples,
   applyStressSamples,
   applyVitalsSamples,
