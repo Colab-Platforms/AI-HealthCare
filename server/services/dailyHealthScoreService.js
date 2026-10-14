@@ -242,9 +242,22 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // to?") requires reading the code to answer.
   raw.activity = {};
 
+  // Steps and Movement Minutes both describe the same underlying behavior for
+  // most users (walking moves both together), so scoring them as two
+  // independent parts of the average gave a walk roughly 2/3 of the weight
+  // and Strength only 1/3 — not the equal cardio-vs-strength split WHO/ACSM
+  // guidance treats as two co-equal pillars. Neither Apple Fitness nor
+  // Google Fit blend step-count into the same composite as intensity-minutes
+  // for this exact reason. Fix: compute each one's own 0-100 score, then take
+  // the BETTER of the two as a single "Cardio" signal — this also means a
+  // day a device sends no activeMinutes at all (confirmed in production:
+  // Google/Health Connect sends 0% of the time) still gets fair credit from
+  // steps, and a swim/cycle with near-zero steps still gets fair credit from
+  // movement minutes, without the same workout ever being counted twice.
+  let stepsScore = null;
   if (stepsEntry?.steps && !mobilityLimited) {
     raw.activity.steps = { actual: stepsEntry.steps, goal: guidance.stepsGoal, source: 'device' };
-    activityParts.push(saturatingToGoal(stepsEntry.steps, guidance.stepsGoal));
+    stepsScore = saturatingToGoal(stepsEntry.steps, guidance.stepsGoal);
   }
 
   // Cardio-minutes from deliberately logged exercise (running, gym, yoga,
@@ -255,22 +268,25 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     .reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
   const exerciseMinutes = exerciseLogs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
 
-  // Movement/cardio signal: device's passive active-minutes tracking takes
-  // priority over manually-logged cardio-minutes, not blended with it —
-  // both can describe the SAME real workout (a run the wearable detected as
-  // elevated heart-rate AND the user separately logged), and scoring them as
-  // two independent parts of the average let that one effort count twice.
-  // Manual cardio is used ONLY as a fallback for a day the device reports
-  // nothing at all (no wearable worn, or genuinely no passive signal) —
-  // never averaged alongside a device reading that already exists. `source`
-  // is surfaced on the field itself so the client can show which it was.
+  // Device's passive active-minutes tracking takes priority over manually-
+  // logged cardio-minutes, not blended with it — both can describe the SAME
+  // real workout (a run the wearable detected AND the user separately
+  // logged). Manual cardio is used ONLY as a fallback for a day the device
+  // reports nothing at all. `source` is surfaced on the field itself so the
+  // client can show which it was.
+  let movementScore = null;
   const deviceActiveMinutes = stepsEntry?.activeMinutes || 0;
   if (deviceActiveMinutes > 0) {
     raw.activity.movementMinutes = { actual: deviceActiveMinutes, goal: Math.round(dailyCardioTarget * 10) / 10, source: 'device' };
-    activityParts.push(saturatingToGoal(deviceActiveMinutes, dailyCardioTarget));
+    movementScore = saturatingToGoal(deviceActiveMinutes, dailyCardioTarget);
   } else if (cardioMinutes > 0) {
     raw.activity.movementMinutes = { actual: cardioMinutes, goal: Math.round(dailyCardioTarget * 10) / 10, source: 'manual' };
-    activityParts.push(saturatingToGoal(cardioMinutes, dailyCardioTarget));
+    movementScore = saturatingToGoal(cardioMinutes, dailyCardioTarget);
+  }
+
+  const cardioCandidates = [stepsScore, movementScore].filter((s) => s != null);
+  if (cardioCandidates.length > 0) {
+    activityParts.push(Math.max(...cardioCandidates));
   }
 
   if (exerciseLogs.length > 0) {
@@ -292,10 +308,15 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // correctly-spaced rest day as a failure. A trailing week gives every day of
   // a consistent weekly routine the same accurate "on track" answer instead of
   // oscillating 100/0/100/0 through the week (see the ExerciseLog.countDocuments
-  // call above). Only scored when there's been recent exercise activity at all
-  // (today's log or a strength session this week) — a user who simply doesn't
-  // use exercise-logging isn't penalised on a signal they've never engaged with.
-  if (exerciseLogs.length > 0 || strengthSessionsLast7Days > 0) {
+  // call above). Only scored once strengthSessionsLast7Days > 0 — this used to
+  // also trigger on ANY exercise log today regardless of category (`||
+  // exerciseLogs.length > 0`), which meant logging a run or swim (pure
+  // cardio) silently turned this signal on at 0/100 and dragged the average
+  // down for someone who has never done strength training at all. No separate
+  // "today" check is needed: the 7-day window above already spans
+  // [today-6, tomorrow), so a strength session logged today is already
+  // counted in strengthSessionsLast7Days the moment it's logged.
+  if (strengthSessionsLast7Days > 0) {
     raw.activity.strengthSessions = {
       actual: strengthSessionsLast7Days,
       goal: guidance.strengthSessionsPerWeek,
