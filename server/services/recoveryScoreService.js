@@ -38,13 +38,16 @@
 
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
 const StressDailySummary = require('../models/StressDailySummary');
+const StressSample = require('../models/StressSample');
 const VitalsDailySummary = require('../models/VitalsDailySummary');
 const BloodOxygenSample = require('../models/BloodOxygenSample');
 const SleepSession = require('../models/SleepSession');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
+const WearableScoreSample = require('../models/WearableScoreSample');
 const { getWindowStats, dateOnlyUTC } = require('./recoveryBaselineService');
 const { buildRecommendation } = require('./recoveryRecommendationService');
+const { SCORE_CAPABLE_DEVICE_TYPES } = require('./wearableScoreSyncService');
 
 // Matches the product design's "compared with your own 14-day baseline"
 // copy (Oura uses the same 14-day recent window against a longer reference).
@@ -73,6 +76,14 @@ const BASELINE_EVOLUTION_WINDOWS = [15, 30]; // documents the windows used in bu
 // Optimal". Neither number has been validated against our own outcome data.
 const DRIFT_Z_THRESHOLD = 1.5;
 const RECOVERY_CEILING_WHEN_DRIFTED = 69;
+
+// Personal baseline is used only once a user has this many days of their own
+// data; below it, a mean/SD built from 1-2 points is too unstable to score
+// against (a real case: 2 points alone swung one user's score 37 -> 64 -> 68
+// across 3 days). Below the gate, the published population reference is used
+// instead. 7 matches confidenceFromBaselineDays' own tier below (under 7 days
+// = 'insufficient_baseline') — judgment, not a published clinical threshold.
+const MIN_PERSONAL_BASELINE_DAYS = 7;
 
 // Standard psychometric T-score transformation (mean 50, SD 10) — the
 // conventional way to put a z-score on a 0-100-ish scale. Not something we
@@ -124,9 +135,9 @@ const POPULATION_REFERENCE = {
 // This is what lets Day 1 show a real, honestly-labeled score instead of
 // nothing — and it silently stops being used the moment real personal data
 // exists, with no separate code path to switch over later.
-function zScoreWithFallback(value, personalMean, personalSd, popRef) {
+function zScoreWithFallback(value, personalMean, personalSd, popRef, personalDays = 0) {
   if (value == null) return { z: null, source: null };
-  if (personalMean != null && personalSd > 0) {
+  if (personalMean != null && personalSd > 0 && personalDays >= MIN_PERSONAL_BASELINE_DAYS) {
     return { z: (value - personalMean) / personalSd, source: 'personal' };
   }
   if (popRef.sd > 0) {
@@ -193,20 +204,46 @@ function weightedAverage(parts) {
   return available.reduce((sum, p) => sum + p.score * (p.weight / totalWeight), 0);
 }
 
+// Stale-feed guard. Some syncs re-send the last known HRV sample on days
+// with no new reading — checked in production data: 5 of 14 consecutive-day
+// pairs for real users were identical to 14 decimal places, all source
+// 'healthkit'. A real measurement never repeats that exactly, so a match
+// with the previous day's last raw sample means today's value is not a
+// fresh reading. Compares raw StressSample.hrv, not the rounded daily
+// average, because two different days can legitimately round to the same
+// integer.
+function isRepeatedValue(a, b) {
+  return Number.isFinite(a) && Number.isFinite(b) && a === b;
+}
+
+async function isHrvRepeatedFromPreviousDay(userId, dateStr) {
+  const dayStart = dateOnlyUTC(dateStr);
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  const prevStart = new Date(dayStart.getTime() - 86400000);
+  const [today, prev] = await Promise.all([
+    StressSample.findOne({ user: userId, timestamp: { $gte: dayStart, $lt: dayEnd }, hrv: { $ne: null } }).sort({ timestamp: -1 }).select('hrv').lean(),
+    StressSample.findOne({ user: userId, timestamp: { $gte: prevStart, $lt: dayStart }, hrv: { $ne: null } }).sort({ timestamp: -1 }).select('hrv').lean(),
+  ]);
+  return isRepeatedValue(today?.hrv, prev?.hrv);
+}
+
 async function buildHrvEngine(userId, dateStr) {
   const today = dateOnlyUTC(dateStr);
-  const [todayDocs, recent, long] = await Promise.all([
+  const [todayDocs, recent, long, repeated] = await Promise.all([
     StressDailySummary.find({ user: userId, date: today }).select('avgHrvMs').lean(),
     getWindowStats(StressDailySummary, userId, (d) => d.avgHrvMs, dateStr, RECENT_WINDOW_DAYS),
     getWindowStats(StressDailySummary, userId, (d) => d.avgHrvMs, dateStr, LONG_WINDOW_DAYS),
+    isHrvRepeatedFromPreviousDay(userId, dateStr),
   ]);
+
+  if (repeated) return { available: false, staleRepeat: true };
 
   const todayValues = todayDocs.map((d) => d.avgHrvMs).filter((v) => Number.isFinite(v));
   if (todayValues.length === 0) return { available: false };
   const todayHrv = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
 
-  const recentFb = zScoreWithFallback(todayHrv, recent.mean, recent.sd, POPULATION_REFERENCE.hrvMs);
-  const longFb = zScoreWithFallback(todayHrv, long.mean, long.sd, POPULATION_REFERENCE.hrvMs);
+  const recentFb = zScoreWithFallback(todayHrv, recent.mean, recent.sd, POPULATION_REFERENCE.hrvMs, recent.n);
+  const longFb = zScoreWithFallback(todayHrv, long.mean, long.sd, POPULATION_REFERENCE.hrvMs, long.n);
   const recentZ = recentFb.z;
   const longZ = longFb.z;
   const recentScore = toTScore(recentZ);
@@ -253,8 +290,8 @@ async function buildRhrEngine(userId, dateStr) {
   const todayRhr = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
 
   // Direction flip: for RHR, LOWER than baseline is the good direction.
-  const recentFb = zScoreWithFallback(todayRhr, recent.mean, recent.sd, POPULATION_REFERENCE.rhrBpm);
-  const longFb = zScoreWithFallback(todayRhr, long.mean, long.sd, POPULATION_REFERENCE.rhrBpm);
+  const recentFb = zScoreWithFallback(todayRhr, recent.mean, recent.sd, POPULATION_REFERENCE.rhrBpm, recent.n);
+  const longFb = zScoreWithFallback(todayRhr, long.mean, long.sd, POPULATION_REFERENCE.rhrBpm, long.n);
   const recentZ = recentFb.z;
   const longZ = longFb.z;
   const recentScore = toTScore(recentZ != null ? -recentZ : null);
@@ -297,7 +334,7 @@ async function buildRrEngine(userId, dateStr) {
   if (todayValues.length === 0) return { available: false };
   const todayRr = todayValues.reduce((a, b) => a + b, 0) / todayValues.length;
 
-  const fb = zScoreWithFallback(todayRr, recent.mean, recent.sd, POPULATION_REFERENCE.rrBreathsPerMin);
+  const fb = zScoreWithFallback(todayRr, recent.mean, recent.sd, POPULATION_REFERENCE.rrBreathsPerMin, recent.n);
   const z = fb.z;
   const score = z != null ? toTScore(-Math.abs(z)) : null; // deviation either way lowers the score
 
@@ -501,14 +538,77 @@ async function buildBaselineEvolution(userId, dateStr, hrv, rhr) {
   };
 }
 
+// Some wearable providers (WHOOP, Oura, Garmin, Polar, SensorBio, Suunto —
+// see wearableScoreSyncService.SCORE_CAPABLE_DEVICE_TYPES) compute their own
+// Recovery score and we already pull it via Open Wearables into
+// WearableScoreSample, but nothing ever read it back — this app recomputed
+// its own number from raw HRV/RHR instead, which never matches what the
+// user's own WHOOP/Oura app shows them for the same day (different formula,
+// different baseline philosophy; Oura/WHOOP/Garmin disagree with EACH OTHER
+// the same way). For any device whose own score we already have, show that
+// number instead of a second, different one — zero chance of looking wrong
+// next to the vendor's own app. The formula below remains the only option
+// for devices with no native score (Apple Watch/HealthKit, generic Health
+// Connect, manual).
+async function getNativeRecoveryScore(userId, dateStr) {
+  const dayStart = dateOnlyUTC(dateStr);
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  const sample = await WearableScoreSample.findOne({
+    user: userId,
+    'meta.category': 'recovery',
+    'meta.deviceType': { $in: SCORE_CAPABLE_DEVICE_TYPES },
+    timestamp: { $gte: dayStart, $lt: dayEnd },
+  }).sort({ timestamp: -1 }).lean();
+
+  if (!sample || !Number.isFinite(sample.value)) return null;
+  return {
+    value: Math.round(Math.max(0, Math.min(100, sample.value))),
+    deviceType: sample.meta.deviceType,
+    timestamp: sample.timestamp,
+  };
+}
+
 async function calculateRecoveryScore(userId, dateStr) {
-  const [hrv, rhr, rr, sleep, activity] = await Promise.all([
+  const [hrv, rhr, rr, sleep, activity, nativeScore] = await Promise.all([
     buildHrvEngine(userId, dateStr),
     buildRhrEngine(userId, dateStr),
     buildRrEngine(userId, dateStr),
     buildSleepEngine(userId, dateStr),
     buildActivityModifier(userId, dateStr),
+    getNativeRecoveryScore(userId, dateStr),
   ]);
+
+  // Native pass-through: the vendor's own score wins outright, computed
+  // before (and independent of) the insufficient-data guard below — a WHOOP
+  // user with a native score shouldn't see "insufficient data" just because
+  // our own raw HRV/RHR sync happens to be thin that day. Safety-floor
+  // warnings still run off whatever raw HRV/RHR we do have, since those are
+  // an independent clinical check, not part of the score itself.
+  if (nativeScore) {
+    const warnings = await buildSafetyWarnings(userId, dateStr, hrv, rhr);
+    if (hrv.staleRepeat) {
+      warnings.push({
+        code: 'hrv_repeated_from_previous_day',
+        message: 'Today\'s HRV reading matches yesterday\'s exactly and was not used.',
+      });
+    }
+    const band = classifyRecoveryBand(nativeScore.value);
+    const saved = await RecoveryDailySummary.findOneAndUpdate(
+      { user: userId, date: dateStr },
+      {
+        recoveryScore: nativeScore.value, band, components: {}, warnings,
+        scoreSource: 'native', deviceType: nativeScore.deviceType,
+        metricDetails: { source: 'native', deviceType: nativeScore.deviceType, hrv, rhr, rr, sleep, activity },
+        $unset: { confidence: '', baselineStatus: '', recommendation: '' },
+      },
+      { upsert: true, new: true }
+    );
+    return {
+      user: userId, date: dateStr, recoveryScore: saved.recoveryScore, band: saved.band,
+      warnings: saved.warnings, scoreSource: 'native', deviceType: nativeScore.deviceType,
+      hrv, rhr, rr, sleep, activity,
+    };
+  }
 
   // Without both core physiological signals there isn't enough evidence to
   // call this a full Recovery Score (spec section 22).
@@ -533,6 +633,12 @@ async function calculateRecoveryScore(userId, dateStr) {
   ]);
 
   const warnings = await buildSafetyWarnings(userId, dateStr, hrv, rhr);
+  if (hrv.staleRepeat) {
+    warnings.push({
+      code: 'hrv_repeated_from_previous_day',
+      message: 'Today\'s HRV reading matches yesterday\'s exactly and was not used.',
+    });
+  }
   const baseline = computeBaselineDrift(hrv, rhr);
   const baselineDays = Math.max(hrv.baselineDays || 0, rhr.baselineDays || 0);
   // Population-reference confidence applies only while EVERY available
@@ -616,10 +722,17 @@ async function calculateRecoveryScore(userId, dateStr) {
     warnings: saved.warnings,
     baselineStatus: saved.baselineStatus,
     recommendation: saved.recommendation,
+    scoreSource: 'computed',
     physiology: metricDetails.physiology,
     baselineEvolution,
     hrv, rhr, rr, sleep, activity,
   };
 }
 
-module.exports = { calculateRecoveryScore, circularStdDevMinutes };
+module.exports = {
+  calculateRecoveryScore,
+  circularStdDevMinutes,
+  zScoreWithFallback,
+  isRepeatedValue,
+  MIN_PERSONAL_BASELINE_DAYS,
+};
