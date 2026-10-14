@@ -23,6 +23,16 @@ const recoveryDailySummarySchema = new mongoose.Schema({
 
   deviceType: String, // primary device the inputs were sourced from, when known
 
+  // 'native': recoveryScore is the wearable provider's OWN computed Recovery
+  // (WHOOP/Oura/Garmin/Polar/SensorBio/Suunto via WearableScoreSample), shown
+  // as-is instead of our own formula — see recoveryScoreService.getNativeRecoveryScore.
+  // 'computed' (default): recoveryScore is this file's own HRV/RHR/RR/Sleep
+  // formula, used for devices with no native score (Apple Watch, generic
+  // Health Connect, manual). confidence/baselineStatus/recommendation only
+  // apply to 'computed' — they describe OUR formula's own baseline math,
+  // which a native score doesn't go through.
+  scoreSource: { type: String, enum: ['computed', 'native'], default: 'computed' },
+
   // --- Phase 1 additions (recoveryScoreService's z-score/T-score rewrite) ---
   // Purely additive: recoveryScore/components above are unchanged, so any
   // client reading only those two fields keeps working exactly as before.
