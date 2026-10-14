@@ -147,6 +147,40 @@ function classifyRecoveryBand(score) {
   return { key: 'very_low', label: 'Very Low Recovery' };
 }
 
+// Standard deviation of a set of clock times (minutes-since-midnight, 0-1439),
+// treating the 24h day as a CIRCLE rather than a number line. A plain SD on
+// raw minute values breaks for anyone whose bedtime straddles midnight: 23:55
+// and 00:05 are 10 minutes apart on a clock, but 1430 minutes apart as plain
+// numbers, which used to turn a near-perfectly consistent midnight sleeper
+// into a ~0 regularity score. This is the standard circular-statistics fix
+// (the same technique used for compass bearings or any other wrap-around
+// quantity): convert each time to a point on the unit circle via sin/cos,
+// average those points to get the circular mean, then measure each time's
+// distance from that mean the SHORT way around the circle (never more than
+// 720 minutes) before computing variance. A genuinely irregular sleeper
+// (bedtimes actually spread across the day, not just wrapping around
+// midnight) still gets a high SD and a low score — this only fixes the
+// wrap-around case, it doesn't make every SD smaller.
+function circularStdDevMinutes(minutesArray) {
+  const n = minutesArray.length;
+  const toRad = (m) => (m / 1440) * 2 * Math.PI;
+
+  const sumSin = minutesArray.reduce((sum, m) => sum + Math.sin(toRad(m)), 0);
+  const sumCos = minutesArray.reduce((sum, m) => sum + Math.cos(toRad(m)), 0);
+  const meanAngle = Math.atan2(sumSin / n, sumCos / n);
+
+  const deviationsMinutes = minutesArray.map((m) => {
+    // atan2(sin(d), cos(d)) wraps the raw angle difference into (-π, π],
+    // i.e. the shorter arc between the two times — this is what makes
+    // 23:55 vs 00:05 come out as 10 minutes instead of 1430.
+    const wrapped = Math.atan2(Math.sin(toRad(m) - meanAngle), Math.cos(toRad(m) - meanAngle));
+    return (wrapped / (2 * Math.PI)) * 1440;
+  });
+
+  const variance = deviationsMinutes.reduce((sum, d) => sum + d * d, 0) / n;
+  return Math.sqrt(variance);
+}
+
 // Renormalizes a weighted sum over only the sub-scores actually available —
 // same pattern dailyHealthScoreService already uses for its own components,
 // applied here at each domain level (Physiology, RecoveryBase) rather than
@@ -320,9 +354,7 @@ async function buildSleepEngine(userId, dateStr) {
     .map((d) => d.getUTCHours() * 60 + d.getUTCMinutes());
   let regularityScore = null;
   if (bedtimeMinutes.length >= 3) {
-    const mean = bedtimeMinutes.reduce((a, b) => a + b, 0) / bedtimeMinutes.length;
-    const variance = bedtimeMinutes.reduce((s, v) => s + (v - mean) ** 2, 0) / bedtimeMinutes.length;
-    const sdMinutes = Math.sqrt(variance);
+    const sdMinutes = circularStdDevMinutes(bedtimeMinutes);
     regularityScore = Math.round(Math.max(0, Math.min(100, 100 - (sdMinutes / 120) * 100)));
   }
 
@@ -590,4 +622,4 @@ async function calculateRecoveryScore(userId, dateStr) {
   };
 }
 
-module.exports = { calculateRecoveryScore };
+module.exports = { calculateRecoveryScore, circularStdDevMinutes };
