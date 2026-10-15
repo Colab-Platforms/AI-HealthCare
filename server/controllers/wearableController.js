@@ -742,12 +742,15 @@ exports.getWearableDashboard = async (req, res) => {
       weeklyTrend
     };
 
+    // Max across devices, not sum — two connected sources reporting the same
+    // physical activity (e.g. phone + watch both counting the same walk)
+    // must not be added together, or steps/calories get double-counted.
     for (const entry of todayActivity) {
       dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
-      dashboard.todayMetrics.steps += entry.steps || 0;
-      dashboard.todayMetrics.caloriesBurned += entry.caloriesBurned || 0;
-      dashboard.todayMetrics.activeMinutes += entry.activeMinutes || 0;
-      dashboard.todayMetrics.distance += entry.distance || 0;
+      dashboard.todayMetrics.steps = Math.max(dashboard.todayMetrics.steps, entry.steps || 0);
+      dashboard.todayMetrics.caloriesBurned = Math.max(dashboard.todayMetrics.caloriesBurned, entry.caloriesBurned || 0);
+      dashboard.todayMetrics.activeMinutes = Math.max(dashboard.todayMetrics.activeMinutes, entry.activeMinutes || 0);
+      dashboard.todayMetrics.distance = Math.max(dashboard.todayMetrics.distance, entry.distance || 0);
     }
     for (const entry of todaySleep) {
       dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };

@@ -153,14 +153,17 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
 
   // Device signals (steps, active minutes) — WearableData/DailyActivityMetric
   // only, never touched by manual ExerciseLog entries below. Merge same-day
-  // entries across every connected device.
+  // entries across every connected device by MAX, not sum — two devices
+  // reporting the same physical activity (e.g. phone + watch both counting
+  // the same walk) must not be added together, or a user with two synced
+  // sources gets double the steps/calories they actually logged.
   const deviceByDate = {};
   for (const entry of dailyEntries) {
     const d = toDateStr(new Date(entry.date));
     if (!deviceByDate[d]) deviceByDate[d] = { steps: 0, activeMinutes: 0, caloriesBurned: 0 };
-    deviceByDate[d].steps += entry.steps || 0;
-    deviceByDate[d].activeMinutes += entry.activeMinutes || 0;
-    deviceByDate[d].caloriesBurned += entry.caloriesBurned || 0;
+    deviceByDate[d].steps = Math.max(deviceByDate[d].steps, entry.steps || 0);
+    deviceByDate[d].activeMinutes = Math.max(deviceByDate[d].activeMinutes, entry.activeMinutes || 0);
+    deviceByDate[d].caloriesBurned = Math.max(deviceByDate[d].caloriesBurned, entry.caloriesBurned || 0);
   }
 
   // Manual signals (deliberate logged exercise) — ExerciseLog only, never

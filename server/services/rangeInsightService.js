@@ -94,11 +94,22 @@ async function collectActivityRange(userId, startDate, endDate) {
 
   if (!metrics.length && !workoutCount) return null;
 
-  const stepsSeries = metrics.map((m) => m.steps || 0);
-  const activeMinSeries = metrics.map((m) => m.activeMinutes || 0);
+  // One row per connected device per day — collapse to one row per day by
+  // MAX (not sum), same as dailyHealthScoreService/activityAnalyticsService,
+  // so a day with two synced devices isn't counted as two days of steps.
+  const byDate = {};
+  for (const m of metrics) {
+    const d = m.date.toISOString().split('T')[0];
+    if (!byDate[d]) byDate[d] = { steps: 0, activeMinutes: 0 };
+    byDate[d].steps = Math.max(byDate[d].steps, m.steps || 0);
+    byDate[d].activeMinutes = Math.max(byDate[d].activeMinutes, m.activeMinutes || 0);
+  }
+  const dailyRows = Object.values(byDate);
+  const stepsSeries = dailyRows.map((r) => r.steps);
+  const activeMinSeries = dailyRows.map((r) => r.activeMinutes);
 
   return {
-    daysLogged: metrics.length,
+    daysLogged: dailyRows.length,
     avgSteps: average(stepsSeries),
     totalSteps: stepsSeries.reduce((s, v) => s + v, 0),
     avgActiveMinutes: average(activeMinSeries),

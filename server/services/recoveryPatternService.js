@@ -41,11 +41,20 @@ async function detectPatterns(userId) {
   if (recoveryRows.length < 5) return []; // not enough history to say anything meaningful
 
   const recoveryByDate = new Map(recoveryRows.map((r) => [r.date, r]));
-  const activityByDate = new Map(activityRows.map((a) => [dateKeyUTC(a.date), a.activeMinutes || 0]));
+
+  // One row per connected device per day — collapse to one value per day by
+  // MAX (not sum/last-wins), same as dailyHealthScoreService, so a day with
+  // two synced devices doesn't inflate activeMinutes or skew the average.
+  const activityByDate = new Map();
+  for (const a of activityRows) {
+    const d = dateKeyUTC(a.date);
+    activityByDate.set(d, Math.max(activityByDate.get(d) || 0, a.activeMinutes || 0));
+  }
   const sleepByDate = new Map(sleepRows.map((s) => [dateKeyUTC(s.date), s.totalSleepMinutes || 0]));
 
-  const avgActiveMinutes = activityRows.length
-    ? activityRows.reduce((s, a) => s + (a.activeMinutes || 0), 0) / activityRows.length
+  const dailyActiveMinutes = Array.from(activityByDate.values());
+  const avgActiveMinutes = dailyActiveMinutes.length
+    ? dailyActiveMinutes.reduce((s, v) => s + v, 0) / dailyActiveMinutes.length
     : null;
 
   const isLowBand = (row) => row && (row.band?.key === 'low' || row.band?.key === 'very_low');

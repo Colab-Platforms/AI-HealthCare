@@ -419,13 +419,27 @@ async function buildActivityModifier(userId, dateStr) {
   const chronicStart = new Date(today); chronicStart.setUTCDate(chronicStart.getUTCDate() - CHRONIC_LOAD_WINDOW_DAYS);
 
   const [acuteDocs, chronicDocs] = await Promise.all([
-    DailyActivityMetric.find({ user: userId, date: { $gte: acuteStart, $lt: today } }).select('activeMinutes').lean(),
-    DailyActivityMetric.find({ user: userId, date: { $gte: chronicStart, $lt: today } }).select('activeMinutes').lean(),
+    DailyActivityMetric.find({ user: userId, date: { $gte: acuteStart, $lt: today } }).select('date activeMinutes').lean(),
+    DailyActivityMetric.find({ user: userId, date: { $gte: chronicStart, $lt: today } }).select('date activeMinutes').lean(),
   ]);
   if (acuteDocs.length === 0 || chronicDocs.length === 0) return { available: false, modifier: 0 };
 
-  const acuteLoad = acuteDocs.reduce((s, d) => s + (d.activeMinutes || 0), 0) / acuteDocs.length;
-  const chronicLoad = chronicDocs.reduce((s, d) => s + (d.activeMinutes || 0), 0) / chronicDocs.length;
+  // One row per connected device per day — collapse to one value per day by
+  // MAX (not sum), so a day with two synced devices doesn't inflate load
+  // and skew the acute/chronic ratio this modifier is built on.
+  const maxPerDay = (docs) => {
+    const byDate = {};
+    for (const d of docs) {
+      const key = d.date.toISOString().split('T')[0];
+      byDate[key] = Math.max(byDate[key] || 0, d.activeMinutes || 0);
+    }
+    return Object.values(byDate);
+  };
+  const acuteDaily = maxPerDay(acuteDocs);
+  const chronicDaily = maxPerDay(chronicDocs);
+
+  const acuteLoad = acuteDaily.reduce((s, v) => s + v, 0) / acuteDaily.length;
+  const chronicLoad = chronicDaily.reduce((s, v) => s + v, 0) / chronicDaily.length;
   if (!(chronicLoad > 0)) return { available: false, modifier: 0 };
 
   const loadRatio = acuteLoad / chronicLoad;
