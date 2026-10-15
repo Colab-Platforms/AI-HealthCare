@@ -103,14 +103,82 @@ function sodiumCapMg() {
 // A revision is under active review (National Academies "Rethinking the
 // AMDR", 2024-25 letter report) but these are still the current published
 // standard used across US Dietary Guidelines and clinical practice.
+// Atwater conversion — same factor dietQualityScoreService.js and the diet
+// AI prompts already assume; duplicated here (not imported) since this file
+// has no other dependency on that service and the constant never changes.
+const PROTEIN_KCAL_PER_G = 4;
+
 const AMDR_RANGES = {
   protein: [10, 35],
   carbs: [45, 65],
   fat: [20, 35],
 };
 
-function getAmdrRanges() {
-  return AMDR_RANGES;
+// Protein g/kg-bodyweight/day multiplier ranges, by goal — published sports-
+// nutrition guidance, not invented. Used to shift the protein AMDR window
+// away from the fixed 10-35% DRI range for the two goals that have a
+// specific, widely-cited multiplier:
+//   muscle_gain: International Society of Sports Nutrition position stand
+//     on protein and exercise (Jäger et al., 2017) — 1.6-2.2 g/kg/day.
+//   weight_loss: Helms, Aragon & Fitschen (2014), "Evidence-based
+//     recommendations for natural bodybuilding contest preparation" —
+//     1.6-2.4 g/kg/day to preserve lean mass in a calorie deficit. Their
+//     reviewed range runs higher still for very lean/aggressive deficits;
+//     2.4 is used as the defensible, commonly-cited figure rather than that
+//     extreme upper edge.
+// Every other goalType (maintain, weight_gain, general_health, disease
+// management, ...) has no similarly specific multiplier in the literature,
+// so it keeps the fixed DRI range below unchanged — this is a deliberate
+// "don't guess" default, not an oversight.
+const GOAL_PROTEIN_G_PER_KG = {
+  muscle_gain: [1.6, 2.2],
+  weight_loss: [1.6, 2.4],
+};
+
+// A personalized window can never fall outside these percentages, however
+// extreme the inputs — keeps a bad weight/calorie value from ever producing
+// a nonsensical range instead of silently falling back to the fixed one.
+const PERSONALIZED_PROTEIN_PCT_BOUNDS = [10, 45];
+
+/**
+ * @param {Object} [opts]
+ * @param {string} [opts.goalType] - HealthGoal.goalType
+ * @param {number} [opts.weightKg] - current bodyweight
+ * @param {number} [opts.calorieGoal] - the calorie figure the resulting %
+ *   window will be interpreted against. dietQualityScoreService.js passes
+ *   the day's own total calories here (not the user's calorie goal), to
+ *   stay on the same basis AMDR is actually scored on — see its call site.
+ */
+function getAmdrRanges({ goalType, weightKg, calorieGoal } = {}) {
+  const multipliers = GOAL_PROTEIN_G_PER_KG[goalType];
+  const hasPersonalInputs = multipliers && Number(weightKg) > 0 && Number(calorieGoal) > 0;
+
+  // No goal-specific multiplier, or missing the inputs to apply one — the
+  // same "fall back to the safe default rather than guess" pattern used
+  // throughout this file. A user with no weight logged yet, or on a goal
+  // with no published multiplier, is scored on the standard DRI range,
+  // exactly as before this change.
+  if (!hasPersonalInputs) return AMDR_RANGES;
+
+  const [floor, ceiling] = PERSONALIZED_PROTEIN_PCT_BOUNDS;
+  const clamp = (pct, lo, hi) => Math.max(lo, Math.min(hi, pct));
+  const pctFromGPerKg = (gPerKg) => (gPerKg * weightKg * PROTEIN_KCAL_PER_G / calorieGoal) * 100;
+
+  const [gPerKgMin, gPerKgMax] = multipliers;
+  // min is clamped one point short of the ceiling (not the ceiling itself),
+  // so "max(..., min + 1)" below always has room to land AT OR UNDER the
+  // real ceiling — clamping both independently to the same [floor, ceiling]
+  // could otherwise push min+1 one point past it on extreme inputs (a very
+  // low calorie goal relative to bodyweight), which an earlier version of
+  // this did.
+  const proteinMin = Math.round(clamp(pctFromGPerKg(gPerKgMin), floor, ceiling - 1));
+  const proteinMaxRaw = Math.round(clamp(pctFromGPerKg(gPerKgMax), floor + 1, ceiling));
+  // Guards the case both raw values clamp to (near-)equal numbers — amdrNar's
+  // rangeWidth must never be 0, or every score for this nutrient is 0 by
+  // construction regardless of what the user actually ate.
+  const proteinMax = Math.max(proteinMaxRaw, proteinMin + 1);
+
+  return { ...AMDR_RANGES, protein: [proteinMin, proteinMax] };
 }
 
 function normalizeGender(gender) {
