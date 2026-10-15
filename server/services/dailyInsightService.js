@@ -15,7 +15,8 @@ const User = require('../models/User');
 const NutritionSummary = require('../models/NutritionSummary');
 const DailyHealthScore = require('../models/DailyHealthScore');
 const DailyProgress = require('../models/DailyProgress');
-const WearableData = require('../models/WearableData');
+const DailyActivityMetric = require('../models/DailyActivityMetric');
+const SleepSession = require('../models/SleepSession');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const ExerciseLog = require('../models/ExerciseLog');
@@ -64,16 +65,6 @@ const istDayWindow = (dateKey) => ({
 // waking hours. Only a 00:00–05:30 IST log lands on the previous UTC key.
 const utcMidnight = (dateKey) => new Date(`${dateKey}T00:00:00.000Z`);
 
-const findDailyEntry = (wearables, arrayField, dateKey) => {
-  for (const w of wearables) {
-    const match = (w[arrayField] || []).find(
-      (entry) => entry.date && istDateKey(new Date(entry.date)) === dateKey
-    );
-    if (match) return match;
-  }
-  return null;
-};
-
 // ------------------------------------------------------------ data gathering
 
 /**
@@ -84,11 +75,21 @@ const findDailyEntry = (wearables, arrayField, dateKey) => {
 async function collectOverallData(userId, dateKey) {
   const { start, end } = istDayWindow(dateKey);
 
-  const [nutrition, score, progress, wearables, metrics, foodLogs, user, exerciseLogs] = await Promise.all([
+  const [nutrition, score, progress, activityRows, sleepRows, metrics, foodLogs, user, exerciseLogs] = await Promise.all([
     NutritionSummary.findOne({ userId, date: utcMidnight(dateKey) }).lean(),
     DailyHealthScore.findOne({ userId, date: dateKey }).lean(),
     DailyProgress.findOne({ userId, date: dateKey }).lean(),
-    WearableData.find({ user: userId }).select('dailyMetrics sleepData').lean(),
+    // One row per connected device for this date — merged below by MAX, not
+    // "whichever device happened to be first", same merge
+    // dailyHealthScoreService.js uses. The old WearableData.dailyMetrics[]/
+    // sleepData[] lookup here used to just grab the first device's entry,
+    // which could be a stale/disconnected device's number instead of the
+    // real one (confirmed live: a disconnected Apple Watch's 28 steps got
+    // quoted in an insight instead of the actual day's 9534 from Google Fit).
+    DailyActivityMetric.find({ user: userId, date: utcMidnight(dateKey) })
+      .select('steps activeMinutes caloriesBurned').lean(),
+    SleepSession.find({ user: userId, date: utcMidnight(dateKey) })
+      .select('totalSleepMinutes sleepScore').lean(),
     HealthMetric.find({ userId, recordedAt: { $gte: start, $lte: end } })
       .select('type value unit readingContext systolic diastolic').lean(),
     FoodLog.find({ userId, timestamp: { $gte: start, $lte: end } })
@@ -98,8 +99,15 @@ async function collectOverallData(userId, dateKey) {
       .select('activityType duration avgHeartRate maxHeartRate caloriesBurned distance').lean(),
   ]);
 
-  const steps = findDailyEntry(wearables, 'dailyMetrics', dateKey);
-  const sleep = findDailyEntry(wearables, 'sleepData', dateKey);
+  const steps = activityRows.length ? {
+    steps: Math.max(...activityRows.map((r) => r.steps || 0)),
+    activeMinutes: Math.max(...activityRows.map((r) => r.activeMinutes || 0)),
+    caloriesBurned: Math.max(...activityRows.map((r) => r.caloriesBurned || 0)),
+  } : null;
+  const sleep = sleepRows.length ? {
+    totalSleepMinutes: Math.max(...sleepRows.map((r) => r.totalSleepMinutes || 0)),
+    sleepScore: Math.max(...sleepRows.map((r) => r.sleepScore || 0)) || null,
+  } : null;
   const smoke = user?.smokeLog?.[dateKey] || null;
   const alcohol = user?.alcoholLog?.[dateKey] || null;
 
