@@ -24,18 +24,7 @@ function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-// Single-active-device rule: a user may have at most one WearableData doc
-// with isConnected:true at a time. Checked right before every place that
-// would otherwise set isConnected = true, so a second device is blocked at
-// the moment it tries to become "the" connected one, rather than silently
-// co-existing with the first (which used to let steps/sleep/etc. get
-// double-counted across devices — see the DailyActivityMetric merge fixes).
-// Returns the OTHER connected device (if any), or null if connecting is safe.
-async function findBlockingConnection(userId, deviceType, session) {
-  return WearableData.findOne({ user: userId, isConnected: true, deviceType: { $ne: deviceType } })
-    .select('deviceType deviceName')
-    .session(session || null);
-}
+const { findBlockingConnection } = require('../utils/wearableConnection');
 
 // Rolls one HR sample into that day's running avg/min/max. Raw samples live in
 // HeartRateSample; this permanent rollup powers long-term trends. Mutates
