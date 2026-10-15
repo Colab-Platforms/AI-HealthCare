@@ -1,4 +1,4 @@
-const WearableData = require('../models/WearableData');
+const DailyActivityMetric = require('../models/DailyActivityMetric');
 
 const RECENT_WINDOW_DAYS = 3;
 const BASELINE_WINDOW_DAYS = 30;
@@ -23,23 +23,24 @@ async function getActivityInsight(userId, stepGoal = 10000) {
   baselineSince.setUTCDate(baselineSince.getUTCDate() - BASELINE_WINDOW_DAYS);
   baselineSince.setUTCHours(0, 0, 0, 0);
 
-  const wearables = await WearableData.find({ user: userId })
-    .select('dailyMetrics.date dailyMetrics.steps')
+  const activityMetrics = await DailyActivityMetric.find({ user: userId, date: { $gte: baselineSince } })
+    .select('date steps')
     .lean();
 
+  // One row per connected device per day — merged by MAX, not sum, same
+  // merge dailyHealthScoreService.js uses, so a day with two synced devices
+  // isn't counted as double the real steps.
   const recentByDate = {};
   const baselineByDate = {}; // window BEFORE recentSince, so a current dip can't drag down its own baseline
-  for (const w of wearables) {
-    w.dailyMetrics?.forEach(m => {
-      if (!m.date) return;
-      const d = new Date(m.date);
-      const key = d.toISOString().split('T')[0];
-      if (d >= recentSince) {
-        recentByDate[key] = (recentByDate[key] || 0) + (m.steps || 0);
-      } else if (d >= baselineSince) {
-        baselineByDate[key] = (baselineByDate[key] || 0) + (m.steps || 0);
-      }
-    });
+  for (const m of activityMetrics) {
+    if (!m.date) continue;
+    const d = new Date(m.date);
+    const key = d.toISOString().split('T')[0];
+    if (d >= recentSince) {
+      recentByDate[key] = Math.max(recentByDate[key] || 0, m.steps || 0);
+    } else if (d >= baselineSince) {
+      baselineByDate[key] = Math.max(baselineByDate[key] || 0, m.steps || 0);
+    }
   }
 
   const recentDays = Object.values(recentByDate);

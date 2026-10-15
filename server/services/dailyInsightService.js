@@ -242,21 +242,33 @@ async function collectRecoveryData(userId, dateKey) {
 const SHARED_RULES = `
 Rules you must follow:
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
-- Speak directly to the user as "you". Reference the actual numbers from the date given, then suggest ONE simple thing to try next.
+- Short: the description must be MAX 2-3 sentences. Not 4, not 5 — cut anything extra.
+- Personalized: ground it in THIS user's actual number for the date given, compared against their own
+  recent average/baseline/goal when that comparison is present in the data — not a generic statement that
+  could apply to any user.
+- Meaningful: state the one specific thing the data actually shows, not a vague platitude. If nothing
+  notable stands out in the data, say the plain specific fact (the number itself) rather than padding with
+  generic encouragement.
+- Actionable: end with exactly ONE concrete, specific next step that follows from this data point — never a
+  generic "keep it up" unless the data genuinely supports no change being needed.
 - Only use facts present in the data. Never invent numbers, foods, or symptoms.
 - Plain everyday language, no medical jargon, no emojis.
 - Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, upbeat headline.
-- description: 200-300 characters, written as 3-5 clear sentences — explain what the data says about that day and give one specific thing to try next. Stay within this character range.
-- summary: one line, max 15 words, the single takeaway.`;
+- description: 2-3 sentences, 120-220 characters. State the specific number/comparison, then the one action.
+- summary: one line, max 12 words, the single takeaway.`;
 
 const SLEEP_SHARED_RULES = `
 Rules you must follow:
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
-- Speak directly to the user as "you". Lead with that night's actual numbers, then use the
-  trend/goal/regularity fields (when present) to explain WHY, and suggest ONE simple thing to try next.
+- Short: the description must be MAX 2-3 sentences. Not 4, not 5 — cut anything extra.
+- Personalized: lead with that night's actual number, then compare it against the user's OWN
+  trend/goal/regularity fields when present in the data — not a generic statement.
+- Meaningful: state the one specific thing the data shows (the number, and how it compares to their own
+  pattern), not a vague platitude.
+- Actionable: end with exactly ONE concrete, specific next step that follows from this data point.
 - Only reference numbers and statuses present in the data below. Never invent a number, a trend, or a
   pattern that isn't explicitly in the data.
 - If tier is "insufficient_data" or "raw_comparison", do NOT claim any trend, debt, or regularity pattern —
@@ -266,8 +278,8 @@ Rules you must follow:
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, upbeat headline.
-- description: 200-300 characters, written as 3-5 clear sentences. Stay within this character range.
-- summary: one line, max 15 words, the single takeaway.`;
+- description: 2-3 sentences, 120-220 characters. State the specific number/comparison, then the one action.
+- summary: one line, max 12 words, the single takeaway.`;
 
 const INSIGHT_SYSTEMS = {
   overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity for the given date.${SHARED_RULES}`,
@@ -305,11 +317,11 @@ Write the insight for this date.`;
 
 // ---------------------------------------------------------------- generation
 
-// Models overshoot the "200-300 characters" instruction, so a bare slice cuts
+// Models overshoot the "120-220 characters" instruction, so a bare slice cuts
 // mid-word. Cut to the limit, then back up to the last full sentence. If the
 // only sentence end is too early (under minKeep), keep the hard cut rather
 // than return a stub.
-const trimToSentence = (text, max, minKeep = 150) => {
+const trimToSentence = (text, max, minKeep = 80) => {
   const str = String(text).trim();
   if (str.length <= max) return str;
   const cut = str.slice(0, max);
@@ -335,7 +347,7 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
   });
 
   const parsed = parseJsonResponse(text);
-  if (!parsed?.title || !parsed?.description || parsed.description.length < 200) {
+  if (!parsed?.title || !parsed?.description || parsed.description.length < 80) {
     throw new Error('Model returned no usable title/description');
   }
 
@@ -344,7 +356,7 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
     {
       userId, insightDate, sourceDate, insightType,
       title: String(parsed.title).slice(0, 120),
-      description: trimToSentence(parsed.description, 300),
+      description: trimToSentence(parsed.description, 220),
       summary: String(parsed.summary || parsed.title).slice(0, 200),
       dataSnapshot: data,
       model,
