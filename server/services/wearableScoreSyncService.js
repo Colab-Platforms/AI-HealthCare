@@ -21,6 +21,7 @@ const openWearablesClient = require('../config/openWearables');
 const WearableData = require('../models/WearableData');
 const wearableIngest = require('./wearableIngestService');
 const cache = require('../utils/cache');
+const { findBlockingConnection } = require('../utils/wearableConnection');
 
 // deviceTypes whose Open Wearables provider integration computes health
 // scores server-side — confirmed by HealthScoreCategory entries in that
@@ -200,6 +201,20 @@ async function reconcileOneConnection(wearable) {
   const match = Array.isArray(data) ? data.find((c) => c.provider === wearable.deviceType) : null;
 
   if (match?.status === 'active') {
+    // Same single-active-device rule as controllers/wearableController.js —
+    // Open Wearables still reporting this device "active" only means WE
+    // never told THEM to revoke it; it says nothing about whether another
+    // device already holds the one connected slot on our side. Reconciling
+    // this one to true without checking that used to silently undo a local
+    // disconnect and land two devices connected again on the next cron tick.
+    const blocking = await findBlockingConnection(wearable.user, wearable.deviceType);
+    if (blocking) {
+      console.log(
+        `[WearableScoreSync] reconcile BLOCKED for wearable=${wearable._id} ` +
+        `(Open Wearables reports active, but ${blocking.deviceType} already holds the connected slot)`
+      );
+      return { wearableId: wearable._id, reconciled: false, blocked: true };
+    }
     wearable.isConnected = true;
     wearable.lastSyncedAt = new Date();
     await wearable.save();
@@ -287,4 +302,4 @@ async function runWearableScoreSync() {
   }
 }
 
-module.exports = { runWearableScoreSync, syncScoreForConnection, reconcileConnectionStatuses, SCORE_CAPABLE_DEVICE_TYPES };
+module.exports = { runWearableScoreSync, syncScoreForConnection, reconcileConnectionStatuses, reconcileOneConnection, SCORE_CAPABLE_DEVICE_TYPES };
