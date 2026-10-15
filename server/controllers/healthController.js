@@ -760,6 +760,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
     const WearableData = require('../models/WearableData');
     const DailyActivityMetric = require('../models/DailyActivityMetric');
     const SleepSession = require('../models/SleepSession');
+    const { mergeDeviceRows } = require('../utils/wearableMerge');
 
     // Run ALL 12 independent DB queries in parallel (was sequential — ~1000ms saved on Atlas)
     const [
@@ -777,12 +778,12 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       // here (those can carry duplicate/stale per-device entries for the same
       // date — see dailyHealthScoreService.js's note on the same issue).
       withTimeout(WearableData.find({ user: reqUser._id }).select('isConnected').lean()),
-      // One row per user+deviceType+day — merged by date (max across devices,
-      // not sum) in the loop below, same merge dailyHealthScoreService.js uses.
+      // One row per user+deviceType+day — merged by date in the loop below
+      // via mergeDeviceRows (sum real devices, max against manual).
       withTimeout(DailyActivityMetric.find({ user: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } })
-        .select('date steps').lean()),
+        .select('date deviceType steps').lean()),
       withTimeout(SleepSession.find({ user: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } })
-        .select('date totalSleepMinutes').lean()),
+        .select('date deviceType totalSleepMinutes').lean()),
       withTimeout(HealthMetric.find({ userId: reqUser._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
       HealthMetric.findOne({ userId: reqUser._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
       HealthMetric.findOne({ userId: reqUser._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
@@ -831,22 +832,32 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
     // hasEntry maps track whether a date actually has a device/manual reading —
     // separate from the numeric value itself — so a day with no data at all can be
     // told apart from a day that was genuinely logged as zero (e.g. no steps taken).
-    // Max across devices per date, not sum — two connected sources reporting
-    // the same physical activity (e.g. phone + watch both counting the same
-    // walk) must not be added together.
+    // Real devices on the same date are summed (a clean mid-day switch); a
+    // manual entry is maxed against the device total. See utils/wearableMerge.js.
+    const activityRowsByDate = {};
+    for (const m of activityMetrics) {
+      const d = new Date(m.date).toISOString().split('T')[0];
+      if (!activityRowsByDate[d]) activityRowsByDate[d] = [];
+      activityRowsByDate[d].push(m);
+    }
+    const sleepRowsByDate = {};
+    for (const s of sleepSessions) {
+      const d = new Date(s.date).toISOString().split('T')[0];
+      if (!sleepRowsByDate[d]) sleepRowsByDate[d] = [];
+      sleepRowsByDate[d].push(s);
+    }
+
     const stepsByDate = {};
     const stepsHasEntry = {};
     const sleepByDate = {};
     const sleepHasEntry = {};
     const hasWearableConnected = wearables.some(w => w.isConnected);
-    for (const m of activityMetrics) {
-      const d = new Date(m.date).toISOString().split('T')[0];
-      stepsByDate[d] = Math.max(stepsByDate[d] || 0, m.steps || 0);
+    for (const [d, rows] of Object.entries(activityRowsByDate)) {
+      stepsByDate[d] = mergeDeviceRows(rows, ['steps']).steps;
       stepsHasEntry[d] = true;
     }
-    for (const s of sleepSessions) {
-      const d = new Date(s.date).toISOString().split('T')[0];
-      sleepByDate[d] = Math.max(sleepByDate[d] || 0, (s.totalSleepMinutes || 0) / 60);
+    for (const [d, rows] of Object.entries(sleepRowsByDate)) {
+      sleepByDate[d] = mergeDeviceRows(rows, ['totalSleepMinutes']).totalSleepMinutes / 60;
       sleepHasEntry[d] = true;
     }
 

@@ -23,6 +23,7 @@ const ExerciseLog = require('../models/ExerciseLog');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
 // fan-out small and pause between batches rather than burning the quota in
@@ -87,9 +88,9 @@ async function collectOverallData(userId, dateKey) {
     // real one (confirmed live: a disconnected Apple Watch's 28 steps got
     // quoted in an insight instead of the actual day's 9534 from Google Fit).
     DailyActivityMetric.find({ user: userId, date: utcMidnight(dateKey) })
-      .select('steps activeMinutes caloriesBurned').lean(),
+      .select('deviceType steps activeMinutes caloriesBurned').lean(),
     SleepSession.find({ user: userId, date: utcMidnight(dateKey) })
-      .select('totalSleepMinutes sleepScore').lean(),
+      .select('deviceType totalSleepMinutes sleepScore').lean(),
     HealthMetric.find({ userId, recordedAt: { $gte: start, $lte: end } })
       .select('type value unit readingContext systolic diastolic').lean(),
     FoodLog.find({ userId, timestamp: { $gte: start, $lte: end } })
@@ -99,15 +100,15 @@ async function collectOverallData(userId, dateKey) {
       .select('activityType duration avgHeartRate maxHeartRate caloriesBurned distance').lean(),
   ]);
 
-  const steps = activityRows.length ? {
-    steps: Math.max(...activityRows.map((r) => r.steps || 0)),
-    activeMinutes: Math.max(...activityRows.map((r) => r.activeMinutes || 0)),
-    caloriesBurned: Math.max(...activityRows.map((r) => r.caloriesBurned || 0)),
-  } : null;
-  const sleep = sleepRows.length ? {
-    totalSleepMinutes: Math.max(...sleepRows.map((r) => r.totalSleepMinutes || 0)),
-    sleepScore: Math.max(...sleepRows.map((r) => r.sleepScore || 0)) || null,
-  } : null;
+  // Real devices on the same date are summed (a clean mid-day switch); a
+  // manual entry is maxed against the device total. See utils/wearableMerge.js.
+  const steps = activityRows.length
+    ? mergeDeviceRows(activityRows, ['steps', 'activeMinutes', 'caloriesBurned'])
+    : null;
+  const sleepMerged = sleepRows.length
+    ? mergeDeviceRows(sleepRows, ['totalSleepMinutes', 'sleepScore'])
+    : null;
+  const sleep = sleepMerged ? { ...sleepMerged, sleepScore: sleepMerged.sleepScore || null } : null;
   const smoke = user?.smokeLog?.[dateKey] || null;
   const alcohol = user?.alcoholLog?.[dateKey] || null;
 

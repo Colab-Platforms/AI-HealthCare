@@ -43,6 +43,7 @@ const VitalsDailySummary = require('../models/VitalsDailySummary');
 const BloodOxygenSample = require('../models/BloodOxygenSample');
 const SleepSession = require('../models/SleepSession');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const WearableScoreSample = require('../models/WearableScoreSample');
 const { getWindowStats, dateOnlyUTC } = require('./recoveryBaselineService');
@@ -419,24 +420,25 @@ async function buildActivityModifier(userId, dateStr) {
   const chronicStart = new Date(today); chronicStart.setUTCDate(chronicStart.getUTCDate() - CHRONIC_LOAD_WINDOW_DAYS);
 
   const [acuteDocs, chronicDocs] = await Promise.all([
-    DailyActivityMetric.find({ user: userId, date: { $gte: acuteStart, $lt: today } }).select('date activeMinutes').lean(),
-    DailyActivityMetric.find({ user: userId, date: { $gte: chronicStart, $lt: today } }).select('date activeMinutes').lean(),
+    DailyActivityMetric.find({ user: userId, date: { $gte: acuteStart, $lt: today } }).select('date deviceType activeMinutes').lean(),
+    DailyActivityMetric.find({ user: userId, date: { $gte: chronicStart, $lt: today } }).select('date deviceType activeMinutes').lean(),
   ]);
   if (acuteDocs.length === 0 || chronicDocs.length === 0) return { available: false, modifier: 0 };
 
-  // One row per connected device per day — collapse to one value per day by
-  // MAX (not sum), so a day with two synced devices doesn't inflate load
-  // and skew the acute/chronic ratio this modifier is built on.
-  const maxPerDay = (docs) => {
+  // One row per connected device per day — real devices on the same date are
+  // summed (a clean mid-day switch), a manual entry is maxed against the
+  // device total. See utils/wearableMerge.js.
+  const mergedPerDay = (docs) => {
     const byDate = {};
     for (const d of docs) {
       const key = d.date.toISOString().split('T')[0];
-      byDate[key] = Math.max(byDate[key] || 0, d.activeMinutes || 0);
+      if (!byDate[key]) byDate[key] = [];
+      byDate[key].push(d);
     }
-    return Object.values(byDate);
+    return Object.values(byDate).map((rows) => mergeDeviceRows(rows, ['activeMinutes']).activeMinutes);
   };
-  const acuteDaily = maxPerDay(acuteDocs);
-  const chronicDaily = maxPerDay(chronicDocs);
+  const acuteDaily = mergedPerDay(acuteDocs);
+  const chronicDaily = mergedPerDay(chronicDocs);
 
   const acuteLoad = acuteDaily.reduce((s, v) => s + v, 0) / acuteDaily.length;
   const chronicLoad = chronicDaily.reduce((s, v) => s + v, 0) / chronicDaily.length;

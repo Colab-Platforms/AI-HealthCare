@@ -13,6 +13,7 @@ const ExerciseLog = require('../models/ExerciseLog');
 const RangeInsight = require('../models/RangeInsight');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 
 const MAX_TOKENS = 1600;
 
@@ -85,7 +86,7 @@ async function collectActivityRange(userId, startDate, endDate) {
     DailyActivityMetric.find({
       user: userId,
       date: { $gte: utcMidnight(startDate), $lte: utcMidnight(endDate) },
-    }).select('date steps activeMinutes caloriesBurned').sort({ date: 1 }).lean(),
+    }).select('date deviceType steps activeMinutes caloriesBurned').sort({ date: 1 }).lean(),
     ExerciseLog.countDocuments({
       userId,
       timestamp: { $gte: utcMidnight(startDate), $lte: new Date(`${endDate}T23:59:59.999Z`) },
@@ -94,17 +95,16 @@ async function collectActivityRange(userId, startDate, endDate) {
 
   if (!metrics.length && !workoutCount) return null;
 
-  // One row per connected device per day — collapse to one row per day by
-  // MAX (not sum), same as dailyHealthScoreService/activityAnalyticsService,
-  // so a day with two synced devices isn't counted as two days of steps.
-  const byDate = {};
+  // One row per connected device per day — real devices on the same date are
+  // summed (a clean mid-day switch), a manual entry is maxed against the
+  // device total. See utils/wearableMerge.js.
+  const rowsByDate = {};
   for (const m of metrics) {
     const d = m.date.toISOString().split('T')[0];
-    if (!byDate[d]) byDate[d] = { steps: 0, activeMinutes: 0 };
-    byDate[d].steps = Math.max(byDate[d].steps, m.steps || 0);
-    byDate[d].activeMinutes = Math.max(byDate[d].activeMinutes, m.activeMinutes || 0);
+    if (!rowsByDate[d]) rowsByDate[d] = [];
+    rowsByDate[d].push(m);
   }
-  const dailyRows = Object.values(byDate);
+  const dailyRows = Object.values(rowsByDate).map((rows) => mergeDeviceRows(rows, ['steps', 'activeMinutes']));
   const stepsSeries = dailyRows.map((r) => r.steps);
   const activeMinSeries = dailyRows.map((r) => r.activeMinutes);
 
