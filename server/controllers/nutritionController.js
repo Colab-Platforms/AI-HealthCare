@@ -2079,6 +2079,7 @@ async function updateDailySummary(userId, date) {
     const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
     const DailyActivityMetric = require('../models/DailyActivityMetric');
     const ExerciseLog = require('../models/ExerciseLog');
+    const { mergeDeviceRows } = require('../utils/wearableMerge');
 
     // Run all independent DB queries in PARALLEL — was sequential before
     const [foodLogs, healthGoal, activePlan, existingSummary, activityMetrics, exerciseLogs] = await Promise.all([
@@ -2104,20 +2105,17 @@ async function updateDailySummary(userId, date) {
         return plan;
       })(),
       NutritionSummary.findOne({ userId, date: targetDate }),
-      // One row per connected device for the target date — merged below by
-      // MAX, not sum (see dailyHealthScoreService.js for the same pattern).
-      DailyActivityMetric.find({ user: userId, date: targetDate }).select('caloriesBurned').lean(),
+      // One row per connected device for the target date — merged below via
+      // mergeDeviceRows (sum real devices, max against manual).
+      DailyActivityMetric.find({ user: userId, date: targetDate }).select('deviceType caloriesBurned').lean(),
       // Logged gym/workout sessions for the same day — previously never reached
       // NutritionSummary at all, so exercise never "earned back" any calories.
       ExerciseLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).select('caloriesBurned').lean(),
     ]);
 
-    // Max across every connected device for this date — two devices reporting
-    // the same physical activity must not be added together, or calories get
-    // double-counted (same fix dailyHealthScoreService.js uses for steps).
-    const wearableCaloriesBurned = activityMetrics.reduce(
-      (max, m) => Math.max(max, m.caloriesBurned || 0), 0
-    );
+    // Real devices on the same date are summed; a manual entry is maxed
+    // against the device total instead. See utils/wearableMerge.js.
+    const wearableCaloriesBurned = mergeDeviceRows(activityMetrics, ['caloriesBurned']).caloriesBurned;
     // Logged workouts are a separate source from wearable-reported daily totals
     // (a user can have one, both, or neither) — combine rather than pick one.
     const exerciseCaloriesBurned = exerciseLogs.reduce((sum, log) => sum + (log.caloriesBurned || 0), 0);

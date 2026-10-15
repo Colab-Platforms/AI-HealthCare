@@ -13,6 +13,7 @@
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 
 const LOOKBACK_DAYS = 30;
 const MIN_OCCURRENCES = 3;
@@ -33,24 +34,35 @@ async function detectPatterns(userId) {
     RecoveryDailySummary.find({ user: userId, date: { $gte: dateKeyUTC(start) } })
       .select('date recoveryScore band').lean(),
     DailyActivityMetric.find({ user: userId, date: { $gte: start } })
-      .select('date activeMinutes').lean(),
+      .select('date deviceType activeMinutes').lean(),
     SleepSession.find({ user: userId, date: { $gte: start } })
-      .select('date totalSleepMinutes').lean(),
+      .select('date deviceType totalSleepMinutes').lean(),
   ]);
 
   if (recoveryRows.length < 5) return []; // not enough history to say anything meaningful
 
   const recoveryByDate = new Map(recoveryRows.map((r) => [r.date, r]));
 
-  // One row per connected device per day — collapse to one value per day by
-  // MAX (not sum/last-wins), same as dailyHealthScoreService, so a day with
-  // two synced devices doesn't inflate activeMinutes or skew the average.
+  // One row per connected device per day — real devices on the same date are
+  // summed (a clean mid-day switch), a manual entry is maxed against the
+  // device total. See utils/wearableMerge.js.
+  const groupByDate = (rows) => {
+    const grouped = new Map();
+    for (const r of rows) {
+      const d = dateKeyUTC(r.date);
+      if (!grouped.has(d)) grouped.set(d, []);
+      grouped.get(d).push(r);
+    }
+    return grouped;
+  };
   const activityByDate = new Map();
-  for (const a of activityRows) {
-    const d = dateKeyUTC(a.date);
-    activityByDate.set(d, Math.max(activityByDate.get(d) || 0, a.activeMinutes || 0));
+  for (const [d, rows] of groupByDate(activityRows)) {
+    activityByDate.set(d, mergeDeviceRows(rows, ['activeMinutes']).activeMinutes);
   }
-  const sleepByDate = new Map(sleepRows.map((s) => [dateKeyUTC(s.date), s.totalSleepMinutes || 0]));
+  const sleepByDate = new Map();
+  for (const [d, rows] of groupByDate(sleepRows)) {
+    sleepByDate.set(d, mergeDeviceRows(rows, ['totalSleepMinutes']).totalSleepMinutes);
+  }
 
   const dailyActiveMinutes = Array.from(activityByDate.values());
   const avgActiveMinutes = dailyActiveMinutes.length

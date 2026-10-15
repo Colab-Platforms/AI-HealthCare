@@ -7,6 +7,7 @@ const HealthGoal = require('../models/HealthGoal');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { buildActivityInsight } = require('./activityScoreInsightService');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
@@ -116,7 +117,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   // device's full history and filtering in JS.
   const [devices, dailyEntries, dailyScores, exerciseLogs, user, healthGoal] = await Promise.all([
     WearableData.find({ user: userId }).select('isConnected').lean(),
-    DailyActivityMetric.find({ user: userId, date: dateMatch }).select('date steps activeMinutes caloriesBurned').lean(),
+    DailyActivityMetric.find({ user: userId, date: dateMatch }).select('date deviceType steps activeMinutes caloriesBurned').lean(),
     // The Activity Score itself is already computed and persisted once per
     // day by dailyHealthScoreService — read it here rather than recomputing
     // (same pattern recoveryAnalyticsService uses for RecoveryDailySummary),
@@ -152,18 +153,21 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   }
 
   // Device signals (steps, active minutes) — WearableData/DailyActivityMetric
-  // only, never touched by manual ExerciseLog entries below. Merge same-day
-  // entries across every connected device by MAX, not sum — two devices
-  // reporting the same physical activity (e.g. phone + watch both counting
-  // the same walk) must not be added together, or a user with two synced
-  // sources gets double the steps/calories they actually logged.
-  const deviceByDate = {};
+  // only, never touched by manual ExerciseLog entries below. Real devices on
+  // the same date are summed (a clean mid-day switch, the only way two land
+  // on one date now that a second device can't connect while one is active);
+  // a manual entry is maxed against the device total instead, since it isn't
+  // gated by that lock and could duplicate what the device already counted.
+  // See utils/wearableMerge.js.
+  const rowsByDate = {};
   for (const entry of dailyEntries) {
     const d = toDateStr(new Date(entry.date));
-    if (!deviceByDate[d]) deviceByDate[d] = { steps: 0, activeMinutes: 0, caloriesBurned: 0 };
-    deviceByDate[d].steps = Math.max(deviceByDate[d].steps, entry.steps || 0);
-    deviceByDate[d].activeMinutes = Math.max(deviceByDate[d].activeMinutes, entry.activeMinutes || 0);
-    deviceByDate[d].caloriesBurned = Math.max(deviceByDate[d].caloriesBurned, entry.caloriesBurned || 0);
+    if (!rowsByDate[d]) rowsByDate[d] = [];
+    rowsByDate[d].push(entry);
+  }
+  const deviceByDate = {};
+  for (const [d, rows] of Object.entries(rowsByDate)) {
+    deviceByDate[d] = mergeDeviceRows(rows, ['steps', 'activeMinutes', 'caloriesBurned']);
   }
 
   // Manual signals (deliberate logged exercise) — ExerciseLog only, never

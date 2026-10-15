@@ -11,6 +11,7 @@ const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, up
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
 // it uses the population-to-personal baseline blend below. Hydration is
@@ -94,7 +95,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     // legacy array had a gap for that day. One doc per user+deviceType+day,
     // same model activityAnalyticsService.js already reads — merged below
     // the same way it merges multiple connected devices for one day.
-    DailyActivityMetric.find({ user: userId, date: dayStart }).select('steps activeMinutes').lean(),
+    DailyActivityMetric.find({ user: userId, date: dayStart }).select('deviceType steps activeMinutes').lean(),
     // SleepSession, not WearableData.sleepData[] — that legacy embedded array
     // never deduplicates same-day pushes the way SleepSession does (via
     // sourceRecordId), so a day synced more than once accumulates multiple
@@ -224,17 +225,15 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // rather than pick an unjustifiable number. Renormalized over whichever
   // signals are actually available that day (see the loop below), the same
   // pattern used for the config-driven weights this replaces.
-  // Max across every connected device for the day (same merge
-  // activityAnalyticsService.js uses) — two devices reporting the same
-  // physical steps (e.g. phone + watch both counting the same walk) must
-  // not be added together, or a user with two synced sources gets credited
-  // double the steps they actually took. Sum used to be used here, which is
-  // what caused that double-counting.
+  // Real devices are summed (a mid-day device switch is the only way two
+  // real-device rows land on the same date now that connectDevice/os-sync
+  // block a second device from connecting while one is active — their
+  // tracked windows can't overlap, so the numbers are genuinely additive).
+  // A manual entry alongside a device isn't gated by that lock at all, so it
+  // can't be trusted not to duplicate the device's count — max against it
+  // instead of adding it on top. See utils/wearableMerge.js.
   const stepsEntry = activityMetrics.length
-    ? activityMetrics.reduce((acc, m) => ({
-        steps: Math.max(acc.steps, m.steps || 0),
-        activeMinutes: Math.max(acc.activeMinutes, m.activeMinutes || 0),
-      }), { steps: 0, activeMinutes: 0 })
+    ? mergeDeviceRows(activityMetrics, ['steps', 'activeMinutes'])
     : null;
   const activityParts = [];
   // Grouped under raw.activity (not flat raw.xxx like Sleep/Hydration/

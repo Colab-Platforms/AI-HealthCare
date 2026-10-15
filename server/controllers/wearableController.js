@@ -18,6 +18,7 @@ const wearableIngest = require('../services/wearableIngestService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
+const { mergeDeviceRows } = require('../utils/wearableMerge');
 
 function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -778,19 +779,14 @@ exports.getWearableDashboard = async (req, res) => {
       weeklyTrend
     };
 
-    // Max across devices, not sum — two connected sources reporting the same
-    // physical activity (e.g. phone + watch both counting the same walk)
-    // must not be added together, or steps/calories get double-counted.
-    for (const entry of todayActivity) {
-      dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
-      dashboard.todayMetrics.steps = Math.max(dashboard.todayMetrics.steps, entry.steps || 0);
-      dashboard.todayMetrics.caloriesBurned = Math.max(dashboard.todayMetrics.caloriesBurned, entry.caloriesBurned || 0);
-      dashboard.todayMetrics.activeMinutes = Math.max(dashboard.todayMetrics.activeMinutes, entry.activeMinutes || 0);
-      dashboard.todayMetrics.distance = Math.max(dashboard.todayMetrics.distance, entry.distance || 0);
-    }
-    for (const entry of todaySleep) {
-      dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
-      dashboard.todayMetrics.sleep = (dashboard.todayMetrics.sleep || 0) + (entry.totalSleepMinutes || 0);
+    // Real devices on the same date are summed (a clean mid-day switch, the
+    // only way two land on one date now that a second device can't connect
+    // while one is active); a manual entry is maxed against the device total
+    // instead, since it isn't gated by that lock. See utils/wearableMerge.js.
+    if (todayActivity.length || todaySleep.length) {
+      const merged = mergeDeviceRows(todayActivity, ['steps', 'caloriesBurned', 'activeMinutes', 'distance']);
+      const sleepMerged = mergeDeviceRows(todaySleep, ['totalSleepMinutes']);
+      dashboard.todayMetrics = { ...merged, sleep: sleepMerged.totalSleepMinutes };
     }
 
     dashboard.recentHeartRate.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
