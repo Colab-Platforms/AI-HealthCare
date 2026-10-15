@@ -224,13 +224,16 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // rather than pick an unjustifiable number. Renormalized over whichever
   // signals are actually available that day (see the loop below), the same
   // pattern used for the config-driven weights this replaces.
-  // Sum across every connected device for the day (same merge
-  // activityAnalyticsService.js uses) — a user with two synced devices isn't
-  // scored on only whichever happened to be fetched first.
+  // Max across every connected device for the day (same merge
+  // activityAnalyticsService.js uses) — two devices reporting the same
+  // physical steps (e.g. phone + watch both counting the same walk) must
+  // not be added together, or a user with two synced sources gets credited
+  // double the steps they actually took. Sum used to be used here, which is
+  // what caused that double-counting.
   const stepsEntry = activityMetrics.length
     ? activityMetrics.reduce((acc, m) => ({
-        steps: acc.steps + (m.steps || 0),
-        activeMinutes: acc.activeMinutes + (m.activeMinutes || 0),
+        steps: Math.max(acc.steps, m.steps || 0),
+        activeMinutes: Math.max(acc.activeMinutes, m.activeMinutes || 0),
       }), { steps: 0, activeMinutes: 0 })
     : null;
   const activityParts = [];
