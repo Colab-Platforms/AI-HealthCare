@@ -758,11 +758,13 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
     ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 89);
 
     const WearableData = require('../models/WearableData');
+    const DailyActivityMetric = require('../models/DailyActivityMetric');
+    const SleepSession = require('../models/SleepSession');
 
-    // Run ALL 10 independent DB queries in parallel (was sequential — ~1000ms saved on Atlas)
+    // Run ALL 12 independent DB queries in parallel (was sequential — ~1000ms saved on Atlas)
     const [
       reports, todayLogsArr, nutritionDoc, historySummary,
-      userWithLogs, wearables, weightMetrics,
+      userWithLogs, wearables, activityMetrics, sleepSessions, weightMetrics,
       latestGlucose, latestHbA1c, totalReports,
     ] = await Promise.all([
       HealthReport.find({ user: reqUser._id, status: { $in: ['completed', 'processing'] } }).sort({ createdAt: -1 }).limit(10).lean(),
@@ -770,13 +772,17 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
       NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
       User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
-      // Project only what the history loop below reads. Without this we pulled
-      // whole wearable documents, including the heartRate / bloodOxygen /
-      // stressLevels arrays — which grow one entry per sample, forever, for any
-      // user with a connected device — just to read steps and sleep minutes.
-      withTimeout(WearableData.find({ user: reqUser._id })
-        .select('dailyMetrics.date dailyMetrics.steps sleepData.date sleepData.totalSleepMinutes isConnected')
-        .lean()),
+      // Connection status only now — the actual day-by-day numbers live in
+      // DailyActivityMetric/SleepSession below, not the legacy embedded arrays
+      // here (those can carry duplicate/stale per-device entries for the same
+      // date — see dailyHealthScoreService.js's note on the same issue).
+      withTimeout(WearableData.find({ user: reqUser._id }).select('isConnected').lean()),
+      // One row per user+deviceType+day — merged by date (max across devices,
+      // not sum) in the loop below, same merge dailyHealthScoreService.js uses.
+      withTimeout(DailyActivityMetric.find({ user: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } })
+        .select('date steps').lean()),
+      withTimeout(SleepSession.find({ user: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } })
+        .select('date totalSleepMinutes').lean()),
       withTimeout(HealthMetric.find({ userId: reqUser._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
       HealthMetric.findOne({ userId: reqUser._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
       HealthMetric.findOne({ userId: reqUser._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
@@ -825,27 +831,23 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
     // hasEntry maps track whether a date actually has a device/manual reading —
     // separate from the numeric value itself — so a day with no data at all can be
     // told apart from a day that was genuinely logged as zero (e.g. no steps taken).
+    // Max across devices per date, not sum — two connected sources reporting
+    // the same physical activity (e.g. phone + watch both counting the same
+    // walk) must not be added together.
     const stepsByDate = {};
     const stepsHasEntry = {};
     const sleepByDate = {};
     const sleepHasEntry = {};
-    let hasWearableConnected = false;
-    for (const w of wearables) {
-      if (w.isConnected) hasWearableConnected = true;
-      w.dailyMetrics?.forEach(m => {
-        if (m.date) {
-          const d = new Date(m.date).toISOString().split('T')[0];
-          stepsByDate[d] = (stepsByDate[d] || 0) + (m.steps || 0);
-          stepsHasEntry[d] = true;
-        }
-      });
-      w.sleepData?.forEach(s => {
-        if (s.date) {
-          const d = new Date(s.date).toISOString().split('T')[0];
-          sleepByDate[d] = (sleepByDate[d] || 0) + (s.totalSleepMinutes || 0) / 60;
-          sleepHasEntry[d] = true;
-        }
-      });
+    const hasWearableConnected = wearables.some(w => w.isConnected);
+    for (const m of activityMetrics) {
+      const d = new Date(m.date).toISOString().split('T')[0];
+      stepsByDate[d] = Math.max(stepsByDate[d] || 0, m.steps || 0);
+      stepsHasEntry[d] = true;
+    }
+    for (const s of sleepSessions) {
+      const d = new Date(s.date).toISOString().split('T')[0];
+      sleepByDate[d] = Math.max(sleepByDate[d] || 0, (s.totalSleepMinutes || 0) / 60);
+      sleepHasEntry[d] = true;
     }
 
     // Build 90-day history — O(90) flat loop instead of O(90 × N × M)
