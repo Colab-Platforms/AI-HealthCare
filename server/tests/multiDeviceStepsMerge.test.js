@@ -40,7 +40,7 @@ test('two real devices reporting steps for the same day (mid-day switch): summed
 
   t.mock.method(DailyActivityMetric, 'find', () => selectLeanResolves(deviceRows));
   t.mock.method(NutritionSummary, 'findOne', () => leanResolves(null));
-  t.mock.method(SleepSession, 'findOne', () => leanResolves(null));
+  t.mock.method(SleepSession, 'find', () => selectLeanResolves([]));
   t.mock.method(User, 'findById', () => selectLeanResolves({ profile: {} }));
   t.mock.method(ExerciseLog, 'find', () => selectLeanResolves([]));
   t.mock.method(ExerciseLog, 'countDocuments', async () => 0);
@@ -72,7 +72,7 @@ test('a real device plus a manual entry on the same day: max, never added togeth
 
   t.mock.method(DailyActivityMetric, 'find', () => selectLeanResolves(deviceRows));
   t.mock.method(NutritionSummary, 'findOne', () => leanResolves(null));
-  t.mock.method(SleepSession, 'findOne', () => leanResolves(null));
+  t.mock.method(SleepSession, 'find', () => selectLeanResolves([]));
   t.mock.method(User, 'findById', () => selectLeanResolves({ profile: {} }));
   t.mock.method(ExerciseLog, 'find', () => selectLeanResolves([]));
   t.mock.method(ExerciseLog, 'countDocuments', async () => 0);

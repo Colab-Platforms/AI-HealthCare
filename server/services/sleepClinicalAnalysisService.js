@@ -13,6 +13,7 @@
 // REGULARITY_WINDOW_DAYS in recoveryScoreService.js).
 
 const SleepSession = require('../models/SleepSession');
+const { collapseToOnePerDay, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 const TREND_WINDOW_DAYS = 7;
 const REGULARITY_WINDOW_DAYS = 14;
@@ -125,9 +126,30 @@ async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours = 8
   since.setUTCDate(since.getUTCDate() - REGULARITY_WINDOW_DAYS);
   since.setUTCHours(0, 0, 0, 0);
 
-  const sessions = await SleepSession.find({ user: userId, date: { $gte: since } })
-    .sort({ date: -1 })
-    .lean();
+  // One row per user+deviceType+day — a user with two connected devices (or a
+  // mid-day switch) can have more than one SleepSession row for the same
+  // date. Unlike steps/calories, sleep is one continuous event, so two rows
+  // for one date mean two devices measuring the SAME night, not summable or
+  // field-by-field maxable (bedTime/wakeTime/stages only make sense
+  // together). Collapsed to the whole row with the most totalSleepMinutes
+  // per date — see utils/wearableMerge.js. A plain `.sort({date:-1})` +
+  // sessions[0] here used to just grab whichever row Mongo returned first,
+  // which could silently be a broken sync instead of the real device
+  // (confirmed live: Health Connect reported 7.6h/458min for a night WHOOP
+  // correctly measured at 8h/482min, and the unmerged query picked Health
+  // Connect's).
+  const rawSessions = await SleepSession.find({ user: userId, date: { $gte: since } }).lean();
+  // filterPlausibleSleep must run per calendar night, not across the whole
+  // window at once — group first so a broken reading on one night can't
+  // influence which row wins on another.
+  const rawByDate = new Map();
+  for (const s of rawSessions) {
+    const key = s.date.toISOString().split('T')[0];
+    if (!rawByDate.has(key)) rawByDate.set(key, []);
+    rawByDate.get(key).push(s);
+  }
+  const plausibleSessions = Array.from(rawByDate.values()).flatMap(filterPlausibleSleep);
+  const sessions = collapseToOnePerDay(plausibleSessions).sort((a, b) => b.date - a.date);
 
   const lastNight = buildLastNight(sessions[0] || null, idealRange);
   const nightsLogged = sessions.length;

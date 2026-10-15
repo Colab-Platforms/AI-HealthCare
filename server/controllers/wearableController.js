@@ -18,7 +18,7 @@ const wearableIngest = require('../services/wearableIngestService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
-const { mergeDeviceRows } = require('../utils/wearableMerge');
+const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -785,7 +785,7 @@ exports.getWearableDashboard = async (req, res) => {
     // instead, since it isn't gated by that lock. See utils/wearableMerge.js.
     if (todayActivity.length || todaySleep.length) {
       const merged = mergeDeviceRows(todayActivity, ['steps', 'caloriesBurned', 'activeMinutes', 'distance']);
-      const sleepMerged = mergeDeviceRows(todaySleep, ['totalSleepMinutes']);
+      const sleepMerged = maxAcrossRows(filterPlausibleSleep(todaySleep), ['totalSleepMinutes']);
       dashboard.todayMetrics = { ...merged, sleep: sleepMerged.totalSleepMinutes };
     }
 

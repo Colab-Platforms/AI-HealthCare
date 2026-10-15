@@ -49,4 +49,72 @@ function mergeDeviceRows(rows, fields) {
   return result;
 }
 
-module.exports = { mergeDeviceRows };
+// For metrics that represent ONE continuous event rather than accumulation
+// across a day — sleep is the case this exists for. Steps/calories/active
+// minutes genuinely add up across a day's separate windows (hence
+// mergeDeviceRows' sum-real-devices rule above), but a night's sleep can't
+// be split into two non-overlapping real sessions the way daytime activity
+// can — a device doesn't get swapped mid-sleep. Two SleepSession rows for
+// the same date almost always mean two devices measuring the SAME sleep, so
+// summing them double-counts it (confirmed live: WHOOP correctly measured
+// 7.8h one night while a Health Connect sync for the same night reported
+// ~14.7h — summing them would have shown ~22.5h slept). Always max, device
+// or manual, never add.
+function maxAcrossRows(rows, fields) {
+  const result = {};
+  for (const field of fields) result[field] = 0;
+  if (!rows || rows.length === 0) return result;
+
+  for (const field of fields) {
+    result[field] = rows.reduce((max, row) => Math.max(max, Number(row[field]) || 0), 0);
+  }
+  return result;
+}
+
+// For a "whole row" metric where the fields only make sense together — sleep
+// again: bedTime, wakeTime, and the deep/light/REM stage breakdown are one
+// coherent set from a single device, not independently combinable numbers.
+// Two rows for the same date are the same night measured twice, so this
+// keeps whichever WHOLE row has the highest value of `pickField` (default
+// totalSleepMinutes) as that date's canonical row, instead of frankensteining
+// fields from different rows together.
+function collapseToOnePerDay(rows, { dateField = 'date', pickField = 'totalSleepMinutes' } = {}) {
+  const byDate = new Map();
+  for (const row of rows || []) {
+    const key = new Date(row[dateField]).toISOString().split('T')[0];
+    const existing = byDate.get(key);
+    if (!existing || (Number(row[pickField]) || 0) > (Number(existing[pickField]) || 0)) {
+      byDate.set(key, row);
+    }
+  }
+  return Array.from(byDate.values());
+}
+
+// A device reporting more sleep than this for one night isn't a longer real
+// sleep, it's a broken sync — confirmed live: a Health Connect import
+// repeatedly reported ~14.7h for nights WHOOP correctly measured at 7-8.5h,
+// most likely double-counting a stage or syncing a stale duplicate record.
+// 14h is already a generous ceiling (rare but real for illness/extreme
+// recovery) — anything past it is excluded rather than trusted, so a single
+// broken device can't out-vote every other reading via maxAcrossRows/
+// collapseToOnePerDay just because it reports the biggest number.
+const MAX_PLAUSIBLE_SLEEP_MINUTES = 840; // 14h
+
+// Call this on sleep rows BEFORE passing them to maxAcrossRows/
+// collapseToOnePerDay — those two just trust "biggest number wins", which a
+// consistently-inflated device would win every time. This drops any
+// obviously-broken reading first, so a real device's correct number is
+// compared only against other plausible numbers.
+function filterPlausibleSleep(rows) {
+  if (!rows || rows.length === 0) return rows || [];
+  const plausible = rows.filter((r) => (Number(r.totalSleepMinutes) || 0) <= MAX_PLAUSIBLE_SLEEP_MINUTES);
+  if (plausible.length > 0) return plausible;
+  // Every row for this night is implausible — still show a number rather
+  // than nothing, but capped at the ceiling instead of the raw broken value.
+  const leastBad = rows.reduce((min, r) => (
+    (Number(r.totalSleepMinutes) || 0) < (Number(min.totalSleepMinutes) || 0) ? r : min
+  ), rows[0]);
+  return [{ ...leastBad, totalSleepMinutes: MAX_PLAUSIBLE_SLEEP_MINUTES }];
+}
+
+module.exports = { mergeDeviceRows, maxAcrossRows, collapseToOnePerDay, filterPlausibleSleep, MAX_PLAUSIBLE_SLEEP_MINUTES };

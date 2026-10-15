@@ -1,4 +1,5 @@
 const SleepSession = require('../models/SleepSession');
+const { collapseToOnePerDay, filterPlausibleSleep } = require('../utils/wearableMerge');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 
 // Fallback score jab device se sleepScore na aaye (manual entry).
@@ -136,13 +137,26 @@ async function getSleepAnalytics(userId, range = 'daily', options = {}) {
 
   const dateMatch = matchEnd ? { $gte: matchStart, $lte: matchEnd } : { $gte: matchStart };
 
-  // One doc per night already (no unwind needed) — SleepSession replaced the
-  // embedded WearableData.sleepData[] array precisely so this query doesn't
-  // have to pull a growing per-device array just to read a date range.
-  const rows = await SleepSession.find({ user: userId, date: dateMatch })
+  // SleepSession replaced the embedded WearableData.sleepData[] array so this
+  // query doesn't have to pull a growing per-device array just to read a date
+  // range — but a user with two connected devices (or a mid-day switch) can
+  // still have more than one row for the same date. Collapsed to the whole
+  // row with the most totalSleepMinutes per date (two rows = the same night
+  // measured twice, not two nights) — see utils/wearableMerge.js.
+  const rawRows = await SleepSession.find({ user: userId, date: dateMatch })
     .select('date totalSleepMinutes deepSleepMinutes lightSleepMinutes remSleepMinutes awakeMinutes sleepScore bedTime wakeTime deviceType')
-    .sort({ date: 1 })
     .lean();
+  // filterPlausibleSleep must run per calendar night, not across the whole
+  // range at once — group first so a broken reading on one night can't
+  // influence which row wins on another.
+  const rawByDate = new Map();
+  for (const r of rawRows) {
+    const key = r.date.toISOString().split('T')[0];
+    if (!rawByDate.has(key)) rawByDate.set(key, []);
+    rawByDate.get(key).push(r);
+  }
+  const plausibleRows = Array.from(rawByDate.values()).flatMap(filterPlausibleSleep);
+  const rows = collapseToOnePerDay(plausibleRows).sort((a, b) => a.date - b.date);
 
   const entries = rows.map(enrichEntry);
 

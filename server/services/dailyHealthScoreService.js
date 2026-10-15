@@ -11,7 +11,7 @@ const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, up
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
-const { mergeDeviceRows } = require('../utils/wearableMerge');
+const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
 // it uses the population-to-personal baseline blend below. Hydration is
@@ -85,7 +85,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-  const [nutritionSummary, activityMetrics, sleepSession, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
+  const [nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     // DailyActivityMetric, not the legacy WearableData.dailyMetrics[] array —
     // that array is no longer reliably kept in sync (WHOOP and some other
@@ -98,12 +98,15 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     DailyActivityMetric.find({ user: userId, date: dayStart }).select('deviceType steps activeMinutes').lean(),
     // SleepSession, not WearableData.sleepData[] — that legacy embedded array
     // never deduplicates same-day pushes the way SleepSession does (via
-    // sourceRecordId), so a day synced more than once accumulates multiple
-    // entries there. findDailyEntry() below used to grab whichever one
-    // happened to match first, which could be a stale/duplicate ~18-19hr
-    // entry instead of the real ~6-7hr one — SleepSession has exactly one,
-    // correct, deduplicated row per user per day.
-    SleepSession.findOne({ user: userId, date: dayStart }).lean(),
+    // sourceRecordId). One row per user+deviceType+day, same as
+    // DailyActivityMetric above — a user with two connected devices (or one
+    // mid-day switch) can have more than one row for the same date, merged
+    // below via mergeDeviceRows. A plain findOne() here used to just grab
+    // whichever row Mongo happened to return first, which could silently be
+    // a bad reading from one device (confirmed live: a Health Connect sync
+    // once reported ~14.7h for a night WHOOP correctly measured at 7.8h —
+    // findOne had no way to prefer the real device over the broken one).
+    SleepSession.find({ user: userId, date: dayStart }).select('deviceType totalSleepMinutes sleepScore').lean(),
     User.findById(userId)
       .select('smokeLog alcoholLog profile.age profile.gender profile.weight profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
       .lean(),
@@ -145,6 +148,10 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const dailyCardioTarget = guidance.cardioMinutesPerWeek / 7;
 
   // --- Sleep ---
+  // Always max across rows, never sum — two devices for the same date measure
+  // the SAME night's sleep, not two sequential sessions (unlike steps, a
+  // device doesn't get swapped mid-sleep). See utils/wearableMerge.js.
+  const sleepSession = sleepRows.length ? maxAcrossRows(filterPlausibleSleep(sleepRows), ['totalSleepMinutes']) : null;
   if (sleepSession?.totalSleepMinutes) {
     const hours = sleepSession.totalSleepMinutes / 60;
     raw.sleepHours = Math.round(hours * 10) / 10;
