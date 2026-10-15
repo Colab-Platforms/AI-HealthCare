@@ -1,5 +1,6 @@
 const SleepSession = require('../models/SleepSession');
 const ExerciseLog = require('../models/ExerciseLog');
+const { maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 const RECENT_WINDOW_DAYS = 3;
 const BASELINE_WINDOW_DAYS = 30;
@@ -32,13 +33,21 @@ async function getSleepInsight(userId, sleepGoalHours = 8) {
     .select('date totalSleepMinutes')
     .lean();
 
-  const recentByDate = {};
-  const baselineByDate = {}; // the window BEFORE recentSince, so a current dip can't drag down its own baseline
+  // One row per connected device per night — two rows for the same date are
+  // the SAME night measured twice, so max (never sum/last-wins) across them.
+  // See utils/wearableMerge.js.
+  const rowsByDate = {};
   for (const s of sessions) {
     if (!s.date) continue;
-    const d = new Date(s.date);
-    const hours = (s.totalSleepMinutes || 0) / 60;
-    const key = d.toISOString().split('T')[0];
+    const key = new Date(s.date).toISOString().split('T')[0];
+    if (!rowsByDate[key]) rowsByDate[key] = [];
+    rowsByDate[key].push(s);
+  }
+  const recentByDate = {};
+  const baselineByDate = {}; // the window BEFORE recentSince, so a current dip can't drag down its own baseline
+  for (const [key, rows] of Object.entries(rowsByDate)) {
+    const d = new Date(`${key}T00:00:00.000Z`);
+    const hours = maxAcrossRows(filterPlausibleSleep(rows), ['totalSleepMinutes']).totalSleepMinutes / 60;
     if (d >= recentSince) {
       recentByDate[key] = hours;
     } else if (d >= baselineSince) {

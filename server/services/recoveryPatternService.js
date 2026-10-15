@@ -13,7 +13,7 @@
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
-const { mergeDeviceRows } = require('../utils/wearableMerge');
+const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 const LOOKBACK_DAYS = 30;
 const MIN_OCCURRENCES = 3;
@@ -59,9 +59,11 @@ async function detectPatterns(userId) {
   for (const [d, rows] of groupByDate(activityRows)) {
     activityByDate.set(d, mergeDeviceRows(rows, ['activeMinutes']).activeMinutes);
   }
+  // Sleep is always maxed, never summed — two devices for the same date
+  // measure the SAME night. See utils/wearableMerge.js.
   const sleepByDate = new Map();
   for (const [d, rows] of groupByDate(sleepRows)) {
-    sleepByDate.set(d, mergeDeviceRows(rows, ['totalSleepMinutes']).totalSleepMinutes);
+    sleepByDate.set(d, maxAcrossRows(filterPlausibleSleep(rows), ['totalSleepMinutes']).totalSleepMinutes);
   }
 
   const dailyActiveMinutes = Array.from(activityByDate.values());

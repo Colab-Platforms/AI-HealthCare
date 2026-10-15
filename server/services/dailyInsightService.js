@@ -23,7 +23,7 @@ const ExerciseLog = require('../models/ExerciseLog');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
-const { mergeDeviceRows } = require('../utils/wearableMerge');
+const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
 // fan-out small and pause between batches rather than burning the quota in
@@ -105,8 +105,10 @@ async function collectOverallData(userId, dateKey) {
   const steps = activityRows.length
     ? mergeDeviceRows(activityRows, ['steps', 'activeMinutes', 'caloriesBurned'])
     : null;
+  // Always max for sleep, never sum — two devices for the same date measure
+  // the SAME night, not two sequential sessions. See utils/wearableMerge.js.
   const sleepMerged = sleepRows.length
-    ? mergeDeviceRows(sleepRows, ['totalSleepMinutes', 'sleepScore'])
+    ? maxAcrossRows(filterPlausibleSleep(sleepRows), ['totalSleepMinutes', 'sleepScore'])
     : null;
   const sleep = sleepMerged ? { ...sleepMerged, sleepScore: sleepMerged.sleepScore || null } : null;
   const smoke = user?.smokeLog?.[dateKey] || null;
@@ -251,6 +253,10 @@ async function collectRecoveryData(userId, dateKey) {
 const SHARED_RULES = `
 Rules you must follow:
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
+- NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
+  weeks after the date it describes, so "today"/"yesterday" would be factually wrong by the time they
+  read it. Speak directly to the user as "you" and describe what happened without a day-word (e.g.
+  "You logged 16,460 steps, well above your usual." not "You logged 16,460 steps today.").
 - Short: the description must be MAX 2-3 sentences. Not 4, not 5 — cut anything extra.
 - Personalized: ground it in THIS user's actual number for the date given, compared against their own
   recent average/baseline/goal when that comparison is present in the data — not a generic statement that
@@ -272,6 +278,10 @@ Rules you must follow:
 const SLEEP_SHARED_RULES = `
 Rules you must follow:
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
+- NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
+  weeks after the date it describes, so "today"/"yesterday" would be factually wrong by the time they
+  read it. Describe the night without a day-word (e.g. "You slept 8 hours, right in your ideal range."
+  not "You slept 8 hours last night.").
 - Short: the description must be MAX 2-3 sentences. Not 4, not 5 — cut anything extra.
 - Personalized: lead with that night's actual number, then compare it against the user's OWN
   trend/goal/regularity fields when present in the data — not a generic statement.
@@ -291,7 +301,7 @@ Rules you must follow:
 - summary: one line, max 12 words, the single takeaway.`;
 
 const INSIGHT_SYSTEMS = {
-  overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity for the given date.${SHARED_RULES}`,
+  overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity for the given date, drawing on whichever of sleep, activity, nutrition, and recovery actually have data for that date — don't default to only one or two pillars when more are available.${SHARED_RULES}`,
   sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (that night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
   nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data for the given date.${SHARED_RULES}`,
   fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date.${SHARED_RULES}`,
@@ -308,7 +318,7 @@ const INSIGHT_SYSTEMS = {
 const INSIGHT_TYPES = ['overall', 'sleep', 'nutrition', 'fitness', 'recovery', 'smoking', 'alcohol', 'hydration'];
 
 const INSIGHT_LABELS = {
-  overall: "Overall health activity for the given date",
+  overall: "Overall sleep, activity, nutrition, and recovery for the given date",
   sleep: "Sleep analysis (that night plus recent context)",
   nutrition: "Nutrition and hydration data for the given date",
   fitness: "Fitness and movement data for the given date",
@@ -410,6 +420,27 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
   }
   if (insightType === 'recovery') {
     return collectRecoveryData(userId, sourceDate);
+  }
+  if (insightType === 'overall') {
+    // The only type that should speak to all four pillars (sleep, activity,
+    // nutrition, recovery) in one summary — collectOverallData already has
+    // sleep/activity/nutrition, but recovery (HRV/RHR/respiratory rate) has
+    // its own dedicated collector (same one the standalone 'recovery' type
+    // uses), fetched here too so 'overall' isn't silently missing it.
+    if (!overallData) return null;
+    const recovery = await collectRecoveryData(userId, sourceDate);
+    return {
+      ...overallData,
+      recovery: recovery ? {
+        recoveryScore: recovery.physiologyScore,
+        recoveryBand: recovery.recoveryBand,
+        hrvToday: recovery.hrvToday,
+        hrvBaseline14: recovery.hrvBaseline14,
+        rhrToday: recovery.rhrToday,
+        rhrBaseline14: recovery.rhrBaseline14,
+        respiratoryRateToday: recovery.respiratoryRateToday,
+      } : null,
+    };
   }
   return overallData && insightData[insightType](overallData);
 }

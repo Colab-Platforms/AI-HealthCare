@@ -760,7 +760,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
     const WearableData = require('../models/WearableData');
     const DailyActivityMetric = require('../models/DailyActivityMetric');
     const SleepSession = require('../models/SleepSession');
-    const { mergeDeviceRows } = require('../utils/wearableMerge');
+    const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
     // Run ALL 12 independent DB queries in parallel (was sequential — ~1000ms saved on Atlas)
     const [
@@ -857,7 +857,9 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       stepsHasEntry[d] = true;
     }
     for (const [d, rows] of Object.entries(sleepRowsByDate)) {
-      sleepByDate[d] = mergeDeviceRows(rows, ['totalSleepMinutes']).totalSleepMinutes / 60;
+      // Sleep is always maxed, never summed — two devices for the same date
+      // measure the SAME night. See utils/wearableMerge.js.
+      sleepByDate[d] = maxAcrossRows(filterPlausibleSleep(rows), ['totalSleepMinutes']).totalSleepMinutes / 60;
       sleepHasEntry[d] = true;
     }
 
