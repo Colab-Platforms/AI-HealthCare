@@ -23,6 +23,19 @@ function dateOnlyUTCFromDate(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+// Single-active-device rule: a user may have at most one WearableData doc
+// with isConnected:true at a time. Checked right before every place that
+// would otherwise set isConnected = true, so a second device is blocked at
+// the moment it tries to become "the" connected one, rather than silently
+// co-existing with the first (which used to let steps/sleep/etc. get
+// double-counted across devices — see the DailyActivityMetric merge fixes).
+// Returns the OTHER connected device (if any), or null if connecting is safe.
+async function findBlockingConnection(userId, deviceType, session) {
+  return WearableData.findOne({ user: userId, isConnected: true, deviceType: { $ne: deviceType } })
+    .select('deviceType deviceName')
+    .session(session || null);
+}
+
 // Rolls one HR sample into that day's running avg/min/max. Raw samples live in
 // HeartRateSample; this permanent rollup powers long-term trends. Mutates
 // `wearable` in place; caller saves.
@@ -92,6 +105,15 @@ function classifyHeartRateContext(context) {
 exports.connectDevice = async (req, res) => {
   try {
     const { deviceType, deviceName } = req.body;
+
+    const blocking = await findBlockingConnection(req.user._id, deviceType);
+    if (blocking) {
+      return res.status(409).json({
+        message: `${blocking.deviceName || blocking.deviceType} is already connected. Disconnect it before connecting a new device.`,
+        error: 'DEVICE_ALREADY_CONNECTED',
+        connectedDevice: { deviceType: blocking.deviceType, deviceName: blocking.deviceName },
+      });
+    }
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
 
@@ -459,6 +481,22 @@ exports.syncOsHealthData = async (req, res) => {
       }], { session });
 
       wearable = await WearableData.findOne({ user: req.user._id, deviceType: provider }).session(session);
+
+      // Only block when this sync would make a DIFFERENT device the
+      // connected one — a re-sync of the device that's already connected
+      // must keep working.
+      if (!wearable?.isConnected) {
+        const blocking = await findBlockingConnection(req.user._id, provider, session);
+        if (blocking) {
+          result = {
+            received: false,
+            blocked: true,
+            message: `${blocking.deviceName || blocking.deviceType} is already connected. Disconnect it before syncing a new device.`,
+          };
+          return;
+        }
+      }
+
       if (!wearable) {
         wearable = new WearableData({
           user: req.user._id,
@@ -495,6 +533,7 @@ exports.syncOsHealthData = async (req, res) => {
     });
 
     if (result.duplicate) return res.json(result);
+    if (result.blocked) return res.status(409).json({ ...result, error: 'DEVICE_ALREADY_CONNECTED' });
 
     // Blood oxygen/stress/vitals write to Mongo time-series collections,
     // which (a) cannot join a multi-document transaction at all — MongoDB
@@ -1371,6 +1410,16 @@ exports.handleWebhook = async (req, res) => {
             { openWearablesUserId: data.user_id, deviceType: data.provider, deviceName: data.provider },
             { upsert: true, new: true }
           );
+        // OAuth already succeeded on Open Wearables' side by the time this
+        // event arrives, so there's nothing to reject it with — but we still
+        // don't mark a second device as "the" connected one. The record is
+        // acknowledged (so Svix doesn't retry) but stays isConnected:false,
+        // same as if the user had never completed the connect flow for it.
+        const blocking = await findBlockingConnection(wearable.user, wearable.deviceType);
+        if (blocking) {
+          console.log(`[Wearables] connection.created: record ${wearable._id} (mongo user=${wearable.user}) BLOCKED — ${blocking.deviceType} already connected`);
+          break;
+        }
         wearable.isConnected = true;
         wearable.lastSyncedAt = new Date();
         await wearable.save();
@@ -1656,9 +1705,15 @@ exports.handleWebhook = async (req, res) => {
       : null;
     if (wearableForCache) {
       if (type !== 'connection.revoked' && !wearableForCache.isConnected) {
-        wearableForCache.isConnected = true;
-        await wearableForCache.save();
-        console.log(`[Wearables] isConnected repaired to true for record ${wearableForCache._id} via ${type} event`);
+        // Same single-active-device rule as connection.created above — don't
+        // self-heal this record to connected if a different device already
+        // holds that slot.
+        const blocking = await findBlockingConnection(wearableForCache.user, wearableForCache.deviceType);
+        if (!blocking) {
+          wearableForCache.isConnected = true;
+          await wearableForCache.save();
+          console.log(`[Wearables] isConnected repaired to true for record ${wearableForCache._id} via ${type} event`);
+        }
       }
       cache.delete(`dashboard:${wearableForCache.user}`);
     }
