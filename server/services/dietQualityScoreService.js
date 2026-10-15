@@ -75,11 +75,13 @@ function amdrNar(percentOfCalories, [min, max]) {
  *   { totalFiber, totalVitaminA, totalVitaminC, totalVitaminD, totalVitaminB12,
  *     totalIron, totalCalcium, totalPotassium, totalMagnesium, totalOmega3,
  *     totalSaturatedFat, totalSugar, totalSodium }
- * @param {Object} profile - { age, gender, calorieGoal }
+ * @param {Object} profile - { age, gender, calorieGoal, goalType, weightKg }
+ *   goalType/weightKg are optional — omitting either just keeps the AMDR
+ *   protein range at its fixed DRI default, same as before they existed.
  * @returns {Object} { score, healthyNutrientsScore, junkControlScore, breakdown }
  */
 function calculateDietQualityScore(totals, profile) {
-  const { age, gender, calorieGoal } = profile;
+  const { age, gender, calorieGoal, goalType, weightKg } = profile;
   const adequacyTargets = getAdequacyTargets({ age, gender, calorieGoal });
   const moderationCaps = getModerationCaps({ calorieGoal });
 
@@ -94,9 +96,16 @@ function calculateDietQualityScore(totals, profile) {
   // AMDR macro-balance components — scored against the day's OWN total
   // calories (not the calorie goal), since the question is "was today's
   // split balanced", not "did they hit their calorie target" (that's a
-  // separate, already-displayed metric).
-  const amdrRanges = getAmdrRanges();
+  // separate, already-displayed metric). The personalized protein window
+  // must be built on that SAME basis: a g/kg target (e.g. 150g protein)
+  // converts to a different % depending on what calorie figure divides it.
+  // Building the window from calorieGoal while scoring against totalCalories
+  // means a day where actual intake differs from the goal (eating less than
+  // a muscle_gain bulk target, say) miscalibrates the window — someone
+  // hitting their exact gram target could score 0 on a lower-calorie day
+  // purely from that mismatch, confirmed when this was first wired up.
   const totalCalories = Number(totals.totalCalories) || 0;
+  const amdrRanges = getAmdrRanges({ goalType, weightKg, calorieGoal: totalCalories > 0 ? totalCalories : calorieGoal });
   const amdrBreakdown = ['protein', 'carbs', 'fat'].map((macro) => {
     const totalField = macro === 'fat' ? 'totalFats' : `total${macro.charAt(0).toUpperCase()}${macro.slice(1)}`;
     const grams = Number(totals[totalField]) || 0;

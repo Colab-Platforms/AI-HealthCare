@@ -1671,8 +1671,9 @@ async function computeNutritionScorePeriod(userId, range, { startDate: customSta
     matchEnd.setUTCHours(23, 59, 59, 999);
   }
 
-  const [user, summaries] = await Promise.all([
-    User.findById(userId).select('profile.age profile.gender').lean(),
+  const [user, healthGoal, summaries] = await Promise.all([
+    User.findById(userId).select('profile.age profile.gender profile.weight').lean(),
+    HealthGoal.findOne({ userId, isActive: true }).select('goalType currentWeight').lean(),
     NutritionSummary.find({
       userId,
       date: { $gte: matchStart, $lte: matchEnd },
@@ -1680,7 +1681,12 @@ async function computeNutritionScorePeriod(userId, range, { startDate: customSta
     }).select(`date calorieGoal ${NUTRITION_TOTAL_FIELDS.join(' ')}`).lean(),
   ]);
 
-  const profileBase = { age: user?.profile?.age, gender: user?.profile?.gender };
+  const profileBase = {
+    age: user?.profile?.age,
+    gender: user?.profile?.gender,
+    goalType: healthGoal?.goalType,
+    weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
+  };
 
   const buckets = {};
   for (const s of summaries) {
@@ -1847,11 +1853,16 @@ exports.getNutritionScore = async (req, res) => {
       }
     }
 
-    const user = await User.findById(req.user._id).select('profile.age profile.gender').lean();
+    const [user, healthGoal] = await Promise.all([
+      User.findById(req.user._id).select('profile.age profile.gender profile.weight').lean(),
+      HealthGoal.findOne({ userId: req.user._id, isActive: true }).select('goalType currentWeight').lean(),
+    ]);
     const profile = {
       age: user?.profile?.age,
       gender: user?.profile?.gender,
-      calorieGoal: summary?.calorieGoal
+      calorieGoal: summary?.calorieGoal,
+      goalType: healthGoal?.goalType,
+      weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
     };
 
     const scoreResult = calculateDietQualityScore(summary, profile);

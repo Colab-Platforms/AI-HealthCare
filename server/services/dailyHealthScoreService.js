@@ -104,14 +104,16 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     // correct, deduplicated row per user per day.
     SleepSession.findOne({ user: userId, date: dayStart }).lean(),
     User.findById(userId)
-      .select('smokeLog alcoholLog profile.age profile.gender profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
+      .select('smokeLog alcoholLog profile.age profile.gender profile.weight profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
       .lean(),
     ExerciseLog.find({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } })
       .select('duration caloriesBurned category').lean(),
-    // Only age + goalType are needed for getExerciseGuidance() below — not the
-    // full doc. Falls back to User.profile.age (already fetched above) and no
-    // goal-type override if the user hasn't set an active goal yet.
-    HealthGoal.findOne({ userId, isActive: true }).select('age goalType').lean(),
+    // age + goalType for getExerciseGuidance() below; currentWeight added for
+    // the Nutrition AMDR protein-range personalization (see
+    // nutrientTargets.getAmdrRanges) — not the full doc. Falls back to
+    // User.profile.age/weight (already fetched above) and no goal-type
+    // override if the user hasn't set an active goal yet.
+    HealthGoal.findOne({ userId, isActive: true }).select('age goalType currentWeight').lean(),
     // Rolling 7-day window, not "did they train today" — strength guidance is
     // 2-3 sessions/WEEK, not daily, so a single day's yes/no reads a correctly-
     // spaced rest day as a failure. A trailing week gives every day of a
@@ -382,6 +384,8 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
         age: user?.profile?.age,
         gender: user?.profile?.gender,
         calorieGoal: user?.nutritionGoal?.calorieGoal,
+        goalType: healthGoal?.goalType,
+        weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
       });
       mealQuality = Math.min(1, dietScoreResult.score / 100);
     } catch (e) {
