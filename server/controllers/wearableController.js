@@ -1403,7 +1403,13 @@ exports.handleWebhook = async (req, res) => {
         const wearable = await findWearableDoc(data.user_id, data.provider)
           ?? await WearableData.findOneAndUpdate(
             { openWearablesUserId: data.user_id, deviceType: data.provider },
-            { openWearablesUserId: data.user_id, deviceType: data.provider, deviceName: data.provider },
+            {
+              $set: { openWearablesUserId: data.user_id, deviceType: data.provider, deviceName: data.provider },
+              // isConnected explicit here (not left to the schema default) —
+              // a brand-new document from this upsert must never start
+              // connected before the block check below gets to run.
+              $setOnInsert: { isConnected: false },
+            },
             { upsert: true, new: true }
           );
         // OAuth already succeeded on Open Wearables' side by the time this

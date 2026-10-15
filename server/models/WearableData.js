@@ -14,7 +14,14 @@ const wearableDataSchema = new mongoose.Schema({
     required: true 
   },
   deviceName: String,
-  isConnected: { type: Boolean, default: true },
+  // Defaults to false, not true — every intentional connect path already
+  // sets this explicitly (true or false) on create, so the default only
+  // matters for a document created implicitly via upsert without an explicit
+  // isConnected in its $set. Defaulting to true there silently connected a
+  // brand-new device before the single-active-device block (see
+  // controllers/wearableController.js's findBlockingConnection) ever got a
+  // chance to run — the upsert itself already set it true at creation time.
+  isConnected: { type: Boolean, default: false },
   lastSyncedAt: { type: Date, default: Date.now },
   // Cursor for wearableScoreSyncService's periodic pull (Recovery/Strain/Sleep
   // scores have no webhook, so we poll — this marks how far that poll has
