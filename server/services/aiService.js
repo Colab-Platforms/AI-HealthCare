@@ -246,7 +246,9 @@ IMPORTANT: "documentCategory" MUST be exactly one of: "lab_report", "prescriptio
 IMPORTANT: "documentType" is a short human-readable label like "Blood Test", "Prescription", "X-Ray", "MRI", "Ultrasound", "CBC Report", "Lipid Profile", "Thyroid Panel", "Discharge Summary", "Vaccination Record" etc. Detect from actual report content.`;
 
 
-exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general', context = {}) => {
+// Original single-call analysis. Still the default path (and the safety net for
+// the fast pipeline below) — deliberately left exactly as it was.
+const analyzeHealthReportLegacy = async (reportText, user = {}, fileData = null, reportType = 'general', context = {}) => {
   try {
     let userContext = `User: ${user.name || 'Patient'}. Type: ${reportType}`;
     const userContent = [];
@@ -340,6 +342,325 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
     return parsed;
   } catch (error) {
     throw error;
+  }
+};
+
+// ===========================================================================
+// FAST REPORT PIPELINE  (opt-in: FAST_REPORT_PIPELINE=true)
+//
+// The legacy path asks ONE model call to write everything, including five
+// generic prose fields per marker (whatIsThis, whatItDoes, ...) that are the
+// same for every patient. That is ~75% of the output tokens, and output tokens
+// are what latency is made of. Here the work is split by what actually needs AI
+// for THIS report:
+//
+//   core       (parallel)  gate + metadata + metrics{value,unit,status,normalRange}
+//   narrative  (parallel)  summary, doctor note, advice, deficiencies, ...
+//   knowledge  (after core) the five generic fields, from the MetricKnowledge
+//                           store (L1 -> Redis -> Mongo -> Haiku on first sight)
+//
+// The assembled result has exactly the same shape as the legacy output.
+// ===========================================================================
+
+const envFlag = (name) => /^(1|true|yes|on)$/i.test(String(process.env[name] || '').trim());
+
+const GATE_STEP = `STEP 1 — GATEKEEPING (do this before anything else):
+Decide whether the provided content is a REAL medical/healthcare document. Valid examples: lab test report, radiology report, prescription, discharge summary, clinical notes, pathology report, vaccination record, insurance/health card.
+If it is NOT a medical/healthcare document, respond with this JSON ONLY, and nothing else:
+{"isMedical": false, "detected": "<what this document most likely is>", "message": "This file does not contains any medical report please upload correct medical report for analyze. It looks like: <what this document most likely is>."}
+Be conservative — only reject when you are confident it is not a medical/healthcare document. If it IS one, ignore this step entirely and produce the analysis below.`;
+
+const REPORT_CORE_PROMPT = `Extract the structured data from this health report as an expert medical AI. You MUST extract EVERY SINGLE health marker, lab result, and medical observation found in the report without exception.
+
+${GATE_STEP}
+
+STEP 2 — EXTRACTION (only if the document IS medical). Return ONLY this JSON, nothing else:
+{
+  "patientName": "Name",
+  "reportDate": "YYYY-MM-DD",
+  "documentCategory": "lab_report",
+  "documentType": "Blood Test",
+  "healthScore": 75,
+  "metrics": {
+    "MetricName": {
+      "value": 14.2,
+      "unit": "unit",
+      "status": "normal/high/low",
+      "normalRange": "range"
+    }
+  }
+}
+IMPORTANT: "normalRange" is the NORMAL / reference range for that marker. If the report prints category thresholds (normal / pre-diabetic / diabetic, desirable / borderline / high, etc.), include them all in one string, e.g. "Below 140 mg/dL (Normal); 140–199 mg/dL (Pre-diabetic); ≥200 mg/dL (Diabetes)". Never give only a disease cut-off as the range.
+CRITICAL: Extraction is your priority. Scan the entire report and populate the "metrics" object with ALL found markers. Give ONLY value, unit, status and normalRange for each — no descriptions.
+IMPORTANT: "healthScore" is an integer from 0 to 100 summarising the overall health picture shown by this document.
+IMPORTANT: "documentCategory" MUST be exactly one of: "lab_report", "prescription", "scan", "doctor_notes", "vaccination", "insurance", "other". Detect from content: lab values/blood tests = "lab_report", medicines/drugs prescribed = "prescription", X-Ray/MRI/CT/Ultrasound/imaging = "scan", doctor consultation notes/discharge summary = "doctor_notes", vaccine records = "vaccination", insurance/ID documents = "insurance".
+IMPORTANT: "documentType" is a short human-readable label like "Blood Test", "Prescription", "X-Ray", "MRI", "Ultrasound", "CBC Report", "Lipid Profile", "Thyroid Panel", "Discharge Summary", "Vaccination Record" etc. Detect from actual report content.`;
+
+// The patient-facing analysis is split into three independent calls that run in
+// parallel. Output tokens are what take time, so three ~600-token calls finish
+// in roughly a third of the time of one ~1800-token call. Each call reads the
+// same document; together they produce exactly the fields the single legacy
+// prompt used to.
+const narrativeIntro = (part, what) => `Analyze this health report as an expert medical AI and write the patient-facing analysis — PART ${part}: ${what}.`;
+const NARRATIVE_NOTE = `Do NOT include a "metrics" object — the marker table is extracted separately. Return ONLY the JSON below, nothing else.`;
+
+const REPORT_NARRATIVE_NOTE_PROMPT = `${narrativeIntro('A', "the doctor's note")}
+
+${GATE_STEP}
+
+STEP 2 — (only if the document IS medical). ${NARRATIVE_NOTE}
+{
+  "doctorSummary": "A detailed 200-300 word professional doctor's note written in a warm, empathetic but medically authoritative tone — as if a senior physician is sitting across from the patient and explaining their results face-to-face. Use paragraph breaks for readability. Use **Markdown bolding** for any specific bio-markers or critical values mentioned. The doctor should: (1) Start by acknowledging the patient by name (if known) and greeting warmly, (2) Highlight what looks GOOD first to reassure the patient, (3) Then gently explain areas of concern with clear context — avoid scary medical jargon, use simple analogies where helpful (e.g. 'Your HDL is like a vacuum cleaner for your heart'), (4) Explain WHY certain values matter in plain language, (5) Give 2-3 specific, actionable lifestyle recommendations, (6) End with encouragement. Write in second person ('your', 'you'). Do NOT use bullet points — write flowing, conversational paragraphs. Make the patient feel understood, supported, and professionaly cared for."
+}
+IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.`;
+
+const REPORT_NARRATIVE_OVERVIEW_PROMPT = `${narrativeIntro('B', 'summary, key findings and advice')}
+
+${GATE_STEP}
+
+STEP 2 — (only if the document IS medical). ${NARRATIVE_NOTE}
+{
+  "summary": "Short 3-5 bullet points (•).",
+  "doctorAdvice": ["Specific advice 1 with reason", "Specific advice 2 with reason", "Specific advice 3 with reason"],
+  "summaryPoints": ["Brief findings"],
+  "keyFindings": ["finding1"]
+}
+IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable points derived directly from the user's specific bio-marker results. Include the "why" for each advice based on their clinical data. Avoid generic advice.`;
+
+const REPORT_NARRATIVE_CLINICAL_PROMPT = `${narrativeIntro('C', 'deficiencies, recommendations and doctor consultation')}
+
+${GATE_STEP}
+
+STEP 2 — (only if the document IS medical). ${NARRATIVE_NOTE}
+{
+  "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe", "currentValue": "value", "normalRange": "range", "explanation": "Why this matters in simple terms"}],
+  "recommendations": {"immediate": [], "lifestyle": []},
+  "doctorConsultation": {"recommended": true, "urgency": "low", "specializations": ["Specialist"]}
+}
+IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".`;
+
+const pipelineError = (message) => {
+  const err = new Error(message);
+  err.pipelineError = true; // lets the dispatcher fall back to the legacy path
+  return err;
+};
+
+const notMedicalError = (parsed) => {
+  const rejection = new Error(
+    parsed.message ||
+      'This file does not contains any medical report please upload correct medical report for analyze.'
+  );
+  rejection.code = 'NOT_MEDICAL';
+  return rejection;
+};
+
+// Text pulled from a PDF is only trusted over the native PDF when it clearly
+// contains lab-style content (enough text AND numbers).
+const isUsableExtractedText = (text) => {
+  if (typeof text !== 'string' || text.length < 400) return false;
+  return (text.match(/\d/g) || []).length >= 20;
+};
+
+/** Same input rules as the legacy path; text-only PDFs are opt-in (REPORT_TEXT_FIRST). */
+const buildAnalysisContent = (reportText, user, fileData, reportType) => {
+  const hasPdf = fileData?.buffer && fileData?.mimetype === 'application/pdf';
+  const hasImage = fileData?.buffer && fileData?.mimetype?.startsWith('image/');
+  const hasText = Boolean(reportText && reportText.trim());
+
+  if (!hasPdf && !hasImage && !hasText) {
+    throw new Error('Report content unavailable for analysis (file fetch or text extraction failed).');
+  }
+
+  const userContext = `User: ${user.name || 'Patient'}. Type: ${reportType}`;
+  const textOnly = hasText && (
+    (!hasPdf && !hasImage) ||
+    (hasPdf && envFlag('REPORT_TEXT_FIRST') && isUsableExtractedText(reportText))
+  );
+
+  if (textOnly) {
+    return [{ type: 'text', text: `${userContext}\n\nExtracted Text:\n${reportText.substring(0, 50000)}` }];
+  }
+
+  const content = [{ type: 'text', text: userContext }];
+  if (hasPdf) {
+    content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileData.buffer.toString('base64') } });
+  } else {
+    content.push({ type: 'image', source: { type: 'base64', media_type: fileData.mimetype, data: fileData.buffer.toString('base64') } });
+  }
+  return content;
+};
+
+const parseModelJson = (text, label) => {
+  const match = typeof text === 'string' ? text.match(/\{[\s\S]*\}/) : null;
+  if (!match) throw pipelineError(`${label}: model returned no JSON object`);
+  let parsed;
+  try { parsed = robustJsonParse(match[0]); }
+  catch (e) { throw pipelineError(`${label}: ${e.message}`); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw pipelineError(`${label}: model JSON is not an object`);
+  }
+  return parsed;
+};
+
+const asString = (v) => (typeof v === 'string' ? v : Array.isArray(v) ? v.filter(x => typeof x === 'string').join('\n') : '');
+const asStringArray = (v) => (Array.isArray(v) ? v : (typeof v === 'string' && v.trim() ? [v] : []));
+
+async function runCoreExtraction(content, user, context) {
+  const { text, stopReason } = await makeAnthropicRequestDetailed(
+    [{ role: 'system', content: REPORT_CORE_PROMPT }, { role: 'user', content }],
+    8000,
+    process.env.REPORT_CORE_MODEL || CLAUDE_MODEL,
+    { feature: context.feature || 'analyze_report', userId: user?._id || context.userId || null, reportId: context.reportId || null }
+  );
+
+  const parsed = parseModelJson(text, 'core');
+  if (parsed.isMedical === false) throw notMedicalError(parsed);
+
+  const metrics = parsed.metrics;
+  if (metrics !== undefined && (typeof metrics !== 'object' || metrics === null || Array.isArray(metrics))) {
+    throw pipelineError('core: "metrics" is not an object');
+  }
+  const score = Math.round(Number(parsed.healthScore));
+
+  return {
+    patientName: parsed.patientName,
+    reportDate: parsed.reportDate,
+    documentCategory: parsed.documentCategory,
+    documentType: parsed.documentType,
+    healthScore: Number.isFinite(score) ? Math.min(100, Math.max(0, score)) : 0,
+    metrics: metrics || {},
+    truncated: stopReason === 'max_tokens',
+  };
+}
+
+async function runNarrativePart(label, systemPrompt, maxTokens, content, user, context) {
+  const { text } = await makeAnthropicRequestDetailed(
+    [{ role: 'system', content: systemPrompt }, { role: 'user', content }],
+    maxTokens,
+    process.env.REPORT_NARRATIVE_MODEL || CLAUDE_MODEL,
+    { feature: context.feature || 'analyze_report', userId: user?._id || context.userId || null, reportId: context.reportId || null }
+  );
+  const parsed = parseModelJson(text, label);
+  if (parsed.isMedical === false) throw notMedicalError(parsed);
+  return parsed;
+}
+
+const asObject = (v, fallback) => ((v && typeof v === 'object' && !Array.isArray(v)) ? v : fallback);
+
+async function runNarrative(content, user, context) {
+  const [note, overview, clinical] = await Promise.all([
+    runNarrativePart('narrative-note', REPORT_NARRATIVE_NOTE_PROMPT, 1500, content, user, context),
+    runNarrativePart('narrative-overview', REPORT_NARRATIVE_OVERVIEW_PROMPT, 2500, content, user, context),
+    runNarrativePart('narrative-clinical', REPORT_NARRATIVE_CLINICAL_PROMPT, 2500, content, user, context),
+  ]);
+
+  return {
+    summary: asString(overview.summary),
+    doctorSummary: asString(note.doctorSummary),
+    doctorAdvice: asStringArray(overview.doctorAdvice),
+    summaryPoints: asStringArray(overview.summaryPoints),
+    keyFindings: asStringArray(overview.keyFindings),
+    deficiencies: Array.isArray(clinical.deficiencies) ? clinical.deficiencies : [],
+    recommendations: asObject(clinical.recommendations, { immediate: [], lifestyle: [] }),
+    doctorConsultation: asObject(clinical.doctorConsultation, { recommended: false, urgency: 'low', specializations: [] }),
+  };
+}
+
+/**
+ * Best-effort repair when the knowledge store could not supply some markers
+ * (AI down/timeout): retry shortly after and patch only still-empty fields on
+ * the saved report. A miss here is never fatal — the report is already usable.
+ */
+function scheduleKnowledgeBackfill(reportId, names) {
+  const timer = setTimeout(async () => {
+    try {
+      const { resolveMetricKnowledge, knowledgeKey, KNOWLEDGE_FIELDS } = require('./metricKnowledgeService');
+      const HealthReport = require('../models/HealthReport');
+      const { map } = await resolveMetricKnowledge(names);
+      if (!map.size) return;
+
+      const report = await HealthReport.findOne({ _id: reportId, status: 'completed' }).select('user aiAnalysis.metrics').lean();
+      const saved = report?.aiAnalysis?.metrics;
+      if (!saved) return;
+
+      const $set = {};
+      for (const [name, metric] of Object.entries(saved)) {
+        if (name.includes('.') || name.startsWith('$')) continue; // not addressable via $set paths
+        const known = map.get(knowledgeKey(name));
+        if (!known || (metric && metric.whatItDoes)) continue;
+        for (const field of KNOWLEDGE_FIELDS) $set[`aiAnalysis.metrics.${name}.${field}`] = known[field];
+      }
+      if (Object.keys($set).length) {
+        await HealthReport.updateOne({ _id: reportId }, { $set });
+        console.log(`📚 [Backfill] Filled knowledge for report ${reportId}`);
+        await require('../utils/cacheKeys').invalidateUserHealthCache(report.user);
+      }
+    } catch (err) {
+      console.warn(`[Backfill] Skipped for report ${reportId}: ${err.message}`);
+    }
+  }, 60 * 1000);
+  if (typeof timer.unref === 'function') timer.unref();
+}
+
+async function analyzeHealthReportFast(reportText, user = {}, fileData = null, reportType = 'general', context = {}) {
+  const startedAt = Date.now();
+  const { resolveMetricKnowledge, mergeKnowledgeIntoMetrics } = require('./metricKnowledgeService');
+
+  const content = buildAnalysisContent(reportText, user, fileData, reportType);
+
+  // Core -> knowledge is one chain; narrative runs alongside it. Total latency
+  // is the slower chain (normally the narrative), not the sum.
+  const coreChain = runCoreExtraction(content, user, context).then(async (core) => {
+    const coreMs = Date.now() - startedAt;
+    const { map, missing } = await resolveMetricKnowledge(Object.keys(core.metrics));
+    return { core, coreMs, knowledgeMs: Date.now() - startedAt - coreMs, map, missing };
+  });
+  const narrativeChain = runNarrative(content, user, context).then((n) => ({ n, narrativeMs: Date.now() - startedAt }));
+
+  const [{ core, coreMs, knowledgeMs, map, missing }, { n, narrativeMs }] = await Promise.all([coreChain, narrativeChain]);
+
+  const result = {
+    patientName: core.patientName,
+    reportDate: core.reportDate,
+    documentCategory: core.documentCategory,
+    documentType: core.documentType,
+    healthScore: core.healthScore,
+    summary: n.summary,
+    doctorSummary: n.doctorSummary,
+    doctorAdvice: n.doctorAdvice,
+    summaryPoints: n.summaryPoints,
+    keyFindings: n.keyFindings,
+    metrics: mergeKnowledgeIntoMetrics(core.metrics, map),
+    deficiencies: n.deficiencies,
+    recommendations: n.recommendations,
+    doctorConsultation: n.doctorConsultation,
+  };
+
+  if (core.truncated) {
+    console.warn(`⚠️ Core extraction truncated for report ${context.reportId || '(unknown)'} — metric list may be incomplete.`);
+    result.__truncated = true;
+  }
+  if (missing.length && context.reportId) scheduleKnowledgeBackfill(context.reportId, missing);
+
+  console.log(`⚡ [FastPipeline] total:${Date.now() - startedAt}ms core:${coreMs}ms +knowledge:${knowledgeMs}ms (${Object.keys(core.metrics).length} markers, ${missing.length} unresolved) narrative:${narrativeMs}ms`);
+  return result;
+}
+
+exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general', context = {}) => {
+  if (!envFlag('FAST_REPORT_PIPELINE')) {
+    return analyzeHealthReportLegacy(reportText, user, fileData, reportType, context);
+  }
+  try {
+    return await analyzeHealthReportFast(reportText, user, fileData, reportType, context);
+  } catch (err) {
+    // Only a malformed/unusable model response falls back (that is a pipeline
+    // problem the legacy prompt may not share). Real rejections (NOT_MEDICAL),
+    // missing content and API errors keep their original behaviour.
+    if (err?.pipelineError) {
+      console.warn(`⚠️ [FastPipeline] ${err.message} — falling back to the legacy analysis path.`);
+      return analyzeHealthReportLegacy(reportText, user, fileData, reportType, context);
+    }
+    throw err;
   }
 };
 
@@ -462,7 +783,7 @@ exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit, 
         "dietaryTips": ["Food 1", "Food 2", "Food 3"],
         "symptoms": ["Symptom 1", "Symptom 2"],
         "actions": ["Action 1", "Action 2"]
-      }q
+      }
     }`;
 
     const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1200, CLAUDE_HAIKU_MODEL, { feature: 'metric_info', ...context });
