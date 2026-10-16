@@ -2,6 +2,8 @@ const DailyInsight = require('../models/DailyInsight');
 const {
   runDailyInsightCron,
   generateForUser,
+  ensureInsight,
+  getLatestSleepNightDateKey,
   istDateKey,
   shiftDateKey,
 } = require('../services/dailyInsightService');
@@ -13,9 +15,33 @@ const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 exports.getTodaysInsights = async (req, res) => {
   try {
     const insightDate = istDateKey();
-    const insights = await DailyInsight.find({ userId: req.user._id, insightDate })
+    let insights = await DailyInsight.find({ userId: req.user._id, insightDate })
       .select('-dataSnapshot')
       .lean();
+
+    // The 'sleep' insight normally describes sourceDate = insightDate - 1
+    // (last night's cron run). The Sleep screen's "last night" ring instead
+    // always shows the most recent SleepSession row, which can already be
+    // dated `insightDate` itself once the user wakes up and syncs — a full
+    // night ahead of the cached insight. Detect that and refresh on the
+    // spot so the insight card never contradicts the ring shown above it.
+    try {
+      const latestNightDate = await getLatestSleepNightDateKey(req.user._id);
+      const sleepInsight = insights.find((i) => i.insightType === 'sleep');
+      const isStale = latestNightDate === insightDate
+        && (!sleepInsight || sleepInsight.sourceDate !== insightDate);
+      if (isStale) {
+        const fresh = await ensureInsight(req.user._id, 'sleep', insightDate, { force: true, sameDay: true });
+        if (fresh) {
+          insights = insights.filter((i) => i.insightType !== 'sleep');
+          insights.push(fresh);
+        }
+      }
+    } catch (refreshError) {
+      // Never let the staleness refresh break the whole response — the
+      // user still gets whatever was already cached.
+      console.error('getTodaysInsights sleep refresh error:', refreshError.message);
+    }
 
     res.json({
       success: true,
