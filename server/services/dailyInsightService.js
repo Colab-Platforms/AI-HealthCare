@@ -270,12 +270,20 @@ Rules you must follow:
 - Personalized: ground it in THIS user's actual number for the date given, compared against their own
   recent average/baseline/goal when that comparison is present in the data — not a generic statement that
   could apply to any user.
-- Only use facts present in the data. Never invent numbers, foods, or symptoms.
+- Only use facts present in the data. Never invent numbers, foods, or symptoms. Never name a specific
+  health marker, system, or goal (blood sugar, cholesterol, metabolism, cardiovascular health, etc.)
+  unless that exact term appears in the data below — "support your energy" is fine, "support your blood
+  sugar goals" is not, if no blood sugar field exists in the data.
 - Plain everyday language, no medical jargon, no emojis.
 - Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
+- The title must match the SAME primary fact the description leads with — never a positive-sounding
+  title paired with a description about falling short, or vice versa. If the description's main point
+  is "you came up short," the title must signal that too (e.g. "Short on Sleep Tonight"), not an
+  unrelated positive ("You're on an upward trend") that contradicts it.
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
-- title: max 6 words, upbeat headline.
+- title: max 6 words, matching the description's primary point — upbeat in TONE, never in CONTENT
+  that contradicts a shortfall the description reports.
 - description: 2-3 sentences, 120-220 characters — acknowledgment, number, then the specific improve-or-maintain guidance.
 - summary: one line, max 12 words, the single takeaway.`;
 
@@ -302,7 +310,12 @@ Rules you must follow:
 - Personalized: lead with how they're doing, then that night's actual number, then compare it against
   the user's OWN trend/goal/regularity fields when present in the data — not a generic statement.
 - Only reference numbers and statuses present in the data below. Never invent a number, a trend, or a
-  pattern that isn't explicitly in the data.
+  pattern that isn't explicitly in the data. Never name a specific health marker or system (blood sugar,
+  cholesterol, metabolism, cardiovascular health, etc.) unless that exact term appears in the data.
+- The title must match vsIdeal, not a secondary trend field — if vsIdeal is "below", the title must
+  signal that (e.g. "Short on Sleep Tonight"), even if a weekly trend elsewhere in the data is positive.
+  Save the positive trend for inside the description as encouragement, never as a title that contradicts
+  the night's own shortfall.
 - If tier is "insufficient_data" or "raw_comparison", do NOT claim any trend, debt, or regularity pattern —
   explicitly acknowledge that there isn't enough history yet and encourage continued tracking instead.
 - This is wellness guidance, not a medical diagnosis. Plain everyday language, no medical jargon, no emojis,
