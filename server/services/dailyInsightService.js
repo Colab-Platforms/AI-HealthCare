@@ -328,11 +328,59 @@ Rules you must follow:
 - description: 2-3 sentences, 120-220 characters. State the specific number/comparison, then the one action.
 - summary: one line, max 12 words, the single takeaway.`;
 
+// 'overall' needs its own rules, not the generic SHARED_RULES — a 2-3
+// sentence budget biased toward "cover the ONE most notable thing" let the
+// model repeatedly write a pure nutrition (or pure whatever-scored-worst)
+// summary while sleep/activity/recovery data sat right there unused
+// (confirmed live: sleep=100, activity=100, recovery=Low/HRV-16 all present
+// in the data, and the generated insight mentioned none of them — only
+// nutrition). This mandates touching every pillar that has real data,
+// briefly, instead of only the worst one.
+const OVERALL_SHARED_RULES = `
+Rules you must follow:
+- Sound like a real coach giving a quick daily roundup, not a single-topic report.
+- Structure (3-4 sentences):
+  1. One sentence briefly naming how the GOOD or ON-TRACK pillars went, by name, for every one of
+     sleep/activity/nutrition that has data in scoreComponents AND is good/on-track (e.g. "Sleep and
+     activity were both strong"). If only one is good, name just that one; if none are good, skip this
+     sentence and start with the attention-needing one.
+  2. One sentence naming the ONE pillar (sleep/activity/nutrition) that most needs attention (the
+     lowest score or clearest gap), with its real number.
+  3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
+     band and, if present, the HRV-vs-baseline comparison — regardless of whether it's good or needs
+     attention. Recovery is never skipped just because sleep/activity/nutrition already filled the
+     "good" and "attention" slots above.
+  4. One short sentence: a single concrete action tied to whichever pillar (from 2 or 3) most needs it —
+     this sentence is MANDATORY, never drop it to save space. If the first three sentences are running
+     long, trim THEM down (shorter clauses, fewer words) rather than cutting the action — a roundup
+     with no action defeats the point of the insight.
+- Keep every sentence short and plain — telegraphic is fine (e.g. "Nutrition was lowest at 41." not a
+  longer explanation of why). Brevity across all 4 sentences matters more than any one being thorough.
+- Never limit yourself to only the pillar that needs attention — if sleep/activity data exists and was
+  good, SAY SO by name, even briefly, before moving to what needs work.
+- NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
+  weeks after the date it describes. Speak directly to the user as "you" and describe what happened
+  without a day-word.
+- Personalized: ground every claim in THIS user's actual numbers from the data — never a generic
+  statement that could apply to any user.
+- Only use facts present in the data. Never invent numbers, foods, or symptoms. Never name a specific
+  health marker or system (blood sugar, cholesterol, metabolism, cardiovascular health, etc.) unless
+  that exact term appears in the data.
+- Plain everyday language, no medical jargon, no emojis.
+- Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
+- Warm, positive, encouraging. Never scold, shame, or use alarming language.
+- Respond with ONLY this JSON, nothing else:
+{"title": "", "description": "", "summary": ""}
+- title: max 6 words, naming the pillar that most needs attention (not a generic "Great Day" when one
+  pillar clearly needs work).
+- description: 3-4 sentences per the structure above, 150-320 characters.
+- summary: one line, max 12 words, the single takeaway.`;
+
 const INSIGHT_SYSTEMS = {
-  overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity for the given date, drawing on whichever of sleep, activity, nutrition, and recovery actually have data for that date — don't default to only one or two pillars when more are available.${SHARED_RULES}`,
+  overall: `You are a friendly health coach inside the take.health app giving a quick daily roundup across sleep, activity, nutrition, and recovery for the given date — every pillar that has data, not just one.${OVERALL_SHARED_RULES}`,
   sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (that night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
   nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data for the given date.${SHARED_RULES}`,
-  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date. If the data includes avgStepsLast3Days or personalBaselineSteps, compare the day's steps against those real numbers when you call it "above" or "below usual" — if both are null, do not claim "above/below usual" at all, just state the day's number plainly.${SHARED_RULES}`,
+  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date. If the data includes avgStepsLast3Days or personalBaselineSteps, compare the day's steps against those real numbers when you call it "above" or "below usual" — if both are null, do not claim "above/below usual" at all, just state the day's number plainly. If isPartialDay is true, the day is still in progress — never issue a final verdict on the whole day (no "you only did X" or "great job today"); instead speak in "so far" terms (e.g. "so far you've logged X steps — on pace to..." or "X steps so far, below your usual pace at this point").${SHARED_RULES}`,
   recovery: `You are a friendly recovery coach inside the take.health app, reasoning like a sports-science clinician: you are given that day's HRV, resting heart rate, and respiratory-rate readings (each as a T-score, 0-100, compared against the user's own personal baseline where available) and must explain what they mean for the user's physical readiness that day.${SHARED_RULES}`,
   smoking: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged cigarette count (and cigarettes resisted, if present) for the given date. Frame any zero or reduced count as a genuine win; never shame a logged count.${SHARED_RULES}`,
   alcohol: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged alcohol units for the given date. Frame any zero or moderate count as a genuine win; never shame a logged count.${SHARED_RULES}`,
@@ -403,7 +451,9 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
     {
       userId, insightDate, sourceDate, insightType,
       title: String(parsed.title).slice(0, 120),
-      description: trimToSentence(parsed.description, 220),
+      // 'overall' covers up to 4 pillars in 3 sentences and needs more room
+      // than the single-topic types' 220-char cap.
+      description: trimToSentence(parsed.description, insightType === 'overall' ? 320 : 220),
       summary: String(parsed.summary || parsed.title).slice(0, 200),
       dataSnapshot: data,
       model,
@@ -467,6 +517,11 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
       personalBaselineSteps: baseline.personalBaselineSteps ?? null,
       activityAdherence: baseline.activityAdherence,
       activityBaseline: baseline.activityBaseline,
+      // true only for the on-demand same-day refresh (see
+      // getLatestActivityDateKey in insightController.js) — unlike a
+      // completed night's sleep, the day's steps are still accumulating, so
+      // the model must hedge ("so far") instead of making a final verdict.
+      isPartialDay: sourceDate === istDateKey(),
     };
   }
   if (insightType === 'overall') {
@@ -617,12 +672,24 @@ async function getLatestSleepNightDateKey(userId) {
   return latest ? istDateKey(latest.date) : null;
 }
 
+/**
+ * The IST date key of the user's most recent DailyActivityMetric row, or
+ * null if they have none. Used to detect whether a cached 'fitness' insight
+ * (which describes sourceDate = insightDate - 1) is now stale against the
+ * Activity screen's ring, which always shows live data for the current day.
+ */
+async function getLatestActivityDateKey(userId) {
+  const latest = await DailyActivityMetric.findOne({ user: userId }).sort({ date: -1 }).select('date').lean();
+  return latest ? istDateKey(latest.date) : null;
+}
+
 module.exports = {
   runDailyInsightCron,
   generateForUser,
   ensureInsight,
   collectOverallData,
   getLatestSleepNightDateKey,
+  getLatestActivityDateKey,
   INSIGHT_TYPES,
   istDateKey,
   shiftDateKey,
