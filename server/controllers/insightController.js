@@ -4,11 +4,36 @@ const {
   generateForUser,
   ensureInsight,
   getLatestSleepNightDateKey,
+  getLatestActivityDateKey,
   istDateKey,
   shiftDateKey,
 } = require('../services/dailyInsightService');
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Both 'sleep' and 'fitness' normally describe sourceDate = insightDate - 1
+// (last night's cron run), but their matching screen (the Sleep ring, the
+// Activity ring) always shows the user's LATEST actual data — which can
+// already be dated `insightDate` itself (a completed night once they wake
+// and sync; today's steps-so-far for activity). Left alone, the insight
+// card then contradicts the ring shown right above it. This detects that
+// and refreshes on the spot instead of waiting for tonight's cron.
+async function refreshIfStale(insights, insightType, insightDate, userId, getLatestDateKey) {
+  try {
+    const latestDate = await getLatestDateKey(userId);
+    const cached = insights.find((i) => i.insightType === insightType);
+    const isStale = latestDate === insightDate && (!cached || cached.sourceDate !== insightDate);
+    if (!isStale) return insights;
+    const fresh = await ensureInsight(userId, insightType, insightDate, { force: true, sameDay: true });
+    if (!fresh) return insights;
+    return [...insights.filter((i) => i.insightType !== insightType), fresh];
+  } catch (refreshError) {
+    // Never let the staleness refresh break the whole response — the user
+    // still gets whatever was already cached.
+    console.error(`getTodaysInsights ${insightType} refresh error:`, refreshError.message);
+    return insights;
+  }
+}
 
 // GET /api/insights/today
 // The four insight types written last night for today's IST date.
@@ -19,29 +44,8 @@ exports.getTodaysInsights = async (req, res) => {
       .select('-dataSnapshot')
       .lean();
 
-    // The 'sleep' insight normally describes sourceDate = insightDate - 1
-    // (last night's cron run). The Sleep screen's "last night" ring instead
-    // always shows the most recent SleepSession row, which can already be
-    // dated `insightDate` itself once the user wakes up and syncs — a full
-    // night ahead of the cached insight. Detect that and refresh on the
-    // spot so the insight card never contradicts the ring shown above it.
-    try {
-      const latestNightDate = await getLatestSleepNightDateKey(req.user._id);
-      const sleepInsight = insights.find((i) => i.insightType === 'sleep');
-      const isStale = latestNightDate === insightDate
-        && (!sleepInsight || sleepInsight.sourceDate !== insightDate);
-      if (isStale) {
-        const fresh = await ensureInsight(req.user._id, 'sleep', insightDate, { force: true, sameDay: true });
-        if (fresh) {
-          insights = insights.filter((i) => i.insightType !== 'sleep');
-          insights.push(fresh);
-        }
-      }
-    } catch (refreshError) {
-      // Never let the staleness refresh break the whole response — the
-      // user still gets whatever was already cached.
-      console.error('getTodaysInsights sleep refresh error:', refreshError.message);
-    }
+    insights = await refreshIfStale(insights, 'sleep', insightDate, req.user._id, getLatestSleepNightDateKey);
+    insights = await refreshIfStale(insights, 'fitness', insightDate, req.user._id, getLatestActivityDateKey);
 
     res.json({
       success: true,
