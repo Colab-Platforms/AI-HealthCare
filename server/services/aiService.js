@@ -402,13 +402,13 @@ IMPORTANT: "documentType" is a short human-readable label like "Blood Test", "Pr
 // same document; together they produce exactly the fields the single legacy
 // prompt used to.
 const narrativeIntro = (part, what) => `Analyze this health report as an expert medical AI and write the patient-facing analysis — PART ${part}: ${what}.`;
-const NARRATIVE_NOTE = `Do NOT include a "metrics" object — the marker table is extracted separately. Return ONLY the JSON below, nothing else.`;
+// The medical-document gate lives in the core call ONLY. Four independent gates meant four chances for a
+// spurious "not medical" verdict to delete a valid upload, so the narrative parts are told the document is verified.
+const NARRATIVE_NOTE = `This document has already been verified as a real medical document — do not question that. Do NOT include a "metrics" object — the marker table is extracted separately. Return ONLY the JSON below, nothing else.`;
 
 const REPORT_NARRATIVE_NOTE_PROMPT = `${narrativeIntro('A', "the doctor's note")}
 
-${GATE_STEP}
-
-STEP 2 — (only if the document IS medical). ${NARRATIVE_NOTE}
+${NARRATIVE_NOTE}
 {
   "doctorSummary": "A detailed 200-300 word professional doctor's note written in a warm, empathetic but medically authoritative tone — as if a senior physician is sitting across from the patient and explaining their results face-to-face. Use paragraph breaks for readability. Use **Markdown bolding** for any specific bio-markers or critical values mentioned. The doctor should: (1) Start by acknowledging the patient by name (if known) and greeting warmly, (2) Highlight what looks GOOD first to reassure the patient, (3) Then gently explain areas of concern with clear context — avoid scary medical jargon, use simple analogies where helpful (e.g. 'Your HDL is like a vacuum cleaner for your heart'), (4) Explain WHY certain values matter in plain language, (5) Give 2-3 specific, actionable lifestyle recommendations, (6) End with encouragement. Write in second person ('your', 'you'). Do NOT use bullet points — write flowing, conversational paragraphs. Make the patient feel understood, supported, and professionaly cared for."
 }
@@ -416,9 +416,7 @@ IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the
 
 const REPORT_NARRATIVE_OVERVIEW_PROMPT = `${narrativeIntro('B', 'summary, key findings and advice')}
 
-${GATE_STEP}
-
-STEP 2 — (only if the document IS medical). ${NARRATIVE_NOTE}
+${NARRATIVE_NOTE}
 {
   "summary": "Short 3-5 bullet points (•).",
   "doctorAdvice": ["Specific advice 1 with reason", "Specific advice 2 with reason", "Specific advice 3 with reason"],
@@ -429,9 +427,7 @@ IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable poi
 
 const REPORT_NARRATIVE_CLINICAL_PROMPT = `${narrativeIntro('C', 'deficiencies, recommendations and doctor consultation')}
 
-${GATE_STEP}
-
-STEP 2 — (only if the document IS medical). ${NARRATIVE_NOTE}
+${NARRATIVE_NOTE}
 {
   "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe", "currentValue": "value", "normalRange": "range", "explanation": "Why this matters in simple terms"}],
   "recommendations": {"immediate": [], "lifestyle": []},
@@ -506,15 +502,25 @@ const asString = (v) => (typeof v === 'string' ? v : Array.isArray(v) ? v.filter
 const asStringArray = (v) => (Array.isArray(v) ? v : (typeof v === 'string' && v.trim() ? [v] : []));
 
 async function runCoreExtraction(content, user, context) {
-  const { text, stopReason } = await makeAnthropicRequestDetailed(
-    [{ role: 'system', content: REPORT_CORE_PROMPT }, { role: 'user', content }],
-    8000,
-    process.env.REPORT_CORE_MODEL || CLAUDE_MODEL,
-    { feature: context.feature || 'analyze_report', userId: user?._id || context.userId || null, reportId: context.reportId || null }
-  );
-
-  const parsed = parseModelJson(text, 'core');
-  if (parsed.isMedical === false) throw notMedicalError(parsed);
+  // A "not a medical document" verdict deletes the user's upload, and the model
+  // is not perfectly deterministic: the same valid report has been rejected once
+  // and accepted on re-upload. So a rejection must be confirmed by a second,
+  // independent call; any accept in between wins.
+  let parsed;
+  let stopReason;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await makeAnthropicRequestDetailed(
+      [{ role: 'system', content: REPORT_CORE_PROMPT }, { role: 'user', content }],
+      8000,
+      process.env.REPORT_CORE_MODEL || CLAUDE_MODEL,
+      { feature: context.feature || 'analyze_report', userId: user?._id || context.userId || null, reportId: context.reportId || null }
+    );
+    stopReason = res.stopReason;
+    parsed = parseModelJson(res.text, 'core');
+    if (parsed.isMedical !== false) break;
+    if (attempt === 2) throw notMedicalError(parsed);
+    console.warn(`⚠️ [FastPipeline] Core gate said "not medical" for report ${context.reportId || '(unknown)'} (${parsed.detected || 'n/a'}) — confirming with a second pass.`);
+  }
 
   const metrics = parsed.metrics;
   if (metrics !== undefined && (typeof metrics !== 'object' || metrics === null || Array.isArray(metrics))) {
@@ -541,7 +547,7 @@ async function runNarrativePart(label, systemPrompt, maxTokens, content, user, c
     { feature: context.feature || 'analyze_report', userId: user?._id || context.userId || null, reportId: context.reportId || null }
   );
   const parsed = parseModelJson(text, label);
-  if (parsed.isMedical === false) throw notMedicalError(parsed);
+  if (parsed.isMedical === false) throw pipelineError(`${label}: unexpected medical-gate verdict`);
   return parsed;
 }
 
@@ -617,7 +623,14 @@ async function analyzeHealthReportFast(reportText, user = {}, fileData = null, r
   });
   const narrativeChain = runNarrative(content, user, context).then((n) => ({ n, narrativeMs: Date.now() - startedAt }));
 
-  const [{ core, coreMs, knowledgeMs, map, missing }, { n, narrativeMs }] = await Promise.all([coreChain, narrativeChain]);
+  // Core is awaited first so its verdict (NOT_MEDICAL, bad JSON) always wins over
+  // any narrative failure; the narrative outcome is captured so it can never
+  // surface as an unhandled rejection while core is still running.
+  const narrativeOutcome = narrativeChain.then((value) => ({ value }), (error) => ({ error }));
+  const { core, coreMs, knowledgeMs, map, missing } = await coreChain;
+  const narrativeResult = await narrativeOutcome;
+  if (narrativeResult.error) throw narrativeResult.error;
+  const { n, narrativeMs } = narrativeResult.value;
 
   const result = {
     patientName: core.patientName,
