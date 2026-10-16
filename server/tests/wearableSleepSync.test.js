@@ -86,13 +86,44 @@ test('sleepSync: a fetched session is normalized correctly (stages, bedTime/wake
   assert.strictEqual(sessions[0].lightSleepMinutes, 214);
   assert.strictEqual(sessions[0].remSleepMinutes, 100);
   assert.strictEqual(sessions[0].awakeMinutes, 37);
-  assert.strictEqual(sessions[0].totalSleepMinutes, Math.round(28633 / 60));
+  // deep+light+rem only (438), not the full bedTime-to-wakeTime span (477
+  // from duration_seconds) — WHOOP's own "Sleep" figure excludes awake time.
+  assert.strictEqual(sessions[0].totalSleepMinutes, 124 + 214 + 100);
   assert.strictEqual(sessions[0].sourceRecordId, 'sleep-abc');
   // Bed 7 Oct 10:45 PM IST -> wake 8 Oct 6:42 AM IST: must bucket to 8 Oct
   // (wake day), not 7 Oct (the old UTC-bed-time behavior).
   assert.strictEqual(sessions[0].date.toISOString(), '2026-10-08T00:00:00.000Z');
   assert.strictEqual(sessions[0].bedTime, '2026-10-07T17:15:18.940Z');
   assert.strictEqual(sessions[0].wakeTime, '2026-10-08T01:12:32.370Z');
+});
+
+test('sleepSync: totalSleepMinutes excludes awake time, matching WHOOP\'s own "Sleep" figure, not the full bedTime-to-wakeTime span', async () => {
+  delete require.cache[require.resolve('../services/wearableSleepSyncService')];
+  // Real production numbers: bed 15 Oct 12:20 AM IST, wake 16 Oct 6:47 AM IST
+  // (duration_seconds = 386 full minutes in bed), but WHOOP's app showed
+  // 5:48 (348 min) as the night's Sleep figure -- exactly deep+light+rem,
+  // excluding the 38 min spent awake in bed. Storing the full span (the old
+  // bug) made this app's sleep hours run ahead of what the user's own WHOOP
+  // app shows.
+  mock.method(openWearablesClient, 'get', async () => ({
+    data: {
+      data: [{
+        id: 'sleep-awake-excl', start_time: '2026-10-15T18:50:21.030Z', end_time: '2026-10-16T01:16:50.520Z',
+        duration_seconds: 23189, // ~386.48 min, the full bed-to-wake span
+        stages: { deep_minutes: 103, light_minutes: 164, rem_minutes: 81, awake_minutes: 38 },
+      }],
+      pagination: { has_more: false, next_cursor: null },
+    },
+  }));
+  const applyMock = mock.method(wearableIngest, 'applySleepSessions', async () => {});
+  const { syncSleepForConnection } = require('../services/wearableSleepSyncService');
+  const WearableData = require('../models/WearableData');
+  mock.method(WearableData, 'findOne', async () => makeWearable({ lastSleepSyncAt: new Date() }));
+
+  await syncSleepForConnection('ow-1', 'whoop');
+
+  const sessions = applyMock.mock.calls[0].arguments[3];
+  assert.strictEqual(sessions[0].totalSleepMinutes, 348, 'must match WHOOP\'s displayed Sleep duration (deep+light+rem), not the 386min full bed span');
 });
 
 test('sleepSync: a very-late IST bedtime (crosses the UTC date line but not the IST one) still buckets to the wake day', async () => {

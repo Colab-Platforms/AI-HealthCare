@@ -54,10 +54,21 @@ function dateOnlyIST(value) {
   return new Date(`${key}T00:00:00.000Z`);
 }
 
+// Deep+light+REM only — mirrors sumStageMinutes in wearableController.js's
+// 'sleep.created' handler (same reasoning: duration_seconds is the full
+// bedTime-to-wakeTime span including awake time, but every downstream
+// efficiency calc in this codebase assumes totalSleepMinutes excludes it).
+function sumStageMinutes(stages) {
+  if (!stages) return null;
+  const { deep_minutes, light_minutes, rem_minutes } = stages;
+  if (deep_minutes == null && light_minutes == null && rem_minutes == null) return null;
+  return (deep_minutes || 0) + (light_minutes || 0) + (rem_minutes || 0);
+}
+
 function normalizeSleepEvent(raw) {
   return {
     date: dateOnlyIST(raw.end_time),
-    totalSleepMinutes: Math.round(raw.duration_seconds / 60),
+    totalSleepMinutes: sumStageMinutes(raw.stages) ?? Math.round(raw.duration_seconds / 60),
     deepSleepMinutes: raw.stages?.deep_minutes,
     lightSleepMinutes: raw.stages?.light_minutes,
     remSleepMinutes: raw.stages?.rem_minutes,

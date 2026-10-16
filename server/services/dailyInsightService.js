@@ -252,42 +252,55 @@ async function collectRecoveryData(userId, dateKey) {
 // flatly wrong). One wording serves both without needing two insight variants.
 const SHARED_RULES = `
 Rules you must follow:
+- Sound like a real coach talking to them, not a data readout. Don't just restate the number and tack
+  on a tip at the end — open by acknowledging how they're actually doing, in plain human words, THEN
+  bring in the number as support for that, THEN close with guidance that fits the result:
+    - If the result is BELOW where it should be: say, specifically, what to do to make it better —
+      framed as something to do, not just a fact to know.
+    - If the result is GOOD or on track: say specifically what to do to KEEP it that way — never a
+      bare "keep it up" with nothing concrete attached to it.
+  Bad (robotic, data-first): "You logged 3,784 steps, below your usual 6,200. Try taking a short walk."
+  Good (human, feeling-first): "You're moving a lot less than usual — about 3,784 steps against your
+  typical 6,200. A 20-minute walk would go a long way toward closing that gap."
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
 - NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
   weeks after the date it describes, so "today"/"yesterday" would be factually wrong by the time they
-  read it. Speak directly to the user as "you" and describe what happened without a day-word (e.g.
-  "You logged 16,460 steps, well above your usual." not "You logged 16,460 steps today.").
+  read it. Speak directly to the user as "you" and describe what happened without a day-word.
 - Short: the description must be MAX 2-3 sentences. Not 4, not 5 — cut anything extra.
 - Personalized: ground it in THIS user's actual number for the date given, compared against their own
   recent average/baseline/goal when that comparison is present in the data — not a generic statement that
   could apply to any user.
-- Meaningful: state the one specific thing the data actually shows, not a vague platitude. If nothing
-  notable stands out in the data, say the plain specific fact (the number itself) rather than padding with
-  generic encouragement.
-- Actionable: end with exactly ONE concrete, specific next step that follows from this data point — never a
-  generic "keep it up" unless the data genuinely supports no change being needed.
 - Only use facts present in the data. Never invent numbers, foods, or symptoms.
 - Plain everyday language, no medical jargon, no emojis.
 - Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, upbeat headline.
-- description: 2-3 sentences, 120-220 characters. State the specific number/comparison, then the one action.
+- description: 2-3 sentences, 120-220 characters — acknowledgment, number, then the specific improve-or-maintain guidance.
 - summary: one line, max 12 words, the single takeaway.`;
 
 const SLEEP_SHARED_RULES = `
 Rules you must follow:
+- Sound like a real sleep coach talking to them, not a data readout. Don't just restate the number and
+  tack on a tip — open by acknowledging how they're actually doing, in plain human words, THEN bring in
+  the number as support for that, THEN close with guidance that fits the result:
+    - If vsIdeal is "below": name specifically what to do about it — use the data's
+      shortfallMinutesToMin value directly (e.g. "get into bed {shortfallMinutesToMin} minutes earlier
+      tonight to close that gap"). Never compute or guess this number yourself — only state the value
+      already given in the data.
+    - If vsIdeal is "within" or "above": name specifically what to do to KEEP it that way (a consistent
+      bedtime, winding down the same way) — never a bare "keep it up" with nothing concrete attached.
+  Bad (robotic, data-first): "You slept 5.8 hours, which is 75 minutes short of your 7-9 hour range.
+  Try getting into bed 75 minutes earlier tonight."
+  Good (human, feeling-first): "You're running short on rest — about 75 minutes under what your body
+  needs. Get into bed 75 minutes earlier and you'll close that gap."
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
 - NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
   weeks after the date it describes, so "today"/"yesterday" would be factually wrong by the time they
-  read it. Describe the night without a day-word (e.g. "You slept 8 hours, right in your ideal range."
-  not "You slept 8 hours last night.").
+  read it. Describe the night without a day-word.
 - Short: the description must be MAX 2-3 sentences. Not 4, not 5 — cut anything extra.
-- Personalized: lead with that night's actual number, then compare it against the user's OWN
-  trend/goal/regularity fields when present in the data — not a generic statement.
-- Meaningful: state the one specific thing the data shows (the number, and how it compares to their own
-  pattern), not a vague platitude.
-- Actionable: end with exactly ONE concrete, specific next step that follows from this data point.
+- Personalized: lead with how they're doing, then that night's actual number, then compare it against
+  the user's OWN trend/goal/regularity fields when present in the data — not a generic statement.
 - Only reference numbers and statuses present in the data below. Never invent a number, a trend, or a
   pattern that isn't explicitly in the data.
 - If tier is "insufficient_data" or "raw_comparison", do NOT claim any trend, debt, or regularity pattern —
@@ -492,11 +505,18 @@ async function generateForUser(userId, sourceDate, { force = false } = {}) {
  * simply no data for this user/type/date — that's a normal, expected state,
  * not a failure.
  */
-async function ensureInsight(userId, insightType, sourceDate, { force = false } = {}) {
+async function ensureInsight(userId, insightType, sourceDate, { force = false, sameDay = false } = {}) {
   if (!INSIGHT_TYPES.includes(insightType)) {
     throw new Error(`Unknown insightType: ${insightType}`);
   }
-  const insightDate = shiftDateKey(sourceDate, 1);
+  // sameDay: used only for the sleep-staleness refresh below — the normal
+  // sourceDate -> insightDate+1 lag means a cron-generated 'sleep' insight
+  // for today describes YESTERDAY's night. When the Sleep screen's "last
+  // night" ring already has data for TODAY's date (the user woke up and
+  // synced), that stale insight visibly contradicts the ring showing above
+  // it. sameDay stores the regenerated insight under insightDate ===
+  // sourceDate instead, so it describes the same night the ring does.
+  const insightDate = sameDay ? sourceDate : shiftDateKey(sourceDate, 1);
 
   if (!force) {
     const existing = await DailyInsight.findOne({ userId, insightDate, insightType }).select('-dataSnapshot').lean();
@@ -551,11 +571,23 @@ async function runDailyInsightCron(sourceDate = istDateKey(), { force = false } 
   return stats;
 }
 
+/**
+ * The IST date key of the user's most recent SleepSession row, or null if
+ * they have none. Used to detect whether a cached 'sleep' insight (which
+ * describes sourceDate = insightDate - 1) is now a full night stale against
+ * the Sleep screen's "last night" ring, which always shows this latest row.
+ */
+async function getLatestSleepNightDateKey(userId) {
+  const latest = await SleepSession.findOne({ user: userId }).sort({ date: -1 }).select('date').lean();
+  return latest ? istDateKey(latest.date) : null;
+}
+
 module.exports = {
   runDailyInsightCron,
   generateForUser,
   ensureInsight,
   collectOverallData,
+  getLatestSleepNightDateKey,
   INSIGHT_TYPES,
   istDateKey,
   shiftDateKey,

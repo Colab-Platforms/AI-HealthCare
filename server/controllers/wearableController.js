@@ -1361,6 +1361,19 @@ function dateOnlyWhoopCycleDay(isoString) {
   return dateOnlyIST(shifted.toISOString());
 }
 
+// Deep+light+REM only — excludes awake minutes, matching what WHOOP's own
+// "Sleep" duration shows and what every downstream efficiency calc in this
+// codebase already assumes totalSleepMinutes means (timeInBed is computed
+// elsewhere as totalSleepMinutes + awakeMinutes). Returns null when none of
+// the three stage fields are present, so the caller can fall back to the
+// full bedTime-to-wakeTime span instead of silently storing 0.
+function sumStageMinutes(stages) {
+  if (!stages) return null;
+  const { deep_minutes, light_minutes, rem_minutes } = stages;
+  if (deep_minutes == null && light_minutes == null && rem_minutes == null) return null;
+  return (deep_minutes || 0) + (light_minutes || 0) + (rem_minutes || 0);
+}
+
 // Receive events pushed by Open Wearables (via Svix) once an endpoint is
 // registered — see server/scripts/registerOpenWearablesWebhook.js for setup.
 // No auth middleware on this route — Svix calls it directly, not the browser.
@@ -1502,7 +1515,19 @@ exports.handleWebhook = async (req, res) => {
             // which is also the wake-time's calendar date in every normal
             // case (bed time is always the prior IST evening).
             date: dateOnlyIST(data.end_time),
-            totalSleepMinutes: Math.round(data.duration_seconds / 60),
+            // duration_seconds is bedTime-to-wakeTime span, which includes
+            // time spent awake in bed — WHOOP's own "Sleep" figure (and
+            // every downstream efficiency calc in this codebase, which
+            // already computes timeInBed as totalSleepMinutes+awakeMinutes)
+            // expects just the sleeping stages. Falls back to the full
+            // duration only when stage data is missing, minus awake_minutes
+            // when that alone is present — without this, a later webhook
+            // event for the same night that carries awake_minutes but drops
+            // deep/light/rem (seen live: WHOOP sending a stage-less refresh
+            // after the stage-complete one) silently overwrote a correct
+            // 348min stage-sum with 386min of raw bed time, 38min too high.
+            totalSleepMinutes: sumStageMinutes(data.stages)
+              ?? Math.round(data.duration_seconds / 60) - (data.stages?.awake_minutes || 0),
             deepSleepMinutes: data.stages?.deep_minutes,
             lightSleepMinutes: data.stages?.light_minutes,
             remSleepMinutes: data.stages?.rem_minutes,

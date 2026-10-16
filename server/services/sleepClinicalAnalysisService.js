@@ -103,10 +103,19 @@ function buildLastNight(session, idealRange) {
   if (!session) return null;
   const hours = round1(sessionHours(session));
   const efficiency = sessionEfficiency(session);
+  const vsIdeal = hours < idealRange.min ? 'below' : hours > idealRange.max ? 'above' : 'within';
+  // Pre-computed so the LLM states an exact, correct bedtime-shift suggestion
+  // instead of doing (sometimes wrong) arithmetic itself — it only reports
+  // this number, never invents one. Rounded to the nearest 15 minutes since
+  // "shift bedtime by 37 minutes" reads as falsely precise for an estimate.
+  const shortfallMinutesToMin = vsIdeal === 'below'
+    ? Math.round(((idealRange.min - hours) * 60) / 15) * 15
+    : null;
   return {
     date: session.date.toISOString().split('T')[0],
     hours,
-    vsIdeal: hours < idealRange.min ? 'below' : hours > idealRange.max ? 'above' : 'within',
+    vsIdeal,
+    shortfallMinutesToMin,
     efficiencyPct: efficiency != null ? Math.round(efficiency) : null,
     efficiencyStatus: efficiencyStatus(efficiency),
     deepPct: roundOrNull(stagePct(session, 'deepSleepMinutes')),
