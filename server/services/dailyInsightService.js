@@ -23,6 +23,8 @@ const ExerciseLog = require('../models/ExerciseLog');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
+const { getActivityInsight } = require('./activityInsightService');
+const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
@@ -330,7 +332,7 @@ const INSIGHT_SYSTEMS = {
   overall: `You are a friendly health coach inside the take.health app. Write an overall daily insight from the user's logged health activity for the given date, drawing on whichever of sleep, activity, nutrition, and recovery actually have data for that date — don't default to only one or two pillars when more are available.${SHARED_RULES}`,
   sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (that night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
   nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data for the given date.${SHARED_RULES}`,
-  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date.${SHARED_RULES}`,
+  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date. If the data includes avgStepsLast3Days or personalBaselineSteps, compare the day's steps against those real numbers when you call it "above" or "below usual" — if both are null, do not claim "above/below usual" at all, just state the day's number plainly.${SHARED_RULES}`,
   recovery: `You are a friendly recovery coach inside the take.health app, reasoning like a sports-science clinician: you are given that day's HRV, resting heart rate, and respiratory-rate readings (each as a T-score, 0-100, compared against the user's own personal baseline where available) and must explain what they mean for the user's physical readiness that day.${SHARED_RULES}`,
   smoking: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged cigarette count (and cigarettes resisted, if present) for the given date. Frame any zero or reduced count as a genuine win; never shame a logged count.${SHARED_RULES}`,
   alcohol: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged alcohol units for the given date. Frame any zero or moderate count as a genuine win; never shame a logged count.${SHARED_RULES}`,
@@ -446,6 +448,26 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
   }
   if (insightType === 'recovery') {
     return collectRecoveryData(userId, sourceDate);
+  }
+  if (insightType === 'fitness') {
+    // Without a real baseline, the model had no number to compare the day's
+    // steps against and started inventing "below your usual activity level"
+    // out of nowhere (confirmed live: a 10,332-step day — above the user's
+    // own 10,054 personal baseline, and a perfect Activity Score — got
+    // called "below usual" because nothing here gave it a real number to
+    // check that claim against). Same baseline math activityScoreInsightService
+    // already uses for its own goal/baseline notification logic.
+    if (!overallData) return null;
+    const guidance = getExerciseGuidance(profile.age, null);
+    const baseline = await getActivityInsight(userId, guidance.stepsGoal);
+    return {
+      ...insightData.fitness(overallData),
+      stepGoal: baseline.stepGoal,
+      avgStepsLast3Days: baseline.avgStepsLast3Days ?? null,
+      personalBaselineSteps: baseline.personalBaselineSteps ?? null,
+      activityAdherence: baseline.activityAdherence,
+      activityBaseline: baseline.activityBaseline,
+    };
   }
   if (insightType === 'overall') {
     // The only type that should speak to all four pillars (sleep, activity,
