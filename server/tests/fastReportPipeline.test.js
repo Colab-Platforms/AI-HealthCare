@@ -247,14 +247,48 @@ test('pipeline: flag on -> same shape as legacy, all 9 metric fields filled, no 
   await cache.delete(`metricKnowledge:v1:hemoglobin`);
 });
 
-test('pipeline: NOT_MEDICAL from the gate stays a NOT_MEDICAL rejection (no fallback)', async (t) => {
+test('pipeline: NOT_MEDICAL is only raised after a confirming second pass, and wins over narrative', async (t) => {
   await freshStore(t);
   process.env.FAST_REPORT_PIPELINE = 'true';
   t.after(() => { delete process.env.FAST_REPORT_PIPELINE; });
-  const post = mockAnthropic(t, { core: { isMedical: false, message: 'Not medical.' }, narrative: { isMedical: false, message: 'Not medical.' } });
+  const post = mockAnthropic(t, { core: { isMedical: false, message: 'Not medical.' } });
 
   await assert.rejects(callAnalyze(), (err) => err.code === 'NOT_MEDICAL');
-  assert.equal(post.mock.callCount(), 4, 'core + 3 narrative parts, and no legacy retry for a genuine rejection');
+  const corePrompts = post.mock.calls.filter(c => c.arguments[1].system[0].text.startsWith('Extract the structured data'));
+  assert.equal(corePrompts.length, 2, 'rejection must be confirmed by a second core pass');
+  assert.ok(!post.mock.calls.some(c => c.arguments[1].system[0].text.startsWith('Analyze this health report as an expert medical AI. You MUST')), 'no legacy retry for a genuine rejection');
+});
+
+test('pipeline: a one-off spurious "not medical" verdict does not reject a valid report', async (t) => {
+  await freshStore(t);
+  process.env.FAST_REPORT_PIPELINE = 'true';
+  t.after(() => { delete process.env.FAST_REPORT_PIPELINE; });
+  await cache.delete('metricKnowledge:v1:hemoglobin');
+  let coreCalls = 0;
+  t.mock.method(axios, 'post', async (url, body) => {
+    const system = body.system?.[0]?.text || '';
+    if (system.startsWith('Extract the structured data')) {
+      coreCalls++;
+      return anthropicReply(coreCalls === 1 ? { isMedical: false, message: 'Not medical.' } : CORE_JSON);
+    }
+    if (system.startsWith('Analyze this health report as an expert medical AI and write')) {
+      const part = /PART ([ABC]):/.exec(system)[1];
+      return anthropicReply(Object.fromEntries(NARRATIVE_PARTS[part].map(k => [k, NARRATIVE_JSON[k]])));
+    }
+    return anthropicReply({ metrics: { Hemoglobin: goodEntry('Hemoglobin') } });
+  });
+
+  const out = await callAnalyze();
+  assert.equal(coreCalls, 2);
+  assert.equal(out.patientName, 'Asha');
+  await cache.delete('metricKnowledge:v1:hemoglobin');
+});
+
+test('pipeline: narrative prompts carry no medical gate (only core decides)', () => {
+  const src = require('fs').readFileSync(require.resolve('../services/aiService'), 'utf8');
+  const parts = src.match(/const REPORT_NARRATIVE_\w+_PROMPT = `[\s\S]*?`;/g) || [];
+  assert.equal(parts.length, 3);
+  for (const part of parts) assert.ok(!part.includes('${GATE_STEP}'));
 });
 
 test('pipeline: malformed core output falls back to the legacy path', async (t) => {
