@@ -150,6 +150,14 @@ async function collectOverallData(userId, dateKey) {
     calorieGoal: nutrition?.calorieGoal ?? null,
     protein: nutrition?.totalProtein ?? null,
     proteinGoal: nutrition?.proteinGoal ?? null,
+    // The same 0-100 number the Nutrition screen's own card shows (average
+    // healthScore10 across today's logged meals, *10) — NOT the same thing
+    // as scoreComponents.nutrition below, which measures adequacy against
+    // daily targets (MAR/AMDR/moderation), a different and legitimately
+    // different-looking number. Named distinctly so 'overall' cites THIS
+    // one for nutrition instead of the targets-based one, matching what the
+    // user actually sees on the Nutrition screen.
+    nutritionQualityScore: nutrition?.averageHealthScore ?? null,
     healthyFoodsCount: nutrition?.healthyFoodsCount ?? null,
     junkFoodsCount: nutrition?.junkFoodsCount ?? null,
     waterGlasses: nutrition?.waterIntake ?? progress?.waterIntake ?? null,
@@ -312,6 +320,9 @@ Rules you must follow:
 
 const SLEEP_SHARED_RULES = `
 Rules you must follow:
+- ALWAYS state qualityScore as "X/100" somewhere in the first sentence (e.g. "73/100") — this is the
+  exact same score shown on the Sleep screen's own ring, so it must always be present, not just hours.
+  Never compute this yourself; only state the value already given in the data.
 - Sound like a real sleep coach talking to them, not a data readout. Don't just restate the number and
   tack on a tip — open by acknowledging how they're actually doing, in plain human words, THEN bring in
   the number as support for that, THEN close with guidance that fits the result:
@@ -362,11 +373,15 @@ Rules you must follow:
 - Sound like a real coach giving a quick daily roundup, not a single-topic report.
 - Structure (3-4 sentences):
   1. One sentence briefly naming how the GOOD or ON-TRACK pillars went, by name, for every one of
-     sleep/activity/nutrition that has data in scoreComponents AND is good/on-track (e.g. "Sleep and
-     activity were both strong"). If only one is good, name just that one; if none are good, skip this
-     sentence and start with the attention-needing one.
+     sleep/activity/nutrition that has data AND is good/on-track (e.g. "Sleep and activity were both
+     strong"). For sleep/activity use scoreComponents; for nutrition ALWAYS use nutritionQualityScore
+     instead of scoreComponents.nutrition — that's the number the Nutrition screen itself shows, the
+     scoreComponents one is a different, internal targets-adequacy figure the user never sees directly.
+     If only one is good, name just that one; if none are good, skip this sentence and start with the
+     attention-needing one.
   2. One sentence naming the ONE pillar (sleep/activity/nutrition) that most needs attention (the
-     lowest score or clearest gap), with its real number.
+     lowest score or clearest gap), with its real number — same nutritionQualityScore rule applies if
+     nutrition is the one needing attention.
   3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
      band and, if present, the HRV-vs-baseline comparison — regardless of whether it's good or needs
      attention. Recovery is never skipped just because sleep/activity/nutrition already filled the
@@ -739,6 +754,30 @@ async function getLatestOverallDateKey(userId) {
   return hasScore || activity || sleep ? today : null;
 }
 
+/**
+ * True if any of today's underlying data (nutrition, activity, sleep) was
+ * updated AFTER the given insight was last generated — catches staleness
+ * WITHIN the same day, which getLatestOverallDateKey's date-only check
+ * can't: confirmed live, a user logging a meal 8 minutes after their
+ * 'overall' insight generated left it citing a stale nutrition score
+ * (55) against the live one (79) from the newly-logged food, even though
+ * both insight and data were already dated "today."
+ */
+async function hasNewerDataThanInsight(userId, insight) {
+  if (!insight?.updatedAt) return false;
+  const today = istDateKey();
+  const todayStart = new Date(`${today}T00:00:00.000Z`);
+  const [nutrition, activity, sleep] = await Promise.all([
+    NutritionSummary.findOne({ userId, date: todayStart }).select('updatedAt').lean(),
+    DailyActivityMetric.find({ user: userId, date: todayStart }).select('updatedAt').sort({ updatedAt: -1 }).limit(1).lean(),
+    SleepSession.find({ user: userId, date: todayStart }).select('updatedAt').sort({ updatedAt: -1 }).limit(1).lean(),
+  ]);
+  const candidates = [nutrition?.updatedAt, activity[0]?.updatedAt, sleep[0]?.updatedAt].filter(Boolean);
+  if (candidates.length === 0) return false;
+  const latestDataUpdate = new Date(Math.max(...candidates.map((d) => new Date(d).getTime())));
+  return latestDataUpdate > new Date(insight.updatedAt);
+}
+
 module.exports = {
   runDailyInsightCron,
   generateForUser,
@@ -747,6 +786,7 @@ module.exports = {
   getLatestSleepNightDateKey,
   getLatestActivityDateKey,
   getLatestOverallDateKey,
+  hasNewerDataThanInsight,
   INSIGHT_TYPES,
   istDateKey,
   shiftDateKey,
