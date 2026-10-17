@@ -5,6 +5,7 @@ const {
   ensureInsight,
   getLatestSleepNightDateKey,
   getLatestActivityDateKey,
+  getLatestOverallDateKey,
   istDateKey,
   shiftDateKey,
 } = require('../services/dailyInsightService');
@@ -46,6 +47,18 @@ exports.getTodaysInsights = async (req, res) => {
 
     insights = await refreshIfStale(insights, 'sleep', insightDate, req.user._id, getLatestSleepNightDateKey);
     insights = await refreshIfStale(insights, 'fitness', insightDate, req.user._id, getLatestActivityDateKey);
+    insights = await refreshIfStale(insights, 'overall', insightDate, req.user._id, getLatestOverallDateKey);
+
+    // Explicit per-card flag so the app can label each insight unambiguously
+    // ("Based on today" / "Based on yesterday") instead of leaving it to be
+    // inferred — different insight types can legitimately describe different
+    // days on the same screen now (sleep/fitness/overall refresh same-day
+    // when today's own data is ready; nutrition/recovery/etc. still describe
+    // yesterday until tonight's cron).
+    insights = insights.map((i) => ({
+      ...i,
+      isBasedOnToday: i.sourceDate === insightDate,
+    }));
 
     res.json({
       success: true,
