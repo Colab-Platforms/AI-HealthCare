@@ -21,6 +21,8 @@ const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const ExerciseLog = require('../models/ExerciseLog');
 const { calculateRecoveryScore } = require('./recoveryScoreService');
+const { calculateDailyScore } = require('./dailyHealthScoreService');
+const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 const { getActivityInsight } = require('./activityInsightService');
@@ -78,9 +80,20 @@ const utcMidnight = (dateKey) => new Date(`${dateKey}T00:00:00.000Z`);
 async function collectOverallData(userId, dateKey) {
   const { start, end } = istDayWindow(dateKey);
 
-  const [nutrition, score, progress, activityRows, sleepRows, metrics, foodLogs, user, exerciseLogs] = await Promise.all([
+  // Computed live, same as collectRecoveryData now does — not a passive
+  // DailyHealthScore.findOne(). That read-only version can be null or
+  // missing components (calculateDailyScore deletes its own persisted row
+  // whenever a given call finds zero available components, a transient
+  // per-call state) even on a day with real data — confirmed live: this
+  // insight once said "Sleep was strong at 100" while scoreComponents in
+  // its own stored data snapshot was null, because the model had no real
+  // number and invented one. Computing live here guarantees a real number
+  // (or a real "not available"), never a gap for the model to fill in.
+  const config = await getActiveScoreConfig();
+  const liveScore = await calculateDailyScore(userId, dateKey, { config }).catch(() => null);
+
+  const [nutrition, progress, activityRows, sleepRows, metrics, foodLogs, user, exerciseLogs] = await Promise.all([
     NutritionSummary.findOne({ userId, date: utcMidnight(dateKey) }).lean(),
-    DailyHealthScore.findOne({ userId, date: dateKey }).lean(),
     DailyProgress.findOne({ userId, date: dateKey }).lean(),
     // One row per connected device for this date — merged below by MAX, not
     // "whichever device happened to be first", same merge
@@ -118,8 +131,8 @@ async function collectOverallData(userId, dateKey) {
 
   const data = {
     date: dateKey,
-    healthScore: score?.finalScore ?? null,
-    scoreComponents: score?.components || null,
+    healthScore: liveScore?.finalScore ?? null,
+    scoreComponents: liveScore?.components || null,
     meals: foodLogs.map((f) => ({
       type: f.mealType,
       items: (f.foodItems || []).map((i) => i.name).slice(0, 6),
