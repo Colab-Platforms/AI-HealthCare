@@ -25,10 +25,10 @@ const { calculateDailyScore } = require('./dailyHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
-const { estimateQualityScore } = require('./sleepAnalyticsService');
+const { getNativeSleepScoresByDate, resolveSleepQualityScore } = require('./sleepScoreService');
 const { getActivityInsight } = require('./activityInsightService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
-const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
+const { mergeDeviceRows, filterPlausibleSleep, collapseToOnePerDay } = require('../utils/wearableMerge');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
 // fan-out small and pause between batches rather than burning the quota in
@@ -106,7 +106,7 @@ async function collectOverallData(userId, dateKey) {
     DailyActivityMetric.find({ user: userId, date: utcMidnight(dateKey) })
       .select('deviceType steps activeMinutes caloriesBurned').lean(),
     SleepSession.find({ user: userId, date: utcMidnight(dateKey) })
-      .select('deviceType totalSleepMinutes sleepScore').lean(),
+      .select('date deviceType totalSleepMinutes sleepScore bedTime wakeTime').lean(),
     HealthMetric.find({ userId, recordedAt: { $gte: start, $lte: end } })
       .select('type value unit readingContext systolic diastolic').lean(),
     FoodLog.find({ userId, timestamp: { $gte: start, $lte: end } })
@@ -122,11 +122,19 @@ async function collectOverallData(userId, dateKey) {
     ? mergeDeviceRows(activityRows, ['steps', 'activeMinutes', 'caloriesBurned'])
     : null;
   // Always max for sleep, never sum — two devices for the same date measure
-  // the SAME night, not two sequential sessions. See utils/wearableMerge.js.
-  const sleepMerged = sleepRows.length
-    ? maxAcrossRows(filterPlausibleSleep(sleepRows), ['totalSleepMinutes', 'sleepScore'])
+  // the SAME night, not two sequential sessions. Collapsed to the whole
+  // winning row (not just merged fields) so bedTime/wakeTime/deviceType
+  // survive for the native-score lookup just below. See wearableMerge.js.
+  const sleepWinner = sleepRows.length
+    ? collapseToOnePerDay(filterPlausibleSleep(sleepRows))[0]
     : null;
-  const sleep = sleepMerged ? { ...sleepMerged, sleepScore: sleepMerged.sleepScore || null } : null;
+  const sleep = sleepWinner ? { ...sleepWinner, sleepScore: sleepWinner.sleepScore || null } : null;
+  // Same single source the Sleep screen itself uses (native WHOOP score when
+  // available, else the computed fallback) — not scoreComponents.sleep
+  // below, which is a different, duration-only formula the Unified Health
+  // Score ring uses and can show 100 on a night the Sleep screen scores 86.
+  const nativeSleepScoreMap = sleepWinner ? await getNativeSleepScoresByDate(userId, [sleepWinner]) : new Map();
+  const sleepQuality = sleepWinner ? resolveSleepQualityScore(sleepWinner, nativeSleepScoreMap) : null;
   const smoke = user?.smokeLog?.[dateKey] || null;
   const alcohol = user?.alcoholLog?.[dateKey] || null;
 
@@ -166,12 +174,7 @@ async function collectOverallData(userId, dateKey) {
     activeMinutes: steps?.activeMinutes ?? null,
     caloriesBurned: steps?.caloriesBurned ?? nutrition?.caloriesBurned ?? null,
     sleepHours: sleep?.totalSleepMinutes ? Math.round((sleep.totalSleepMinutes / 60) * 10) / 10 : null,
-    // Same formula the Sleep screen's own ring uses (estimateQualityScore —
-    // see sleepClinicalAnalysisService.js), NOT scoreComponents.sleep below,
-    // which only scores duration-in-range and flatlines at 100 for anything
-    // 7-9h regardless of efficiency/regularity — a different, internal
-    // number the user never sees directly on the Sleep screen itself.
-    sleepQualityScore: sleep?.totalSleepMinutes ? estimateQualityScore(sleep.totalSleepMinutes) : null,
+    sleepQualityScore: sleepQuality?.value ?? null,
     vitals: metrics.map((m) => ({
       type: m.type,
       value: m.type === 'blood_pressure' ? `${m.systolic}/${m.diastolic}` : m.value,
@@ -380,18 +383,20 @@ Rules you must follow:
 - Structure (3-4 sentences):
   1. One sentence briefly naming how the GOOD or ON-TRACK pillars went, by name, for every one of
      sleep/activity/nutrition that has data AND is good/on-track (e.g. "Sleep and activity were both
-     strong"). For sleep and activity use scoreComponents.sleep/scoreComponents.activity — the EXACT
-     same numbers the Unified Health Score's own breakdown shows for those pillars, so this insight
-     never contradicts that screen. For nutrition ALWAYS use nutritionQualityScore instead of
-     scoreComponents.nutrition — that one's the number the Nutrition screen itself shows (a different,
-     targets-adequacy figure lives in scoreComponents.nutrition that the user never sees directly).
+     strong"). For activity use scoreComponents.activity. For sleep ALWAYS use sleepQualityScore
+     instead of scoreComponents.sleep, and for nutrition ALWAYS use nutritionQualityScore instead of
+     scoreComponents.nutrition — those are the exact numbers the Sleep and Nutrition screens show the
+     user (sleepQualityScore is the device's own native score when available); scoreComponents.sleep/
+     nutrition are different internal figures (a duration-only plateau for sleep, targets-adequacy for
+     nutrition) the user never sees directly, and citing them instead makes the insight contradict the
+     screen right next to it.
      Always include its real number too (e.g. "Sleep was strong at 89" not just "Sleep was strong") —
      naming a pillar without its number is exactly the "invented-sounding" phrasing this must avoid.
      If only one is good, name just that one; if none are good, skip this sentence and start with the
      attention-needing one.
   2. One sentence naming the ONE pillar (sleep/activity/nutrition) that most needs attention (the
-     lowest score or clearest gap), with its real number — same nutritionQualityScore rule applies if
-     nutrition is the one needing attention; sleep/activity use scoreComponents here too.
+     lowest score or clearest gap), with its real number — same sleepQualityScore/nutritionQualityScore
+     rule applies if sleep or nutrition is the one needing attention.
   3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
      band and, if present, the HRV-vs-baseline comparison — regardless of whether it's good or needs
      attention. Recovery is never skipped just because sleep/activity/nutrition already filled the
