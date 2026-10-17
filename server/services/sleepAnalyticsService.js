@@ -1,18 +1,13 @@
 const SleepSession = require('../models/SleepSession');
 const { collapseToOnePerDay, filterPlausibleSleep } = require('../utils/wearableMerge');
 const { classifyCalendarBand } = require('../utils/calendarBand');
+// Single source of truth for the 0-100 sleep quality score — same function
+// sleep insights use (sleepClinicalAnalysisService.js), so the Sleep
+// screen's own ring can never show a different number than the insight
+// describing the same night. See sleepScoreService.js's header for why.
+const { estimateQualityScore, getNativeSleepScoresByDate, resolveSleepQualityScore } = require('./sleepScoreService');
 
-// Fallback score jab device se sleepScore na aaye (manual entry).
-// NSF guideline: 8hrs ideal, deviation se linearly penalize karta hai.
-function estimateQualityScore(totalSleepMinutes) {
-  if (!totalSleepMinutes) return null;
-  const hours = totalSleepMinutes / 60;
-  const deviation = Math.abs(hours - 8);
-  const score = 100 - deviation * 15;
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function enrichEntry(raw) {
+function enrichEntry(raw, nativeScoreMap) {
   const total = raw.totalSleepMinutes || 0;
   const deep = raw.deepSleepMinutes || 0;
   const light = raw.lightSleepMinutes || 0;
@@ -25,6 +20,7 @@ function enrichEntry(raw) {
 
   const timeInBed = total + awake;
   const efficiency = timeInBed > 0 ? Math.round((total / timeInBed) * 1000) / 10 : null;
+  const quality = resolveSleepQualityScore(raw, nativeScoreMap);
 
   return {
     date: raw.date.toISOString().split('T')[0],
@@ -42,11 +38,11 @@ function enrichEntry(raw) {
       remPct: total ? Math.round((rem / total) * 100) : 0,
     } : null,
     efficiency,
-    sleepScore: typeof raw.sleepScore === 'number' ? raw.sleepScore : estimateQualityScore(total),
-    scoreType: typeof raw.sleepScore === 'number' ? 'device' : 'estimated',
+    sleepScore: quality.value,
+    scoreType: quality.source === 'native' ? 'device' : 'estimated',
     // 3-tier band for the mobile Score Calendar's dots — see calendarBand.js.
     // Additive field; anything reading only the fields above is unaffected.
-    calendarBand: classifyCalendarBand(typeof raw.sleepScore === 'number' ? raw.sleepScore : estimateQualityScore(total)),
+    calendarBand: classifyCalendarBand(quality.value),
   };
 }
 
@@ -158,7 +154,9 @@ async function getSleepAnalytics(userId, range = 'daily', options = {}) {
   const plausibleRows = Array.from(rawByDate.values()).flatMap(filterPlausibleSleep);
   const rows = collapseToOnePerDay(plausibleRows).sort((a, b) => a.date - b.date);
 
-  const entries = rows.map(enrichEntry);
+  // One batched query for the whole window, not one per night.
+  const nativeScoreMap = await getNativeSleepScoresByDate(userId, rows);
+  const entries = rows.map((row) => enrichEntry(row, nativeScoreMap));
 
   if (range === 'daily') {
     return { range, entries };

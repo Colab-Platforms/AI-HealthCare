@@ -14,13 +14,11 @@
 
 const SleepSession = require('../models/SleepSession');
 const { collapseToOnePerDay, filterPlausibleSleep } = require('../utils/wearableMerge');
-// Same function the Sleep screen's own score ring calls (sleepAnalyticsService
-// powers getSleepAnalyticsData) — reused here, not a second formula, so the
-// insight can cite the exact number already on screen instead of a different
-// one (confirmed live: the insight had no 0-100 score at all before this,
-// only hours/efficiency, while the user was comparing it against the Sleep
-// screen's quality score).
-const { estimateQualityScore } = require('./sleepAnalyticsService');
+// Single source of truth for the 0-100 sleep quality score — same function
+// the Sleep screen's own ring calls (sleepAnalyticsService.js), so the
+// insight can never cite a different number than what's on screen for the
+// same night. See sleepScoreService.js's header for why this exists.
+const { getNativeSleepScoresByDate, resolveSleepQualityScore } = require('./sleepScoreService');
 
 const TREND_WINDOW_DAYS = 7;
 const REGULARITY_WINDOW_DAYS = 14;
@@ -106,7 +104,7 @@ function computeRegularity(sessions) {
   return { bedtimeVarianceMin: Math.round(sdMinutes), status };
 }
 
-function buildLastNight(session, idealRange) {
+function buildLastNight(session, idealRange, nativeScoreMap) {
   if (!session) return null;
   const hours = round1(sessionHours(session));
   const efficiency = sessionEfficiency(session);
@@ -118,12 +116,14 @@ function buildLastNight(session, idealRange) {
   const shortfallMinutesToMin = vsIdeal === 'below'
     ? Math.round(((idealRange.min - hours) * 60) / 15) * 15
     : null;
+  const quality = resolveSleepQualityScore(session, nativeScoreMap);
   return {
     date: session.date.toISOString().split('T')[0],
     hours,
     vsIdeal,
     shortfallMinutesToMin,
-    qualityScore: estimateQualityScore(session.totalSleepMinutes),
+    qualityScore: quality.value,
+    qualityScoreSource: quality.source,
     efficiencyPct: efficiency != null ? Math.round(efficiency) : null,
     efficiencyStatus: efficiencyStatus(efficiency),
     deepPct: roundOrNull(stagePct(session, 'deepSleepMinutes')),
@@ -168,7 +168,11 @@ async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours = 8
   const plausibleSessions = Array.from(rawByDate.values()).flatMap(filterPlausibleSleep);
   const sessions = collapseToOnePerDay(plausibleSessions).sort((a, b) => b.date - a.date);
 
-  const lastNight = buildLastNight(sessions[0] || null, idealRange);
+  // One batched query for the whole window, not one per night — see
+  // sleepScoreService.js's header for why native scores can't be matched by
+  // calendar day.
+  const nativeScoreMap = await getNativeSleepScoresByDate(userId, sessions);
+  const lastNight = buildLastNight(sessions[0] || null, idealRange, nativeScoreMap);
   const nightsLogged = sessions.length;
 
   const base = {
