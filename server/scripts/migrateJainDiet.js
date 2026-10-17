@@ -20,6 +20,9 @@
  * stay rejected whatever their diet is.
  *
  * Idempotent: a second run finds no tags and does nothing.
+ *
+ * Database: USE_STAGING_DB=true in .env -> staging, otherwise production. The
+ * run prints which one it connected to, first thing.
  */
 const path = require('path');
 const mongoose = require('mongoose');
@@ -46,7 +49,15 @@ function tagsOf(user) {
 }
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  // Same switch as config/db.js and the other scripts: USE_STAGING_DB=true in
+  // .env means STAGING. This used to read MONGODB_URI unconditionally, so the
+  // script hit production even with the flag on. The target is printed so it
+  // is never a guess which database a run touched.
+  const useStaging = process.env.USE_STAGING_DB === 'true';
+  const uri = useStaging ? process.env.MONGODB_URI_STAGING : process.env.MONGODB_URI;
+  if (!uri) throw new Error('No Mongo URI resolved — check MONGODB_URI / MONGODB_URI_STAGING / USE_STAGING_DB in .env');
+  await mongoose.connect(uri);
+  console.log(`>>> Connected to ${useStaging ? 'STAGING' : 'PRODUCTION'} database\n`);
 
   const users = await User.find({ $or: listPaths.map((p) => ({ [p]: JAIN })) })
     .select('email profile.dietaryPreference foodPreferences')
