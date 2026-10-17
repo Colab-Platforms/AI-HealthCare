@@ -10,6 +10,10 @@ const mealOptionSchema = {
   name: String,
   description: String,
   portionSize: String,
+  // Every ingredient the dish uses. Stored so exclusions (Jain, "no onion",
+  // allergens) can be checked against what is IN the dish, not just its name —
+  // "Veg Pulao" says nothing about the onion inside it.
+  ingredients: [String],
   calories: Number,
   protein: Number,
   carbs: Number,

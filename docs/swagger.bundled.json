@@ -2496,7 +2496,8 @@
                       "vegetarian",
                       "vegan",
                       "non-vegetarian",
-                      "eggetarian"
+                      "eggetarian",
+                      "jain"
                     ]
                   },
                   "allergies": {
@@ -6670,7 +6671,8 @@
               "vegetarian",
               "non-vegetarian",
               "vegan",
-              "eggetarian"
+              "eggetarian",
+              "jain"
             ]
           },
           "height": {

@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema({
   profile: {
     age: { type: Number, min: 0, max: 120 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
-    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },
+    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'jain', 'other'], default: 'non-vegetarian' },
     height: { type: Number, min: 0, max: 300 }, // in cm
     weight: { type: Number, min: 0, max: 500 }, // in kg
     bloodGroup: String,

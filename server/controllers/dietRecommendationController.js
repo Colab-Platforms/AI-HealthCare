@@ -3,10 +3,13 @@ const SupplementRecommendation = require('../models/SupplementRecommendation');
 const HealthReport = require('../models/HealthReport');
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
-const { calculateNutritionGoals, getDietRecommendations } = require('../services/nutritionGoalCalculator');
+const { resolveDietTargets, normalizeGoal } = require('../services/dietTargets');
 const queueService = require('../services/queueService');
 const cache = require('../utils/cache');
 const { resolveDietaryPreference } = require('../utils/dietaryPreference');
+const { reconcileFoodPreferences } = require('../utils/dietConstraints');
+const { normalizePlanCalories } = require('../utils/mealPlanCalories');
+const { slotCalorieRange } = require('../config/indianMealSlots');
 const notificationService = require('../services/notificationService');
 const emailService = require('../services/emailService');
 
@@ -44,7 +47,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       return res.status(422).json({
         success: false,
         code: 'DIETARY_PREFERENCE_REQUIRED',
-        message: 'Please set your diet type (vegetarian, vegan, eggetarian or non-vegetarian) in your profile before generating a diet plan.'
+        message: 'Please set your diet type (vegetarian, vegan, eggetarian, jain or non-vegetarian) in your profile before generating a diet plan.'
       });
     }
 
@@ -103,8 +106,13 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       });
     }
 
-    // Get BMI and nutrition goal
-    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
+    // Goal and targets come from one resolver (active HealthGoal first, the
+    // User mirror second — see services/dietTargets) so every generation path
+    // agrees with what the Nutrition screen shows. `bmiGoal` is the normalised
+    // goal: "maintenance", "health_improvement" etc. no longer reach the prompt
+    // as unrecognised strings.
+    const targets = await resolveDietTargets(user);
+    const bmiGoal = targets.goal;
     const targetWeight = user.nutritionGoal?.targetWeight;
     const currentWeight = user.profile?.weight || 70;
     const height = user.profile?.height || 170;
@@ -142,35 +150,16 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       medicationType: diabetesProfile.medicationType || [],
     } : null;
 
-    // Check for saved goals first, otherwise calculate them
-    if (user.nutritionGoal?.calorieGoal && user.nutritionGoal?.calorieGoal > 0) {
-      nutritionGoals = {
-        calorieGoal: user.nutritionGoal.calorieGoal,
-        proteinGoal: user.nutritionGoal.proteinGoal || (isDiabetic ? 84 : 90),
-        carbsGoal: user.nutritionGoal.carbsGoal || (isDiabetic ? 180 : 250),
-        fatGoal: user.nutritionGoal.fatGoal || 65
-      };
-    } else {
-      try {
-        nutritionGoals = calculateNutritionGoals({
-          age: user.profile?.age || 25,
-          gender: user.profile?.gender || 'male',
-          weight: currentWeight,
-          height: height,
-          activityLevel: user.profile?.activityLevel || 'moderately_active',
-          goal: bmiGoal,
-          targetWeight: targetWeight,
-          isDiabetic: isDiabetic || isPrediabetic // Pass the flag!
-        });
-      } catch (error) {
-        console.warn('Could not calculate nutrition goals:', error.message);
-        nutritionGoals = {
-          calorieGoal: isDiabetic ? 1800 : 2000,
-          proteinGoal: isDiabetic ? 84 : 90,
-          carbsGoal: isDiabetic ? 180 : 250,
-          fatGoal: 60
-        };
-      }
+    nutritionGoals = targets;
+    console.log(`[DietGeneration] Targets for ${userId}: goal=${targets.goal} kcal=${targets.calorieGoal} (source: ${targets.source})`);
+
+    // The diet type is the authority over free-text tags: a stale "Jain" entry
+    // left from an earlier vegetarian setting is dropped here when the user is
+    // now non-veg/eggetarian, so it can neither reach the prompt nor be saved
+    // into the plan's inputData.
+    const { prefs: foodPreferences, dropped: droppedJain } = reconcileFoodPreferences(diet.value, user.foodPreferences);
+    if (droppedJain.length) {
+      console.warn(`[DietGeneration] User ${userId} is "${diet.value}" — ignoring stale Jain preference(s): ${droppedJain.join(', ')}`);
     }
 
     const { getAlcoholSummary, buildAlcoholContextForAI } = require('../utils/alcoholLog');
@@ -185,6 +174,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       height: height,
       currentBMI: currentBMI.toFixed(1),
       bmiGoal: bmiGoal,
+      goal: bmiGoal,
+      tdee: targets.tdee,
       targetWeight: targetWeight,
       region: user.foodPreferences?.region || 'other',  // ← Region
       country: user.foodPreferences?.country || 'India',  // ← Country
@@ -216,7 +207,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         carbs: nutritionGoals.carbsGoal,
         fats: nutritionGoals.fatGoal
       },
-      foodPreferences: user.foodPreferences || {}, // Pass food preferences to AI
+      foodPreferences, // reconciled against the diet type (see above)
       lifestyle,
       alcoholSummary,
       alcoholContext: buildAlcoholContextForAI(user.alcoholLog, lifestyle)
@@ -262,12 +253,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     await dietPlan.save();
 
-    // Prepare prompt extension for variety and region/country
+    // Prepare prompt extension for variety
     const isRegenerate = req.body?.isRegenerate || false;
-    const region = user.foodPreferences?.region || 'other';
-    const country = user.foodPreferences?.country || 'India';
-    const state = (user.foodPreferences?.state || '').trim();
-    const city = (user.foodPreferences?.city || '').trim();
 
     // Optional occasion/fasting context (e.g. Ramadan, Shravan month, a vrat/
     // upvas day) — null unless the client explicitly passes one for this
@@ -277,43 +264,20 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       : null;
     userData.occasion = occasion;
 
+    // Location is NOT added here. The location block is built once, inside the
+    // prompt (services/dietRecommendationAI buildLocationInstructions). This
+    // method used to append its own STATE/CITY FOCUS lines as well, so the
+    // prompt carried the location twice — the city got double weight, and that
+    // is what turned dish names into "<City> Special ...".
     let promptEx = isRegenerate
-      ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
+      ? 'This is a REGENERATION request: give a fresh weekly menu with different sabzis, dals and preparations than before — but every dish must still be an ordinary, commonly cooked Indian home dish. Never choose an unusual dish just to be different.'
       : '';
-    
-    // Add region and country-specific instructions.
-    //
-    // `region` is only a fallback for when we have no state/city: it is derived
-    // from `state` now, so once a state is known the region line adds nothing.
-    // It also used to contradict the STATE FOCUS line below — region 'other'
-    // (the default, and what an unmapped state resolves to) emitted "focus on
-    // diverse Indian cuisine from all regions", which is what gave users
-    // dishes from the far side of the country. Mirrors the same decision in
-    // services/dietRecommendationAI.js.
-    const hasSpecificLocation = Boolean(state || city);
 
-    if (country === 'India') {
-      if (!hasSpecificLocation && region !== 'other') {
-        promptEx += `\nREGION FOCUS: Prioritize ${region} Indian cuisine and regional specialties. Include traditional ${region} dishes.`;
-      }
-    } else {
-      // For other countries
-      promptEx += `\nCOUNTRY FOCUS: User is from ${country}. Suggest cuisine popular in ${country} that aligns with their dietary preferences.`;
-      if (!hasSpecificLocation && region !== 'other') {
-        promptEx += `\nREGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
-      }
-    }
-
-    if (state) {
-      promptEx += `\nSTATE FOCUS (highest priority): User is from ${state}, ${country}. Prefer everyday home-style dishes, staple grains, and local ingredients specific to ${state} over generic ${country} options.`;
-    }
-
-    if (city) {
-      promptEx += `\nCITY FOCUS (most specific cuisine signal): User is from ${city}, ${state ? `${state}, ` : ''}${country}. Prefer familiar local dishes, ingredients, and everyday meal styles from ${city} where they fit the user's dietary and nutrition requirements.`;
-    }
-
+    // Same-menu avoidance is a preference, not a ban. A hard "none of these 21
+    // dishes" list used up the common home dishes first, which left only
+    // unusual ones — each regeneration drifted further from ordinary food.
     if (avoidMealsList.length > 0) {
-      promptEx += `\nCRITICAL: DO NOT suggest any of these meals which were in the previous plan: ${avoidMealsList.join(', ')}. Provide a completely different menu.`;
+      promptEx += `\nPrevious plan (prefer different dishes where an equally ordinary alternative exists; an everyday staple may repeat if needed): ${[...new Set(avoidMealsList)].join(', ')}.`;
     }
 
     if (occasion) {
@@ -399,40 +363,15 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
       return;
     }
 
-    // Validate and scale meal calories per day combo if they exceed target by >10%
+    // Land every day on the user's target, in BOTH directions (see
+    // utils/mealPlanCalories). This only scaled days DOWN and only past +10%, so
+    // an under-calorie plan for a user on a surplus goal was passed straight
+    // through. Days too far off to scale honestly are logged, not faked.
     const calorieCap = userData.nutritionGoals.dailyCalories;
     if (calorieCap && aiDietPlan.mealPlan) {
-      const mealTypes = ['breakfast', 'lunch', 'dinner'];
-      const maxDays = Math.max(...mealTypes.map(m => (aiDietPlan.mealPlan[m] || []).length));
-      for (let i = 0; i < maxDays; i++) {
-        let dayTotal = 0;
-        mealTypes.forEach(m => {
-          const item = (aiDietPlan.mealPlan[m] || [])[i];
-          if (item?.calories) dayTotal += Number(item.calories) || 0;
-        });
-        if (dayTotal > calorieCap * 1.1) {
-          const scaleFactor = calorieCap / dayTotal;
-          mealTypes.forEach(m => {
-            const item = (aiDietPlan.mealPlan[m] || [])[i];
-            if (item) {
-              // Scale every AI-generated numeric nutrient by the same factor as
-              // calories, not just macros — otherwise fiber/sodium/vitamins etc.
-              // stay at their pre-scale values while calories shrink, which would
-              // silently inflate the Diet Quality Score's nutrient-density math
-              // (MAR compares nutrient totals against calorie-derived targets).
-              const scaledFields = [
-                'calories', 'protein', 'carbs', 'fats',
-                'fiber', 'sugar', 'sodium', 'saturatedFat',
-                'vitaminA', 'vitaminC', 'vitaminD', 'vitaminB12',
-                'iron', 'calcium', 'potassium', 'magnesium', 'omega3'
-              ];
-              scaledFields.forEach(field => {
-                if (item[field]) item[field] = Math.round(item[field] * scaleFactor * 100) / 100;
-              });
-            }
-          });
-        }
-      }
+      const { scaled, unfixable } = normalizePlanCalories(aiDietPlan.mealPlan, calorieCap);
+      if (scaled.length) console.log(`[BG-DIET] Scaled day(s) ${scaled.map(i => i + 1).join(', ')} onto the ${calorieCap} kcal target`);
+      if (unfixable.length) console.warn(`[BG-DIET] Day(s) ${unfixable.map(i => i + 1).join(', ')} are too far from ${calorieCap} kcal to scale honestly (goal: ${userData.bmiGoal})`);
       aiDietPlan.dailyCalorieTarget = calorieCap;
     }
 
@@ -574,7 +513,15 @@ exports.regenerateMealSlot = async (req, res) => {
       return sum + (item?.calories || 0);
     }, 0);
     const dailyTarget = dietPlan.nutritionGoals?.dailyCalorieTarget || dietPlan.dailyCalorieTarget || 2000;
-    const remainingCalories = Math.max(300, dailyTarget - otherCaloriesSum);
+    // Clamped to what this slot can reasonably be: when the other two meals of
+    // the day are themselves off, "whatever is left" could ask for a 1,400 kcal
+    // breakfast. The day-level reconciliation (utils/mealPlanCalories) evens out
+    // the remainder.
+    const slotRange = slotCalorieRange(mealType, dailyTarget);
+    const remainingCalories = Math.min(
+      slotRange.max,
+      Math.max(300, slotRange.min, Math.round(dailyTarget - otherCaloriesSum))
+    );
 
     // Avoid-list scoped to this meal type across the whole week — small prompt,
     // still gives variety across days (see design discussion: whole-plan avoid
@@ -605,8 +552,13 @@ exports.regenerateMealSlot = async (req, res) => {
       console.warn(`[DietPlan] User ${userId} has no profile diet type; regenerating from plan inputData ("${diet.value}")`);
     }
 
+    // Diet type decides whether a stored "Jain" tag still applies (see
+    // utils/dietConstraints) — read from the user's CURRENT preferences, not the
+    // plan's snapshot, so switching to non-veg takes effect on the next swap.
+    const { prefs: currentPrefs } = reconcileFoodPreferences(diet.value, req.user.foodPreferences);
+
     const rejectedName = dietPlan.mealPlan?.[mealType]?.[dayIndex]?.name;
-    let foodsToAvoid = req.user.foodPreferences?.foodsToAvoid || [];
+    let foodsToAvoid = currentPrefs.foodsToAvoid || [];
 
     if (reason && rejectedName) {
       const alreadyAvoided = foodsToAvoid.some(
@@ -631,18 +583,26 @@ exports.regenerateMealSlot = async (req, res) => {
       pendingMealRegeneration: { mealType, dayIndex, status: 'generating', requestedAt: new Date() }
     });
 
+    // The user's current goal, so a swap for a bulking user is not answered with
+    // a diet dish (and vice versa). One extra indexed lookup per swap.
+    const targets = await resolveDietTargets(req.user);
+
     const userData = {
       dietaryPreference: diet.value,
-      allergies: dietPlan.inputData?.allergies,
+      // Current profile first; the plan's snapshot only if the profile is empty.
+      allergies: req.user.profile?.allergies?.length ? req.user.profile.allergies : dietPlan.inputData?.allergies,
       medicalConditions: dietPlan.inputData?.medicalConditions,
       // Carries the dish just rejected, so the replacement can't be the same one.
-      foodPreferences: { ...(req.user.foodPreferences || {}), foodsToAvoid },
+      foodPreferences: { ...currentPrefs, foodsToAvoid },
       country: req.user.foodPreferences?.country,
       region: req.user.foodPreferences?.region,
       state: req.user.foodPreferences?.state,
       // Was missing: the whole-plan path passes city, so regenerating a single
       // meal used to silently drop the most specific location signal we have.
       city: req.user.foodPreferences?.city,
+      goal: targets.goal,
+      tdee: targets.tdee,
+      dailyCalories: dailyTarget,
     };
 
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
@@ -703,6 +663,43 @@ exports.processMealRegenBG = async (req, res) => {
 };
 
 /**
+ * Has the user changed what the plan was built for?
+ *
+ * Changing the diet type or goal in the profile never touched the stored plan,
+ * so a user who moved from vegetarian/Jain to non-veg, or from maintain to
+ * bulk, kept seeing the old plan and reasonably concluded the setting was
+ * ignored. Never throws: a failed check must not break loading the plan.
+ *
+ * @returns {Promise<{isStale: boolean, reasons: {code: string, from?: any, to?: any}[]}>}
+ */
+async function buildPlanStaleness(plan, user) {
+  const reasons = [];
+  try {
+    if (!plan || plan.status !== 'completed') return { isStale: false, reasons };
+
+    const currentDiet = resolveDietaryPreference(user).value;
+    const planDiet = plan.inputData?.dietaryPreference;
+    if (currentDiet && planDiet && currentDiet !== planDiet) {
+      reasons.push({ code: 'DIET_CHANGED', from: planDiet, to: currentDiet });
+    }
+
+    const targets = await resolveDietTargets(user);
+    const planGoal = plan.inputData?.bmiGoal ? normalizeGoal(plan.inputData.bmiGoal) : null;
+    if (planGoal && planGoal !== targets.goal) {
+      reasons.push({ code: 'GOAL_CHANGED', from: planGoal, to: targets.goal });
+    }
+
+    const planKcal = plan.nutritionGoals?.dailyCalorieTarget;
+    if (planKcal && targets.calorieGoal && Math.abs(planKcal - targets.calorieGoal) / targets.calorieGoal > 0.05) {
+      reasons.push({ code: 'CALORIES_CHANGED', from: planKcal, to: targets.calorieGoal });
+    }
+  } catch (err) {
+    console.warn('[DietPlan] Staleness check failed:', err.message);
+  }
+  return { isStale: reasons.length > 0, reasons };
+}
+
+/**
  * Get active personalized diet plan
  */
 exports.getActiveDietPlan = async (req, res) => {
@@ -755,7 +752,10 @@ exports.getActiveDietPlan = async (req, res) => {
 
     res.json({
       success: true,
-      dietPlan
+      dietPlan,
+      // Additive field: lets the client offer "your diet type / goal changed —
+      // regenerate" instead of silently showing a plan built for the old settings.
+      staleness: await buildPlanStaleness(dietPlan, req.user)
     });
   } catch (error) {
     console.error('Get diet plan error:', error);
@@ -1093,24 +1093,12 @@ exports.generateDietAfterReport = async (userId) => {
     const height = user.profile?.height || 170;
     const heightInMeters = height / 100;
     const currentBMI = currentWeight / (heightInMeters * heightInMeters);
-    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
 
-    let nutritionGoals;
-    if (user.nutritionGoal?.calorieGoal && user.nutritionGoal.calorieGoal > 0) {
-      nutritionGoals = {
-        calorieGoal: user.nutritionGoal.calorieGoal,
-        proteinGoal: user.nutritionGoal.proteinGoal || (isDiabetic ? 84 : 90),
-        carbsGoal: user.nutritionGoal.carbsGoal || (isDiabetic ? 180 : 250),
-        fatGoal: user.nutritionGoal.fatGoal || 65
-      };
-    } else {
-      nutritionGoals = {
-        calorieGoal: isDiabetic ? 1800 : 2000,
-        proteinGoal: isDiabetic ? 84 : 90,
-        carbsGoal: isDiabetic ? 180 : 250,
-        fatGoal: 65
-      };
-    }
+    // Same resolver as the interactive path. This used to fall back to a flat
+    // 2000 (1800 diabetic) with the goal ignored, so a plan auto-generated after
+    // a report upload could contradict the user's weight-loss or gain goal.
+    const nutritionGoals = await resolveDietTargets(user);
+    const bmiGoal = nutritionGoals.goal;
 
     const diabetesInfo = isDiabetic || isPrediabetic ? {
       isDiabetic,
@@ -1145,6 +1133,8 @@ exports.generateDietAfterReport = async (userId) => {
       height,
       currentBMI: currentBMI.toFixed(1),
       bmiGoal,
+      goal: bmiGoal,
+      tdee: nutritionGoals.tdee,
       dietaryPreference: diet.value,
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
@@ -1154,6 +1144,9 @@ exports.generateDietAfterReport = async (userId) => {
       city: user.foodPreferences?.city || null,
       medicalConditions: user.profile?.medicalConditions || [],
       allergies: user.profile?.allergies || [],
+      // Was built above and never passed on, so diabetic users got no diabetes
+      // context in auto-generated plans.
+      diabetesInfo,
       deficiencies,
       nutritionGoals: {
         dailyCalories: nutritionGoals.calorieGoal,
@@ -1161,7 +1154,8 @@ exports.generateDietAfterReport = async (userId) => {
         carbs: nutritionGoals.carbsGoal,
         fats: nutritionGoals.fatGoal
       },
-      foodPreferences: user.foodPreferences || {},
+      // Reconciled against the diet type, so a stale Jain tag cannot leak in.
+      foodPreferences: reconcileFoodPreferences(diet.value, user.foodPreferences).prefs,
       lifestyle,
       alcoholSummary,
       alcoholContext: buildAlcoholContextForAI(user.alcoholLog, lifestyle)

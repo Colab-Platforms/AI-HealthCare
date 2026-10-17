@@ -1375,7 +1375,7 @@ paths:
               type: object
               description: Optional overrides; all fields fallback to user profile.
               properties:
-                dietaryPreference: { type: string, enum: [vegetarian, vegan, non-vegetarian, eggetarian] }
+                dietaryPreference: { type: string, enum: [vegetarian, vegan, non-vegetarian, eggetarian, jain] }
                 allergies:         { type: array, items: { type: string } }
                 fitnessGoals:      { type: array, items: { type: string } }
       responses:
@@ -3392,7 +3392,7 @@ components:
       properties:
         age:                 { type: integer, example: 32 }
         gender:              { type: string, enum: [male, female, other] }
-        dietaryPreference:   { type: string, enum: [vegetarian, non-vegetarian, vegan, eggetarian] }
+        dietaryPreference:   { type: string, enum: [vegetarian, non-vegetarian, vegan, eggetarian, jain] }
         height:              { type: number, description: "cm" }
         weight:              { type: number, description: "kg" }
         bloodGroup:          { type: string, example: "O+" }

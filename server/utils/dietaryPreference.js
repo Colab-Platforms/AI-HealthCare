@@ -7,7 +7,10 @@
 // value is unknown, so the caller can ask the user instead of generating food
 // they may not eat.
 
-const ALLOWED = ['vegetarian', 'vegan', 'eggetarian', 'non-vegetarian', 'other'];
+// 'jain' is a diet type of its own (vegetarian + no onion/garlic/root vegetables).
+// It used to be a free-text tag beside the diet type, and the two disagreed:
+// one field cannot be mixed with itself.
+const ALLOWED = ['vegetarian', 'vegan', 'eggetarian', 'jain', 'non-vegetarian', 'other'];
 
 function normalize(value) {
   if (typeof value !== 'string') return null;

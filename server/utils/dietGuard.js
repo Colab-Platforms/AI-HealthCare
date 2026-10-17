@@ -22,6 +22,9 @@ const FORBIDDEN = {
     dairy: ['milk', 'paneer', 'ghee', 'curd', 'dahi', 'yogurt', 'yoghurt', 'butter', 'cheese', 'cream', 'khoya', 'mawa', 'honey'],
   },
 };
+// Jain is strictly vegetarian (no eggs either); its extra onion/garlic/root
+// vegetable rules live in utils/dietConstraints and are applied on top.
+FORBIDDEN.jain = FORBIDDEN.vegetarian;
 FORBIDDEN.vegan.meat = FORBIDDEN.vegetarian.meat;
 FORBIDDEN.vegan.egg = FORBIDDEN.vegetarian.egg;
 

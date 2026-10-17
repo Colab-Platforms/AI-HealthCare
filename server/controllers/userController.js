@@ -1,7 +1,6 @@
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
-
 /**
  * Merge a food-preferences request body onto the stored preferences.
  *
@@ -103,7 +102,7 @@ exports.saveFoodPreferences = async (req, res) => {
       state, city, country, preferredFoods, foodsToAvoid,
       dietaryRestrictions, dietaryDo, dietaryDont, mealPreferences
     });
-    
+
     user.markModified('foodPreferences');
     await user.save();
     console.log('[UserPrefs] Successfully saved for user:', req.user._id);

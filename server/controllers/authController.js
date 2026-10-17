@@ -13,6 +13,8 @@ const RefreshToken = require('../models/RefreshToken');
 const FCMToken = require('../models/FCMToken');
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
+const { normalizeDietaryPreference } = require('../utils/dietaryPreference');
+const { reconcileFoodPreferences } = require('../utils/dietConstraints');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -1560,6 +1562,22 @@ exports.updateProfile = async (req, res) => {
 
         user.foodPreferences = merged;
         user.markModified('foodPreferences');
+      }
+
+      // Jain is the diet type 'jain', not a free-text tag. A leftover "Jain"
+      // entry in the preference lists (from before it was a diet type) would
+      // contradict whatever diet the user has now, so it is removed whenever the
+      // diet is anything other than 'jain' (utils/dietConstraints). The diet
+      // type alone decides what is served — nothing is mixed. Runs after both
+      // merges above so it also covers a request that sets both together.
+      const finalDiet = normalizeDietaryPreference(user.profile?.dietaryPreference);
+      if (finalDiet && user.foodPreferences) {
+        const { prefs: cleanedPrefs, dropped } = reconcileFoodPreferences(finalDiet, user.foodPreferences);
+        if (dropped.length) {
+          user.foodPreferences = cleanedPrefs;
+          user.markModified('foodPreferences');
+          console.log(`[Profile] User ${user._id} is now "${finalDiet}" — removed stale Jain preference(s): ${dropped.join(', ')}`);
+        }
       }
 
       const newHeight = user.profile?.height;
