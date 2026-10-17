@@ -25,6 +25,7 @@ const { calculateDailyScore } = require('./dailyHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
+const { estimateQualityScore } = require('./sleepAnalyticsService');
 const { getActivityInsight } = require('./activityInsightService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
@@ -165,7 +166,12 @@ async function collectOverallData(userId, dateKey) {
     activeMinutes: steps?.activeMinutes ?? null,
     caloriesBurned: steps?.caloriesBurned ?? nutrition?.caloriesBurned ?? null,
     sleepHours: sleep?.totalSleepMinutes ? Math.round((sleep.totalSleepMinutes / 60) * 10) / 10 : null,
-    sleepScore: sleep?.sleepScore ?? null,
+    // Same formula the Sleep screen's own ring uses (estimateQualityScore —
+    // see sleepClinicalAnalysisService.js), NOT scoreComponents.sleep below,
+    // which only scores duration-in-range and flatlines at 100 for anything
+    // 7-9h regardless of efficiency/regularity — a different, internal
+    // number the user never sees directly on the Sleep screen itself.
+    sleepQualityScore: sleep?.totalSleepMinutes ? estimateQualityScore(sleep.totalSleepMinutes) : null,
     vitals: metrics.map((m) => ({
       type: m.type,
       value: m.type === 'blood_pressure' ? `${m.systolic}/${m.diastolic}` : m.value,
@@ -374,14 +380,19 @@ Rules you must follow:
 - Structure (3-4 sentences):
   1. One sentence briefly naming how the GOOD or ON-TRACK pillars went, by name, for every one of
      sleep/activity/nutrition that has data AND is good/on-track (e.g. "Sleep and activity were both
-     strong"). For sleep/activity use scoreComponents; for nutrition ALWAYS use nutritionQualityScore
-     instead of scoreComponents.nutrition — that's the number the Nutrition screen itself shows, the
-     scoreComponents one is a different, internal targets-adequacy figure the user never sees directly.
+     strong"). For activity use scoreComponents.activity. For sleep ALWAYS use sleepQualityScore
+     instead of scoreComponents.sleep, and for nutrition ALWAYS use nutritionQualityScore instead of
+     scoreComponents.nutrition — those are the exact numbers the Sleep and Nutrition screens show the
+     user; scoreComponents.sleep/nutrition are different internal figures (duration-only plateau for
+     sleep, targets-adequacy for nutrition) the user never sees directly, and citing them instead makes
+     the insight contradict the screen right next to it.
+     Always include its real number too (e.g. "Sleep was strong at 89" not just "Sleep was strong") —
+     naming a pillar without its number is exactly the "invented-sounding" phrasing this must avoid.
      If only one is good, name just that one; if none are good, skip this sentence and start with the
      attention-needing one.
   2. One sentence naming the ONE pillar (sleep/activity/nutrition) that most needs attention (the
-     lowest score or clearest gap), with its real number — same nutritionQualityScore rule applies if
-     nutrition is the one needing attention.
+     lowest score or clearest gap), with its real number — same sleepQualityScore/nutritionQualityScore
+     rule applies if sleep or nutrition is the one needing attention.
   3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
      band and, if present, the HRV-vs-baseline comparison — regardless of whether it's good or needs
      attention. Recovery is never skipped just because sleep/activity/nutrition already filled the
