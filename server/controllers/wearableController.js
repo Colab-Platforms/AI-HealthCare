@@ -15,6 +15,9 @@ const { getSleepInsight } = require('../services/sleepInsightService');
 const { getSleepClinicalAnalysis, toAppSummary } = require('../services/sleepClinicalAnalysisService');
 const { getActivityInsight } = require('../services/activityInsightService');
 const wearableIngest = require('../services/wearableIngestService');
+const { syncScoreForConnection } = require('../services/wearableScoreSyncService');
+const { syncTimeseriesForConnection } = require('../services/wearableTimeseriesSyncService');
+const { syncSleepForConnection } = require('../services/wearableSleepSyncService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const SleepSession = require('../models/SleepSession');
 const HeartRateDailySummary = require('../models/HeartRateDailySummary');
@@ -1357,6 +1360,7 @@ function sumStageMinutes(stages) {
   if (deep_minutes == null && light_minutes == null && rem_minutes == null) return null;
   return (deep_minutes || 0) + (light_minutes || 0) + (rem_minutes || 0);
 }
+
 // Receive events pushed by Open Wearables (via Svix) once an endpoint is
 // registered — see server/scripts/registerOpenWearablesWebhook.js for setup.
 // No auth middleware on this route — Svix calls it directly, not the browser.
@@ -1451,6 +1455,34 @@ exports.handleWebhook = async (req, res) => {
           { new: true }
         );
         console.log(`[Wearables] connection.revoked: record ${updated?._id} (mongo user=${updated?.user}) set isConnected=false, reason=${data.reason || 'unspecified'}`);
+        break;
+      }
+
+      // Recovery/Strain/Sleep-performance scores are the one data type Open
+      // Wearables computes but never webhooks out directly — this event
+      // ("a sync just finished") is our signal to go pull them ourselves,
+      // right when they're freshest instead of waiting for the next cron
+      // tick. Failure here must not fail the webhook ack — the cron safety
+      // net (wearableScoreSyncService's runWearableScoreSync) will catch
+      // whatever this misses.
+      case 'sync.completed': {
+        syncScoreForConnection(data.user_id, data.provider).catch((error) => {
+          console.error(`[Wearables] sync.completed score fetch failed for provider=${data.provider}: ${error.message}`);
+        });
+        // Steps (and similar) have the opposite problem from scores: Open
+        // Wearables DOES webhook them, but from a daemon thread that doesn't
+        // reliably survive to deliver — see wearableTimeseriesSyncService.js.
+        // Same trigger, same fire-and-forget treatment, different data.
+        syncTimeseriesForConnection(data.user_id, data.provider).catch((error) => {
+          console.error(`[Wearables] sync.completed timeseries fetch failed for provider=${data.provider}: ${error.message}`);
+        });
+        // Sleep's 'sleep.created' webhook (below) is the only path that ever
+        // wrote a SleepSession — no safety net if that delivery dropped or
+        // arrived before the full stage breakdown was ready. Confirmed missing
+        // live for a real session before this was added. Same trigger treatment.
+        syncSleepForConnection(data.user_id, data.provider).catch((error) => {
+          console.error(`[Wearables] sync.completed sleep fetch failed for provider=${data.provider}: ${error.message}`);
+        });
         break;
       }
 
@@ -1581,7 +1613,15 @@ exports.handleWebhook = async (req, res) => {
           // Only additive when the provider gives intraday samples (is_daily_total: false);
           // a true daily total should replace, not add to, the day's figure.
           for (const sample of data.samples) {
-            const date = dateOnlyUTC(sample.timestamp);
+            // WHOOP's daily-total steps sample is timestamped at the cycle's
+            // start (that night's bedtime, not "now") — see
+            // dateOnlyWhoopCycleDay's comment. Other providers' intraday
+            // samples carry a real measurement time, so only WHOOP's daily
+            // totals get the cycle-day remap; everything else keeps the
+            // plain UTC date it already had.
+            const date = (data.provider === 'whoop' && sample.is_daily_total)
+              ? dateOnlyWhoopCycleDay(sample.timestamp)
+              : dateOnlyUTC(sample.timestamp);
             let entry = wearable.dailyMetrics.find(
               m => dateOnlyUTC(m.date).getTime() === date.getTime()
             );
@@ -1610,7 +1650,11 @@ exports.handleWebhook = async (req, res) => {
         const wearable = await findWearableDoc(data.user_id, data.provider);
         if (wearable) {
           for (const sample of data.samples) {
-            const date = dateOnlyUTC(sample.timestamp);
+            // Same cycle-start-timestamp quirk as steps.created above —
+            // only WHOOP's daily totals need the remap.
+            const date = (data.provider === 'whoop' && sample.is_daily_total)
+              ? dateOnlyWhoopCycleDay(sample.timestamp)
+              : dateOnlyUTC(sample.timestamp);
             let entry = wearable.dailyMetrics.find(
               m => dateOnlyUTC(m.date).getTime() === date.getTime()
             );

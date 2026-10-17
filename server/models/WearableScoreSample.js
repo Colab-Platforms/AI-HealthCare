@@ -30,5 +30,11 @@ const wearableScoreSampleSchema = new mongoose.Schema({
 
 wearableScoreSampleSchema.index({ user: 1, timestamp: -1 });
 wearableScoreSampleSchema.index({ user: 1, externalId: 1 });
+// Logical-identity lookup for applyScores' dedup/replace logic — see that
+// function's comment for why externalId alone isn't a stable identity
+// (Open Wearables regenerates it on every sleep-score recompute; recorded_at
+// does not change, confirmed from Open Wearables' own source). Not a unique
+// index — time-series collections can't carry one; dedup stays app-level.
+wearableScoreSampleSchema.index({ user: 1, 'meta.deviceType': 1, 'meta.category': 1, timestamp: 1 });
 
 module.exports = mongoose.model('WearableScoreSample', wearableScoreSampleSchema);

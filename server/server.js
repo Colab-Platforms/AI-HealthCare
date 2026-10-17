@@ -503,14 +503,43 @@ if (!process.env.VERCEL) {
   });
 
   // Wearable health scores (Recovery/Strain/Sleep) — Open Wearables computes
-  // these but never webhooks them out, so we poll. Every 10 min, matching
-  // how often Open Wearables itself refreshes from the provider.
-  const { runWearableScoreSync } = require('./services/wearableScoreSyncService');
-  cron.schedule('*/10 * * * *', async () => {
+  // these but never webhooks them out directly. The primary path is now
+  // event-driven: wearableController's handleWebhook fetches a user's scores
+  // the moment their 'sync.completed' event arrives (usually within
+  // seconds). This cron is just the safety net for whatever that misses —
+  // a dropped webhook, a retry that never landed — so 30 min is fine; it's
+  // no longer the thing freshness depends on.
+  const { runWearableScoreSync, reconcileConnectionStatuses } = require('./services/wearableScoreSyncService');
+  const { runTimeseriesSync } = require('./services/wearableTimeseriesSyncService');
+  const { runWearableSleepSync } = require('./services/wearableSleepSyncService');
+  cron.schedule('*/30 * * * *', async () => {
     try {
       await runWearableScoreSync();
     } catch (error) {
       console.error('[WearableScoreSync] cron tick failed:', error.message);
+    }
+    try {
+      // Self-heals isConnected:false records where Open Wearables silently
+      // never sent a connection.created webhook (reconnecting an account it
+      // already considers active doesn't emit one — see the comment on
+      // reconcileOneConnection).
+      await reconcileConnectionStatuses();
+    } catch (error) {
+      console.error('[WearableScoreSync] connection reconcile tick failed:', error.message);
+    }
+    try {
+      // Safety net for steps (and similar) — the event-triggered path in
+      // handleWebhook is primary, this catches whatever it misses.
+      await runTimeseriesSync();
+    } catch (error) {
+      console.error('[WearableTimeseriesSync] cron tick failed:', error.message);
+    }
+    try {
+      // Safety net for sleep sessions — previously only reachable via the
+      // 'sleep.created' webhook with no backstop; same treatment as the two above.
+      await runWearableSleepSync();
+    } catch (error) {
+      console.error('[WearableSleepSync] cron tick failed:', error.message);
     }
   });
 
