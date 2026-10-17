@@ -20,7 +20,7 @@ const SleepSession = require('../models/SleepSession');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const ExerciseLog = require('../models/ExerciseLog');
-const RecoveryDailySummary = require('../models/RecoveryDailySummary');
+const { calculateRecoveryScore } = require('./recoveryScoreService');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 const { getActivityInsight } = require('./activityInsightService');
@@ -223,24 +223,32 @@ const hasInsightData = (type, data) => {
 // Sleep/Activity contributions are deliberately excluded to avoid the insight
 // text overlapping with the separately-generated sleep/fitness insights).
 async function collectRecoveryData(userId, dateKey) {
-  const doc = await RecoveryDailySummary.findOne({ user: userId, date: dateKey }).lean();
-  if (!doc || doc.recoveryScore == null) return null;
+  // Computed live, same as calculateDailyScore is for the Daily Health
+  // Score — not a passive RecoveryDailySummary.findOne(). That read-only
+  // version only ever sees whatever the LAST background recompute trigger
+  // (fired after a sync event) happened to persist, which can lag behind
+  // what the Recovery screen itself shows: confirmed live, an insight
+  // generated moments before that trigger finished said "recovery data not
+  // available" while the dashboard's own Recovery card already read 79 from
+  // the exact same collection once the trigger caught up. calculateRecoveryScore
+  // recomputes and upserts RecoveryDailySummary on every call, so this is
+  // guaranteed to be at least as fresh as what the user is looking at.
+  const result = await calculateRecoveryScore(userId, dateKey);
+  if (!result || result.recoveryScore == null) return null;
 
-  const hrv = doc.metricDetails?.hrv;
-  const rhr = doc.metricDetails?.rhr;
-  const rr = doc.metricDetails?.rr;
+  const { hrv, rhr, rr } = result;
 
   return {
     date: dateKey,
-    recoveryBand: doc.band?.label ?? null,
-    physiologyScore: doc.metricDetails?.physiology?.score ?? null,
+    recoveryBand: result.band?.label ?? null,
+    physiologyScore: result.physiology?.score ?? null,
     hrvToday: hrv?.today ?? null,
     hrvBaseline14: hrv?.baseline14 ?? null,
     rhrToday: rhr?.today ?? null,
     rhrBaseline14: rhr?.baseline14 ?? null,
     respiratoryRateToday: rr?.today ?? null,
-    confidence: doc.confidence ?? null,
-    warnings: (doc.warnings || []).map((w) => w.message),
+    confidence: result.confidence ?? null,
+    warnings: (result.warnings || []).map((w) => w.message),
   };
 }
 
@@ -358,6 +366,10 @@ Rules you must follow:
   longer explanation of why). Brevity across all 4 sentences matters more than any one being thorough.
 - Never limit yourself to only the pillar that needs attention — if sleep/activity data exists and was
   good, SAY SO by name, even briefly, before moving to what needs work.
+- If isPartialDay is true, the day is still in progress — a pillar with nothing logged yet (e.g. no
+  meals, no sleep synced) is "not logged so far," not a failure. Don't call it a shortfall; just skip
+  it from sentence 1/2 and, if nothing at all qualifies as "needing attention" yet, lead with whatever
+  IS available (e.g. activity-so-far or recovery) instead.
 - NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
   weeks after the date it describes. Speak directly to the user as "you" and describe what happened
   without a day-word.
@@ -543,6 +555,11 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
         rhrBaseline14: recovery.rhrBaseline14,
         respiratoryRateToday: recovery.respiratoryRateToday,
       } : null,
+      // true only for the on-demand same-day refresh (see
+      // getLatestOverallDateKey in insightController.js) — the day is still
+      // in progress, so nutrition/activity being thin isn't necessarily a
+      // shortfall yet, just "not logged so far."
+      isPartialDay: sourceDate === istDateKey(),
     };
   }
   return overallData && insightData[insightType](overallData);
@@ -683,6 +700,32 @@ async function getLatestActivityDateKey(userId) {
   return latest ? istDateKey(latest.date) : null;
 }
 
+/**
+ * 'today' if there's ANY real sign of today's data yet (activity, sleep, or
+ * a persisted score), else null. Used to detect whether a cached 'overall'
+ * insight (which describes sourceDate = insightDate - 1) is now stale
+ * against today's live ring and sub-cards — confirmed live: a cached
+ * "Recovery data not available" (yesterday's truth) shown right next to a
+ * card displaying today's actual Recovery score of 79.
+ *
+ * Checks DailyActivityMetric/SleepSession directly rather than only the
+ * persisted DailyHealthScore — that record can be briefly absent even with
+ * real same-day data (calculateDailyScore deletes it when a given call finds
+ * zero available components, which is a transient per-call state, not a
+ * reliable "nothing exists yet" signal).
+ */
+async function getLatestOverallDateKey(userId) {
+  const today = istDateKey();
+  const todayStart = new Date(`${today}T00:00:00.000Z`);
+  const [score, activity, sleep] = await Promise.all([
+    DailyHealthScore.findOne({ userId, date: today }).select('components').lean(),
+    DailyActivityMetric.exists({ user: userId, date: todayStart }),
+    SleepSession.exists({ user: userId, date: todayStart }),
+  ]);
+  const hasScore = score && Object.keys(score.components || {}).length > 0;
+  return hasScore || activity || sleep ? today : null;
+}
+
 module.exports = {
   runDailyInsightCron,
   generateForUser,
@@ -690,6 +733,7 @@ module.exports = {
   collectOverallData,
   getLatestSleepNightDateKey,
   getLatestActivityDateKey,
+  getLatestOverallDateKey,
   INSIGHT_TYPES,
   istDateKey,
   shiftDateKey,
