@@ -6,6 +6,7 @@ const {
   getLatestSleepNightDateKey,
   getLatestActivityDateKey,
   getLatestOverallDateKey,
+  hasNewerDataThanInsight,
   istDateKey,
   shiftDateKey,
 } = require('../services/dailyInsightService');
@@ -48,6 +49,22 @@ exports.getTodaysInsights = async (req, res) => {
     insights = await refreshIfStale(insights, 'sleep', insightDate, req.user._id, getLatestSleepNightDateKey);
     insights = await refreshIfStale(insights, 'fitness', insightDate, req.user._id, getLatestActivityDateKey);
     insights = await refreshIfStale(insights, 'overall', insightDate, req.user._id, getLatestOverallDateKey);
+
+    // Second-opinion check for 'overall': the date-based refresh above only
+    // catches "today has no insight yet." It won't catch a same-day insight
+    // that's gone stale WITHIN today — e.g. the user logs a meal minutes
+    // after generation, and the cached nutrition number is now behind the
+    // live one. Re-generate whenever any of today's core data is newer than
+    // the insight itself.
+    try {
+      const cachedOverall = insights.find((i) => i.insightType === 'overall');
+      if (cachedOverall && (await hasNewerDataThanInsight(req.user._id, cachedOverall))) {
+        const fresh = await ensureInsight(req.user._id, 'overall', insightDate, { force: true, sameDay: true });
+        if (fresh) insights = [...insights.filter((i) => i.insightType !== 'overall'), fresh];
+      }
+    } catch (refreshError) {
+      console.error('getTodaysInsights overall freshness refresh error:', refreshError.message);
+    }
 
     // Explicit per-card flag so the app can label each insight unambiguously
     // ("Based on today" / "Based on yesterday") instead of leaving it to be

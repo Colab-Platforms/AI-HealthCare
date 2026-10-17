@@ -14,6 +14,13 @@
 
 const SleepSession = require('../models/SleepSession');
 const { collapseToOnePerDay, filterPlausibleSleep } = require('../utils/wearableMerge');
+// Same function the Sleep screen's own score ring calls (sleepAnalyticsService
+// powers getSleepAnalyticsData) — reused here, not a second formula, so the
+// insight can cite the exact number already on screen instead of a different
+// one (confirmed live: the insight had no 0-100 score at all before this,
+// only hours/efficiency, while the user was comparing it against the Sleep
+// screen's quality score).
+const { estimateQualityScore } = require('./sleepAnalyticsService');
 
 const TREND_WINDOW_DAYS = 7;
 const REGULARITY_WINDOW_DAYS = 14;
@@ -116,6 +123,7 @@ function buildLastNight(session, idealRange) {
     hours,
     vsIdeal,
     shortfallMinutesToMin,
+    qualityScore: estimateQualityScore(session.totalSleepMinutes),
     efficiencyPct: efficiency != null ? Math.round(efficiency) : null,
     efficiencyStatus: efficiencyStatus(efficiency),
     deepPct: roundOrNull(stagePct(session, 'deepSleepMinutes')),
