@@ -383,20 +383,19 @@ Rules you must follow:
 - Structure (3-4 sentences):
   1. One sentence briefly naming how the GOOD or ON-TRACK pillars went, by name, for every one of
      sleep/activity/nutrition that has data AND is good/on-track (e.g. "Sleep and activity were both
-     strong"). For activity use scoreComponents.activity. For sleep ALWAYS use sleepQualityScore
-     instead of scoreComponents.sleep, and for nutrition ALWAYS use nutritionQualityScore instead of
-     scoreComponents.nutrition — those are the exact numbers the Sleep and Nutrition screens show the
-     user (sleepQualityScore is the device's own native score when available); scoreComponents.sleep/
-     nutrition are different internal figures (a duration-only plateau for sleep, targets-adequacy for
-     nutrition) the user never sees directly, and citing them instead makes the insight contradict the
-     screen right next to it.
+     strong"). ALWAYS cite scoreComponents.sleep, scoreComponents.activity, and scoreComponents.nutrition
+     for their respective pillars — this insight is shown directly below the Unified Health Score ring,
+     which displays these exact component numbers, so the text must match that ring exactly. Never cite
+     sleepQualityScore, nutritionQualityScore, or raw stats (minutes, calories, steps) as the headline
+     number for a pillar — only its scoreComponents value, so the number here is never different from
+     the number the user sees in the ring right above this card.
      Always include its real number too (e.g. "Sleep was strong at 89" not just "Sleep was strong") —
      naming a pillar without its number is exactly the "invented-sounding" phrasing this must avoid.
      If only one is good, name just that one; if none are good, skip this sentence and start with the
      attention-needing one.
   2. One sentence naming the ONE pillar (sleep/activity/nutrition) that most needs attention (the
-     lowest score or clearest gap), with its real number — same sleepQualityScore/nutritionQualityScore
-     rule applies if sleep or nutrition is the one needing attention.
+     lowest score or clearest gap), stating its scoreComponents number — same rule as above, never a
+     different source number or a raw stat as the headline figure.
   3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
      band and, if present, the HRV-vs-baseline comparison — regardless of whether it's good or needs
      attention. Recovery is never skipped just because sleep/activity/nutrition already filled the
