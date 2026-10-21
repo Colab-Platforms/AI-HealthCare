@@ -35,10 +35,10 @@ const { mergeDeviceRows, filterPlausibleSleep, collapseToOnePerDay } = require('
 // the first 30 seconds and failing everyone else.
 const BATCH_SIZE = 5;
 const BATCH_PAUSE_MS = 1500;
-// Some free-tier models (e.g. nemotron-3-super-120b-a12b) narrate chain-of-thought
-// straight into message.content instead of a separate reasoning field, ignoring
+// Some models (e.g. nemotron-3-super-120b-a12b, claude-haiku-4.5 on Bedrock) narrate
+// chain-of-thought straight into message.content/reasoning instead of honoring
 // reasoning.max_tokens:0 — so the budget has to cover that narration plus the JSON.
-const MAX_TOKENS = 1600;
+const MAX_TOKENS = 3000;
 
 const IST_OFFSET = '+05:30'; // Asia/Kolkata has no DST — a fixed offset is safe here
 

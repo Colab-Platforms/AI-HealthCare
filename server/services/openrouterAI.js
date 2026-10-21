@@ -12,6 +12,7 @@ const MODELS = {
 
 
 const FREE_MODELS = (process.env.OPENROUTER_FREE_MODELS || [
+  'anthropic/claude-haiku-4.5',
   'nvidia/nemotron-3-super-120b-a12b:free',
   'nvidia/nemotron-3-ultra-550b-a55b:free',
   'google/gemma-4-31b-it:free',
@@ -60,7 +61,10 @@ const chatCompletion = async ({
         messages: finalMessages,
         max_tokens: maxTokens,
         temperature,
-        reasoning: { max_tokens: 0 },
+        // max_tokens:0 disables reasoning for most providers, but Claude's extended
+        // thinking rejects 0 as a budget (min 1024) and silently keeps thinking on —
+        // enabled:false is the form Anthropic actually honors.
+        reasoning: { enabled: false, max_tokens: 0 },
       },
       {
         headers: {
