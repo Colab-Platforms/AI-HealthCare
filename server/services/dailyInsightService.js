@@ -380,49 +380,49 @@ Rules you must follow:
 // briefly, instead of only the worst one.
 const OVERALL_SHARED_RULES = `
 Rules you must follow:
-- Sound like a real coach giving a quick daily roundup, not a single-topic report.
-- Structure (3-4 sentences):
-  1. One sentence briefly naming how the GOOD or ON-TRACK pillars went, by name, for every one of
-     sleep/activity/nutrition that has data AND is good/on-track (e.g. "Sleep and activity were both
-     strong"). ALWAYS cite scoreComponents.sleep, scoreComponents.activity, and scoreComponents.nutrition
-     for their respective pillars — this insight is shown directly below the Unified Health Score ring,
-     which displays these exact component numbers, so the text must match that ring exactly. Never cite
-     sleepQualityScore, nutritionQualityScore, or raw stats (minutes, calories, steps) as the headline
-     number for a pillar — only its scoreComponents value, so the number here is never different from
-     the number the user sees in the ring right above this card.
-     Always include its real number too (e.g. "Sleep was strong at 89" not just "Sleep was strong") —
-     naming a pillar without its number is exactly the "invented-sounding" phrasing this must avoid.
-     If only one is good, name just that one; if none are good, skip this sentence and start with the
-     attention-needing one.
-  2. One sentence naming the ONE pillar (sleep/activity/nutrition) that most needs attention (the
-     lowest score or clearest gap), stating its scoreComponents number — same rule as above, never a
-     different source number or a raw stat as the headline figure.
-  3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
-     recoveryScore number AND band together (e.g. "Recovery is low at 33"), plus the HRV-vs-baseline
-     comparison if present — regardless of whether it's good or needs attention. Naming only the band
-     with no number is exactly the "invented-sounding" phrasing this must avoid, same as any other
-     pillar. Recovery is never skipped just because sleep/activity/nutrition already filled the "good"
-     and "attention" slots above.
-  4. One short sentence: a single concrete action tied to whichever pillar (from 2 or 3) most needs it —
-     this sentence is MANDATORY, never drop it to save space. If the first three sentences are running
-     long, trim THEM down (shorter clauses, fewer words) rather than cutting the action — a roundup
-     with no action defeats the point of the insight.
-- Keep every sentence short and plain — telegraphic is fine (e.g. "Nutrition was lowest at 41." not a
-  longer explanation of why). Brevity across all 4 sentences matters more than any one being thorough.
-- Never limit yourself to only the pillar that needs attention — if sleep/activity data exists and was
-  good, SAY SO by name, even briefly, before moving to what needs work.
+- Sound like a personal caretaker who looked at your day and is telling you about it in person — warm,
+  brief, talking WITH you, not a report read out loud. Never stack numbers into one dense sentence like
+  a data table; say it the way a person who cares about you would say it out loud.
+  Bad (data dump, not human): "Activity was excellent at 100, but sleep came in critically low at 16 —
+  you're running on fumes with just 3.2 hours. Nutrition also needs work at 49, with calories and
+  protein both well below your goals (1,478 vs. 2,459 cal target; 56g vs. 184g protein). Recovery is
+  very low at 33."
+  Good (human, caretaker, short): "You moved well today (activity 100!), but your body didn't get the
+  rest it needed — sleep was just 16 and recovery is very low at 33. Try to wind down early tonight and
+  get real sleep in."
+- Structure (2-3 short sentences, not 4+):
+  1. Open with the single most important thing — usually whichever pillar most needs attention — in a
+     feeling-first way, THEN its number. If one or two other pillars are clearly good, you may name them
+     briefly in the same or a second sentence, but don't list every pillar just because data exists for
+     it — only mention what's actually notable (very good or needs attention), skip the merely-average.
+  2. One sentence with a real, specific, doable action tied to the pillar that needs attention most —
+     this sentence is MANDATORY, never drop it.
+  That's it — 2 sentences is often enough; use a 3rd only if there's a second genuinely notable thing
+  (e.g. recovery also very low) that can't be folded into sentence 1 without it getting dense.
+- Numbers: EVERY pillar you mention by name (sleep, activity, nutrition, recovery) MUST include its
+  score right there in the same breath — never name a pillar using only a raw stat (hours, steps,
+  minutes, calories) with no score attached; the score always comes first or alongside, e.g. "sleep was
+  just 16" or "sleep scored 16 (only 3.2 hours)" — not "you got just 3.2 hours of sleep" with no 16
+  anywhere. Use scoreComponents.sleep / .activity / .nutrition (never sleepQualityScore,
+  nutritionQualityScore) and recoveryScore for recovery (never just the band name alone) — this card
+  sits directly under the Unified Health Score ring showing these exact numbers, so it must never
+  disagree with it. Don't add secondary stats (protein grams, calorie targets, HRV baselines, workout
+  type/duration) at all — the score is the number that matters here, nothing else.
+- HARD LIMIT: the description must be under 200 characters total, no exceptions — short enough to read
+  in one breath. If you're naming more than two pillars, you are almost certainly too long; cut to the
+  one that needs attention plus at most one more.
 - If isPartialDay is true, the day is still in progress — a pillar with nothing logged yet (e.g. no
-  meals, no sleep synced) is "not logged so far," not a failure. Don't call it a shortfall; just skip
-  it from sentence 1/2 and, if nothing at all qualifies as "needing attention" yet, lead with whatever
-  IS available (e.g. activity-so-far or recovery) instead.
+  meals, no sleep synced) is "not logged so far," not a failure; just leave it out rather than calling
+  it a shortfall.
 - NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
-  weeks after the date it describes. Speak directly to the user as "you" and describe what happened
-  without a day-word.
+  weeks after the date it describes. Speak directly to the user as "you".
 - Personalized: ground every claim in THIS user's actual numbers from the data — never a generic
   statement that could apply to any user.
 - Only use facts present in the data. Never invent numbers, foods, or symptoms. Never name a specific
-  health marker or system (blood sugar, cholesterol, metabolism, cardiovascular health, etc.) unless
-  that exact term appears in the data.
+  health marker or system (blood sugar, cholesterol, metabolism, cardiovascular health, diabetes, etc.)
+  unless that exact term/field appears in the data object below — a user's profile condition is NOT
+  license to reference it; only cite it if a matching field is literally present in the data you were
+  given for this date.
 - Plain everyday language, no medical jargon, no emojis.
 - Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
@@ -430,7 +430,7 @@ Rules you must follow:
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, naming the pillar that most needs attention (not a generic "Great Day" when one
   pillar clearly needs work).
-- description: 3-4 sentences per the structure above, 150-320 characters.
+- description: 2-3 short, human sentences per the structure above, 100-200 characters.
 - summary: one line, max 12 words, the single takeaway.`;
 
 const INSIGHT_SYSTEMS = {
@@ -477,7 +477,17 @@ const trimToSentence = (text, max, minKeep = 80) => {
   const str = String(text).trim();
   if (str.length <= max) return str;
   const cut = str.slice(0, max);
-  const lastEnd = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'));
+  // A '.'/'!'/'?' only counts as a real sentence end if it's followed by
+  // whitespace or end-of-string — otherwise it's punctuation mid-phrase (e.g.
+  // "activity (100!)"), and treating it as the cut point used to chop the
+  // sentence off right after the "!" with the closing ")." left dangling.
+  let lastEnd = -1;
+  for (let i = cut.length - 1; i >= 0; i--) {
+    if ((cut[i] === '.' || cut[i] === '!' || cut[i] === '?') && (i + 1 === str.length || /\s/.test(str[i + 1]))) {
+      lastEnd = i;
+      break;
+    }
+  }
   return lastEnd >= minKeep ? cut.slice(0, lastEnd + 1) : cut.trimEnd();
 };
 
@@ -510,7 +520,7 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
       title: String(parsed.title).slice(0, 120),
       // 'overall' covers up to 4 pillars in 3 sentences and needs more room
       // than the single-topic types' 220-char cap.
-      description: trimToSentence(parsed.description, insightType === 'overall' ? 320 : 220),
+      description: trimToSentence(parsed.description, insightType === 'overall' ? 210 : 220),
       summary: String(parsed.summary || parsed.title).slice(0, 200),
       dataSnapshot: data,
       model,
