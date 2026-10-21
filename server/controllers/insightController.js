@@ -43,7 +43,7 @@ exports.getTodaysInsights = async (req, res) => {
   try {
     const insightDate = istDateKey();
     let insights = await DailyInsight.find({ userId: req.user._id, insightDate })
-      .select('-dataSnapshot')
+      .select('-dataSnapshot -model')
       .lean();
 
     insights = await refreshIfStale(insights, 'sleep', insightDate, req.user._id, getLatestSleepNightDateKey);
@@ -72,10 +72,14 @@ exports.getTodaysInsights = async (req, res) => {
     // days on the same screen now (sleep/fitness/overall refresh same-day
     // when today's own data is ready; nutrition/recovery/etc. still describe
     // yesterday until tonight's cron).
-    insights = insights.map((i) => ({
-      ...i,
-      isBasedOnToday: i.sourceDate === insightDate,
-    }));
+    // Freshly-refreshed entries above come straight from ensureInsight's saved
+    // doc (full object, not the '-model' projection the initial find used) —
+    // strip it here too so a same-day refresh can't leak the model name into
+    // the response the first find() already protected against.
+    insights = insights.map((i) => {
+      const { model, dataSnapshot, ...rest } = i;
+      return { ...rest, isBasedOnToday: i.sourceDate === insightDate };
+    });
 
     res.json({
       success: true,
@@ -110,7 +114,7 @@ exports.getInsights = async (req, res) => {
     const insights = await DailyInsight.find(query)
       .sort({ insightDate: -1 })
       .limit(limit)
-      .select('-dataSnapshot')
+      .select('-dataSnapshot -model')
       .lean();
 
     res.json({ success: true, count: insights.length, insights });

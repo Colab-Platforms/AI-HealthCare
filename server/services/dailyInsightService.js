@@ -270,6 +270,7 @@ async function collectRecoveryData(userId, dateKey) {
 
   return {
     date: dateKey,
+    recoveryScore: result.recoveryScore ?? null,
     recoveryBand: result.band?.label ?? null,
     physiologyScore: result.physiology?.score ?? null,
     hrvToday: hrv?.today ?? null,
@@ -397,9 +398,11 @@ Rules you must follow:
      lowest score or clearest gap), stating its scoreComponents number — same rule as above, never a
      different source number or a raw stat as the headline figure.
   3. If the data's recovery object is present, ALWAYS add one short sentence or clause for it — its
-     band and, if present, the HRV-vs-baseline comparison — regardless of whether it's good or needs
-     attention. Recovery is never skipped just because sleep/activity/nutrition already filled the
-     "good" and "attention" slots above.
+     recoveryScore number AND band together (e.g. "Recovery is low at 33"), plus the HRV-vs-baseline
+     comparison if present — regardless of whether it's good or needs attention. Naming only the band
+     with no number is exactly the "invented-sounding" phrasing this must avoid, same as any other
+     pillar. Recovery is never skipped just because sleep/activity/nutrition already filled the "good"
+     and "attention" slots above.
   4. One short sentence: a single concrete action tied to whichever pillar (from 2 or 3) most needs it —
      this sentence is MANDATORY, never drop it to save space. If the first three sentences are running
      long, trim THEM down (shorter clauses, fewer words) rather than cutting the action — a roundup
@@ -589,7 +592,11 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
     return {
       ...overallData,
       recovery: recovery ? {
-        recoveryScore: recovery.physiologyScore,
+        // The ring on the dashboard shows recoveryScore (the final 0-100 number),
+        // not physiologyScore (an internal 70%-weighted sub-component of it) —
+        // citing physiologyScore here used to make 'overall' disagree with the
+        // Recovery card shown right above it.
+        recoveryScore: recovery.recoveryScore,
         recoveryBand: recovery.recoveryBand,
         hrvToday: recovery.hrvToday,
         hrvBaseline14: recovery.hrvBaseline14,
