@@ -181,6 +181,13 @@ async function collectOverallData(userId, dateKey) {
     activeMinutes: steps?.activeMinutes ?? null,
     caloriesBurned: steps?.caloriesBurned ?? nutrition?.caloriesBurned ?? null,
     sleepHours: sleep?.totalSleepMinutes ? Math.round((sleep.totalSleepMinutes / 60) * 10) / 10 : null,
+    // Pre-formatted so the model copies it verbatim instead of converting
+    // decimal hours to "Xh Ym" itself — that conversion is exactly the kind
+    // of arithmetic that produced a fabricated "100.91" score in production
+    // (the model computing instead of stating a given value).
+    sleepDurationLabel: sleep?.totalSleepMinutes
+      ? `${Math.floor(sleep.totalSleepMinutes / 60)}h ${sleep.totalSleepMinutes % 60}m`
+      : null,
     sleepQualityScore: sleepQuality?.value ?? null,
     vitals: metrics.map((m) => ({
       type: m.type,
@@ -412,13 +419,17 @@ Rules you must follow:
   (e.g. recovery also very low) that can't be folded into sentence 1 without it getting dense.
 - Numbers: EVERY pillar you mention by name (sleep, activity, nutrition, recovery) MUST include its
   score right there in the same breath — never name a pillar using only a raw stat (hours, steps,
-  minutes, calories) with no score attached; the score always comes first or alongside, e.g. "sleep was
-  just 16" or "sleep scored 16 (only 3.2 hours)" — not "you got just 3.2 hours of sleep" with no 16
-  anywhere. Use scoreComponents.sleep / .activity / .nutrition (never sleepQualityScore,
-  nutritionQualityScore) and recoveryScore for recovery (never just the band name alone) — this card
-  sits directly under the Unified Health Score ring showing these exact numbers, so it must never
-  disagree with it. Don't add secondary stats (protein grams, calorie targets, HRV baselines, workout
-  type/duration) at all — the score is the number that matters here, nothing else.
+  minutes, calories) with no score attached. Use scoreComponents.sleep / .activity / .nutrition (never
+  sleepQualityScore, nutritionQualityScore) and recoveryScore for recovery (never just the band name
+  alone) — this card sits directly under the Unified Health Score ring showing these exact numbers, so
+  it must never disagree with it. Don't add secondary stats (protein grams, calorie targets, HRV
+  baselines, workout type/duration) at all — the score is the number that matters here, nothing else.
+  EXCEPTION — sleep always also states sleepDurationLabel (e.g. "sleep scored 100 — you slept 6h 54m"):
+  copy that exact string verbatim, never convert sleepHours (a decimal) into "Xh Ym" yourself.
+- Scores are always whole numbers 0-100, taken VERBATIM from the data — never state a number with more
+  precision than given (no decimals you computed, like "100.91"; if a component happens to be a decimal
+  in the data, round it to the nearest whole number before stating it, don't repeat its exact decimals).
+  Never perform arithmetic on a score to produce a new figure — state the given value or nothing.
   EXCEPTION: if activity scores 100 (or otherwise looks "complete") while activityDetail.steps.actual is
   clearly short of activityDetail.steps.goal, briefly say why in one short clause naming whichever of
   activityDetail.movementMinutes.actual/goal earned the 100 (e.g. "activity hit 100 from your 65-minute
