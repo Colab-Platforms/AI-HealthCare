@@ -66,19 +66,17 @@ exports.getTodaysInsights = async (req, res) => {
       console.error('getTodaysInsights overall freshness refresh error:', refreshError.message);
     }
 
-    // Explicit per-card flag so the app can label each insight unambiguously
-    // ("Based on today" / "Based on yesterday") instead of leaving it to be
-    // inferred — different insight types can legitimately describe different
-    // days on the same screen now (sleep/fitness/overall refresh same-day
-    // when today's own data is ready; nutrition/recovery/etc. still describe
-    // yesterday until tonight's cron).
-    // Freshly-refreshed entries above come straight from ensureInsight's saved
-    // doc (full object, not the '-model' projection the initial find used) —
-    // strip it here too so a same-day refresh can't leak the model name into
-    // the response the first find() already protected against.
+    // sourceDate/insightDate/isBasedOnToday are internal staleness-tracking
+    // bookkeeping (used above by refreshIfStale/hasNewerDataThanInsight), not
+    // card content — the app was rendering sourceDate/isBasedOnToday directly
+    // onto the card ("today" / a bare ISO date under the description), which
+    // reads as leaked debug info. Stripped here the same way `model` already
+    // is. Freshly-refreshed entries above come straight from ensureInsight's
+    // saved doc (full object, not the '-model' projection the initial find
+    // used), so model/dataSnapshot need stripping here too, not just there.
     insights = insights.map((i) => {
-      const { model, dataSnapshot, ...rest } = i;
-      return { ...rest, isBasedOnToday: i.sourceDate === insightDate };
+      const { model, dataSnapshot, sourceDate, insightDate: _insightDate, ...rest } = i;
+      return rest;
     });
 
     res.json({
