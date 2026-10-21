@@ -142,6 +142,13 @@ async function collectOverallData(userId, dateKey) {
     date: dateKey,
     healthScore: liveScore?.finalScore ?? null,
     scoreComponents: liveScore?.components || null,
+    // Why scoreComponents.activity can be 100 even when steps are far short
+    // of the steps goal: activity is scored as the BETTER of steps-vs-goal
+    // OR movement-minutes-vs-goal (cardio exercise time), not an average of
+    // the two — someone who logged a real workout gets full credit even on
+    // a low-step day. Exposed so the insight can explain that instead of
+    // leaving "activity 100" looking wrong next to "3,430 of 7,500 steps".
+    activityDetail: liveScore?.raw?.activity || null,
     meals: foodLogs.map((f) => ({
       type: f.mealType,
       items: (f.foodItems || []).map((i) => i.name).slice(0, 6),
@@ -408,6 +415,11 @@ Rules you must follow:
   sits directly under the Unified Health Score ring showing these exact numbers, so it must never
   disagree with it. Don't add secondary stats (protein grams, calorie targets, HRV baselines, workout
   type/duration) at all — the score is the number that matters here, nothing else.
+  EXCEPTION: if activity scores 100 (or otherwise looks "complete") while activityDetail.steps.actual is
+  clearly short of activityDetail.steps.goal, briefly say why in one short clause naming whichever of
+  activityDetail.movementMinutes.actual/goal earned the 100 (e.g. "activity hit 100 from your 65-minute
+  workout, even with steps still behind") — so the user doesn't read "100" next to a low step count as a
+  mistake. Skip this clause whenever steps and the activity score already agree (no explaining needed).
 - HARD LIMIT: the description must be under 200 characters total, no exceptions — short enough to read
   in one breath. If you're naming more than two pillars, you are almost certainly too long; cut to the
   one that needs attention plus at most one more.
