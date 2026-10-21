@@ -249,7 +249,29 @@ async function applyBodyComposition(userId, deviceType, source, samples, { sessi
       wearable.bodyComposition.push({ ...sample, source });
       wearable.markModified('bodyComposition');
     }
+
+    // User.profile.weight (the calorie/MET-calc, nutrition-goal, and dashboard
+    // "current weight") used to only ever get set by the manual weigh-in log —
+    // a device-only user's weight here silently stayed whatever they typed in
+    // at signup forever, since nothing wrote the device's readings back to it.
+    // Only touch it when this sample is actually the most recent weight
+    // reading on file (manual or device), so an out-of-order/backfilled sync
+    // can't overwrite a more current value with an old one.
+    if (sample.weightKg != null) {
+      await syncProfileWeightIfLatest(userId, sample.weightKg, sample.timestamp, session);
+    }
   }
+}
+
+async function syncProfileWeightIfLatest(userId, weightKg, timestamp, session) {
+  const User = require('../models/User');
+  const HealthMetric = require('../models/HealthMetric');
+  const [newerDeviceReading, newerManualReading] = await Promise.all([
+    BodyCompositionSample.exists({ user: userId, weightKg: { $ne: null }, timestamp: { $gt: timestamp } }).session(session || null),
+    HealthMetric.exists({ userId, type: 'weight', recordedAt: { $gt: timestamp } }).session(session || null),
+  ]);
+  if (newerDeviceReading || newerManualReading) return;
+  await User.updateOne({ _id: userId }, { $set: { 'profile.weight': weightKg } }, { session: session || undefined });
 }
 
 // --- Workouts ------------------------------------------------------------
