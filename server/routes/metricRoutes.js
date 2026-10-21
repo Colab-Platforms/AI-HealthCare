@@ -276,12 +276,115 @@ router.get('/history/:type', protect, async (req, res) => {
                 diastolic: m.diastolic,
                 unit: m.unit
             }));
+
+            // Weight also arrives via a device/smart-scale sync, written to
+            // BodyCompositionSample rather than HealthMetric — without this, a
+            // user who only ever weighed in through a connected device saw an
+            // empty history here despite having real weigh-ins on file (same
+            // gap /history/:type/weekly below already accounts for).
+            if (mappedType === 'weight') {
+                const BodyCompositionSample = require('../models/BodyCompositionSample');
+                const deviceRows = await withTimeout(BodyCompositionSample.find({
+                    user: req.user._id,
+                    timestamp: { $gte: startDate },
+                    weightKg: { $ne: null },
+                }));
+                history.push(...deviceRows.map(r => ({
+                    _id: r._id,
+                    date: r.timestamp,
+                    value: r.weightKg,
+                    unit: 'kg',
+                })));
+                history.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
         }
 
         res.json(history.reverse()); // Newest first
     } catch (error) {
         console.error(`Error fetching ${req.params.type} history:`, error.message);
         res.status(500).json({ message: 'Server error fetching history', error: error.message });
+    }
+});
+
+// Weekly-bucketed history (e.g. the Weight screen's "W1..W8" chart) — the
+// plain /history/:type route returns one row per logged reading, which left
+// the client to group them into weeks itself; every client ended up doing
+// that differently (or not at all, and faking a flat line instead). Bucketing
+// here means every client gets the same weeks, and a week with zero readings
+// comes back as average:null instead of silently missing or reusing another
+// week's number.
+router.get('/history/:type/weekly', protect, async (req, res) => {
+    try {
+        const { type } = req.params;
+        const weeks = Math.min(parseInt(req.query.weeks) || 8, 52);
+        const mappedType = type === 'glucose' ? 'blood_sugar' : type;
+
+        // Each bucket is a 7-day window ending today, oldest first (W1) to
+        // most recent (W{weeks}, "this week").
+        const now = new Date();
+        const todayEnd = new Date(now);
+        todayEnd.setUTCHours(23, 59, 59, 999);
+        const rangeStart = new Date(todayEnd);
+        rangeStart.setUTCDate(rangeStart.getUTCDate() - (weeks * 7 - 1));
+        rangeStart.setUTCHours(0, 0, 0, 0);
+
+        let readings = (await withTimeout(HealthMetric.find({
+            userId: req.user._id,
+            type: mappedType,
+            recordedAt: { $gte: rangeStart, $lte: todayEnd },
+        }))).map((r) => ({ recordedAt: r.recordedAt, value: r.value, unit: r.unit, source: 'manual' }));
+
+        // Weight also comes from a smart-scale/wearable sync (BodyCompositionSample),
+        // a separate collection from the manual HealthMetric logs above — a user who
+        // weighed in only via device, never the app's manual log, used to show zero
+        // history here even with real weigh-ins on file. Device readings win over a
+        // manual log on the same day (same pattern as sleep/activity elsewhere: the
+        // device reading is the more reliable one when both exist).
+        if (mappedType === 'weight') {
+            const BodyCompositionSample = require('../models/BodyCompositionSample');
+            const deviceRows = await withTimeout(BodyCompositionSample.find({
+                user: req.user._id,
+                timestamp: { $gte: rangeStart, $lte: todayEnd },
+                weightKg: { $ne: null },
+            }));
+            const deviceReadings = deviceRows.map((r) => ({ recordedAt: r.timestamp, value: r.weightKg, unit: 'kg', source: 'device' }));
+
+            const dayKey = (d) => d.toISOString().split('T')[0];
+            const byDay = new Map();
+            for (const r of readings) byDay.set(dayKey(r.recordedAt), r);
+            for (const r of deviceReadings) byDay.set(dayKey(r.recordedAt), r); // device overwrites manual for the same day
+            readings = [...byDay.values()];
+        }
+
+        readings.sort((a, b) => a.recordedAt - b.recordedAt);
+
+        const buckets = [];
+        for (let i = 0; i < weeks; i++) {
+            const weekStart = new Date(rangeStart);
+            weekStart.setUTCDate(weekStart.getUTCDate() + i * 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+            weekEnd.setUTCHours(23, 59, 59, 999);
+
+            const inWeek = readings.filter((r) => r.recordedAt >= weekStart && r.recordedAt <= weekEnd);
+            const average = inWeek.length
+                ? Math.round((inWeek.reduce((sum, r) => sum + r.value, 0) / inWeek.length) * 10) / 10
+                : null;
+
+            buckets.push({
+                weekLabel: `W${i + 1}`,
+                weekStart: weekStart.toISOString().split('T')[0],
+                weekEnd: weekEnd.toISOString().split('T')[0],
+                average,
+                count: inWeek.length,
+                unit: inWeek[0]?.unit ?? null,
+            });
+        }
+
+        res.json({ type: mappedType, weeks: buckets });
+    } catch (error) {
+        console.error(`Error fetching weekly ${req.params.type} history:`, error.message);
+        res.status(500).json({ message: 'Server error fetching weekly history', error: error.message });
     }
 });
 
