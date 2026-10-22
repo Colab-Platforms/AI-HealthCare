@@ -91,9 +91,11 @@ const exerciseLogSchema = new mongoose.Schema({
   // Device-sync dedup key (HealthKit/Health Connect workout id, via
   // /os-sync) — unset for manual entries. Same application-level dedup
   // pattern as StressSample/BloodOxygenSample: checked with .exists() before
-  // insert, since a sparse index alone doesn't stop a caller that skips the
-  // check. Sparse so manual logs (which never set this) aren't constrained
-  // by the uniqueness.
+  // insert; the unique index below is the DB-level backstop for a caller that
+  // skips the check. It is PARTIAL (string ids only), not sparse: a compound
+  // sparse index still indexes any doc that has `userId`, so every manual log
+  // (no sourceRecordId) became (userId, null) and a user's second manual log
+  // violated uniqueness — the index could never be built once a user had two.
   sourceRecordId: { type: String },
 
   timestamp: {
@@ -106,7 +108,10 @@ const exerciseLogSchema = new mongoose.Schema({
 });
 
 exerciseLogSchema.index({ userId: 1, timestamp: -1 });
-exerciseLogSchema.index({ userId: 1, sourceRecordId: 1 }, { unique: true, sparse: true });
+exerciseLogSchema.index(
+  { userId: 1, sourceRecordId: 1 },
+  { unique: true, partialFilterExpression: { sourceRecordId: { $type: 'string' } } }
+);
 
 exerciseLogSchema.pre('save', function (next) {
   if (!this.category) {
