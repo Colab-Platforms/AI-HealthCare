@@ -123,4 +123,20 @@ const sensitiveActionLimiter = rateLimit({
   message: { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter };
+// Supplement writes (add / edit / archive, take / miss / remove-log). apiLimiter
+// above skips every non-GET request, so it protects none of these; without this a
+// stolen token (or a buggy client retry loop) could hammer the write path with no
+// ceiling. 60/min per user is far above real use — logging a day's doses is a
+// handful of taps — and keyed per-user so changing IPs doesn't reset it.
+const supplementWriteLimiter = rateLimit({
+  store: buildStore('supplement-write'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter };

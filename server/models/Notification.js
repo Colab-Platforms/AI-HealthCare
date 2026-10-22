@@ -20,7 +20,8 @@ const notificationSchema = new mongoose.Schema({
             'diet_ready',         // Personalized diet plan generated
             'gamification_points', // Points earned
             'gamification_tier',   // Tier upgraded
-            'gamification_badge'   // Badge unlocked
+            'gamification_badge',  // Badge unlocked
+            'supplement_reminder'  // Supplement dose due soon
         ],
         required: true
     },
