@@ -382,6 +382,7 @@ try {
     { path: "/api/users", module: "./routes/userRoutes" },
     { path: "/api/gamification", module: "./routes/gamificationRoutes" },
     { path: "/api/notifications", module: "./routes/notificationRoutes" },
+    { path: "/api/supplements", module: "./routes/supplementRoutes" },
     { path: "/api/notification-preferences", module: "./routes/notificationPreferenceRoutes" },
     { path: "/api/chat", module: "./routes/chatHistoryRoutes" },
     { path: "/api/translate", module: "./routes/translateRoutes" },
