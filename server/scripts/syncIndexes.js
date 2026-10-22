@@ -30,6 +30,14 @@ if (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONME
   dns.setServers(['8.8.8.8', '1.1.1.1']);
 }
 
+// Mongoose builds a model's missing indexes in the background as soon as the model
+// is compiled on an open connection (autoIndex defaults to true) — so merely
+// loading the models below used to CREATE indexes, even under --dry-run, and
+// raced the explicit syncIndexes() calls. Turn that off: this script creates or
+// drops indexes only through the explicit syncIndexes() call, never under --dry-run.
+mongoose.set('autoIndex', false);
+mongoose.set('autoCreate', false);
+
 (async () => {
   // Same selection rule as config/db.js and the other scripts: USE_STAGING_DB=true
   // targets MONGODB_URI_STAGING, anything else targets MONGODB_URI. This used to
@@ -42,6 +50,12 @@ if (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONME
   }
 
   const dryRun = process.argv.includes('--dry-run');
+
+  // --only=NudgeLog,ExerciseLog restricts the run to those models. syncIndexes()
+  // makes the live indexes match the schema, so any model whose schema drifted
+  // from production gets changed too; --only keeps a targeted deploy targeted.
+  const onlyArg = process.argv.find((a) => a.startsWith('--only='));
+  const only = onlyArg ? new Set(onlyArg.slice('--only='.length).split(',').map((s) => s.trim()).filter(Boolean)) : null;
 
   await mongoose.connect(mongoUri, {
     serverSelectionTimeoutMS: 30000,
@@ -57,7 +71,18 @@ if (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONME
   }
 
   let failed = 0;
+  if (only) {
+    const unknown = [...only].filter((n) => !mongoose.models[n]);
+    if (unknown.length) {
+      console.error(`--only names unknown model(s): ${unknown.join(', ')}`);
+      await mongoose.disconnect();
+      process.exit(1);
+    }
+    console.log(`ONLY: ${[...only].join(', ')}\n`);
+  }
+
   for (const name of Object.keys(mongoose.models).sort()) {
+    if (only && !only.has(name)) continue;
     const started = Date.now();
     try {
       if (dryRun) {
