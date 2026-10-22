@@ -5,6 +5,7 @@ const NutritionSummary = require('../models/NutritionSummary');
 const FoodLog = require('../models/FoodLog');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { sendToUser, sendToUsersBulk } = require('./fcmService');
+const { isWithinWindow } = require('../utils/reminderWindow');
 
 // Reminder types this tick can emit. Used to seed the "already sent today" set
 // in one query instead of asking the DB once per user per type.
@@ -82,7 +83,7 @@ class NotificationService {
         // what turned this job into permanent load rather than a periodic spike.
         if (this.tickRunning) {
             console.warn('⏭️  Notification tick still in flight — skipping this one');
-            return;
+            return { ok: true, skipped: true };
         }
         this.tickRunning = true;
         const startedAt = Date.now();
@@ -125,7 +126,11 @@ class NotificationService {
             const dueAdherence = [];        // userId[]
             const dueInsight = [];          // userId[]
 
-            const isDue = (time, currentTime) => Boolean(time) && currentTime >= time;
+            // Due only inside [time, time + 60min) on the user's own clock — not
+            // "any time after the slot". Quiet hours still win: a reminder that
+            // lands inside DND is simply skipped, and only goes out after DND ends
+            // if its window is still open (see utils/reminderWindow.js).
+            const isDue = (time, currentTime) => isWithinWindow(currentTime, time);
             const notSent = (userId, type, mealType) => !this.sentToday.has(sentKey(userId, type, mealType));
 
             for (const [userId, pref] of preferences) {
@@ -169,7 +174,7 @@ class NotificationService {
             }
 
             const totalDue = dueMeals.size + dueSleep.size + dueMacro.length + dueAdherence.length + dueInsight.length;
-            if (totalDue === 0) return; // nothing to do — tick costs nothing
+            if (totalDue === 0) return { ok: true, written: 0 }; // nothing to do — tick costs nothing
 
             // ---- Pass 2: bulk reads, scoped to only the users who are actually due ----
             const foodLogUserIds = [...new Set([...dueMeals.keys(), ...dueAdherence])];
@@ -233,7 +238,7 @@ class NotificationService {
                 emit(...buildHealthInsight(userId, tomorrow));
             }
 
-            if (docs.length === 0) return;
+            if (docs.length === 0) return { ok: true, written: 0 };
 
             // Chunked so one oversized batch can't blow the BSON limit, and unordered
             // so a single bad document doesn't abort the rest of the chunk.
@@ -275,8 +280,12 @@ class NotificationService {
             }
 
             console.log(`🔔 Notification tick: ${written} sent in ${Date.now() - startedAt}ms`);
+            return { ok: true, written };
         } catch (error) {
             console.error('Error in checkAndSendUserNotifications:', error.message);
+            // Reported to the caller instead of swallowed, so /cron-tick can answer
+            // 500 and let QStash retry. Re-running is safe: sends are deduped.
+            return { ok: false, error: error.message };
         } finally {
             this.tickRunning = false;
         }
