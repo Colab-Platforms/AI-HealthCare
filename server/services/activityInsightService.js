@@ -61,15 +61,27 @@ async function getActivityInsight(userId, stepGoal = 10000) {
   const baselineDays = Object.values(baselineByDate);
   let activityBaseline = 'insufficient_data';
   let personalBaselineSteps = null;
-  let message = null;
 
   if (baselineDays.length >= MIN_BASELINE_DAYS) {
     personalBaselineSteps = Math.round(baselineDays.reduce((a, b) => a + b, 0) / baselineDays.length);
     const threshold = personalBaselineSteps * 0.7;
     activityBaseline = avgSteps < threshold ? 'declining' : 'normal';
-    if (activityBaseline === 'declining') {
-      message = `Your activity recently (${avgSteps} steps/day) is well below your own usual pattern (${personalBaselineSteps} steps/day).`;
-    }
+  }
+
+  // The Fitness card's headline message — today's actual steps against the
+  // user's own goal, not a recent-average-vs-30-day-baseline comparison.
+  // The old "Your activity recently (X steps/day) is well below your own
+  // usual pattern (Y steps/day)" wording cited numbers that don't match
+  // anything else shown on screen (not today's step count, not the Activity
+  // ring's score) and read as a disconnected, confusing stat next to them.
+  const todayKey = new Date().toISOString().split('T')[0];
+  const todaySteps = rowsByDate[todayKey] ? mergeDeviceRows(rowsByDate[todayKey], ['steps']).steps : 0;
+  let message = null;
+  if (todaySteps >= stepGoal) {
+    message = `You've hit your goal today — ${todaySteps} of ${stepGoal} steps. Keep this pace up.`;
+  } else {
+    const remaining = stepGoal - todaySteps;
+    message = `You're at ${todaySteps} of your ${stepGoal}-step goal today — ${remaining} steps to go. A short walk would help close that gap.`;
   }
 
   return {
