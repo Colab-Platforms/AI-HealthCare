@@ -21,6 +21,41 @@ class ReminderService {
     console.log('Appointment reminder scheduler started');
   }
 
+  // Claim first, send second. The flag is flipped with a conditional update
+  // ({flag: {$ne: true}}) BEFORE the email goes out, so when two instances (or
+  // two overlapping ticks) pick up the same appointment, exactly one wins the
+  // claim and the other skips it. The old find -> email -> save() order let both
+  // send. If the send fails, the claim is released so the next tick retries.
+  // Returns true only if this call sent the reminder.
+  async claimAndSend(appointment, flag) {
+    const claimed = await Appointment.updateOne(
+      { _id: appointment._id, [flag]: { $ne: true } },
+      { $set: { [flag]: true } }
+    );
+    if (claimed.modifiedCount !== 1) return false; // someone else already has it
+
+    try {
+      await emailService.sendConsultationReminder({
+        patient: appointment.patient,
+        doctor: {
+          name: appointment.doctor.user?.name || appointment.doctor.name,
+          email: appointment.doctor.user?.email || appointment.doctor.email,
+          specialization: appointment.doctor.specialization
+        },
+        appointment
+      });
+      return true;
+    } catch (error) {
+      console.error(`Failed to send ${flag} reminder for appointment ${appointment._id}:`, error);
+      try {
+        await Appointment.updateOne({ _id: appointment._id }, { $set: { [flag]: false } });
+      } catch (releaseError) {
+        console.error(`Could not release ${flag} claim for appointment ${appointment._id}:`, releaseError.message);
+      }
+      return false;
+    }
+  }
+
   async sendUpcomingReminders() {
     try {
       const now = new Date();
@@ -37,26 +72,8 @@ class ReminderService {
       .populate({ path: 'doctor', populate: { path: 'user', select: 'name email' } });
 
       for (const appointment of upcomingAppointments) {
-        try {
-          const emailData = {
-            patient: appointment.patient,
-            doctor: {
-              name: appointment.doctor.user?.name || appointment.doctor.name,
-              email: appointment.doctor.user?.email || appointment.doctor.email,
-              specialization: appointment.doctor.specialization
-            },
-            appointment
-          };
-
-          await emailService.sendConsultationReminder(emailData);
-          
-          // Mark as reminded
-          appointment.reminderSent = true;
-          await appointment.save();
-
+        if (await this.claimAndSend(appointment, 'reminderSent')) {
           console.log(`Reminder sent for appointment ${appointment._id}`);
-        } catch (error) {
-          console.error(`Failed to send reminder for appointment ${appointment._id}:`, error);
         }
       }
     } catch (error) {
@@ -66,16 +83,18 @@ class ReminderService {
 
   async sendDayBeforeReminders() {
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      
-      const dayAfterTomorrow = new Date(tomorrow);
-      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+      // "About a day before" as an instant, not a calendar day. The old query took
+      // "tomorrow" from the server's (UTC) midnight, so for IST patients the
+      // reminder timing depended on where UTC midnight fell in their day. A rolling
+      // 23h–25h window is timezone-free; this runs hourly, so every appointment
+      // enters it on ~2 ticks. The overlap is also the safety net for one missed
+      // tick, and claimAndSend's atomic flag stops it sending twice.
+      const HOUR_MS = 60 * 60 * 1000;
+      const windowStart = new Date(Date.now() + 23 * HOUR_MS);
+      const windowEnd = new Date(Date.now() + 25 * HOUR_MS);
 
-      // Find appointments for tomorrow that haven't been reminded
       const tomorrowAppointments = await Appointment.find({
-        date: { $gte: tomorrow, $lt: dayAfterTomorrow },
+        date: { $gte: windowStart, $lt: windowEnd },
         status: { $in: ['scheduled', 'confirmed'] },
         dayBeforeReminderSent: { $ne: true }
       })
@@ -83,26 +102,8 @@ class ReminderService {
       .populate({ path: 'doctor', populate: { path: 'user', select: 'name email' } });
 
       for (const appointment of tomorrowAppointments) {
-        try {
-          const emailData = {
-            patient: appointment.patient,
-            doctor: {
-              name: appointment.doctor.user?.name || appointment.doctor.name,
-              email: appointment.doctor.user?.email || appointment.doctor.email,
-              specialization: appointment.doctor.specialization
-            },
-            appointment
-          };
-
-          await emailService.sendConsultationReminder(emailData);
-          
-          // Mark as reminded
-          appointment.dayBeforeReminderSent = true;
-          await appointment.save();
-
+        if (await this.claimAndSend(appointment, 'dayBeforeReminderSent')) {
           console.log(`Day-before reminder sent for appointment ${appointment._id}`);
-        } catch (error) {
-          console.error(`Failed to send day-before reminder for appointment ${appointment._id}:`, error);
         }
       }
     } catch (error) {
