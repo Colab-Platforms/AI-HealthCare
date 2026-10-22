@@ -1,3 +1,4 @@
+const mongoose     = require('mongoose');
 const HealthReport = require('../models/HealthReport');
 const FCMToken     = require('../models/FCMToken');
 const NudgeLog     = require('../models/NudgeLog');
@@ -74,6 +75,27 @@ const getAbnormalMetrics = (report) => {
     .map(([name, m]) => ({ name, value: m.value ?? m.result ?? '', unit: m.unit ?? '', status: m.status }));
 };
 
+// Bulk lookups shared by the eligibility checks below. Each is a single indexed
+// query over the whole candidate set — the per-report/per-user `exists()` calls
+// they replace cost two round-trips per candidate, sequentially.
+
+// userId -> has at least one active FCM token (index: {userId, isActive})
+const getUsersWithActiveToken = async (userIds) => {
+  const unique = [...new Set(userIds.map(String))];
+  if (!unique.length) return new Set();
+  const ids = await FCMToken.distinct('userId', { userId: { $in: unique }, isActive: true });
+  return new Set(ids.map(String));
+};
+
+// reportIds that already have a nudge of `type` (index: reportId). For report
+// nudges periodKey === String(reportId), so this is the same identity the
+// unique index enforces.
+const getAlreadyNudgedReportIds = async (type, reportIds) => {
+  if (!reportIds.length) return new Set();
+  const rows = await NudgeLog.find({ type, reportId: { $in: reportIds } }).select('reportId').lean();
+  return new Set(rows.map((r) => String(r.reportId)));
+};
+
 // Users who uploaded a report 3 days ago with abnormal metrics and no followup nudge yet
 const getFollowupEligible = async () => {
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
@@ -84,21 +106,23 @@ const getFollowupEligible = async () => {
     reportDate: { $gte: fourDaysAgo, $lte: threeDaysAgo },
   }).select('user reportType reportDate aiAnalysis').lean();
 
-  const eligible = [];
+  const candidates = [];
   for (const report of reports) {
     const abnormal = getAbnormalMetrics(report);
-    if (!abnormal.length) continue;
+    if (abnormal.length) candidates.push({ report, abnormal });
+  }
+  if (!candidates.length) return [];
 
-    // Check not already nudged for this report
-    const alreadySent = await NudgeLog.exists({
-      userId: report.user, reportId: report._id, type: 'followup_3d',
-    });
-    if (alreadySent) continue;
+  // Two bulk reads for the whole set instead of two queries per report.
+  const [sentReportIds, tokenUsers] = await Promise.all([
+    getAlreadyNudgedReportIds('followup_3d', candidates.map((c) => c.report._id)),
+    getUsersWithActiveToken(candidates.map((c) => c.report.user)),
+  ]);
 
-    // Check FCM token exists
-    const hasToken = await FCMToken.exists({ userId: report.user, isActive: true });
-    if (!hasToken) continue;
-
+  const eligible = [];
+  for (const { report, abnormal } of candidates) {
+    if (sentReportIds.has(String(report._id))) continue;   // already nudged for this report
+    if (!tokenUsers.has(String(report.user))) continue;    // nowhere to deliver
     eligible.push({ userId: report.user, reportId: report._id, reportType: report.reportType, abnormalMetrics: abnormal });
   }
   return eligible;
@@ -122,18 +146,24 @@ const getScoreDropEligible = async () => {
     if (byUser[uid].length < 2) byUser[uid].push(r);
   }
 
-  const eligible = [];
+  const candidates = [];
   for (const [uid, reports] of Object.entries(byUser)) {
     if (reports.length < 2) continue;
     const [latest, prev] = reports;
     const drop = (prev.aiAnalysis?.healthScore || 0) - (latest.aiAnalysis?.healthScore || 0);
-    if (drop < 5) continue;
+    if (drop >= 5) candidates.push({ uid, latest, prev });
+  }
+  if (!candidates.length) return [];
 
-    const alreadySent = await NudgeLog.exists({ userId: uid, reportId: latest._id, type: 'score_drop' });
-    if (alreadySent) continue;
+  const [sentReportIds, tokenUsers] = await Promise.all([
+    getAlreadyNudgedReportIds('score_drop', candidates.map((c) => c.latest._id)),
+    getUsersWithActiveToken(candidates.map((c) => c.uid)),
+  ]);
 
-    const hasToken = await FCMToken.exists({ userId: uid, isActive: true });
-    if (!hasToken) continue;
+  const eligible = [];
+  for (const { uid, latest, prev } of candidates) {
+    if (sentReportIds.has(String(latest._id))) continue;
+    if (!tokenUsers.has(uid)) continue;
 
     eligible.push({
       userId: uid, reportId: latest._id,
@@ -156,40 +186,76 @@ const getInactivityEligible = async () => {
   }).select('userId').lean();
 
   const userIds = [...new Set(dormantTokens.map(t => String(t.userId)))];
-  const eligible = [];
+  if (!userIds.length) return [];
 
-  for (const userId of userIds) {
-    const alreadySent = await NudgeLog.findOne({ userId, type: 'inactivity_7d' })
-      .sort({ sentAt: -1 }).select('sentAt').lean();
+  // Last inactivity nudge per user in ONE aggregation (uses the
+  // {userId, sentAt} index) instead of one findOne per user.
+  const lastNudges = await NudgeLog.aggregate([
+    { $match: { userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) }, type: 'inactivity_7d' } },
+    { $group: { _id: '$userId', lastSentAt: { $max: '$sentAt' } } },
+  ]);
+  const lastSentByUser = new Map(lastNudges.map((n) => [String(n._id), new Date(n.lastSentAt).getTime()]));
 
-    // Don't send inactivity nudge more than once per 7 days
-    if (alreadySent && (Date.now() - new Date(alreadySent.sentAt).getTime()) < 7 * 24 * 60 * 60 * 1000) continue;
-
-    eligible.push({ userId });
-  }
-  return eligible;
+  // Don't send inactivity nudge more than once per 7 days
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return userIds
+    .filter((userId) => !((lastSentByUser.get(userId) ?? 0) > cutoff))
+    .map((userId) => ({ userId }));
 };
 
+// ISO-8601 week key, e.g. "2026-W43". Dedupe identity for nudges with no report.
+const isoWeekKey = (date = new Date()) => {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // Thursday of this week decides the year
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+};
+
+const periodKeyFor = (type, reportId) =>
+  type === 'inactivity_7d' ? isoWeekKey() : String(reportId);
+
 // ── Send nudge to one user ───────────────────────────────────────────────────
+// Claim first, send second. The unique (userId, type, periodKey) row is written
+// BEFORE the push, so a duplicate (retry, second instance, crash-restart) loses
+// the claim and sends nothing. The old order — push, then log — meant a failed
+// or duplicate log write still left the push already delivered.
 const sendNudge = async ({ userId, reportId, type, reportData, userName }) => {
+  let claim;
+  try {
+    claim = await NudgeLog.create({
+      userId, reportId, type,
+      periodKey: periodKeyFor(type, reportId),
+      delivered: false,
+    });
+  } catch (e) {
+    if (e.code === 11000) return; // already nudged for this report / this week
+    console.error(`Nudge claim error (${type}, user ${userId}):`, e.message);
+    return;
+  }
+
   try {
     const { title, body } = await generateNudgeMessage(userName, type, reportData || {});
 
     const result = await sendToUser(userId, { title, body, data: { type, reportId: String(reportId || '') } });
 
-    await NudgeLog.create({ userId, reportId, type, title, body, delivered: result.success });
+    await NudgeLog.updateOne({ _id: claim._id }, { title, body, delivered: Boolean(result.success) });
     console.log(`📬 Nudge [${type}] → ${userName}: ${result.success ? 'delivered' : 'failed'}`);
   } catch (e) {
-    // Duplicate nudge — ignore
-    if (e.code === 11000) return;
+    // The claim stays (delivered:false) — at-most-once: better to miss one nudge
+    // than to send the same one again tomorrow.
     console.error(`Nudge send error (${type}, user ${userId}):`, e.message);
   }
 };
 
 // ── Process a batch of eligible users ────────────────────────────────────────
-const processBatch = async (items, type) => {
+// Each item carries its own `type` — see runNudgeCron. (This used to take a
+// single `type` argument taken from batch[0], but items never had a `type`, so
+// it was always undefined and every NudgeLog write failed validation.)
+const processBatch = async (items) => {
   for (const item of items) {
-    await sendNudge({ ...item, type });
+    await sendNudge(item);
     await sleep(200); // 200ms between individual sends within batch
   }
 };
@@ -223,9 +289,9 @@ const runNudgeCron = async () => {
     const tag = items => items.map(i => ({ ...i, userName: nameMap[String(i.userId)] || 'there' }));
 
     const allItems = [
-      ...tag(followups).map(i => ({ ...i, reportData: { reportType: i.reportType, abnormalMetrics: i.abnormalMetrics } })),
-      ...tag(scoreDrops).map(i => ({ ...i, reportData: { oldScore: i.oldScore, newScore: i.newScore } })),
-      ...tag(inactive).map(i => ({ ...i, reportData: {} })),
+      ...tag(followups).map(i => ({ ...i, type: 'followup_3d', reportData: { reportType: i.reportType, abnormalMetrics: i.abnormalMetrics } })),
+      ...tag(scoreDrops).map(i => ({ ...i, type: 'score_drop', reportData: { oldScore: i.oldScore, newScore: i.newScore } })),
+      ...tag(inactive).map(i => ({ ...i, type: 'inactivity_7d', reportData: {} })),
     ];
 
     if (!allItems.length) {
@@ -237,7 +303,7 @@ const runNudgeCron = async () => {
     for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
       const batch = allItems.slice(i, i + BATCH_SIZE);
       console.log(`📤 Sending batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allItems.length / BATCH_SIZE)} (${batch.length} users)`);
-      await processBatch(batch, batch[0]?.type);
+      await processBatch(batch);
 
       if (i + BATCH_SIZE < allItems.length) {
         console.log(`⏳ Waiting ${BATCH_DELAY / 60000} min before next batch...`);
@@ -251,4 +317,4 @@ const runNudgeCron = async () => {
   }
 };
 
-module.exports = { runNudgeCron, generateNudgeMessagePublic: generateNudgeMessage };
+module.exports = { runNudgeCron, generateNudgeMessagePublic: generateNudgeMessage, isoWeekKey, periodKeyFor, sendNudge, getFollowupEligible, getInactivityEligible };
