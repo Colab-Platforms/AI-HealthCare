@@ -38,6 +38,8 @@ const usageLogSchema = new mongoose.Schema({
         'ai_chat', 'chat_about_report', 'metric_info',
         'compare_reports', 'health_dna', 'vitals_insights',
         'diet_plan', 'translate', 'nutrition_analysis',
+        // Follow-up push nudge copy (nudgeService.js)
+        'nudge_generation',
         // Current nightly insight categories
         'daily_insight_overall', 'daily_insight_sleep',
         'daily_insight_nutrition', 'daily_insight_fitness',
