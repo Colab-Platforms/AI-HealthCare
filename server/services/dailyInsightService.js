@@ -471,7 +471,7 @@ const INSIGHT_SYSTEMS = {
   overall: `You are a friendly health coach inside the take.health app giving a quick daily roundup across sleep, activity, nutrition, and recovery for the given date — every pillar that has data, not just one.${OVERALL_SHARED_RULES}`,
   sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep facts (that night's numbers, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
   nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data for the given date.${SHARED_RULES}`,
-  fitness: `You are a friendly fitness coach inside the take.health app. Write a daily insight focused only on the user's exercise, movement, steps, and completed activity for the given date. ALWAYS open by stating activityScore (e.g. "Activity scored 12") — this is the exact number the Activity ring on the dashboard shows right next to this card, so it must be the headline figure, never left out or buried. State the day's real steps alongside it. Only AFTER that may you optionally add the avgStepsLast3Days/personalBaselineSteps trend as supporting context (e.g. "...and that's below your usual ~6,769/day") — never lead with the trend number instead of activityScore, and never state the trend without first stating activityScore, since a reader comparing this card to the ring would see two unrelated numbers with nothing tying them together. If both baseline fields are null, skip the trend clause entirely. If isPartialDay is true, the day is still in progress — never issue a final verdict on the whole day (no "you only did X" or "great job today"); instead speak in "so far" terms (e.g. "so far you've logged X steps — on pace to..." or "X steps so far, below your usual pace at this point").${SHARED_RULES}`,
+  fitness: `You are a friendly fitness coach inside the take.health app, talking to someone about their movement for the day — warm and empathetic, not a stats readout. ALWAYS open by stating activityScore (e.g. "Activity scored 12") — this is the exact number the Activity ring on the dashboard shows right next to this card, so it must be the headline figure. Then state today's real steps against stepGoal (e.g. "1,242 of your 7,500-step goal") and say plainly whether that's under or over goal. NEVER compare today's steps to a historical average, a "usual pattern," or any trend — only compare against stepGoal; a day-to-day average isn't shown anywhere else in the app, so citing it here puts an unrelated, disconnected number on screen next to the ring. Close with one specific, doable action sized to the actual gap (a short walk, a stretch break) if under goal, or what to do to keep it up if at/above goal. If isPartialDay is true, the day is still in progress — never issue a final verdict on the whole day (no "you only did X" or "great job today"); instead speak in "so far" terms (e.g. "so far you've logged X steps toward your Y goal").${SHARED_RULES}`,
   recovery: `You are a friendly recovery coach inside the take.health app, reasoning like a sports-science clinician: you are given that day's HRV, resting heart rate, and respiratory-rate readings (each as a T-score, 0-100, compared against the user's own personal baseline where available) and must explain what they mean for the user's physical readiness that day.${SHARED_RULES}`,
   smoking: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged cigarette count (and cigarettes resisted, if present) for the given date. Frame any zero or reduced count as a genuine win; never shame a logged count.${SHARED_RULES}`,
   alcohol: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged alcohol units for the given date. Frame any zero or moderate count as a genuine win; never shame a logged count.${SHARED_RULES}`,
@@ -613,11 +613,15 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
     const baseline = await getActivityInsight(userId, guidance.stepsGoal);
     return {
       ...insightData.fitness(overallData),
+      // Goal, not a historical trend average — "today vs your goal" is the
+      // comparison the ring itself expresses (steps X of goal Y); the
+      // avgStepsLast3Days/personalBaselineSteps trend used to be cited
+      // instead, which put an unrelated number ("6,771/day vs your usual
+      // 11,979/day") on screen next to the ring's actual "12, 1,242 of
+      // 7,500 steps" with nothing connecting them. Dropped entirely, not
+      // just deprioritized — a prompt instruction to prefer one number over
+      // another still let the model reach for the trend anyway.
       stepGoal: baseline.stepGoal,
-      avgStepsLast3Days: baseline.avgStepsLast3Days ?? null,
-      personalBaselineSteps: baseline.personalBaselineSteps ?? null,
-      activityAdherence: baseline.activityAdherence,
-      activityBaseline: baseline.activityBaseline,
       // true only for the on-demand same-day refresh (see
       // getLatestActivityDateKey in insightController.js) — unlike a
       // completed night's sleep, the day's steps are still accumulating, so
