@@ -563,24 +563,27 @@ if (!process.env.VERCEL) {
 
   // Manual-renewal reminder — one-time-payment flow has no auto-renew, so remind users
   // a few days before currentPeriodEnd. Runs at 9 AM daily.
+  // Pinned to IST: the host runs on UTC, where an unpinned "9 AM" is 2:30 PM IST.
   cron.schedule('0 9 * * *', async () => {
     console.log('📧 Running subscription renewal reminder cron...');
     await runRenewalReminderCron();
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
   // Trial-ending reminder — free_trial equivalent of the renewal reminder above,
   // "upgrade now" copy instead of "renew" since there's no saved payment method.
   cron.schedule('0 9 * * *', async () => {
     console.log('📧 Running trial-ending reminder cron...');
     await runTrialEndingReminderCron();
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
-  // Follow-up Nudges — every night at 10 PM
+  // Follow-up Nudges — 6 PM IST. Was "0 22 * * *" on a UTC host, i.e. 3:30 AM
+  // IST; 10 PM IST would also be a poor time to push, so this is deliberately
+  // evening rather than late night.
   const { runNudgeCron } = require("./services/nudgeService");
-  cron.schedule("0 22 * * *", async () => {
+  cron.schedule("0 18 * * *", async () => {
     console.log("🔔 Starting Follow-up Nudge cron...");
     await runNudgeCron();
-  });
+  }, { timezone: "Asia/Kolkata" });
 
   // Daily Insights — 11:59 PM IST, the last moment of the day being analysed.
   // Writes tomorrow-dated rows so the user opens the app to a fresh "yesterday
@@ -593,11 +596,11 @@ if (!process.env.VERCEL) {
     await runDailyInsightCron();
   }, { timezone: "Asia/Kolkata" });
 
-  // Streak Loss Warning — every night at 8 PM
+  // Streak Loss Warning — every evening at 8 PM IST (was 8 PM UTC = 1:30 AM IST)
   cron.schedule("0 20 * * *", async () => {
     console.log("🔥 Running streak loss warning cron...");
     await runStreakWarningCron();
-  });
+  }, { timezone: "Asia/Kolkata" });
 
   async function runStreakWarningCron() {
     try {
@@ -606,8 +609,12 @@ if (!process.env.VERCEL) {
       const { sendToUser } = require("./services/fcmService");
       const gamificationService = require("./services/gamificationService");
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Start of "today" in IST, not the host's (UTC) midnight — otherwise "logged
+      // today" would start at 5:30 AM IST and miss anything logged before that.
+      // IST has no DST, so a fixed +5:30 offset is exact.
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const today = new Date(Math.floor((Date.now() + IST_OFFSET_MS) / DAY_MS) * DAY_MS - IST_OFFSET_MS);
 
       // Find users who logged something yesterday (have a streak) but NOT today
       const activeUserIds = await GamificationLog.distinct("user", {
