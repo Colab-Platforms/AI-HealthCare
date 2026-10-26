@@ -201,10 +201,19 @@ async function collectOverallData(userId, dateKey) {
     completedTasks: progress?.completedTasks?.length || 0,
   };
 
+  // `data.healthScore != null` used to be in this list — calculateDailyScore
+  // returns finalScore: 0 (not null) for a day with ZERO real inputs, and
+  // `0 != null` is true in JS, so a user who logged literally nothing still
+  // passed this check and got an insight generated from an entirely empty
+  // data object (confirmed live: ~1,000+ users/night with no real sleep,
+  // steps, meals, or vitals on file still triggered generation). Checking
+  // scoreComponents' key count instead of finalScore's nullness actually
+  // reflects whether any real component was computed, not just whether the
+  // final number happened to be non-null.
   const hasSomething = data.meals.length > 0
     || data.steps || data.sleepHours || data.waterGlasses
-    || data.vitals.length > 0 || data.healthScore != null || data.completedTasks > 0
-    || data.workouts.length > 0;
+    || data.vitals.length > 0 || Object.keys(data.scoreComponents || {}).length > 0
+    || data.completedTasks > 0 || data.workouts.length > 0;
 
   return hasSomething ? data : null;
 }
