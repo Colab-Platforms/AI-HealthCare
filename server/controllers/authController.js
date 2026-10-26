@@ -120,6 +120,11 @@ const recordPrivacyPolicyConsent = async (user, req) => {
     withdrawn: false,
     withdrawnAt: null,
   };
+  // This used to only set user.consent, never the privacyPolicyAccepted
+  // boolean — register() is the only other place that field gets written, so
+  // every account created through this function (phone-OTP, Google, Apple)
+  // stayed privacyPolicyAccepted:false forever despite having consented.
+  user.privacyPolicyAccepted = true;
   await ConsentLog.create({
     userId: user._id,
     version: CONSENT_VERSION,
@@ -128,6 +133,22 @@ const recordPrivacyPolicyConsent = async (user, req) => {
     ipAddress: req.ip,
     userAgent: req.headers['user-agent'],
   }).catch((e) => console.error('Phone-onboarding ConsentLog failed:', e.message));
+};
+
+// What every one of register/phone-login/Apple/Google's "did the client send
+// privacyPolicyAccepted:true" checks actually needs to do — first-time
+// consent gets the full record (+ ConsentLog via recordPrivacyPolicyConsent
+// above); a user who already has consent.given but whose
+// privacyPolicyAccepted field was never backfilled (e.g. a Google account
+// created before this flow called recordPrivacyPolicyConsent at all) just
+// gets that one field synced, without logging a duplicate consent grant.
+const applyPrivacyPolicyConsent = async (user, req, bodyFlag) => {
+  if (bodyFlag !== true) return;
+  if (!user.consent?.given) {
+    await recordPrivacyPolicyConsent(user, req);
+  } else if (!user.privacyPolicyAccepted) {
+    user.privacyPolicyAccepted = true;
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -498,9 +519,7 @@ exports.loginWithPhoneOtp = async (req, res) => {
 
     user.isPhoneVerified = true;
     user.loginCount = (user.loginCount || 0) + 1;
-    if (req.body.privacyPolicyAccepted === true && !user.consent?.given) {
-      await recordPrivacyPolicyConsent(user, req);
-    }
+    await applyPrivacyPolicyConsent(user, req, req.body.privacyPolicyAccepted);
     await user.save();
 
     const rawRefreshToken = generateRefreshToken();
@@ -601,9 +620,7 @@ exports.verifyPhone = async (req, res) => {
 
     user.phone = phone;
     user.isPhoneVerified = true;
-    if (req.body.privacyPolicyAccepted === true && !user.consent?.given) {
-      await recordPrivacyPolicyConsent(user, req);
-    }
+    await applyPrivacyPolicyConsent(user, req, req.body.privacyPolicyAccepted);
     await user.save();
 
     res.json({ success: true, message: 'Phone number verified successfully', phone: user.phone, isPhoneVerified: true });
@@ -1122,7 +1139,7 @@ exports.googleAuth = async (req, res) => {
     // google.accounts.oauth2. The mobile app (native Google Sign-In SDK)
     // sends an ID token (JWT) instead — a different token type that needs
     // a different Google verification endpoint. Support both.
-    const { accessToken, idToken, device_id } = req.body;
+    const { accessToken, idToken, device_id, privacyPolicyAccepted } = req.body;
 
     deviceLog('googleLogin:request', req, { tokenType: idToken ? 'idToken' : 'accessToken' });
 
@@ -1219,6 +1236,12 @@ exports.googleAuth = async (req, res) => {
     if (!user.isActive) {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
+
+    // Google was missing this entirely — the app has always sent
+    // privacyPolicyAccepted:true on every sign-in here, but nothing in this
+    // handler ever read it, so a brand-new Google account stayed
+    // privacyPolicyAccepted:false (and consent.given:false) forever.
+    await applyPrivacyPolicyConsent(user, req, privacyPolicyAccepted);
 
     // The Google token is verified by this point, so the caller has proven they
     // own the account and the device state is safe to act on.
@@ -1397,9 +1420,7 @@ exports.appleAuth = async (req, res) => {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
-    if (privacyPolicyAccepted === true && !user.consent?.given) {
-      await recordPrivacyPolicyConsent(user, req);
-    }
+    await applyPrivacyPolicyConsent(user, req, privacyPolicyAccepted);
 
     // The Apple token is verified by this point, so the caller has proven they
     // own the account and the device state is safe to act on.
