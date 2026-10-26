@@ -21,7 +21,8 @@ const notificationSchema = new mongoose.Schema({
             'gamification_points', // Points earned
             'gamification_tier',   // Tier upgraded
             'gamification_badge',  // Badge unlocked
-            'supplement_reminder'  // Supplement dose due soon
+            'supplement_reminder',  // Supplement dose due soon
+            'app_update'            // A new app version is available on the store
         ],
         required: true
     },

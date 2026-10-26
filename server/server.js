@@ -391,6 +391,7 @@ try {
     { path: "/api/privacy",   module: "./routes/privacyRoutes" },
     { path: "/api/activity", module: "./routes/activityRoutes" },
     { path: "/api/insights", module: "./routes/insightRoutes" },
+    { path: "/api/app-version", module: "./routes/appVersionRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
     { path: "/api/waitlist", module: "./routes/waitlistRoutes" },
     { path: "/api/creator", module: "./routes/creatorRoutes" },
