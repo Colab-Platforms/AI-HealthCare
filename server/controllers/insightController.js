@@ -7,6 +7,7 @@ const {
   getLatestActivityDateKey,
   getLatestOverallDateKey,
   hasNewerDataThanInsight,
+  hasMeaningfulStepChange,
   istDateKey,
   shiftDateKey,
 } = require('../services/dailyInsightService');
@@ -64,6 +65,23 @@ exports.getTodaysInsights = async (req, res) => {
       }
     } catch (refreshError) {
       console.error('getTodaysInsights overall freshness refresh error:', refreshError.message);
+    }
+
+    // Same idea for 'fitness', but keyed on step count moving meaningfully
+    // rather than any write happening — background step syncs land every few
+    // minutes, so a plain "newer write exists" check (fine above for
+    // 'overall') would regenerate on almost every app open.
+    try {
+      const cachedFitness = insights.find((i) => i.insightType === 'fitness');
+      if (cachedFitness) {
+        const withSnapshot = await DailyInsight.findById(cachedFitness._id).select('dataSnapshot updatedAt').lean();
+        if (await hasMeaningfulStepChange(req.user._id, withSnapshot)) {
+          const fresh = await ensureInsight(req.user._id, 'fitness', insightDate, { force: true, sameDay: true });
+          if (fresh) insights = [...insights.filter((i) => i.insightType !== 'fitness'), fresh];
+        }
+      }
+    } catch (refreshError) {
+      console.error('getTodaysInsights fitness freshness refresh error:', refreshError.message);
     }
 
     // sourceDate/insightDate/isBasedOnToday are internal staleness-tracking
