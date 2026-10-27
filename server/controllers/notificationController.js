@@ -1,6 +1,11 @@
 const Notification = require('../models/Notification');
-const FCMToken = require('../models/FCMToken');
-const User = require('../models/User');
+const {
+    normalizeToken,
+    upsertToken,
+    deactivateToken,
+    syncLegacyField,
+    clearLegacyField
+} = require('../services/fcmTokenService');
 
 // Get all notifications for current user
 exports.getNotifications = async (req, res) => {
@@ -97,29 +102,18 @@ exports.deleteNotification = async (req, res) => {
 // Register FCM token for current user's device
 exports.registerFCMToken = async (req, res) => {
     try {
-        const { token, platform = 'web', deviceLabel = 'Unknown Device' } = req.body;
+        const { platform, deviceLabel } = req.body;
+        const token = normalizeToken(req.body.token);
 
-        if (!token || typeof token !== 'string' || token.trim().length < 20) {
+        if (!token) {
             return res.status(400).json({ success: false, message: 'Invalid FCM token' });
         }
 
-        // Upsert: if token exists update lastUsedAt + reactivate, else create
-        await FCMToken.findOneAndUpdate(
-            { token: token.trim() },
-            {
-                userId: req.user._id,
-                platform,
-                deviceLabel,
-                isActive: true,
-                lastUsedAt: new Date()
-            },
-            { upsert: true, new: true }
-        );
+        await upsertToken(req.user._id, token, { platform, deviceLabel });
 
         // Legacy single-token field, kept in sync so anything still reading
         // user.fcmToken directly (e.g. the profile response) reflects reality.
-        User.updateOne({ _id: req.user._id }, { fcmToken: token.trim() })
-            .catch((e) => console.error('User.fcmToken sync failed:', e.message));
+        syncLegacyField(req.user._id, token);
 
         res.json({ success: true, message: 'FCM token registered' });
     } catch (error) {
@@ -131,19 +125,15 @@ exports.registerFCMToken = async (req, res) => {
 // Deregister FCM token (on logout)
 exports.deregisterFCMToken = async (req, res) => {
     try {
-        const { token } = req.body;
+        const token = normalizeToken(req.body.token);
         if (!token) return res.status(400).json({ success: false, message: 'Token required' });
 
-        await FCMToken.findOneAndUpdate(
-            { token, userId: req.user._id },
-            { isActive: false }
-        );
+        await deactivateToken(token, req.user._id);
 
         // Only clear the legacy field if it was this token — a user can have
         // several active devices, and deregistering one shouldn't blank the
         // field for the others.
-        User.updateOne({ _id: req.user._id, fcmToken: token }, { fcmToken: null })
-            .catch((e) => console.error('User.fcmToken clear failed:', e.message));
+        clearLegacyField(req.user._id, token);
 
         res.json({ success: true, message: 'FCM token deregistered' });
     } catch (error) {

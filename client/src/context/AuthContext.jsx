@@ -236,6 +236,15 @@ export const AuthProvider = ({ children }) => {
     // the UI from reflecting "logged out" — it's best-effort cleanup
     const refreshToken = getRefreshToken();
     const fcmToken = localStorage.getItem('fcmToken');
+    // Captured BEFORE clearAuthData(): the request interceptor reads the access
+    // token at send time, so a call made after the clear goes out with no
+    // Authorization header and the protected logout/deregister routes 401 —
+    // which left the device registered for pushes after logout.
+    const accessToken = getToken();
+    const authConfig = {
+      skipAutoLogout: true,
+      ...(accessToken && { headers: { Authorization: `Bearer ${accessToken}` } }),
+    };
 
     clearAuthData();
     delete api.defaults.headers.common['Authorization'];
@@ -254,11 +263,14 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Fire-and-forget server-side cleanup — doesn't block the UI.
+    // The server's logout also deactivates this device's FCM token, so a single
+    // request covers both; deregister stays as a second path in case logout fails.
     if (fcmToken) {
-      fcmService.deregisterToken(fcmToken).catch(() => {});
+      api.post('notifications/deregister-token', { token: fcmToken }, authConfig).catch(() => {});
       localStorage.removeItem('fcmToken');
     }
-    api.post('auth/logout', { refreshToken }).catch(err => console.warn('Logout log failed:', err.message));
+    api.post('auth/logout', { refreshToken, fcmToken }, authConfig)
+      .catch(err => console.warn('Logout log failed:', err.message));
   };
 
   const updateUser = (userData) => {

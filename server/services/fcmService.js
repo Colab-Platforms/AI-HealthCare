@@ -34,6 +34,16 @@ const getMsg = () => {
 // tolerate much higher parallelism.
 const FCM_SEND_CONCURRENCY = 100;
 
+// FCM rejects the whole message if any `data` value isn't a string, and the
+// senders below swallow that error into { success: false } — so one numeric
+// field would silently turn into "push never sent". Coerce once, drop nulls.
+const toFcmData = (data = {}) =>
+  Object.fromEntries(
+    Object.entries(data)
+      .filter(([, v]) => v !== undefined && v !== null)
+      .map(([k, v]) => [k, String(v)])
+  );
+
 // Mark invalid tokens inactive in bulk
 const cleanupInvalidTokens = async (tokens, responses) => {
   const invalidTokens = [];
@@ -72,7 +82,7 @@ const sendToUser = async (userId, { title, body, data = {}, imageUrl } = {}) => 
     const message = {
       tokens,
       notification: { title, body, ...(imageUrl && { imageUrl }) },
-      data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+      data: toFcmData({ ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' }),
       android: { priority: 'high', notification: { sound: 'default' } },
       apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       webpush: { notification: { icon: 'https://take.health/logo192.png', badge: 'https://take.health/badge.png' } }
@@ -137,7 +147,7 @@ const sendToUsersBulk = async (entries, { concurrency = FCM_SEND_CONCURRENCY } =
       const response = await messaging.sendEachForMulticast({
         tokens,
         notification: { title, body, ...(imageUrl && { imageUrl }) },
-        data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+        data: toFcmData({ ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' }),
         android: { priority: 'high', notification: { sound: 'default' } },
         apns: { payload: { aps: { sound: 'default', badge: 1 } } },
       });
@@ -191,7 +201,7 @@ const sendToMultipleUsers = async (userIds, notification) => {
       const response = await messaging.sendEachForMulticast({
         tokens: batch,
         notification: { title: notification.title, body: notification.body },
-        data: notification.data || {},
+        data: toFcmData(notification.data),
         android: { priority: 'high' },
         webpush: { notification: { icon: 'https://take.health/logo192.png' } }
       });
@@ -235,7 +245,7 @@ const sendToToken = async (token, { title, body, data = {} } = {}) => {
     const response = await messaging.send({
       token,
       notification: { title, body },
-      data,
+      data: toFcmData(data),
       android: { priority: 'high' },
       webpush: {
         notification: { title, body, icon: 'https://take.health/logo192.png' },
@@ -260,7 +270,7 @@ const broadcastToAll = async ({ title, body, data = {} } = {}) => {
     const response = await messaging.send({
       topic: 'all-users',
       notification: { title, body },
-      data,
+      data: toFcmData(data),
       android: { priority: 'high' },
       webpush: { notification: { icon: 'https://take.health/logo192.png' } }
     });
