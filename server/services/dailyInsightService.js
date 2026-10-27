@@ -856,6 +856,33 @@ async function hasNewerDataThanInsight(userId, insight) {
   return latestDataUpdate > new Date(insight.updatedAt);
 }
 
+// 'fitness' needs its own staleness rule, separate from hasNewerDataThanInsight
+// above: steps update continuously all day (background Health Connect/HealthKit
+// sync every few minutes), so a plain "any write newer than the insight"
+// check — fine for nutrition/sleep, which each write once per discrete event
+// (a meal logged, a night synced) — would regenerate on nearly every single
+// app open, one LLM call per open. Only worth a regen once the step count has
+// moved enough to actually change what the insight says.
+const FITNESS_STEP_CHANGE_ABSOLUTE = 500;
+const FITNESS_STEP_CHANGE_RELATIVE = 0.2; // 20%
+
+async function hasMeaningfulStepChange(userId, cachedInsight) {
+  // Never touches a finalized day's insight — only a cached insight that
+  // itself describes "today, still in progress" is eligible to move.
+  if (!cachedInsight?.dataSnapshot?.isPartialDay) return false;
+  const cachedSteps = cachedInsight.dataSnapshot.steps || 0;
+
+  const todayStart = new Date(`${istDateKey()}T00:00:00.000Z`);
+  const activityRows = await DailyActivityMetric.find({ user: userId, date: todayStart })
+    .select('deviceType steps').lean();
+  if (activityRows.length === 0) return false;
+  const liveSteps = mergeDeviceRows(activityRows, ['steps']).steps || 0;
+
+  const delta = Math.abs(liveSteps - cachedSteps);
+  const threshold = Math.max(FITNESS_STEP_CHANGE_ABSOLUTE, cachedSteps * FITNESS_STEP_CHANGE_RELATIVE);
+  return delta >= threshold;
+}
+
 module.exports = {
   runDailyInsightCron,
   generateForUser,
@@ -865,6 +892,7 @@ module.exports = {
   getLatestActivityDateKey,
   getLatestOverallDateKey,
   hasNewerDataThanInsight,
+  hasMeaningfulStepChange,
   INSIGHT_TYPES,
   istDateKey,
   shiftDateKey,
