@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
+const { normalizeToken, upsertToken, syncLegacyField } = require('../services/fcmTokenService');
 /**
  * Merge a food-preferences request body onto the stored preferences.
  *
@@ -152,13 +153,22 @@ exports.analyzeFoodChoices = async (req, res) => {
   }
 };
 
-// Save FCM token — called by Android/iOS app on login/launch
+// Save FCM token — called by Android/iOS app on login/launch.
+// Must write the FCMToken collection: that is the only place the push senders
+// read from. Writing just User.fcmToken (as this used to) meant every mobile
+// user registered through this route was never sent a push.
 exports.saveFcmToken = async (req, res) => {
   try {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ message: 'FCM token required' });
+    const raw = req.body?.token ?? req.body?.fcmToken ?? req.body?.fcm_token;
+    const token = normalizeToken(raw);
+    if (!token) return res.status(400).json({ message: 'Valid FCM token required' });
 
-    await User.findByIdAndUpdate(req.user._id, { fcmToken: token });
+    await upsertToken(req.user._id, token, {
+      platform: req.body?.platform,
+      deviceLabel: req.body?.deviceLabel,
+      defaultPlatform: 'android',
+    });
+    syncLegacyField(req.user._id, token);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });

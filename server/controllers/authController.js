@@ -10,7 +10,7 @@ const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
 const gamificationService = require('../services/gamificationService');
 const RefreshToken = require('../models/RefreshToken');
-const FCMToken = require('../models/FCMToken');
+const { upsertToken, deactivateToken } = require('../services/fcmTokenService');
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
@@ -184,14 +184,10 @@ const getIncomingFcmToken = (req) => {
 // save must never fail the login/register/profile response, and this collection
 // is independent of the User document so it's safe to run in parallel.
 const upsertFcmTokenRecord = (userId, token, req) => {
-  const platform = req.body?.platform || 'web';
-  const deviceLabel = req.body?.deviceLabel || 'Unknown Device';
-
-  FCMToken.findOneAndUpdate(
-    { token },
-    { userId, platform, deviceLabel, isActive: true, lastUsedAt: new Date() },
-    { upsert: true, new: true }
-  ).catch((e) => console.error('FCM token save failed:', e.message));
+  upsertToken(userId, token, {
+    platform: req.body?.platform,
+    deviceLabel: req.body?.deviceLabel,
+  }).catch((e) => console.error('FCM token save failed:', e.message));
 };
 
 // Sets the legacy single-token field on an in-memory User document (the caller
@@ -1497,9 +1493,14 @@ exports.appleAuth = async (req, res) => {
 // @route   POST /api/auth/logout
 exports.logout = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken, fcmToken } = req.body;
     if (refreshToken) {
       await RefreshToken.deleteOne({ token: refreshToken });
+    }
+    // Stop pushes to the device that is logging out, or the next person on a
+    // shared phone keeps receiving this user's health notifications.
+    if (fcmToken) {
+      await deactivateToken(fcmToken, req.user?._id);
     }
     if (req.user) {
       deviceLog('logout:clearing-binding', req, {
