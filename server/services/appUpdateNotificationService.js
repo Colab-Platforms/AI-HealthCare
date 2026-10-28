@@ -33,6 +33,16 @@ async function reportAppVersion(platform, version, buildNumber, { excludeUserId 
     return { isNewVersion: false }; // the normal case — most reports land here
   }
 
+  // This endpoint is public (no auth) — a bogus report with an absurdly
+  // large buildNumber would otherwise poison config.buildNumber permanently,
+  // since every future real report would then compare as "not newer" and
+  // the organic-detection broadcast would silently stop firing forever. Real
+  // app releases jump by a handful of builds at most, never hundreds.
+  const MAX_BUILD_JUMP = 50;
+  if (buildNumber > config.buildNumber + MAX_BUILD_JUMP) {
+    return { isNewVersion: false };
+  }
+
   // CAS: only succeeds if buildNumber in the DB is still what we just read.
   // If another concurrent request already won the race and updated it, this
   // filter no longer matches and findOneAndUpdate returns null — this call
