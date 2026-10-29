@@ -41,6 +41,22 @@ exports.reportVersion = async (req, res) => {
   }
 };
 
+// @desc    Current version-gate config for both platforms, for the admin
+//          screen to prefill its form with.
+// @route   GET /api/admin/app-version
+exports.getVersionConfig = async (req, res) => {
+  try {
+    const docs = await AppVersionConfig.find({})
+      .select('platform version minBuild latestBuild message storeUrl').lean();
+    const byPlatform = { android: null, ios: null };
+    docs.forEach((d) => { byPlatform[d.platform] = d; });
+    res.json({ success: true, ...byPlatform });
+  } catch (error) {
+    console.error('getVersionConfig error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to load app version config' });
+  }
+};
+
 // @desc    Admin pushes a new release's version-gate for one or both
 //          platforms. Pure config write — no notification, no broadcast;
 //          the app itself decides to show the nudge/block next time it
