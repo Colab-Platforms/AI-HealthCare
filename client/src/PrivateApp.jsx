@@ -42,6 +42,7 @@ const AdminActivity = lazy(() => import("./pages/UserActivity"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
 const AdminCreatorApplications = lazy(() => import("./pages/AdminCreatorApplications"));
+const AdminAppVersion = lazy(() => import("./pages/AdminAppVersion"));
 // const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
@@ -691,6 +692,16 @@ export default function PrivateApp() {
                   <AdminRoute>
                     <Layout isAdmin>
                       <AdminSupport />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/app-version"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminAppVersion />
                     </Layout>
                   </AdminRoute>
                 }
