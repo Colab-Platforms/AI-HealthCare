@@ -302,4 +302,4 @@ async function runWearableScoreSync() {
   }
 }
 
-module.exports = { runWearableScoreSync, syncScoreForConnection, reconcileConnectionStatuses, reconcileOneConnection, SCORE_CAPABLE_DEVICE_TYPES };
+module.exports = { runWearableScoreSync, syncScoreForConnection, reconcileConnectionStatuses, reconcileOneConnection, SCORE_CAPABLE_DEVICE_TYPES, OAUTH_PROVIDERS };
