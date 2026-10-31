@@ -31,7 +31,7 @@ const vaultReportSchema = new mongoose.Schema({
   deletedAt: { type: Date, default: null },
   purgeAfter: { type: Date, default: null },     // when the Cloudinary asset may be destroyed
   purgedAt: { type: Date, default: null },
-  legacyDocId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  legacyDocId: { type: mongoose.Schema.Types.ObjectId }, // no default: a stored null would collide in the unique index below
 }, { timestamps: true });
 
 // Folder timeline (cursor pagination on reportDate desc, _id desc)
@@ -41,6 +41,10 @@ vaultReportSchema.index({ userId: 1, status: 1, reportDate: -1, _id: -1 });
 // Purge job
 vaultReportSchema.index({ status: 1, purgedAt: 1, purgeAfter: 1 });
 // Migration idempotency
-vaultReportSchema.index({ legacyDocId: 1 }, { sparse: true, unique: true });
+// Partial (not sparse): a sparse index still indexes explicit nulls, so two reports with legacyDocId: null would collide.
+vaultReportSchema.index(
+  { legacyDocId: 1 },
+  { unique: true, partialFilterExpression: { legacyDocId: { $type: 'objectId' } } }
+);
 
 module.exports = mongoose.model('VaultReport', vaultReportSchema);
