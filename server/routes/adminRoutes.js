@@ -19,6 +19,7 @@ const {
   getSummary, getCostOverTime, getByFeature, getByModel,
   getByUser, getLogs, getCacheStats, getBudgetStatus
 } = require('../controllers/usageController');
+const { getVersionConfig, pushVersionUpdate } = require('../controllers/appVersionController');
 
 // All routes require admin or superadmin role
 router.use(protect, authorize('admin', 'superadmin'));
@@ -27,6 +28,10 @@ router.use(protect, authorize('admin', 'superadmin'));
 router.get('/ping-internal', (req, res) => {
   res.json({ status: 'admin-router-active', msg: 'Admin Router is correctly mounted and receiving traffic!' });
 });
+
+// 📱 App version-gate push — pure config write, app detects it on next launch
+router.get('/app-version', getVersionConfig);
+router.post('/app-version/push', pushVersionUpdate);
 
 // Dashboard & Stats
 router.get('/stats', getReportStats);

@@ -302,6 +302,10 @@ export const adminService = {
   approveDietPlan: (id, status) => api.patch(`admin/diet-plans/${id}/approve`, { status }),
   deleteDietPlan: (id) => api.delete(`admin/diet-plans/${id}`),
 
+  // App version push (version-gate the app reads on launch)
+  getAppVersionConfig: () => api.get('admin/app-version'),
+  pushAppVersion: (data) => api.post('admin/app-version/push', data),
+
   // Subscriptions & Billing
   getSubscribers: (params) => api.get('admin/subscriptions', { params }),
   getSubscriptionPayments: (params) => api.get('admin/subscriptions/payments', { params }),
