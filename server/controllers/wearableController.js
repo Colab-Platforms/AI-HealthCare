@@ -15,7 +15,7 @@ const { getSleepInsight } = require('../services/sleepInsightService');
 const { getSleepClinicalAnalysis, toAppSummary } = require('../services/sleepClinicalAnalysisService');
 const { getActivityInsight } = require('../services/activityInsightService');
 const wearableIngest = require('../services/wearableIngestService');
-const { syncScoreForConnection } = require('../services/wearableScoreSyncService');
+const { syncScoreForConnection, reconcileOneConnection, OAUTH_PROVIDERS } = require('../services/wearableScoreSyncService');
 const { syncTimeseriesForConnection } = require('../services/wearableTimeseriesSyncService');
 const { syncSleepForConnection } = require('../services/wearableSleepSyncService');
 const DailyActivityMetric = require('../models/DailyActivityMetric');
@@ -157,8 +157,23 @@ exports.getConnectedDevices = async (req, res) => {
   try {
     // Just the connection summary — dailyMetrics/sleepData/etc. belong to
     // /dashboard, not here, so the payload stays small for a devices-list screen
-    const devices = await WearableData.find({ user: req.user._id })
-      .select('deviceType deviceName isConnected lastSyncedAt');
+    let devices = await WearableData.find({ user: req.user._id })
+      .select('deviceType deviceName isConnected lastSyncedAt openWearablesUserId');
+
+    // isConnected can go stale if a webhook delivery was dropped — the cron
+    // reconcile (wearableScoreSyncService) is the backstop, but this screen is
+    // also the first place a user notices "my device shows disconnected when
+    // it isn't", so reconcile this user's own OAuth devices live, right here,
+    // instead of waiting for the next cron tick.
+    const staleOAuthDevices = devices.filter(
+      (d) => d.isConnected === false && OAUTH_PROVIDERS.includes(d.deviceType) && d.openWearablesUserId
+    );
+    if (staleOAuthDevices.length > 0) {
+      await Promise.all(staleOAuthDevices.map((d) => reconcileOneConnection(d).catch(() => null)));
+      devices = await WearableData.find({ user: req.user._id })
+        .select('deviceType deviceName isConnected lastSyncedAt');
+    }
+
     res.json(devices);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -1450,6 +1465,46 @@ exports.handleWebhook = async (req, res) => {
         await disconnectOtherDevices(wearable.user, wearable.deviceType);
         wearable.isConnected = true;
         wearable.lastSyncedAt = new Date();
+
+        // Same physical device, different app account: Open Wearables lets
+        // the same provider account (Whoop/Oura/...) end up linked to two of
+        // our openWearablesUserIds — it never revokes the older link for us.
+        // Fetch the provider's own account id for this connection, and if
+        // another WearableData doc already carries that same id, that one's
+        // account connected this exact device earlier and now has a dead
+        // connection as far as the provider is concerned — revoke it there
+        // and locally so it stops reporting falsely "active"/isConnected.
+        try {
+          const { data: connections } = await openWearablesClient.get(`/users/${data.user_id}/connections`);
+          const match = Array.isArray(connections) ? connections.find((c) => c.provider === data.provider) : null;
+          const providerAccountId = match?.provider_user_id;
+
+          if (providerAccountId) {
+            wearable.providerAccountId = providerAccountId;
+
+            const previousHolder = await WearableData.findOne({
+              providerAccountId,
+              deviceType: data.provider,
+              openWearablesUserId: { $ne: data.user_id },
+            });
+
+            if (previousHolder) {
+              await openWearablesClient.delete(`/users/${previousHolder.openWearablesUserId}/connections/${data.provider}`);
+              previousHolder.isConnected = false;
+              await previousHolder.save();
+              cache.delete(`dashboard:${previousHolder.user}`);
+              console.log(
+                `[Wearables] connection.created: auto-revoked ${data.provider} on previousHolder=${previousHolder._id} ` +
+                `(mongo user=${previousHolder.user}) — same providerAccountId=${providerAccountId} now claimed by user=${wearable.user}`
+              );
+            }
+          }
+        } catch (conflictCheckError) {
+          // Never block the new connection over this — worst case the old
+          // account's isConnected flag stays stale until the next reconcile pass.
+          console.error(`[Wearables] connection.created conflict-check failed: ${conflictCheckError.message}`);
+        }
+
         await wearable.save();
         console.log(`[Wearables] connection.created: record ${wearable._id} (mongo user=${wearable.user}) set isConnected=true`);
         break;

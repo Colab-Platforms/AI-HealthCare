@@ -41,6 +41,13 @@ const wearableDataSchema = new mongoose.Schema({
   // Open Wearables service ka internal user ID — webhook se aane wale data ko
   // isi field se match karke pata chalega ye kis user ka data hai
   openWearablesUserId: { type: String, index: true },
+  // The actual provider-side account id (e.g. Whoop's own user id for the
+  // physical band) — distinct from openWearablesUserId, which is per
+  // app-account. Two of our WearableData docs sharing this id means the same
+  // physical device is linked to two app accounts, which is what lets
+  // connection.created auto-revoke the older one instead of leaving both
+  // "active" on Open Wearables' side.
+  providerAccountId: { type: String, index: true },
   // Source metadata for records imported from Health Connect or HealthKit.
   osHealthSource: { type: String, enum: ['health_connect', 'healthkit'] },
   sourceDeviceId: String,
