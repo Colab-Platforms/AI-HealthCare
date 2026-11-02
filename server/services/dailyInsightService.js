@@ -372,7 +372,7 @@ Rules you must follow:
       already given in the data.
     - If vsIdeal is "within" or "above": name specifically what to do to KEEP it that way (a consistent
       bedtime, winding down the same way) — never a bare "keep it up" with nothing concrete attached.
-  Bad (robotic, data-first): "You slept 5.8 hours, which is 75 minutes short of your 7-9 hour range.
+  Bad (robotic, data-first): "You slept 5.8 hours, which is 75 minutes short of your 7-hour goal.
   Try getting into bed 75 minutes earlier tonight."
   Good (human, feeling-first): "You're running short on rest — about 75 minutes under what your body
   needs. Get into bed 75 minutes earlier and you'll close that gap."
@@ -602,7 +602,7 @@ async function buildProfile(userId) {
 /** Fetches (or null) the type-specific data payload a given insightType needs. */
 async function collectDataForType(insightType, userId, sourceDate, { user, profile, overallData }) {
   if (insightType === 'sleep') {
-    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours;
     const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours });
     return analysis.lastNight ? { date: sourceDate, ...analysis } : null;
   }

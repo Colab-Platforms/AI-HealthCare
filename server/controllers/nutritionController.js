@@ -3,6 +3,7 @@ const HealthGoal = require('../models/HealthGoal');
 const NutritionSummary = require('../models/NutritionSummary');
 const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
+const { getSleepGoal } = require('../utils/sleepGoal');
 const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
@@ -1338,12 +1339,12 @@ exports.logWeight = async (req, res) => {
 // touch the existing HealthGoal weight/calorie flow.
 exports.getLifestyleGoals = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('profile.lifestyle').lean();
+    const user = await User.findById(req.user._id).select('profile.lifestyle profile.age').lean();
     const lifestyle = user?.profile?.lifestyle || {};
     res.json({
       success: true,
       stepGoal: lifestyle.stepGoal || 10000,
-      sleepGoalHours: lifestyle.sleepGoalHours || 8,
+      sleepGoalHours: getSleepGoal(user).goalHours,
       waterGoalMl: lifestyle.waterGoalMl || 2000,
     });
   } catch (error) {

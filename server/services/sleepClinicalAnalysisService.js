@@ -26,14 +26,7 @@ const MIN_NIGHTS_FOR_RAW_COMPARISON = 3;
 const MIN_NIGHTS_FOR_TREND = 7;
 const MIN_NIGHTS_FOR_REGULARITY = 14;
 
-// NSF-consensus adult sleep-duration bands by age. Unknown age falls back to
-// the general adult band rather than guessing.
-function getIdealSleepRange(age) {
-  if (age == null) return { min: 7, max: 9 };
-  if (age < 18) return { min: 8, max: 10 };
-  if (age <= 64) return { min: 7, max: 9 };
-  return { min: 7, max: 8 };
-}
+const { getSleepGoal, getIdealSleepRange } = require('../utils/sleepGoal');
 
 // Typical adult sleep-stage composition (AASM scoring-manual ballpark).
 const STAGE_RANGES = {
@@ -136,8 +129,14 @@ function buildLastNight(session, idealRange, nativeScoreMap) {
  * The tier controls which claims are safe to make — fewer nights logged means
  * fewer aggregate claims, so the caller (and the LLM) never overclaims on thin data.
  */
-async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours = 8 } = {}) {
-  const idealRange = getIdealSleepRange(age);
+// `sleepGoalHours` is the user's raw stored value (undefined when never set);
+// getSleepGoal resolves it, falling back to the age-based midpoint.
+async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours } = {}) {
+  const goal = getSleepGoal({ profile: { age, lifestyle: { sleepGoalHours } } });
+  sleepGoalHours = goal.goalHours;
+  // "within/below" and the shortfall are measured from the user's goal, not
+  // the bottom of the healthy band.
+  const idealRange = goal.targetRange;
 
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - REGULARITY_WINDOW_DAYS);
@@ -177,6 +176,7 @@ async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours = 8
 
   const base = {
     idealRange,
+    sleepGoalHours,
     nightsLogged,
     lastNight,
   };
@@ -271,7 +271,7 @@ function buildStatusMessage(analysis) {
   }
 
   // trend_analysis / full_analysis — trend + debt carry the most signal
-  const targetLabel = `${analysis.idealRange.min}-${analysis.idealRange.max}h`;
+  const targetLabel = `${analysis.sleepGoalHours}h`;
   if (analysis.trend === 'declining') {
     return `Your sleep has been declining this week — averaging ${analysis.avgHours7d}h against your ${targetLabel} target.`;
   }

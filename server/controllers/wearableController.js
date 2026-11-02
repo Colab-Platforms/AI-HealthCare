@@ -28,6 +28,7 @@ function dateOnlyUTCFromDate(d) {
 }
 
 const { disconnectOtherDevices } = require('../utils/wearableConnection');
+const { getSleepGoal } = require('../utils/sleepGoal');
 
 // Rolls one HR sample into that day's running avg/min/max. Raw samples live in
 // HeartRateSample; this permanent rollup powers long-term trends. Mutates
@@ -928,7 +929,7 @@ exports.getSleepInsightData = async (req, res) => {
     const user = await User.findById(req.user._id)
       .select('profile.age profile.lifestyle.sleepGoalHours')
       .lean();
-    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+    const sleepGoalHours = getSleepGoal(user).goalHours;
     const age = user?.profile?.age ?? null;
 
     const [insight, clinicalAnalysis] = await Promise.all([
@@ -957,7 +958,7 @@ exports.getSleepSummaryData = async (req, res) => {
     const user = await User.findById(req.user._id)
       .select('profile.age profile.lifestyle.sleepGoalHours')
       .lean();
-    const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours || 8;
+    const sleepGoalHours = getSleepGoal(user).goalHours;
     const age = user?.profile?.age ?? null;
 
     const [analysis, coachMessage] = await Promise.all([

@@ -12,6 +12,7 @@ const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
+const { getSleepGoal } = require('../utils/sleepGoal');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
 // it uses the population-to-personal baseline blend below. Hydration is
@@ -169,10 +170,14 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     const target = Math.min(sleepBounds.max, Math.max(sleepBounds.min, blended));
     raw.sleepTargetHours = Math.round(target * 10) / 10;
     raw.sleepHealthyRange = [sleepBounds.min, sleepBounds.max];
+    // Full credit starts at the user's own goal, not the bottom of the
+    // healthy band — otherwise 7.2h against an 8h goal scored a perfect 100.
+    const { goalHours, targetRange } = getSleepGoal(user);
+    raw.sleepGoalHours = goalHours;
     // Width 2 (not 1.5) outside the band: at 1.5 the curve was punishing —
     // 5 hours scored 19, reading as "you did nothing" for a night that was
     // short but not catastrophic.
-    components.sleep = plateauRange(hours, sleepBounds.min, sleepBounds.max, 2);
+    components.sleep = plateauRange(hours, targetRange.min, targetRange.max, 2);
   }
 
   // --- Activity (steps) — scored against the app's fixed step goal, not a

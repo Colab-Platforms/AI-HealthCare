@@ -11,6 +11,7 @@ const NutritionSummary = require('../models/NutritionSummary');
 const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
 const { invalidateUserHealthCache, userKeys } = require('../utils/cacheKeys');
+const { getSleepGoal } = require('../utils/sleepGoal');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
@@ -772,7 +773,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       FoodLog.find({ userId: reqUser._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).lean(),
       NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
       NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
-      User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
+      User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle profile.age').lean(),
       // Connection status only now — the actual day-by-day numbers live in
       // DailyActivityMetric/SleepSession below, not the legacy embedded arrays
       // here (those can carry duplicate/stale per-device entries for the same
@@ -904,7 +905,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       hasWearableConnected,
       goals: {
         steps: userWithLogs?.profile?.lifestyle?.stepGoal || 10000,
-        sleep: userWithLogs?.profile?.lifestyle?.sleepGoalHours || 8,
+        sleep: getSleepGoal(userWithLogs).goalHours,
         water: userWithLogs?.profile?.lifestyle?.waterGoalMl || 2000, // ml — directly comparable to history[].water / nutritionData.waterIntake, no glass conversion needed
         weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65
       },
