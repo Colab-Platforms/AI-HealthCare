@@ -136,15 +136,41 @@ exports.disconnectDevice = async (req, res) => {
       `[Wearables] disconnect requested: user=${req.user._id} deviceType=${req.params.deviceType} ip=${req.ip} ua=${req.headers['user-agent']}`
     );
 
-    const wearable = await WearableData.findOneAndUpdate(
-      { user: req.user._id, deviceType: req.params.deviceType },
-      { isConnected: false },
-      { new: true }
-    );
+    const wearable = await WearableData.findOne({ user: req.user._id, deviceType: req.params.deviceType });
 
     if (!wearable) {
       return res.status(404).json({ message: 'Device not found' });
     }
+
+    // A local-only flag flip left the connection active on Open Wearables,
+    // which kept pulling from the provider — and the reconcile paths (cron +
+    // the live check in getConnectedDevices) then saw "active" upstream and
+    // flipped isConnected back to true, so disconnect silently undid itself.
+    // Revoke upstream first; this DELETE only revokes the connection and
+    // clears its tokens on their side — the user's synced data is kept.
+    if (OAUTH_PROVIDERS.includes(wearable.deviceType) && wearable.openWearablesUserId && openWearablesClient.isConfigured) {
+      try {
+        await openWearablesClient.delete(`/users/${wearable.openWearablesUserId}/connections/${wearable.deviceType}`);
+      } catch (error) {
+        const upstreamStatus = error.response?.status;
+        // No response or a 5xx means we can't know it was revoked — keep the
+        // local state as-is so the app shows a retryable error instead of a
+        // "disconnected" that reconcile would flip back. A 4xx (e.g. 404,
+        // connection already gone) is a definitive answer, safe to proceed.
+        if (!upstreamStatus || upstreamStatus >= 500) {
+          console.error(`[Wearables] disconnect: Open Wearables revoke failed for wearable=${wearable._id}: ${error.message}`);
+          return res.status(503).json({
+            message: 'Could not disconnect the device right now, please try again',
+            error: 'OPEN_WEARABLES_UNREACHABLE'
+          });
+        }
+        console.warn(`[Wearables] disconnect: Open Wearables returned ${upstreamStatus} for wearable=${wearable._id}, proceeding with local disconnect`);
+      }
+    }
+
+    wearable.isConnected = false;
+    await wearable.save();
+    cache.delete(`dashboard:${wearable.user}`);
 
     res.json({ message: 'Device disconnected', wearable });
   } catch (error) {
