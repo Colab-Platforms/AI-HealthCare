@@ -114,6 +114,27 @@ test('disconnectDevice: non-OAuth device (manual) never calls Open Wearables', a
   assert.equal(wearable.isConnected, false);
 });
 
+// --- getConnectedDevices live reconcile (both directions) ------------------
+
+test('getConnectedDevices: a device revoked upstream shows disconnected immediately, no cron wait', async (t) => {
+  const wearable = makeWearable({ isConnected: true });
+  let findCall = 0;
+  t.mock.method(WearableData, 'find', () => {
+    findCall += 1;
+    // First call returns the live doc; the post-reconcile refetch returns
+    // whatever state reconcile left it in.
+    return { select: async () => (findCall === 1 ? [wearable] : [{ deviceType: 'whoop', isConnected: wearable.isConnected }]) };
+  });
+  t.mock.method(openWearablesClient, 'get', async () => ({ data: [{ provider: 'whoop', status: 'revoked' }] }));
+
+  const { getConnectedDevices } = require('../controllers/wearableController');
+  const res = makeRes();
+  await getConnectedDevices({ user: { _id: 'u1' } }, res);
+
+  assert.equal(res.body[0].isConnected, false);
+  assert.ok(wearable.saved);
+});
+
 // --- reconcileOneConnection (true -> false direction) ----------------------
 
 test('reconcileOneConnection: connected locally but revoked upstream -> flips to false', async (t) => {

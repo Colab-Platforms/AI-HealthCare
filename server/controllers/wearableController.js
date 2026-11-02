@@ -186,16 +186,17 @@ exports.getConnectedDevices = async (req, res) => {
     let devices = await WearableData.find({ user: req.user._id })
       .select('deviceType deviceName isConnected lastSyncedAt openWearablesUserId');
 
-    // isConnected can go stale if a webhook delivery was dropped — the cron
-    // reconcile (wearableScoreSyncService) is the backstop, but this screen is
-    // also the first place a user notices "my device shows disconnected when
-    // it isn't", so reconcile this user's own OAuth devices live, right here,
-    // instead of waiting for the next cron tick.
-    const staleOAuthDevices = devices.filter(
-      (d) => d.isConnected === false && OAUTH_PROVIDERS.includes(d.deviceType) && d.openWearablesUserId
+    // isConnected can go stale in either direction if a webhook delivery was
+    // dropped (connection.created or connection.revoked) — the cron reconcile
+    // (wearableScoreSyncService) is the backstop, but this screen is where a
+    // user actually looks at the status, so reconcile their OAuth devices
+    // live here instead of making them wait up to a cron interval. One Open
+    // Wearables call per OAuth device — never a call to the provider itself.
+    const oauthDevices = devices.filter(
+      (d) => OAUTH_PROVIDERS.includes(d.deviceType) && d.openWearablesUserId
     );
-    if (staleOAuthDevices.length > 0) {
-      await Promise.all(staleOAuthDevices.map((d) => reconcileOneConnection(d).catch(() => null)));
+    if (oauthDevices.length > 0) {
+      await Promise.all(oauthDevices.map((d) => reconcileOneConnection(d).catch(() => null)));
       devices = await WearableData.find({ user: req.user._id })
         .select('deviceType deviceName isConnected lastSyncedAt');
     }
