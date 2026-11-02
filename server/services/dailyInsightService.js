@@ -534,6 +534,8 @@ const trimToSentence = (text, max, minKeep = 80) => {
   return lastEnd >= minKeep ? cut.slice(0, lastEnd + 1) : cut.trimEnd();
 };
 
+const INSIGHT_LLM_TIMEOUT_MS = 15000;
+
 async function generateOne({ userId, profile, insightType, sourceDate, insightDate, data }) {
   const { text, model } = await chatCompletionWithFallback({
     system: INSIGHT_SYSTEMS[insightType],
@@ -549,6 +551,9 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
     temperature: 0.7, // a little variety so consecutive days don't read identically
     feature: `daily_insight_${insightType}`,
     userId,
+    // Avg call is ~2.7s; without a cap a stuck provider held one for 191s.
+    // On timeout the fallback chain moves on to the next model.
+    timeoutMs: INSIGHT_LLM_TIMEOUT_MS,
   });
 
   const parsed = parseJsonResponse(text);
@@ -845,12 +850,15 @@ async function hasNewerDataThanInsight(userId, insight) {
   if (!insight?.updatedAt) return false;
   const today = istDateKey();
   const todayStart = new Date(`${today}T00:00:00.000Z`);
-  const [nutrition, activity, sleep] = await Promise.all([
+  // Steps are deliberately NOT a trigger here: background step syncs write
+  // every few minutes, which made 'overall' regenerate on nearly every app
+  // open (~5x the nightly volume). Step movement is judged by magnitude
+  // instead, via hasMeaningfulStepChange — the caller checks both.
+  const [nutrition, sleep] = await Promise.all([
     NutritionSummary.findOne({ userId, date: todayStart }).select('updatedAt').lean(),
-    DailyActivityMetric.find({ user: userId, date: todayStart }).select('updatedAt').sort({ updatedAt: -1 }).limit(1).lean(),
     SleepSession.find({ user: userId, date: todayStart }).select('updatedAt').sort({ updatedAt: -1 }).limit(1).lean(),
   ]);
-  const candidates = [nutrition?.updatedAt, activity[0]?.updatedAt, sleep[0]?.updatedAt].filter(Boolean);
+  const candidates = [nutrition?.updatedAt, sleep[0]?.updatedAt].filter(Boolean);
   if (candidates.length === 0) return false;
   const latestDataUpdate = new Date(Math.max(...candidates.map((d) => new Date(d).getTime())));
   return latestDataUpdate > new Date(insight.updatedAt);

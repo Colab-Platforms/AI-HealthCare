@@ -48,6 +48,8 @@ const chatCompletion = async ({
   temperature = 0.4,
   feature = 'other',
   userId = null,
+  // Per-call override: diet plans legitimately take ~60s, short insights don't.
+  timeoutMs = 120000,
 }) => {
   if (!model) throw new Error('OpenRouter request requires a model');
 
@@ -77,7 +79,7 @@ const chatCompletion = async ({
           'HTTP-Referer': process.env.APP_URL || 'https://takehealth.app',
           'X-Title': 'Take Health',
         },
-        timeout: 120000,
+        timeout: timeoutMs,
       }
     );
 

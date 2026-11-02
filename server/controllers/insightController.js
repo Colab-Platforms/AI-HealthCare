@@ -1,4 +1,5 @@
 const DailyInsight = require('../models/DailyInsight');
+const { getClient: getRedisClient } = require('../utils/redisClient');
 const {
   runDailyInsightCron,
   generateForUser,
@@ -38,6 +39,59 @@ async function refreshIfStale(insights, insightType, insightDate, userId, getLat
   }
 }
 
+// Same-day staleness refresh, run AFTER the response is sent. Each
+// ensureInsight here is an LLM call (~2.7s avg); awaiting up to five of them
+// in sequence inside the request is what made the dashboard hang 5-6s. The
+// user now gets the cached insight instantly and the fresh one on next open.
+async function refreshStaleInsights(userId, insightDate) {
+  let insights = await DailyInsight.find({ userId, insightDate })
+    .select('insightType sourceDate updatedAt dataSnapshot')
+    .lean();
+
+  insights = await refreshIfStale(insights, 'sleep', insightDate, userId, getLatestSleepNightDateKey);
+  insights = await refreshIfStale(insights, 'fitness', insightDate, userId, getLatestActivityDateKey);
+  insights = await refreshIfStale(insights, 'overall', insightDate, userId, getLatestOverallDateKey);
+
+  // Within-day staleness: 'overall' when a meal/sleep landed after it was
+  // written or steps moved meaningfully; 'fitness' on steps alone.
+  for (const insightType of ['overall', 'fitness']) {
+    try {
+      const cached = insights.find((i) => i.insightType === insightType);
+      if (!cached || !cached.dataSnapshot) continue;
+      const stale = (insightType === 'overall' && await hasNewerDataThanInsight(userId, cached))
+        || await hasMeaningfulStepChange(userId, cached);
+      if (stale) await ensureInsight(userId, insightType, insightDate, { force: true, sameDay: true });
+    } catch (refreshError) {
+      console.error(`getTodaysInsights ${insightType} freshness refresh error:`, refreshError.message);
+    }
+  }
+}
+
+// One refresh per user at a time, across Render/Vercel instances — without
+// it, a user reopening the app mid-refresh would queue duplicate LLM calls.
+// TTL covers the worst case (5 types x 4 fallback models x 15s timeout).
+const REFRESH_LOCK_TTL_MS = 5 * 60 * 1000;
+const localRefreshes = new Set();
+
+function triggerBackgroundRefresh(userId, insightDate) {
+  const key = `lock:insight-refresh:${userId}`;
+  (async () => {
+    const redis = getRedisClient();
+    if (redis) {
+      if (await redis.set(key, '1', 'NX', 'PX', REFRESH_LOCK_TTL_MS) !== 'OK') return;
+    } else if (localRefreshes.has(key)) {
+      return;
+    }
+    localRefreshes.add(key);
+    try {
+      await refreshStaleInsights(userId, insightDate);
+    } finally {
+      localRefreshes.delete(key);
+      if (redis) await redis.del(key).catch(() => {});
+    }
+  })().catch((err) => console.error('getTodaysInsights background refresh error:', err.message));
+}
+
 // GET /api/insights/today
 // The four insight types written last night for today's IST date.
 exports.getTodaysInsights = async (req, res) => {
@@ -47,51 +101,9 @@ exports.getTodaysInsights = async (req, res) => {
       .select('-dataSnapshot -model')
       .lean();
 
-    insights = await refreshIfStale(insights, 'sleep', insightDate, req.user._id, getLatestSleepNightDateKey);
-    insights = await refreshIfStale(insights, 'fitness', insightDate, req.user._id, getLatestActivityDateKey);
-    insights = await refreshIfStale(insights, 'overall', insightDate, req.user._id, getLatestOverallDateKey);
-
-    // Second-opinion check for 'overall': the date-based refresh above only
-    // catches "today has no insight yet." It won't catch a same-day insight
-    // that's gone stale WITHIN today — e.g. the user logs a meal minutes
-    // after generation, and the cached nutrition number is now behind the
-    // live one. Re-generate whenever any of today's core data is newer than
-    // the insight itself.
-    try {
-      const cachedOverall = insights.find((i) => i.insightType === 'overall');
-      if (cachedOverall && (await hasNewerDataThanInsight(req.user._id, cachedOverall))) {
-        const fresh = await ensureInsight(req.user._id, 'overall', insightDate, { force: true, sameDay: true });
-        if (fresh) insights = [...insights.filter((i) => i.insightType !== 'overall'), fresh];
-      }
-    } catch (refreshError) {
-      console.error('getTodaysInsights overall freshness refresh error:', refreshError.message);
-    }
-
-    // Same idea for 'fitness', but keyed on step count moving meaningfully
-    // rather than any write happening — background step syncs land every few
-    // minutes, so a plain "newer write exists" check (fine above for
-    // 'overall') would regenerate on almost every app open.
-    try {
-      const cachedFitness = insights.find((i) => i.insightType === 'fitness');
-      if (cachedFitness) {
-        const withSnapshot = await DailyInsight.findById(cachedFitness._id).select('dataSnapshot updatedAt').lean();
-        if (await hasMeaningfulStepChange(req.user._id, withSnapshot)) {
-          const fresh = await ensureInsight(req.user._id, 'fitness', insightDate, { force: true, sameDay: true });
-          if (fresh) insights = [...insights.filter((i) => i.insightType !== 'fitness'), fresh];
-        }
-      }
-    } catch (refreshError) {
-      console.error('getTodaysInsights fitness freshness refresh error:', refreshError.message);
-    }
-
     // sourceDate/insightDate/isBasedOnToday are internal staleness-tracking
-    // bookkeeping (used above by refreshIfStale/hasNewerDataThanInsight), not
-    // card content — the app was rendering sourceDate/isBasedOnToday directly
-    // onto the card ("today" / a bare ISO date under the description), which
-    // reads as leaked debug info. Stripped here the same way `model` already
-    // is. Freshly-refreshed entries above come straight from ensureInsight's
-    // saved doc (full object, not the '-model' projection the initial find
-    // used), so model/dataSnapshot need stripping here too, not just there.
+    // bookkeeping, not card content — the app was rendering them directly
+    // onto the card, which reads as leaked debug info.
     insights = insights.map((i) => {
       const { model, dataSnapshot, sourceDate, insightDate: _insightDate, ...rest } = i;
       return rest;
@@ -106,6 +118,8 @@ exports.getTodaysInsights = async (req, res) => {
       // yesterday (or joined today) simply has no insight to show yet.
       hasInsights: insights.length > 0,
     });
+
+    triggerBackgroundRefresh(req.user._id, insightDate);
   } catch (error) {
     console.error('getTodaysInsights error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to fetch insights' });
