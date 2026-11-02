@@ -123,7 +123,8 @@ const userSchema = new mongoose.Schema({
       waterGlassSizeMl: { type: Number, min: 50, max: 2000, default: 250 }, // ml per glass — used only to render "X glasses" from a logged ml total, never for the goal itself
       waterGoalMl: { type: Number, min: 500, max: 10000, default: 2000 }, // ml per day (goal) — the single source of truth for the water target
       stepGoal: { type: Number, min: 1000, max: 50000, default: 10000 },
-      sleepGoalHours: { type: Number, min: 4, max: 12, default: 8 }
+      // No default on purpose: unset means "derive from age" (utils/sleepGoal.js).
+      sleepGoalHours: { type: Number, min: 4, max: 12 }
     },
     diabetesProfile: {
       type: {
