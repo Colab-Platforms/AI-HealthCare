@@ -199,8 +199,32 @@ async function syncScoreForConnection(openWearablesUserId, provider) {
 async function reconcileOneConnection(wearable) {
   const { data } = await openWearablesClient.get(`/users/${wearable.openWearablesUserId}/connections`);
   const match = Array.isArray(data) ? data.find((c) => c.provider === wearable.deviceType) : null;
+  const upstreamActive = match?.status === 'active';
 
-  if (match?.status === 'active') {
+  // The other direction: the provider (or Open Wearables) revoked the
+  // connection — e.g. the user removed our access from the Whoop app, or a
+  // refresh token was rejected — but the connection.revoked webhook never
+  // reached us. Confirmed live: Open Wearables showed "revoked" while we kept
+  // isConnected:true, so the app showed "connected" with no data arriving.
+  // Only flips on a definitive answer from Open Wearables — a connection
+  // record that exists but isn't active. A *missing* record is not that: a
+  // 'google' doc can be Health Connect (on-device SDK, synced via os-sync,
+  // never an Open Wearables connection) while still carrying an
+  // openWearablesUserId from some earlier OAuth connect-url request, and a
+  // dry run against production found exactly such docs. A failed request
+  // throws above and leaves the flag alone too.
+  if (match && !upstreamActive && wearable.isConnected) {
+    wearable.isConnected = false;
+    await wearable.save();
+    cache.delete(`dashboard:${wearable.user}`);
+    console.log(
+      `[WearableScoreSync] reconciled isConnected=false for wearable=${wearable._id} ` +
+      `(Open Wearables reports ${match.status}; the revoke webhook was never received)`
+    );
+    return { wearableId: wearable._id, reconciled: true, direction: 'disconnected' };
+  }
+
+  if (upstreamActive && !wearable.isConnected) {
     // Same single-active-device rule as controllers/wearableController.js —
     // Open Wearables still reporting this device "active" only means WE
     // never told THEM to revoke it; it says nothing about whether another
@@ -233,9 +257,10 @@ async function reconcileConnectionStatuses() {
     return { skipped: true, reason: 'not_configured' };
   }
 
+  // Both directions (see reconcileOneConnection): false->true when the
+  // connecting webhook was missed, true->false when the revoke webhook was.
   const candidates = await WearableData.find({
     deviceType: { $in: OAUTH_PROVIDERS },
-    isConnected: false,
     openWearablesUserId: { $exists: true, $ne: null }
   });
 

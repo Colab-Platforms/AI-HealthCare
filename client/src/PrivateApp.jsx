@@ -362,7 +362,7 @@ export default function PrivateApp() {
                 }
               />
               <Route
-                path="/medical-vault"
+                path="/medical-vault/*"
                 element={
                   <ProtectedRoute
                     allowedRoles={[
