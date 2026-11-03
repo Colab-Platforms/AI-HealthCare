@@ -399,21 +399,17 @@ Rules you must follow:${NO_NUMBERS_RULE}
   and recovery is low. Try to wind down early tonight and get real sleep in."
 - Plain and literal, never a metaphor or idiom — no "running on empty/fumes," "in the red," "burning
   the candle," or any other figurative phrase standing in for a plain statement.
-- Structure (2-3 short sentences, not 4+):
-  1. Open with the single most important thing — usually whichever pillar most needs attention — in a
-     feeling-first way. If one or two other pillars are clearly good, you may name them
-     briefly in the same or a second sentence, but don't list every pillar just because data exists for
-     it — only mention what's actually notable (very good or needs attention), skip the merely-average.
-  2. One sentence with a real, specific, doable action tied to the pillar that needs attention most —
-     this sentence is MANDATORY, never drop it.
-  That's it — 2 sentences is often enough; use a 3rd only if there's a second genuinely notable thing
-  (e.g. recovery also very low) that can't be folded into sentence 1 without it getting dense.
-- If activity is "good"/"excellent" while stepsVsGoal is still short of the goal, say in one short
-  clause that movement/workout time earned it, so it doesn't read as a mistake next to the step count.
-- HARD LIMIT: the description must be under 200 characters total. If you're naming more than two
-  pillars, cut to the one that needs attention plus at most one more.
-- If dayStatus is "day_in_progress", a pillar that is "not_logged" (no meals, no sleep synced yet) is
-  "not logged so far," not a failure — just leave it out.
+- Structure — EXACTLY 2 short sentences:
+  1. One sentence that covers ALL FOUR pillars — sleep, activity, nutrition, recovery — each in a few
+     words, good or bad, as its label says (e.g. "Your meals are on a fair track and you've barely
+     started moving, while sleep and recovery haven't synced yet."). Never skip a pillar, even an
+     average one. A pillar labelled "not_logged" gets a short "not logged/synced yet" — never called a
+     failure. Two pillars with the same state may share one phrase ("sleep and recovery look strong").
+  2. One sentence with a real, specific, doable action for the pillar that needs attention most —
+     MANDATORY, never drop it. If every logged pillar is good, say how to keep it that way.
+- If activity is "good"/"excellent" while stepsVsGoal is still short of the goal, say in a few words
+  that movement/workout time earned it, so it doesn't read as a mistake next to the step count.
+- HARD LIMIT: the description must be under 240 characters total — keep each pillar to a few words.
 - NEVER use the words "today" or "yesterday". Speak directly to the user as "you".
 - Never invent foods, symptoms, or facts the labels don't imply. Never name a specific health marker or
   system (blood sugar, cholesterol, metabolism, cardiovascular health, diabetes, etc.) — a profile
@@ -425,7 +421,7 @@ Rules you must follow:${NO_NUMBERS_RULE}
 {"title": "", "description": "", "summary": ""}
 - title: max 6 words, naming the pillar that most needs attention (not a generic "Great Day" when one
   pillar clearly needs work).
-- description: 2-3 short, human sentences per the structure above, 100-200 characters.
+- description: exactly 2 short, human sentences per the structure above, 120-240 characters.
 - summary: one line, max 12 words, the single takeaway.`;
 
 const INSIGHT_SYSTEMS = {
@@ -500,6 +496,10 @@ const trimToSentence = (text, max, minKeep = 80) => {
 
 const INSIGHT_LLM_TIMEOUT_MS = 15000;
 
+// Bump whenever the prompts change meaningfully: a cached insight written
+// under an older version is regenerated once, even if its labels are equal.
+const INSIGHT_PROMPT_VERSION = 2;
+
 async function generateOne({ userId, profile, insightType, sourceDate, insightDate, data }) {
   const categories = buildCategories(insightType, data);
   const messages = [{
@@ -545,11 +545,11 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
       title: String(parsed.title).slice(0, 120),
       // 'overall' covers up to 4 pillars in 3 sentences and needs more room
       // than the single-topic types' 220-char cap.
-      description: trimToSentence(parsed.description, insightType === 'overall' ? 210 : 220),
+      description: trimToSentence(parsed.description, insightType === 'overall' ? 250 : 220),
       summary: String(parsed.summary || parsed.title).slice(0, 200),
       // Raw numbers kept for support/debugging; `categories` is what the text
       // was written from and what staleness is judged against.
-      dataSnapshot: { ...data, categories },
+      dataSnapshot: { ...data, categories, promptVersion: INSIGHT_PROMPT_VERSION },
       model,
       seen: false,
       seenAt: null,
@@ -847,7 +847,8 @@ async function findStaleInsights(userId, cachedInsights) {
       }
       const data = await collectDataForType(insightType, userId, sourceDate, { user, profile, overallData });
       if (!data) continue;
-      if (!sameCategories(buildCategories(insightType, data), cached.dataSnapshot?.categories)) {
+      if (cached.dataSnapshot?.promptVersion !== INSIGHT_PROMPT_VERSION
+        || !sameCategories(buildCategories(insightType, data), cached.dataSnapshot?.categories)) {
         stale.push({ insightType, sourceDate });
       }
     } catch (err) {
