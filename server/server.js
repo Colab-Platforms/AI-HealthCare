@@ -612,16 +612,10 @@ if (!process.env.VERCEL) {
     await runNudgeCron();
   }, { timezone: "Asia/Kolkata" });
 
-  // Daily Insights — 11:59 PM IST, the last moment of the day being analysed.
-  // Writes tomorrow-dated rows so the user opens the app to a fresh "yesterday
-  // you did X, today try Y" pair. Explicitly pinned to Asia/Kolkata: the host
-  // runs on UTC, where 11:59 PM would land at 5:29 AM IST and analyse the
-  // wrong day. See services/dailyInsightService.js.
-  const { runDailyInsightCron } = require("./services/dailyInsightService");
-  cron.schedule("59 23 * * *", async () => {
-    console.log("💡 Running Daily Insight generation cron...");
-    await runDailyInsightCron();
-  }, { timezone: "Asia/Kolkata" });
+  // Daily + final insights are NOT scheduled here: a QStash schedule at
+  // 23:59 IST calls POST /api/insights/internal/final-dispatch (see
+  // scripts/registerFinalInsightSchedule.js). An in-process cron missed the
+  // day on any restart/deploy at 23:59 and would double-run with 2 instances.
 
   // Streak Loss Warning — every evening at 8 PM IST (was 8 PM UTC = 1:30 AM IST)
   cron.schedule("0 20 * * *", async () => {

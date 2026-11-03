@@ -1,8 +1,13 @@
+const mongoose = require('mongoose');
+const { Client: QStashClient } = require('@upstash/qstash');
 const DailyInsight = require('../models/DailyInsight');
+const FinalDailyInsight = require('../models/FinalDailyInsight');
 const { getClient: getRedisClient } = require('../utils/redisClient');
 const {
   runDailyInsightCron,
-  generateForUser,
+  processUserDay,
+  getUsersWithDataOn,
+  hasFailures,
   ensureInsight,
   getLatestSleepNightDateKey,
   getLatestActivityDateKey,
@@ -173,25 +178,24 @@ exports.markInsightSeen = async (req, res) => {
 };
 
 // POST /api/insights/generate  (admin)
-// Manual trigger for testing and backfills.
-// Body: { sourceDate?: 'YYYY-MM-DD', userId?, force?: boolean }
-// Omitting sourceDate uses today in IST — i.e. exactly what the 23:59 cron does.
+// Manual trigger for testing and backfills — same per-user work as the
+// nightly job, run in-process instead of through QStash.
+// Body: { sourceDate?: 'YYYY-MM-DD', userId? }
 exports.triggerGeneration = async (req, res) => {
   try {
-    const { sourceDate, userId, force = false } = req.body || {};
+    const { sourceDate, userId } = req.body || {};
     if (sourceDate && !DATE_KEY_RE.test(sourceDate)) {
       return res.status(400).json({ success: false, message: 'sourceDate must be YYYY-MM-DD' });
     }
     const day = sourceDate || istDateKey();
 
-    // Single-user runs are fast enough to await; a full sweep can take minutes
-    // over the free-model rate limits, so that one is fire-and-forget.
+    // Single-user runs are fast enough to await; a full sweep is fire-and-forget.
     if (userId) {
-      const result = await generateForUser(userId, day, { force });
+      const result = await processUserDay(userId, day);
       return res.json({ success: true, sourceDate: day, insightDate: shiftDateKey(day, 1), result });
     }
 
-    runDailyInsightCron(day, { force }).catch((e) =>
+    runDailyInsightCron(day).catch((e) =>
       console.error('[DailyInsight] manual run failed:', e.message)
     );
     res.json({
@@ -203,5 +207,121 @@ exports.triggerGeneration = async (req, res) => {
   } catch (error) {
     console.error('triggerGeneration error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to trigger generation' });
+  }
+};
+
+// ------------------------------------------------- end-of-day final insights
+
+const QSTASH_BATCH_SIZE = 100;
+const FINAL_WORKER_PATH = '/api/insights/internal/final-worker';
+
+// POST /api/insights/internal/final-dispatch  (QStash schedule, 23:59 IST)
+// Finds the users with data that day and queues one worker job per user.
+// The deduplication id makes a doubled trigger enqueue each user only once.
+// Body: { date?: 'YYYY-MM-DD' } — defaults to the IST day that just ended
+// (an hour back, so a schedule delivered a few minutes past midnight still
+// processes the right day).
+exports.dispatchFinalInsights = async (req, res) => {
+  try {
+    const requested = req.body?.date;
+    if (requested && !DATE_KEY_RE.test(requested)) {
+      return res.status(400).json({ success: false, message: 'date must be YYYY-MM-DD' });
+    }
+    const date = requested || istDateKey(new Date(Date.now() - 60 * 60 * 1000));
+    const userIds = await getUsersWithDataOn(date);
+
+    const client = new QStashClient({ token: process.env.QSTASH_TOKEN });
+    const url = `${req.protocol}://${req.get('host')}${FINAL_WORKER_PATH}`;
+    for (let i = 0; i < userIds.length; i += QSTASH_BATCH_SIZE) {
+      await client.batchJSON(userIds.slice(i, i + QSTASH_BATCH_SIZE).map((userId) => ({
+        url,
+        body: { userId, date },
+        deduplicationId: `final-insight-${userId}-${date}`,
+        retries: 3,
+        timeout: '300s',
+        // At most 5 users in flight at once — every worker makes several LLM
+        // calls, and firing all users simultaneously trips provider rate limits.
+        flowControl: { key: 'final-insights', parallelism: 5 },
+      })));
+    }
+
+    console.log(`💡 [FinalInsight] ${date}: queued ${userIds.length} users`);
+    res.json({ success: true, date, queued: userIds.length });
+  } catch (error) {
+    console.error('dispatchFinalInsights error:', error.message);
+    // Non-200 so the QStash schedule retries the whole dispatch.
+    res.status(500).json({ success: false, message: 'Failed to dispatch final insights' });
+  }
+};
+
+// POST /api/insights/internal/final-worker  (QStash, one call per user)
+// Any failed type answers 500 so QStash retries; finals already written are
+// reused on the retry, so only the failed types cost another LLM call.
+exports.finalInsightWorker = async (req, res) => {
+  const { userId, date } = req.body || {};
+  if (!mongoose.isValidObjectId(userId) || !DATE_KEY_RE.test(date || '')) {
+    // 4xx: a malformed job will never succeed, so don't let QStash retry it.
+    return res.status(400).json({ success: false, message: 'userId and date are required' });
+  }
+  try {
+    const result = await processUserDay(userId, date, { source: 'scheduled' });
+    res.status(hasFailures(result) ? 500 : 200).json({ success: !hasFailures(result), date, result });
+  } catch (error) {
+    console.error(`finalInsightWorker error for ${userId} on ${date}:`, error.message);
+    res.status(500).json({ success: false, message: 'Failed to process user' });
+  }
+};
+
+// One backfill attempt per user/date per window, so repeatedly opening a
+// past day with no data doesn't re-run the data checks every time.
+const FINAL_BACKFILL_LOCK_MS = 30 * 60 * 1000;
+const FINAL_BACKFILL_MAX_DAYS = 89; // DailyHealthScore's retention window
+
+async function triggerFinalBackfill(userId, date) {
+  const redis = getRedisClient();
+  const key = `lock:final-backfill:${userId}:${date}`;
+  if (redis && await redis.set(key, '1', 'NX', 'PX', FINAL_BACKFILL_LOCK_MS) !== 'OK') return false;
+  const [hasData] = await getUsersWithDataOn(date, { userId });
+  if (!hasData) return false;
+  processUserDay(userId, date, { source: 'on_demand', finalOnly: true })
+    .catch((err) => console.error(`[FinalInsight] backfill failed for ${userId} on ${date}:`, err.message));
+  return true;
+}
+
+// GET /api/insights/final?date=YYYY-MM-DD
+// The permanent end-of-day insights for one day. A past day that has none
+// (the nightly job missed it) is backfilled in the background; the response
+// says `generating: true` and the next call returns them.
+exports.getFinalInsights = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!DATE_KEY_RE.test(date || '')) {
+      return res.status(400).json({ success: false, message: 'date must be YYYY-MM-DD' });
+    }
+    const today = istDateKey();
+    if (date > today) {
+      return res.status(400).json({ success: false, message: 'date cannot be in the future' });
+    }
+
+    const insights = await FinalDailyInsight.find({ userId: req.user._id, date })
+      .select('insightType title description summary')
+      .lean();
+
+    let generating = false;
+    if (insights.length === 0 && date < today && date >= shiftDateKey(today, -FINAL_BACKFILL_MAX_DAYS)) {
+      generating = await triggerFinalBackfill(req.user._id, date);
+    }
+
+    res.json({
+      success: true,
+      date,
+      // Today's finals are written at 23:59 IST — before that, none is normal.
+      isFinalized: date < today || insights.length > 0,
+      generating,
+      insights: insights.map(({ _id, ...rest }) => ({ id: _id, ...rest })),
+    });
+  } catch (error) {
+    console.error('getFinalInsights error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch final insights' });
   }
 };
