@@ -12,11 +12,7 @@ const MODELS = {
 
 
 const FREE_MODELS = (process.env.OPENROUTER_FREE_MODELS || [
-  // Nemotron first (free) while the over-generation bug (hasSomething
-  // falsy-check in dailyInsightService.js) and prompt rules get fully
-  // verified — Claude Haiku kept as a paid fallback further down the chain,
-  // not primary, until we're ready to eat its cost on every call again.
-  'nvidia/nemotron-3-super-120b-a12b:free',
+  'nvidia/nemotron-3-super-120b-a12b',
   'nvidia/nemotron-3-ultra-550b-a55b:free',
   'google/gemma-4-31b-it:free',
   'anthropic/claude-haiku-4.5',

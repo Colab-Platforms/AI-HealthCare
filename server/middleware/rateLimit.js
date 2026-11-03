@@ -139,4 +139,31 @@ const supplementWriteLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please slow down.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter };
+// Vault upload signing / finalizing / share creation. Per-user, Redis-backed:
+// each sign call mints Cloudinary upload credentials and each finalize makes a
+// Cloudinary Admin API call, so a runaway client retry loop costs real quota.
+const vaultWriteLimiter = rateLimit({
+  store: buildStore('vault-write'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+});
+
+// Public share links need no login, so they are limited per IP to slow token
+// guessing and file scraping. A normal viewer makes ~3 requests per open.
+const publicShareLimiter = rateLimit({
+  store: buildStore('vault-public'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => ipKeyGenerator(req.ip),
+  message: { message: 'Too many requests. Please try again in a minute.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter };

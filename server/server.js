@@ -366,6 +366,18 @@ try {
     console.error(adminErr.stack);
   }
 
+  // Medical Vault public share links. No auth (the token is the credential),
+  // so these are mounted ahead of the generic list and carry their own limiter.
+  try {
+    const publicShare = require("./routes/publicShareRoutes");
+    app.use("/api/public/shares", publicShare.api);
+    app.use("/r", publicShare.viewer);
+    app.use("/api/r", publicShare.viewer); // api/index.js prefixes every Vercel path with /api
+    console.log("[Server] Mounted: /api/public/shares, /r");
+  } catch (err) {
+    console.error("Error loading public share routes:", err.message);
+  }
+
   const routes = [
     { path: "/api/auth", module: "./routes/authRoutes" },
     { path: "/api/health", module: "./routes/healthRoutes" },
@@ -388,6 +400,7 @@ try {
     { path: "/api/translate", module: "./routes/translateRoutes" },
     { path: "/api/food-safety", module: "./routes/foodSafetyRoutes" },
     { path: "/api/documents", module: "./routes/documentRoutes" },
+    { path: "/api/v1/vault", module: "./routes/vaultRoutes" },
     { path: "/api/privacy",   module: "./routes/privacyRoutes" },
     { path: "/api/activity", module: "./routes/activityRoutes" },
     { path: "/api/insights", module: "./routes/insightRoutes" },
@@ -481,6 +494,18 @@ if (!process.env.VERCEL) {
   cron.schedule("0 0 * * *", async () => {
     console.log("⏰ Running scheduled Food Safety Sync...");
     await syncFoodSafetyDatabase();
+  });
+
+  // Medical Vault maintenance — hourly: destroy Cloudinary assets of deleted
+  // reports past their grace period, and of uploads that were never finalized.
+  const { purgeDeletedReports, cleanOrphanUploads } = require("./services/vaultJobs");
+  cron.schedule("15 * * * *", async () => {
+    try {
+      const [purge, orphans] = [await purgeDeletedReports(), await cleanOrphanUploads()];
+      if (purge.purged || orphans.destroyed) console.log("[VaultJobs]", { purge, orphans });
+    } catch (err) {
+      console.error("[VaultJobs] cron tick failed:", err.message);
+    }
   });
 
   // DPDPA Account Deletion — midnight daily
