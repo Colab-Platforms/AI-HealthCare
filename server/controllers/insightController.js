@@ -44,7 +44,7 @@ async function refreshIfStale(insights, insightType, insightDate, userId, getLat
 // user now gets the cached insight instantly and the fresh one on next open.
 async function refreshStaleInsights(userId, insightDate) {
   let insights = await DailyInsight.find({ userId, insightDate })
-    .select('insightType sourceDate dataSnapshot.categories')
+    .select('insightType sourceDate dataSnapshot.categories dataSnapshot.promptVersion')
     .lean();
 
   insights = await refreshIfStale(insights, 'sleep', insightDate, userId, getLatestSleepNightDateKey);
