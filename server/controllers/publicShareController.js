@@ -12,6 +12,8 @@ const storage = require('../services/vaultStorage');
 const { hashToken } = require('./vaultShareController');
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+// Absolute so it resolves the same behind Vercel (/api prefix), Render or local.
+const ASSET_BASE = '/api/public/shares/_assets';
 const GONE = { message: 'This link is invalid or has expired.' };
 
 const noIndexHeaders = (res) => {
@@ -107,7 +109,10 @@ const page = (body, title = 'Shared report') => `<!doctype html>
   .meta h1{font-size:18px;margin:0 0 2px}.meta p{margin:0;color:var(--muted);font-size:13px}
   .view{flex:1;min-height:0;padding:12px;display:flex;justify-content:center;align-items:flex-start;overflow:auto}
   .view img{max-width:100%;height:auto;border-radius:8px;background:var(--card)}
-  .view iframe{width:100%;height:100%;min-height:70vh;border:0;border-radius:8px;background:var(--card)}
+  #viewer{width:100%}
+  #viewer canvas{display:block;margin:0 auto 12px;max-width:100%;border-radius:6px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+  #viewer pre{margin:0;padding:14px;white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;background:var(--card);border-radius:8px}
+  .note{text-align:center;color:var(--muted);padding:40px 16px}
   .foot{padding:12px 16px}
   .btn{display:block;text-align:center;padding:14px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
   .gone{margin:auto;padding:32px 24px;text-align:center;max-width:360px}.gone h1{font-size:20px}.gone p{color:var(--muted)}
@@ -115,7 +120,8 @@ const page = (body, title = 'Shared report') => `<!doctype html>
 
 exports.renderViewer = async (req, res) => {
   noIndexHeaders(res);
-  res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; frame-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
+  // Scripts and the PDF worker come from our own origin only (see routes/publicShareRoutes.js /_assets).
+  res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self'; worker-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
   res.type('html');
   try {
     const hit = await resolve(req.params.token);
@@ -128,9 +134,12 @@ exports.renderViewer = async (req, res) => {
     touch(hit.share);
     const d = shape(req.params.token, hit);
     const isImage = d.file.mime.startsWith('image/');
+    const kind = d.file.mime === 'application/pdf' ? 'pdf' : 'text';
+    // PDFs/text are drawn by /_assets/vault-viewer.js; <iframe> can't show PDFs on Android Chrome.
     const viewer = isImage
       ? `<img src="${esc(d.filePath)}" alt="${esc(d.title)}">`
-      : `<iframe src="${esc(d.filePath)}" title="${esc(d.title)}"></iframe>`;
+      : `<div id="viewer" data-kind="${kind}" data-src="${esc(d.filePath)}"><p class="note">Loading report…</p></div>
+         <script type="module" src="${ASSET_BASE}/vault-viewer.js"></script>`;
     const expires = new Date(d.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     const reportDate = new Date(d.reportDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     const access = d.allowDownload ? 'download allowed' : 'view only';
