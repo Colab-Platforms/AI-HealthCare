@@ -1,5 +1,15 @@
 const DailyActivityMetric = require('../models/DailyActivityMetric');
 const { mergeDeviceRows } = require('../utils/wearableMerge');
+const { progressBand } = require('./insightCategories');
+
+const STEP_MESSAGES = {
+  not_started: "You haven't started moving yet — a short walk is an easy way to get going.",
+  just_started: "You're just getting started on your step goal. A short walk would help build momentum.",
+  low: "You're still well short of your step goal. A short walk after your next meal would help close the gap.",
+  about_half: "You're about halfway to your step goal. One more walk would get you much closer.",
+  close_to_goal: "You're close to your step goal — a short walk should get you there.",
+  goal_met: "You've hit your step goal. Keep this pace up.",
+};
 
 const RECENT_WINDOW_DAYS = 3;
 const BASELINE_WINDOW_DAYS = 30;
@@ -74,15 +84,11 @@ async function getActivityInsight(userId, stepGoal = 10000) {
   // usual pattern (Y steps/day)" wording cited numbers that don't match
   // anything else shown on screen (not today's step count, not the Activity
   // ring's score) and read as a disconnected, confusing stat next to them.
+  // Worded, not numbered — the step count and goal are already on screen
+  // right above this card.
   const todayKey = new Date().toISOString().split('T')[0];
   const todaySteps = rowsByDate[todayKey] ? mergeDeviceRows(rowsByDate[todayKey], ['steps']).steps : 0;
-  let message = null;
-  if (todaySteps >= stepGoal) {
-    message = `You've hit your goal today — ${todaySteps} of ${stepGoal} steps. Keep this pace up.`;
-  } else {
-    const remaining = stepGoal - todaySteps;
-    message = `You're at ${todaySteps} of your ${stepGoal}-step goal today — ${remaining} steps to go. A short walk would help close that gap.`;
-  }
+  const message = STEP_MESSAGES[progressBand(todaySteps, stepGoal)] || STEP_MESSAGES.not_started;
 
   return {
     activityAdherence,
