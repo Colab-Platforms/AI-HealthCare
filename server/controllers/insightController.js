@@ -7,8 +7,7 @@ const {
   getLatestSleepNightDateKey,
   getLatestActivityDateKey,
   getLatestOverallDateKey,
-  hasNewerDataThanInsight,
-  hasMeaningfulStepChange,
+  findStaleInsights,
   istDateKey,
   shiftDateKey,
 } = require('../services/dailyInsightService');
@@ -45,32 +44,30 @@ async function refreshIfStale(insights, insightType, insightDate, userId, getLat
 // user now gets the cached insight instantly and the fresh one on next open.
 async function refreshStaleInsights(userId, insightDate) {
   let insights = await DailyInsight.find({ userId, insightDate })
-    .select('insightType sourceDate updatedAt dataSnapshot')
+    .select('insightType sourceDate dataSnapshot.categories')
     .lean();
 
   insights = await refreshIfStale(insights, 'sleep', insightDate, userId, getLatestSleepNightDateKey);
   insights = await refreshIfStale(insights, 'fitness', insightDate, userId, getLatestActivityDateKey);
   insights = await refreshIfStale(insights, 'overall', insightDate, userId, getLatestOverallDateKey);
 
-  // Within-day staleness: 'overall' when a meal/sleep landed after it was
-  // written or steps moved meaningfully; 'fitness' on steps alone.
-  for (const insightType of ['overall', 'fitness']) {
+  // Within-day: regenerate only the types whose category labels changed.
+  const stale = await findStaleInsights(userId, insights);
+  for (const { insightType, sourceDate } of stale) {
     try {
-      const cached = insights.find((i) => i.insightType === insightType);
-      if (!cached || !cached.dataSnapshot) continue;
-      const stale = (insightType === 'overall' && await hasNewerDataThanInsight(userId, cached))
-        || await hasMeaningfulStepChange(userId, cached);
-      if (stale) await ensureInsight(userId, insightType, insightDate, { force: true, sameDay: true });
+      await ensureInsight(userId, insightType, sourceDate, { force: true, sameDay: sourceDate === insightDate });
     } catch (refreshError) {
-      console.error(`getTodaysInsights ${insightType} freshness refresh error:`, refreshError.message);
+      console.error(`getTodaysInsights ${insightType} category refresh error:`, refreshError.message);
     }
   }
 }
 
-// One refresh per user at a time, across Render/Vercel instances — without
-// it, a user reopening the app mid-refresh would queue duplicate LLM calls.
-// TTL covers the worst case (5 types x 4 fallback models x 15s timeout).
+// One refresh per user at a time, across Render/Vercel instances, and at
+// most one per cooldown window — the staleness check itself recomputes the
+// day's data, so it shouldn't rerun on every rapid reopen either. The lock
+// TTL covers a worst-case run; on completion it shrinks to the cooldown.
 const REFRESH_LOCK_TTL_MS = 5 * 60 * 1000;
+const REFRESH_COOLDOWN_MS = 2 * 60 * 1000;
 const localRefreshes = new Set();
 
 function triggerBackgroundRefresh(userId, insightDate) {
@@ -86,8 +83,12 @@ function triggerBackgroundRefresh(userId, insightDate) {
     try {
       await refreshStaleInsights(userId, insightDate);
     } finally {
-      localRefreshes.delete(key);
-      if (redis) await redis.del(key).catch(() => {});
+      if (redis) {
+        localRefreshes.delete(key);
+        await redis.pexpire(key, REFRESH_COOLDOWN_MS).catch(() => {});
+      } else {
+        setTimeout(() => localRefreshes.delete(key), REFRESH_COOLDOWN_MS).unref();
+      }
     }
   })().catch((err) => console.error('getTodaysInsights background refresh error:', err.message));
 }
