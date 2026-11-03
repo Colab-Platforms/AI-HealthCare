@@ -131,16 +131,21 @@ function buildLastNight(session, idealRange, nativeScoreMap) {
  */
 // `sleepGoalHours` is the user's raw stored value (undefined when never set);
 // getSleepGoal resolves it, falling back to the age-based midpoint.
-async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours } = {}) {
+// `asOfDate` ('YYYY-MM-DD') analyses the picture as it stood on that day —
+// windows end there and later nights are ignored — so a past day's insight
+// can still be written after newer nights have synced. Omitted = now.
+async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours, asOfDate = null } = {}) {
   const goal = getSleepGoal({ profile: { age, lifestyle: { sleepGoalHours } } });
   sleepGoalHours = goal.goalHours;
   // "within/below" and the shortfall are measured from the user's goal, not
   // the bottom of the healthy band.
   const idealRange = goal.targetRange;
 
-  const since = new Date();
+  const anchor = asOfDate ? new Date(`${asOfDate}T00:00:00.000Z`) : new Date();
+  const since = new Date(anchor);
   since.setUTCDate(since.getUTCDate() - REGULARITY_WINDOW_DAYS);
   since.setUTCHours(0, 0, 0, 0);
+  const dateFilter = asOfDate ? { $gte: since, $lte: anchor } : { $gte: since };
 
   // One row per user+deviceType+day — a user with two connected devices (or a
   // mid-day switch) can have more than one SleepSession row for the same
@@ -154,7 +159,7 @@ async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours } =
   // (confirmed live: Health Connect reported 7.6h/458min for a night WHOOP
   // correctly measured at 8h/482min, and the unmerged query picked Health
   // Connect's).
-  const rawSessions = await SleepSession.find({ user: userId, date: { $gte: since } }).lean();
+  const rawSessions = await SleepSession.find({ user: userId, date: dateFilter }).lean();
   // filterPlausibleSleep must run per calendar night, not across the whole
   // window at once — group first so a broken reading on one night can't
   // influence which row wins on another.
@@ -194,7 +199,7 @@ async function getSleepClinicalAnalysis(userId, { age = null, sleepGoalHours } =
     };
   }
 
-  const trendStart = new Date();
+  const trendStart = new Date(anchor);
   trendStart.setUTCDate(trendStart.getUTCDate() - TREND_WINDOW_DAYS);
   trendStart.setUTCHours(0, 0, 0, 0);
   const prevTrendStart = new Date(trendStart);

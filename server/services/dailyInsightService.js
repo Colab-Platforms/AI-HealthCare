@@ -25,6 +25,8 @@ const { calculateDailyScore } = require('./dailyHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { buildCategories, sameCategories } = require('./insightCategories');
+const FinalDailyInsight = require('../models/FinalDailyInsight');
+const { FINAL_INSIGHT_TYPES } = FinalDailyInsight;
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 const { getNativeSleepScoresByDate, resolveSleepQualityScore } = require('./sleepScoreService');
 const { getActivityInsight } = require('./activityInsightService');
@@ -265,15 +267,19 @@ const insightData = {
   }),
 };
 
+// "> 0", not "!= null": the nutrition-score GET creates a zero row for a day
+// with nothing logged, and those zero rows used to produce "you didn't log
+// any food" insights for users who simply hadn't used the app.
 const hasInsightData = (type, data) => {
+  if (!data) return false;
   if (type === 'nutrition') return data.meals.length > 0
-    || data.calories != null || data.protein != null || data.waterGlasses != null;
+    || data.calories > 0 || data.protein > 0 || data.waterGlasses > 0;
   if (type === 'fitness') return data.workouts.length > 0
-    || data.steps != null || data.activeMinutes != null || data.completedTasks > 0;
+    || data.steps > 0 || data.activeMinutes > 0 || data.completedTasks > 0;
   if (type === 'smoking') return data.cigarettes != null;
   if (type === 'alcohol') return data.alcoholUnits != null;
-  if (type === 'hydration') return data.waterGlasses != null;
-  return data != null;
+  if (type === 'hydration') return data.waterGlasses > 0;
+  return true;
 };
 
 // Recovery pulls from RecoveryDailySummary, not the shared overallData
@@ -335,7 +341,9 @@ const NO_NUMBERS_RULE = `
   those labels — never claim something stronger or weaker than the label says, and never mention a
   pillar whose label is "not_logged" or null except as "not logged yet".
 - dayStatus "day_in_progress" means the day isn't over: speak in "so far" terms and never give a final
-  verdict on the whole day.`;
+  verdict on the whole day.
+- dayStatus "full_day" means the day is over: describe it in the past tense, call anything "not_logged"
+  simply not logged, and frame the action for the next day — never "now" or "right away".`;
 
 const SHARED_RULES = `
 Rules you must follow:${NO_NUMBERS_RULE}
@@ -435,7 +443,7 @@ const INSIGHT_SYSTEMS = {
   hydration: `You are a friendly health coach inside the take.health app. Write a daily insight focused only on how the user's logged water intake compares with their water goal.${SHARED_RULES}`,
 };
 
-// Single source of truth for which types generateForUser loops over and how
+// Single source of truth for which types processUserDay loops over and how
 // many a failed-user counts as in runDailyInsightCron's stats — was
 // hardcoded as 4 in two places before recovery/smoking/alcohol/hydration
 // were added, which silently under-counted failures once the list grew.
@@ -500,7 +508,10 @@ const INSIGHT_LLM_TIMEOUT_MS = 15000;
 // under an older version is regenerated once, even if its labels are equal.
 const INSIGHT_PROMPT_VERSION = 2;
 
-async function generateOne({ userId, profile, insightType, sourceDate, insightDate, data }) {
+// The LLM call alone — returns the finished text without saving it, so one
+// call can be stored both as the permanent final and as the next morning's
+// live card.
+async function composeInsight({ userId, profile, insightType, sourceDate, data }) {
   const categories = buildCategories(insightType, data);
   const messages = [{
     role: 'user',
@@ -538,24 +549,58 @@ async function generateOne({ userId, profile, insightType, sourceDate, insightDa
     );
   }
 
+  return {
+    title: String(parsed.title).slice(0, 120),
+    // 'overall' covers four pillars and needs more room than single-topic types.
+    description: trimToSentence(parsed.description, insightType === 'overall' ? 250 : 220),
+    summary: String(parsed.summary || parsed.title).slice(0, 200),
+    categories,
+    model,
+  };
+}
+
+function saveDailyInsight({ userId, insightDate, sourceDate, insightType, data, composed }) {
   return DailyInsight.findOneAndUpdate(
     { userId, insightDate, insightType },
     {
       userId, insightDate, sourceDate, insightType,
-      title: String(parsed.title).slice(0, 120),
-      // 'overall' covers up to 4 pillars in 3 sentences and needs more room
-      // than the single-topic types' 220-char cap.
-      description: trimToSentence(parsed.description, insightType === 'overall' ? 250 : 220),
-      summary: String(parsed.summary || parsed.title).slice(0, 200),
+      title: composed.title,
+      description: composed.description,
+      summary: composed.summary,
       // Raw numbers kept for support/debugging; `categories` is what the text
       // was written from and what staleness is judged against.
-      dataSnapshot: { ...data, categories, promptVersion: INSIGHT_PROMPT_VERSION },
-      model,
+      dataSnapshot: { ...data, categories: composed.categories, promptVersion: INSIGHT_PROMPT_VERSION },
+      model: composed.model,
       seen: false,
       seenAt: null,
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+}
+
+async function generateOne({ userId, profile, insightType, sourceDate, insightDate, data }) {
+  const composed = await composeInsight({ userId, profile, insightType, sourceDate, data });
+  return saveDailyInsight({ userId, insightDate, sourceDate, insightType, data, composed });
+}
+
+// Write-once: a duplicate (retried job, double trigger) is ignored, never
+// overwrites the stored final.
+async function saveFinalInsight({ userId, date, insightType, data, composed, source }) {
+  try {
+    await FinalDailyInsight.create({
+      userId, date, insightType,
+      title: composed.title,
+      description: composed.description,
+      summary: composed.summary,
+      categories: composed.categories,
+      dataSnapshot: data,
+      promptVersion: INSIGHT_PROMPT_VERSION,
+      model: composed.model,
+      source,
+    });
+  } catch (err) {
+    if (err.code !== 11000) throw err;
+  }
 }
 
 // Types with their OWN data source (not collectOverallData) — 'sleep' had
@@ -584,13 +629,19 @@ async function buildProfile(userId) {
 }
 
 /** Fetches (or null) the type-specific data payload a given insightType needs. */
-async function collectDataForType(insightType, userId, sourceDate, { user, profile, overallData }) {
+// `isFinal`: the 23:59 job runs while it is still technically that day in
+// IST, but describes the finished day — never "so far" wording.
+async function collectDataForType(insightType, userId, sourceDate, { user, profile, overallData, isFinal = false }) {
   // Same default the lifestyle-goals API reports when the user never set one.
   const waterGoalMl = user?.profile?.lifestyle?.waterGoalMl || 2000;
+  const isPartialDay = !isFinal && sourceDate === istDateKey();
   if (insightType === 'sleep') {
     const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours;
-    const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours });
-    return analysis.lastNight ? { date: sourceDate, ...analysis } : null;
+    const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours, asOfDate: sourceDate });
+    // lastNight is the latest session in a 14-day window, not necessarily
+    // this date's — without this check a user with no sleep that day got
+    // an old night described as "last night" (121 users in one night's run).
+    return analysis.lastNight?.date === sourceDate ? { date: sourceDate, ...analysis } : null;
   }
   if (insightType === 'recovery') {
     return collectRecoveryData(userId, sourceDate);
@@ -621,7 +672,7 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
       // getLatestActivityDateKey in insightController.js) — unlike a
       // completed night's sleep, the day's steps are still accumulating, so
       // the model must hedge ("so far") instead of making a final verdict.
-      isPartialDay: sourceDate === istDateKey(),
+      isPartialDay,
     };
   }
   if (insightType === 'overall') {
@@ -651,7 +702,7 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
       // getLatestOverallDateKey in insightController.js) — the day is still
       // in progress, so nutrition/activity being thin isn't necessarily a
       // shortfall yet, just "not logged so far."
-      isPartialDay: sourceDate === istDateKey(),
+      isPartialDay,
       waterGoalMl,
     };
   }
@@ -661,40 +712,105 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
 }
 
 /**
- * Generates all eight independent insight types for one user. Missing
- * category data only skips that category; it does not prevent the other
- * insights from generating.
+ * The end-of-day job for one user: writes the permanent final for each final
+ * type (overall/sleep/fitness/nutrition/recovery) and the next morning's live
+ * card for every type, from ONE LLM call per type. Types with no data that
+ * day are skipped. Safe to retry: an existing final is reused, never
+ * regenerated, and a live card already written from this day is left alone.
+ *
+ * finalOnly: just fill in missing finals (the on-demand backfill for a past
+ * date) without touching the live cards.
  */
-async function generateForUser(userId, sourceDate, { force = false } = {}) {
-  const insightDate = shiftDateKey(sourceDate, 1);
+async function processUserDay(userId, dateKey, { source = 'scheduled', finalOnly = false } = {}) {
+  const insightDate = shiftDateKey(dateKey, 1);
   const { user, profile } = await buildProfile(userId);
-  const overallData = await collectOverallData(userId, sourceDate);
+  const overallData = await collectOverallData(userId, dateKey);
+  const types = finalOnly ? FINAL_INSIGHT_TYPES : INSIGHT_TYPES;
+
+  const [finals, liveCards] = await Promise.all([
+    FinalDailyInsight.find({ userId, date: dateKey }).lean(),
+    finalOnly ? [] : DailyInsight.find({ userId, insightDate, sourceDate: dateKey })
+      .select('insightType dataSnapshot.promptVersion').lean(),
+  ]);
+  const finalByType = new Map(finals.map((f) => [f.insightType, f]));
+  const liveDone = new Set(liveCards
+    .filter((c) => c.dataSnapshot?.promptVersion === INSIGHT_PROMPT_VERSION)
+    .map((c) => c.insightType));
 
   const result = {};
-
-  for (const insightType of INSIGHT_TYPES) {
+  for (const insightType of types) {
     try {
-      if (!force) {
-        const existing = await DailyInsight.exists({ userId, insightDate, insightType });
-        if (existing) { result[insightType] = 'already_exists'; continue; }
+      const isFinalType = FINAL_INSIGHT_TYPES.includes(insightType);
+      const existingFinal = finalByType.get(insightType);
+
+      if (existingFinal) {
+        if (!finalOnly && !liveDone.has(insightType)) {
+          await saveDailyInsight({
+            userId, insightDate, sourceDate: dateKey, insightType,
+            data: existingFinal.dataSnapshot,
+            composed: existingFinal,
+          });
+        }
+        result[insightType] = 'final_exists';
+        continue;
+      }
+      if (!isFinalType && liveDone.has(insightType)) {
+        result[insightType] = 'already_exists';
+        continue;
       }
 
-      const data = await collectDataForType(insightType, userId, sourceDate, { user, profile, overallData });
-      const hasData = OWN_SOURCE_TYPES.has(insightType) ? data != null : hasInsightData(insightType, overallData);
-      if (!data || !hasData) {
+      const data = await collectDataForType(insightType, userId, dateKey, { user, profile, overallData, isFinal: true });
+      const hasData = OWN_SOURCE_TYPES.has(insightType) ? data != null : (data != null && hasInsightData(insightType, overallData));
+      if (!hasData) {
         result[insightType] = 'skipped_no_data';
         continue;
       }
 
-      await generateOne({ userId, profile, insightType, sourceDate, insightDate, data });
+      const composed = await composeInsight({ userId, profile, insightType, sourceDate: dateKey, data });
+      if (isFinalType) await saveFinalInsight({ userId, date: dateKey, insightType, data, composed, source });
+      if (!finalOnly) await saveDailyInsight({ userId, insightDate, sourceDate: dateKey, insightType, data, composed });
       result[insightType] = 'generated';
     } catch (err) {
-      console.error(`[DailyInsight] ${insightType} failed for user ${userId}:`, err.message);
+      console.error(`[DailyInsight] ${insightType} failed for user ${userId} on ${dateKey}:`, err.message);
       result[insightType] = `failed: ${err.message}`;
     }
   }
 
   return result;
+}
+
+const hasFailures = (result) => Object.values(result).some((o) => String(o).startsWith('failed'));
+
+/**
+ * Users who logged or synced ANY data on the given IST day — the only users
+ * the end-of-day job runs for. Asks each data collection "who has rows on
+ * this date" (one indexed distinct() each) instead of walking all users and
+ * computing a score per user to find out (~4 lakh queries for ~88 users).
+ * Pass `userId` to check a single user.
+ */
+async function getUsersWithDataOn(dateKey, { userId = null } = {}) {
+  const dayKey = utcMidnight(dateKey);
+  const { start, end } = istDayWindow(dateKey);
+  const scope = (field) => (userId ? { [field]: userId } : {});
+
+  const lists = await Promise.all([
+    FoodLog.distinct('userId', { ...scope('userId'), timestamp: { $gte: start, $lte: end } }),
+    // > 0, not "row exists": the nutrition-score GET creates empty rows.
+    NutritionSummary.distinct('userId', { ...scope('userId'), date: dayKey, $or: [{ waterIntake: { $gt: 0 } }, { totalCalories: { $gt: 0 } }] }),
+    DailyActivityMetric.distinct('user', { ...scope('user'), date: dayKey, steps: { $gt: 0 } }),
+    SleepSession.distinct('user', { ...scope('user'), date: dayKey }),
+    ExerciseLog.distinct('userId', { ...scope('userId'), timestamp: { $gte: start, $lte: end } }),
+    HealthMetric.distinct('userId', { ...scope('userId'), recordedAt: { $gte: start, $lte: end } }),
+    User.distinct('_id', {
+      ...scope('_id'),
+      $or: [{ [`smokeLog.${dateKey}`]: { $exists: true } }, { [`alcoholLog.${dateKey}`]: { $exists: true } }],
+    }),
+  ]);
+
+  const ids = [...new Set(lists.flat().map(String))];
+  if (ids.length === 0) return [];
+  const active = await User.distinct('_id', { _id: { $in: ids }, isActive: true, role: { $ne: 'doctor' } });
+  return active.map(String);
 }
 
 /**
@@ -739,20 +855,21 @@ async function ensureInsight(userId, insightType, sourceDate, { force = false, s
 }
 
 /**
- * The nightly sweep. Defaults to "today in IST" as the source date, which is
- * correct when invoked by the 23:59 IST cron; pass an explicit key to backfill.
+ * In-process sweep over every user with data on `sourceDate` — the manual
+ * admin backfill path. Production's nightly run fans the same per-user work
+ * out through QStash instead (see controllers/insightController.js).
  */
-async function runDailyInsightCron(sourceDate = istDateKey(), { force = false } = {}) {
+async function runDailyInsightCron(sourceDate = istDateKey()) {
   const insightDate = shiftDateKey(sourceDate, 1);
   console.log(`💡 [DailyInsight] Generating insights from ${sourceDate} for display on ${insightDate}...`);
 
-  const users = await User.find({ isActive: true, role: { $ne: 'doctor' } }).select('_id').lean();
+  const users = await getUsersWithDataOn(sourceDate);
   const stats = { users: users.length, generated: 0, skipped: 0, failed: 0 };
 
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(
-      batch.map((u) => generateForUser(u._id, sourceDate, { force }))
+      batch.map((id) => processUserDay(id, sourceDate))
     );
 
     results.forEach((r) => {
@@ -860,7 +977,9 @@ async function findStaleInsights(userId, cachedInsights) {
 
 module.exports = {
   runDailyInsightCron,
-  generateForUser,
+  processUserDay,
+  getUsersWithDataOn,
+  hasFailures,
   ensureInsight,
   collectOverallData,
   getLatestSleepNightDateKey,
