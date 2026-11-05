@@ -25,7 +25,9 @@ const { calculateDailyScore } = require('./dailyHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
 const { buildCategories, sameCategories, isLiveDay } = require('./insightCategories');
-const { findTextProblems, findLabelProblems, autoFix, NUMBER_PATTERN } = require('./insightTextRules');
+const {
+  findTextProblems, findLabelProblems, findRepeatProblems, autoFix, NUMBER_PATTERN,
+} = require('./insightTextRules');
 const FinalDailyInsight = require('../models/FinalDailyInsight');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const { getSleepGoal } = require('../utils/sleepGoal');
@@ -376,10 +378,11 @@ async function getPersonalPatterns(userId, sourceDate, goalHours) {
   };
 }
 
-// Consecutive reward days just before sourceDate, from the stored finals.
-async function countRewardStreak(userId, sourceDate) {
+// Consecutive reward days just before sourceDate, from the stored finals of
+// the same insight type.
+async function countRewardStreak(userId, sourceDate, insightType = 'overall') {
   const finals = await FinalDailyInsight.find({
-    userId, insightType: 'overall', date: { $gte: shiftDateKey(sourceDate, -7), $lt: sourceDate },
+    userId, insightType, date: { $gte: shiftDateKey(sourceDate, -7), $lt: sourceDate },
   }).select('date categories.tier').lean();
   const tierByDate = new Map(finals.map((f) => [f.date, f.categories?.tier]));
   let days = 0;
@@ -428,8 +431,19 @@ const NO_NUMBERS_RULE = `
   with a verb (Try, Aim, Get, Plan, Add, Give, Keep...), optionally after "Tonight," or "Tomorrow,".
 - You are the take.health Coach. Never claim to be a doctor or a named person, never sign off.`;
 
+// tier/reason for a single pillar are picked in code from the user's data
+// (insightCategories.withTier), the same way the overall link is.
+const PILLAR_TIER_RULES = `
+- tier "reward": this pillar fully came together. Celebrate it in simple words; if rewardStreak is
+  second_day, third_day or several_days, say so naturally ("second day in a row", "third night in a
+  row", "another day in a row"). The action is a small way to keep it going. Never call anything
+  short, low or missing.
+- tier "improve" or "in_progress": if reason is not "none", explain that reason as simple cause and
+  effect, hedged with "likely" or "may", and make the action act on it. Never add a reason that isn't
+  given.`;
+
 const SHARED_RULES = `
-Rules you must follow:${NO_NUMBERS_RULE}
+Rules you must follow:${NO_NUMBERS_RULE}${PILLAR_TIER_RULES}
 - Open by acknowledging how they're actually doing in plain human words, THEN the action:
     - If the result is BELOW where it should be: what to do to make it better.
     - If the result is GOOD or on track: one concrete thing that keeps it that way.
@@ -448,7 +462,7 @@ Rules you must follow:${NO_NUMBERS_RULE}
 - summary: one line, max 12 words, the single takeaway.`;
 
 const SLEEP_SHARED_RULES = `
-Rules you must follow:${NO_NUMBERS_RULE}
+Rules you must follow:${NO_NUMBERS_RULE}${PILLAR_TIER_RULES}
 - Open by acknowledging how they're actually doing, THEN the action:
     - lastNightVsGoal "below": what to do about it, sized by shortBy (slightly_short -> "a little
       earlier to bed", well_short -> "a noticeably earlier bedtime").
@@ -540,6 +554,50 @@ const OVERALL_EXAMPLES = {
   incomplete_data: "Your sleep and movement looked great, but meals and recovery weren't logged, so the full picture is missing. Tomorrow, log your meals too so we can see how it all fits together.",
 };
 
+// Style guides for the single-pillar cards, one per reward/reason case.
+const PILLAR_EXAMPLES = {
+  sleep: {
+    reward_first_day: 'You reached your sleep goal and the rest was good quality, the kind of night that makes the day easier. Keep the same bedtime tonight to repeat it.',
+    reward_streak: 'Third night in a row you reached your sleep goal with good quality rest, so your routine is clearly working. Keep winding down at the same time tonight.',
+    irregular_bedtime: 'You were well short of your sleep goal, and going to bed at a different time each night makes it harder to fall asleep. Tonight, pick one bedtime and keep it for the week.',
+    sleep_debt: 'You were short of your sleep goal again, and the missed sleep from this week is building up. Tonight, aim for a noticeably earlier bedtime to start catching up.',
+    none: 'You were a little short of your sleep goal last night, though the sleep you got was decent. Tonight, try getting into bed a little earlier.',
+  },
+  fitness: {
+    reward_first_day: 'You reached your step goal, a good active day. Keep a similar walk in your day tomorrow.',
+    reward_streak: "Third day in a row you reached your step goal, that's becoming a habit. Keep the same walk in your day tomorrow.",
+    workout_counted: 'Your workout counted, but your steps stayed well short of your goal. Tomorrow, add a short walk after a meal to close the gap.',
+    short_sleep: 'Your steps stayed well short of your goal, and a short night may have left you with less energy. Try a short walk after your next meal.',
+    live: 'Your steps are still low so far. Try a short walk in your next break to get moving.',
+    none: 'Your steps stayed short of your goal. Tomorrow, add a short walk after lunch to get closer.',
+  },
+  nutrition: {
+    reward_first_day: 'Your meals were balanced, with calories and protein right where they should be. Keep the same kind of meals tomorrow.',
+    reward_streak: 'Another day in a row with balanced meals and enough protein, your eating is on a steady track. Keep the same rhythm tomorrow.',
+    workout_needs_protein: 'You got a workout in, but protein stayed low, and your muscles need it to recover. Tomorrow, add eggs, paneer or dal to one of your meals.',
+    underfuel_active: 'You were very active, but your meals came in light for a day like that. Tomorrow, add a proper snack around your workout to refuel.',
+    live: 'No meals are logged so far. Try logging your next meal as soon as you eat it.',
+    none: 'Your meals were logged, but protein stayed under your goal. Tomorrow, add a protein-rich food like eggs, paneer or dal to one meal.',
+  },
+  recovery: {
+    reward_first_day: 'Your body is well recovered and ready for a normal day. Keep your usual routine and enjoy the energy.',
+    reward_streak: 'Another well recovered day in a row, your rest is clearly paying off. Keep the same sleep routine tonight.',
+    short_sleep: "Your recovery is low, and last night's short sleep likely played a part. Tomorrow, keep things easy and give your body time to catch up.",
+    hrv_below_usual: 'Your recovery is low and your body is showing more strain than usual. Tomorrow, keep it to light movement and get to bed on time.',
+    rhr_above_usual: 'Your recovery is low, with your resting heart rate higher than usual, a sign your body is working harder. Tomorrow, keep things light and drink enough water.',
+    none: 'Your recovery is fair, so your body is partly ready. Tomorrow, go for moderate activity and keep a steady bedtime.',
+  },
+};
+
+const pillarExample = (insightType, c) => {
+  const examples = PILLAR_EXAMPLES[insightType];
+  if (!examples || !c) return null;
+  if (c.tier === 'reward') return examples[c.rewardStreak === 'first_day' ? 'reward_first_day' : 'reward_streak'];
+  if (c.reason && examples[c.reason]) return examples[c.reason];
+  if (isLiveDay(c.dayStatus) && examples.live) return examples.live;
+  return examples.none;
+};
+
 const overallExample = (c) => {
   if (!c) return null;
   if (c.tier === 'reward') return OVERALL_EXAMPLES[c.rewardStreak === 'first_day' ? 'reward_first_day' : 'reward_streak'];
@@ -582,7 +640,7 @@ const INSIGHT_LABELS = {
 const buildUserPrompt = (profile, label, date, categories, previous, example) => `User profile: ${JSON.stringify(profile)}
 ${label} for ${date} (category labels):
 ${JSON.stringify(categories)}
-${previous ? `\nPrevious day's labels: ${JSON.stringify(previous.categories)}` : ''}${previous?.message ? `\nPrevious day's message (don't open the same way): "${previous.message}"` : ''}${example ? `\nWrite it in the same structure and the same simple words as this example, adapted to the labels above (never copy a fact the labels don't show): "${example}"` : ''}
+${previous ? `\nPrevious day's labels: ${JSON.stringify(previous.categories)}` : ''}${previous?.message ? `\nPrevious day's message (don't open the same way): "${previous.message}"` : ''}${example ? `\nStyle guide (do NOT copy its sentences): follow this example's structure and its simple everyday words, but write your own sentences from the labels above, and never repeat a fact the labels don't show: "${example}"` : ''}
 
 Write the insight for this date.`;
 
@@ -650,7 +708,7 @@ const INSIGHT_LLM_TIMEOUT_MS = 15000;
 
 // Bump whenever the prompts change meaningfully: a cached insight written
 // under an older version is regenerated once, even if its labels are equal.
-const INSIGHT_PROMPT_VERSION = 4;
+const INSIGHT_PROMPT_VERSION = 5;
 
 // First try plus two corrective rewrites.
 const INSIGHT_MAX_ATTEMPTS = 3;
@@ -670,7 +728,7 @@ async function composeInsight({ userId, profile, insightType, sourceDate, data }
   const previous = categories?.dayStatus === 'day_in_progress'
     ? null
     : await getPreviousDayContext(userId, insightType, sourceDate).catch(() => null);
-  const example = insightType === 'overall' ? overallExample(categories) : null;
+  const example = insightType === 'overall' ? overallExample(categories) : pillarExample(insightType, categories);
   const firstTry = [{
     role: 'user',
     content: buildUserPrompt(toPromptProfile(profile), INSIGHT_LABELS[insightType], data.date || sourceDate, categories, previous, example),
@@ -719,7 +777,11 @@ async function composeInsight({ userId, profile, insightType, sourceDate, data }
 
     if (draft) {
       text = draft;
-      problems = [...findTextProblems(draft, { dayIsOver }), ...findLabelProblems(draft, categories, insightType)];
+      problems = [
+        ...findTextProblems(draft, { dayIsOver }),
+        ...findLabelProblems(draft, categories, insightType),
+        ...findRepeatProblems(draft.description, { example, previousMessage: previous?.message }),
+      ];
       if (draft.description.length < 80) problems.push('description is too short — write two full sentences');
     } else if (!text) {
       problems = ['is not the requested JSON'];
@@ -812,16 +874,30 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
   // With isPartialDay, decides whether the live card is in the "day just
   // started" window where comparing with the day before still makes sense.
   const beforeNoon = isPartialDay && istHour() < 12;
+  // For a pillar's reward streak ("third night in a row").
+  const streak = () => countRewardStreak(userId, sourceDate, insightType).catch(() => 0);
   if (insightType === 'sleep') {
     const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours;
-    const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours, asOfDate: sourceDate });
+    const [analysis, rewardStreakBefore] = await Promise.all([
+      getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours, asOfDate: sourceDate }),
+      streak(),
+    ]);
     // lastNight is the latest session in a 14-day window, not necessarily
     // this date's — without this check a user with no sleep that day got
     // an old night described as "last night" (121 users in one night's run).
-    return analysis.lastNight?.date === sourceDate ? { date: sourceDate, ...analysis } : null;
+    return analysis.lastNight?.date === sourceDate ? { date: sourceDate, ...analysis, rewardStreakBefore } : null;
   }
   if (insightType === 'recovery') {
-    return collectRecoveryData(userId, sourceDate);
+    // Last night's sleep, so a low recovery can be put down to a short night
+    // only when that night really was short.
+    const [recovery, sleepRows, rewardStreakBefore] = await Promise.all([
+      collectRecoveryData(userId, sourceDate),
+      SleepSession.find({ user: userId, date: utcMidnight(sourceDate) }).select('totalSleepMinutes').lean(),
+      streak(),
+    ]);
+    if (!recovery) return null;
+    const sleepMinutes = Math.max(0, ...sleepRows.map((s) => s.totalSleepMinutes || 0)) || null;
+    return { ...recovery, sleepMinutes, sleepGoalHours: getSleepGoal(user).goalHours, rewardStreakBefore };
   }
   if (insightType === 'fitness') {
     // Without a real baseline, the model had no number to compare the day's
@@ -832,9 +908,17 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
     // check that claim against). Same baseline math activityScoreInsightService
     // already uses for its own goal/baseline notification logic.
     if (!overallData) return null;
-    const baseline = await getActivityInsight(userId, getStepGoal(user).goalSteps);
+    const [baseline, rewardStreakBefore] = await Promise.all([
+      getActivityInsight(userId, getStepGoal(user).goalSteps),
+      streak(),
+    ]);
     return {
       ...insightData.fitness(overallData),
+      // Last night, so low steps can be put down to a short night only when
+      // it really was short.
+      sleepMinutes: overallData.sleepMinutes,
+      sleepGoalHours: getSleepGoal(user).goalHours,
+      rewardStreakBefore,
       // Goal, not a historical trend average — "today vs your goal" is the
       // comparison the ring itself expresses (steps X of goal Y); the
       // avgStepsLast3Days/personalBaselineSteps trend used to be cited
@@ -898,9 +982,18 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
   }
   if (!overallData) return null;
   const typeData = insightData[insightType](overallData);
-  return (insightType === 'nutrition' || insightType === 'hydration')
-    ? { ...typeData, waterGoalMl, isPartialDay, beforeNoon }
-    : typeData;
+  if (insightType === 'nutrition') {
+    return {
+      ...typeData, waterGoalMl, isPartialDay, beforeNoon,
+      // How active the day was, so "meals too light" or "not enough protein"
+      // is only tied to a workout or a big day when there was one.
+      workouts: overallData.workouts,
+      steps: overallData.steps,
+      stepGoal: getStepGoal(user).goalSteps,
+      rewardStreakBefore: await streak(),
+    };
+  }
+  return insightType === 'hydration' ? { ...typeData, waterGoalMl, isPartialDay, beforeNoon } : typeData;
 }
 
 /**
