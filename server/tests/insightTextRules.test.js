@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { findTextProblems, findLabelProblems, autoFix, hasActionSentence } = require('../services/insightTextRules');
+const {
+  findTextProblems, findLabelProblems, findRepeatProblems, copiedShare, autoFix, hasActionSentence,
+} = require('../services/insightTextRules');
 
 const insight = (description, title = 'Short on sleep', summary = 'Get to bed earlier tonight.') => ({ title, description, summary });
 
@@ -97,6 +99,39 @@ test('no meals logged may not be described as meals being low (live abhiraj samp
   const good = insight('Last night was well short of your sleep goal, steps are still low and no meals are logged so far. Try a short walk in your next break.');
   assert.ok(findLabelProblems(bad, cats, 'overall').some((p) => p.includes('not logged')));
   assert.deepStrictEqual(findLabelProblems(good, cats, 'overall'), []);
+});
+
+test('copying the example word for word is rejected, the same idea in new words is not (live abhiraj sample)', () => {
+  const example = 'Short sleep likely held back your recovery, which can leave you feeling more tired than usual. Tonight, get to bed a bit earlier so tomorrow starts with more energy.';
+  const copied = example;
+  const ownWords = 'Another short night seems to have kept your recovery down, so your body may feel heavier. Try winding down a little sooner tonight to give it a proper chance to recharge.';
+  assert.strictEqual(copiedShare(copied, example), 1);
+  assert.ok(copiedShare(ownWords, example) < 0.5);
+  assert.ok(findRepeatProblems(copied, { example }).some((p) => p.includes('own words')));
+  assert.deepStrictEqual(findRepeatProblems(ownWords, { example }), []);
+});
+
+test('single pillars: the reason must be explained, and a reward day names no shortfall', () => {
+  const reasonCats = { tier: 'improve', reason: 'workout_needs_protein' };
+  const missed = insight('Your meals were logged and calories were on track. Tomorrow, add eggs to one meal.');
+  const made = insight('You got a workout in, but protein stayed low, and your muscles need it. Tomorrow, add eggs to one meal.');
+  assert.ok(findLabelProblems(missed, reasonCats, 'nutrition').some((p) => p.includes('reason')));
+  assert.deepStrictEqual(findLabelProblems(made, reasonCats, 'nutrition'), []);
+  const rewardDay = insight('You reached your step goal, though water was low. Keep the same walk tomorrow.', 'Step goal reached');
+  assert.ok(findLabelProblems(rewardDay, { tier: 'reward' }, 'fitness').length > 0);
+});
+
+test('sleep: a short night may not get a positive title, and well short is never "a little"', () => {
+  const desc = 'You were well short of your sleep goal. Tonight, aim for a noticeably earlier bedtime.';
+  const cats = { lastNightVsGoal: 'below', shortBy: 'well_short', tier: 'improve', reason: 'none' };
+  assert.ok(findLabelProblems(insight(desc, 'Good sleep quality'), cats, 'sleep').some((p) => p.includes('positive')));
+  assert.ok(findLabelProblems(insight(desc, 'A little short on sleep'), cats, 'sleep').some((p) => p.includes('well short')));
+  assert.deepStrictEqual(findLabelProblems(insight(desc, 'Well short of your sleep goal'), cats, 'sleep'), []);
+});
+
+test("repeating the previous day's message is rejected", () => {
+  const previousMessage = 'Steps on target again, you met your goal for the day. Plan a similar walk tomorrow to stay in the groove.';
+  assert.ok(findRepeatProblems(previousMessage, { previousMessage }).some((p) => p.includes('previous day')));
 });
 
 test('"one" as a pronoun is allowed, "keep it steady" is not mistaken for "keep it up"', () => {

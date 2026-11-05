@@ -158,6 +158,48 @@ test('overall: only steps synced gives no connection, and a met goal asks for th
   assert.strictEqual(met.tier, 'incomplete_data');
 });
 
+test('fitness: goal met is a reward with streak; low steps give the reason the data shows', () => {
+  const met = buildCategories('fitness', { steps: 9000, stepGoal: 7500, workouts: [], rewardStreakBefore: 1 });
+  assert.strictEqual(met.tier, 'reward');
+  assert.strictEqual(met.rewardStreak, 'second_day');
+  const withWorkout = buildCategories('fitness', { steps: 2000, stepGoal: 7500, workouts: [{}] });
+  assert.strictEqual(withWorkout.reason, 'workout_counted');
+  const shortNight = buildCategories('fitness', { steps: 2000, stepGoal: 7500, workouts: [], sleepMinutes: 300, sleepGoalHours: 8 });
+  assert.strictEqual(shortNight.reason, 'short_sleep');
+  const fineNight = buildCategories('fitness', { steps: 2000, stepGoal: 7500, workouts: [], sleepMinutes: 470, sleepGoalHours: 8 });
+  assert.strictEqual(fineNight.reason, 'none');
+});
+
+test('sleep: a night at goal with good quality is a reward; a short irregular week gives that reason', () => {
+  const good = buildCategories('sleep', { lastNight: { vsIdeal: 'within', qualityScore: 88 }, tier: 'full_analysis' });
+  assert.strictEqual(good.tier, 'reward');
+  const short = buildCategories('sleep', {
+    lastNight: { vsIdeal: 'below', shortfallMinutesToMin: 120, qualityScore: 60 }, tier: 'full_analysis', regularityStatus: 'irregular',
+  });
+  assert.strictEqual(short.tier, 'improve');
+  assert.strictEqual(short.reason, 'irregular_bedtime');
+  // Too little history: no pattern-based reason.
+  const fresh = buildCategories('sleep', {
+    lastNight: { vsIdeal: 'below', shortfallMinutesToMin: 120 }, tier: 'insufficient_data', regularityStatus: 'irregular',
+  });
+  assert.strictEqual(fresh.reason, 'none');
+});
+
+test('nutrition: low protein is tied to a workout only when there was one', () => {
+  const base = { isPartialDay: false, meals: [{}, {}, {}], calories: 2000, calorieGoal: 2000, protein: 40, proteinGoal: 120 };
+  assert.strictEqual(buildCategories('nutrition', { ...base, workouts: [{}] }).reason, 'workout_needs_protein');
+  assert.strictEqual(buildCategories('nutrition', { ...base, workouts: [] }).reason, 'none');
+  const balanced = buildCategories('nutrition', { ...base, protein: 120, healthyFoodsCount: 3, junkFoodsCount: 0 });
+  assert.strictEqual(balanced.tier, 'reward');
+});
+
+test('recovery: low recovery after a short night names the night; a good day is a reward', () => {
+  const low = buildCategories('recovery', { recoveryScore: 32, sleepMinutes: 312, sleepGoalHours: 8 });
+  assert.strictEqual(low.reason, 'short_sleep');
+  const good = buildCategories('recovery', { recoveryScore: 88, hrvToday: 60, hrvBaseline14: 58 });
+  assert.strictEqual(good.tier, 'reward');
+});
+
 test('sameCategories ignores key order and treats missing as stale', () => {
   assert.ok(sameCategories({ a: 'x', b: 'y' }, { b: 'y', a: 'x' }));
   assert.ok(!sameCategories({ a: 'x' }, { a: 'z' }));

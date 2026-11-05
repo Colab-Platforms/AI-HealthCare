@@ -187,6 +187,56 @@ function pickLink(c) {
   return 'none';
 }
 
+// ------------------------------------------- single pillars: tier + reason
+//
+// Same idea as the overall link, for one pillar: a reward day when that
+// pillar fully came together, otherwise at most one reason the data
+// actually shows. Picked here, checked against the text afterwards.
+
+const isMeaningfullyShort = (minutes, goalHours) => MEANINGFUL_SHORT.has(sleepVsGoal(minutes, goalHours).shortBy);
+
+function withTier(c, data, rewardWhen, reason) {
+  if (rewardWhen) {
+    c.tier = 'reward';
+    c.rewardStreak = streakLabel(data.rewardStreakBefore);
+  } else {
+    c.tier = isLiveDay(c.dayStatus) ? 'in_progress' : 'improve';
+    c.reason = reason || 'none';
+  }
+  return c;
+}
+
+function sleepReason(c) {
+  if (c.lastNightVsGoal !== 'below') return null;
+  if (['insufficient_data', 'raw_comparison'].includes(c.historyDepth)) return null;
+  if (c.bedtimeRegularity === 'irregular') return 'irregular_bedtime';
+  if (c.sleepDebt === 'large') return 'sleep_debt';
+  return null;
+}
+
+function fitnessReason(c, data) {
+  if (!LOW_STEPS.has(c.stepsVsGoal)) return null;
+  if (c.workout === 'workout_logged') return 'workout_counted';
+  if (isMeaningfullyShort(data.sleepMinutes, data.sleepGoalHours)) return 'short_sleep';
+  return null;
+}
+
+function nutritionReason(c, data) {
+  const worked = (data.workouts?.length || 0) > 0;
+  if (worked && c.proteinVsGoal === 'under_goal') return 'workout_needs_protein';
+  const active = worked || progressBand(data.steps, data.stepGoal) === 'goal_met';
+  if (active && c.caloriesVsGoal === 'under_goal') return 'underfuel_active';
+  return null;
+}
+
+function recoveryReason(c, data) {
+  if (!LOW_SCORE.has(c.recoveryLevel)) return null;
+  if (isMeaningfullyShort(data.sleepMinutes, data.sleepGoalHours)) return 'short_sleep';
+  if (c.hrv === 'worse_than_usual') return 'hrv_below_usual';
+  if (c.restingHeartRate === 'worse_than_usual') return 'rhr_above_usual';
+  return null;
+}
+
 // patterns: what the user's own last two weeks show (see
 // dailyInsightService.getPersonalPatterns). Without one the text has to hedge.
 const LINK_PATTERN = { sleep_recovery: 'sleepRecovery', sleep_activity: 'sleepActivity' };
@@ -223,16 +273,19 @@ function buildOverall(data) {
 }
 
 const builders = {
-  fitness: (data) => ({
-    dayStatus: dayStatus(data),
-    stepsVsGoal: progressBand(data.steps, data.stepGoal),
-    activityScore: scoreBand(data.activityScore),
-    workout: data.workouts?.length ? 'workout_logged' : 'no_workout_logged',
-  }),
+  fitness: (data) => {
+    const c = {
+      dayStatus: dayStatus(data),
+      stepsVsGoal: progressBand(data.steps, data.stepGoal),
+      activityScore: scoreBand(data.activityScore),
+      workout: data.workouts?.length ? 'workout_logged' : 'no_workout_logged',
+    };
+    return withTier(c, data, c.stepsVsGoal === 'goal_met', fitnessReason(c, data));
+  },
 
   sleep: (data) => {
     const night = data.lastNight || {};
-    return {
+    const c = {
       lastNightVsGoal: night.vsIdeal ?? 'not_logged', // below | within | above
       shortBy: night.vsIdeal === 'below' ? sleepShortfallBand(night.shortfallMinutesToMin) : null,
       sleepQuality: scoreBand(night.qualityScore),
@@ -243,27 +296,44 @@ const builders = {
       goalConsistency: adherenceBand(data.goalAdherence7d),
       bedtimeRegularity: data.regularityStatus ?? null,
     };
+    // A night only counts as a full win with the quality to match — or no
+    // quality reading at all, which is no reason to withhold it.
+    const reward = ['within', 'above'].includes(c.lastNightVsGoal)
+      && (GOOD.has(c.sleepQuality) || c.sleepQuality === 'not_logged');
+    return withTier(c, data, reward, sleepReason(c));
   },
 
-  nutrition: (data) => ({
-    dayStatus: dayStatus(data),
-    meals: mealsBand(data.meals?.length),
-    caloriesVsGoal: enoughMealsLogged(data) ? intakeBand(data.calories, data.calorieGoal) : 'not_enough_meals_logged',
-    proteinVsGoal: enoughMealsLogged(data) ? intakeBand(data.protein, data.proteinGoal) : 'not_enough_meals_logged',
-    foodQuality: foodQualityBand(data.healthyFoodsCount, data.junkFoodsCount),
-    waterVsGoal: progressBand(data.waterGlasses, data.waterGoalMl),
-  }),
+  nutrition: (data) => {
+    const c = {
+      dayStatus: dayStatus(data),
+      meals: mealsBand(data.meals?.length),
+      caloriesVsGoal: enoughMealsLogged(data) ? intakeBand(data.calories, data.calorieGoal) : 'not_enough_meals_logged',
+      proteinVsGoal: enoughMealsLogged(data) ? intakeBand(data.protein, data.proteinGoal) : 'not_enough_meals_logged',
+      foodQuality: foodQualityBand(data.healthyFoodsCount, data.junkFoodsCount),
+      waterVsGoal: progressBand(data.waterGlasses, data.waterGoalMl),
+    };
+    // Only a finished day can be judged as a whole.
+    const reward = c.dayStatus === 'full_day' && c.caloriesVsGoal === 'on_track'
+      && ['on_track', 'over_goal'].includes(c.proteinVsGoal)
+      && ['mostly_healthy', 'mostly_healthy_some_junk'].includes(c.foodQuality);
+    return withTier(c, data, reward, nutritionReason(c, data));
+  },
 
   hydration: (data) => ({
     dayStatus: dayStatus(data),
     waterVsGoal: progressBand(data.waterGlasses, data.waterGoalMl),
   }),
 
-  recovery: (data) => ({
-    recoveryLevel: scoreBand(data.recoveryScore),
-    hrv: vsBaseline(data.hrvToday, data.hrvBaseline14, 0.1, { higherIsBetter: true }),
-    restingHeartRate: vsBaseline(data.rhrToday, data.rhrBaseline14, 0.05, { higherIsBetter: false }),
-  }),
+  recovery: (data) => {
+    const c = {
+      recoveryLevel: scoreBand(data.recoveryScore),
+      hrv: vsBaseline(data.hrvToday, data.hrvBaseline14, 0.1, { higherIsBetter: true }),
+      restingHeartRate: vsBaseline(data.rhrToday, data.rhrBaseline14, 0.05, { higherIsBetter: false }),
+    };
+    const reward = GOOD.has(c.recoveryLevel)
+      && c.hrv !== 'worse_than_usual' && c.restingHeartRate !== 'worse_than_usual';
+    return withTier(c, data, reward, recoveryReason(c, data));
+  },
 
   smoking: (data) => ({
     cigarettes: data.cigarettes == null ? 'not_logged'

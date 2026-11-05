@@ -128,6 +128,32 @@ const LINK_MEANING = {
   rested_inactive: 'being well rested but not moving much',
 };
 
+// The single-pillar version of LINK_TERMS: the reason the data picked for
+// one card (insightCategories.withTier).
+const REASON_TERMS = {
+  irregular_bedtime: [/\b(bedtime|bed time|same time|routine|different time\w*|irregular)\b/i],
+  sleep_debt: [/\b(build\w*|piling|catch\w*|this week|missed sleep|sleep debt|adding up)\b/i],
+  workout_counted: [/\b(workout|exercise|training)\b/i],
+  short_sleep: [/\b(sleep|night)\b/i],
+  workout_needs_protein: [/\bprotein\b/i, /\b(workout|exercise|training)\b/i],
+  underfuel_active: [/\b(meals?|ate|eat\w*|food|fuel\w*|snack)\b/i, /\b(activ\w*|mov\w*|workout|steps?)\b/i],
+  hrv_below_usual: [/\b(strain|usual|stress\w*|hrv|heart rate variability)\b/i],
+  rhr_above_usual: [/\bheart rate\b/i],
+};
+
+const REASON_MEANING = {
+  irregular_bedtime: 'going to bed at a different time each night',
+  sleep_debt: 'missed sleep building up over the week',
+  workout_counted: 'the workout counted even though steps were low',
+  short_sleep: "last night's short sleep",
+  workout_needs_protein: 'a workout without enough protein to recover from it',
+  underfuel_active: 'meals too light for how active they were',
+  hrv_below_usual: 'the body showing more strain than usual',
+  rhr_above_usual: 'resting heart rate higher than usual',
+};
+
+const POSITIVE_TITLE = /\b(great|good|solid|strong|excellent|perfect|well rested|on track|nailed|win)\b/i;
+
 /**
  * Problems where the text disagrees with the labels it was written from —
  * the cases the model got wrong in production (praising activity on a
@@ -146,13 +172,25 @@ function findLabelProblems(parsed, categories, insightType) {
   if (categories.meals === 'none_logged' && MEALS_AS_LOW.test(all)) {
     problems.push('no meals were logged, so say they were not logged, never that meals were low or light');
   }
+  if (categories.tier === 'reward' && NEGATIVE_WORDS.test(all)) {
+    problems.push('this is a reward day where it all came together, so nothing may be called short, low or missing');
+  }
+  const reasonTerms = REASON_TERMS[categories.reason];
+  if (reasonTerms && !reasonTerms.every((re) => re.test(parsed.description || ''))) {
+    problems.push(`must explain the reason the data shows: ${REASON_MEANING[categories.reason]}`);
+  }
+  if (insightType === 'sleep' && categories.lastNightVsGoal === 'below') {
+    if (POSITIVE_TITLE.test(parsed.title || '')) {
+      problems.push('the title sounds positive although the night was short of the sleep goal');
+    }
+    if (categories.shortBy === 'well_short' && /\b(little|bit|slightly)\b/i.test(parsed.title || '')) {
+      problems.push('the night was well short of the goal, so the title must not say "a little" or "a bit"');
+    }
+  }
   if (insightType !== 'overall') return problems;
 
   if (categories.sleepVsGoal === 'below' && SLEEP_PRAISE.test(all)) {
     problems.push('calls sleep excellent or great although it was short of the sleep goal');
-  }
-  if (categories.tier === 'reward' && NEGATIVE_WORDS.test(all)) {
-    problems.push('this is a reward day where everything came together, so nothing may be called short, low or missing');
   }
   if (categories.tier === 'incomplete_data' && !/\blog/i.test(parsed.description || '')) {
     problems.push('must ask them to log the pillars that were not logged');
@@ -164,4 +202,46 @@ function findLabelProblems(parsed, categories, insightType) {
   return problems;
 }
 
-module.exports = { findTextProblems, findLabelProblems, autoFix, hasActionSentence, NUMBER_PATTERN };
+// ----------------------------------------------------------- repeated text
+
+// Share of `text`'s three-word phrases that also appear in `reference`.
+// Phrases rather than single words: two honest messages about short sleep
+// share plenty of words ("sleep", "recovery", "tonight") without either
+// being a copy of the other.
+const PHRASE_LENGTH = 3;
+const phrases = (text) => {
+  const words = String(text || '').toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
+  const set = new Set();
+  for (let i = 0; i + PHRASE_LENGTH <= words.length; i++) set.add(words.slice(i, i + PHRASE_LENGTH).join(' '));
+  return set;
+};
+function copiedShare(text, reference) {
+  const own = phrases(text);
+  if (own.size === 0) return 0;
+  const ref = phrases(reference);
+  let shared = 0;
+  for (const p of own) if (ref.has(p)) shared++;
+  return shared / own.size;
+}
+
+const MAX_COPIED_SHARE = 0.5;
+
+/**
+ * A description that copies the style example, or the user's message from
+ * the day before, reads the same every day — the example is a guide to the
+ * structure and simple words, not text to reuse.
+ */
+function findRepeatProblems(description, { example = null, previousMessage = null } = {}) {
+  const problems = [];
+  if (example && copiedShare(description, example) > MAX_COPIED_SHARE) {
+    problems.push('copies the example sentences; keep the same structure and simple words but say it in your own words');
+  }
+  if (previousMessage && copiedShare(description, previousMessage) > MAX_COPIED_SHARE) {
+    problems.push("repeats the previous day's message; say it differently");
+  }
+  return problems;
+}
+
+module.exports = {
+  findTextProblems, findLabelProblems, findRepeatProblems, copiedShare, autoFix, hasActionSentence, NUMBER_PATTERN,
+};
