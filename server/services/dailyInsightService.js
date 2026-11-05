@@ -24,13 +24,16 @@ const { calculateRecoveryScore } = require('./recoveryScoreService');
 const { calculateDailyScore } = require('./dailyHealthScoreService');
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 const { chatCompletionWithFallback, parseJsonResponse } = require('./openrouterAI');
-const { buildCategories, sameCategories } = require('./insightCategories');
+const { buildCategories, sameCategories, isLiveDay } = require('./insightCategories');
+const { findTextProblems, findLabelProblems, autoFix, NUMBER_PATTERN } = require('./insightTextRules');
 const FinalDailyInsight = require('../models/FinalDailyInsight');
+const RecoveryDailySummary = require('../models/RecoveryDailySummary');
+const { getSleepGoal } = require('../utils/sleepGoal');
 const { FINAL_INSIGHT_TYPES } = FinalDailyInsight;
 const { getSleepClinicalAnalysis } = require('./sleepClinicalAnalysisService');
 const { getNativeSleepScoresByDate, resolveSleepQualityScore } = require('./sleepScoreService');
 const { getActivityInsight } = require('./activityInsightService');
-const { getExerciseGuidance } = require('./exerciseGuidanceService');
+const { getStepGoal } = require('../utils/stepGoal');
 const { mergeDeviceRows, filterPlausibleSleep, collapseToOnePerDay } = require('../utils/wearableMerge');
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
@@ -53,6 +56,11 @@ const istDateKey = (date = new Date()) =>
     timeZone: 'Asia/Kolkata',
     year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(date);
+
+/** Hour of the day (0-23) in IST. */
+const istHour = (date = new Date()) => Number(new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Kolkata', hour: '2-digit', hourCycle: 'h23',
+}).format(date));
 
 /** Shifts a 'YYYY-MM-DD' key by n days, staying in IST. */
 const shiftDateKey = (dateKey, days) => {
@@ -184,6 +192,8 @@ async function collectOverallData(userId, dateKey) {
     activeMinutes: steps?.activeMinutes ?? null,
     caloriesBurned: steps?.caloriesBurned ?? nutrition?.caloriesBurned ?? null,
     sleepHours: sleep?.totalSleepMinutes ? Math.round((sleep.totalSleepMinutes / 60) * 10) / 10 : null,
+    // Unrounded, for the overall insight's sleep-vs-goal label.
+    sleepMinutes: sleep?.totalSleepMinutes || null,
     // Pre-formatted so the model copies it verbatim instead of converting
     // decimal hours to "Xh Ym" itself — that conversion is exactly the kind
     // of arithmetic that produced a fabricated "100.91" score in production
@@ -320,6 +330,63 @@ async function collectRecoveryData(userId, dateKey) {
   };
 }
 
+// The user's own last two weeks: on their short nights, was recovery (or
+// movement) actually lower than on their full nights? Only then may the
+// overall insight say "like it usually does for you"; otherwise it hedges.
+const PATTERN_DAYS = 14;
+const PATTERN_MIN_NIGHTS = 2;
+const SHORT_NIGHT_MINUTES = 30; // short of the goal by more than this
+
+async function getPersonalPatterns(userId, sourceDate, goalHours) {
+  const startKey = shiftDateKey(sourceDate, -PATTERN_DAYS);
+  const range = { $gte: utcMidnight(startKey), $lt: utcMidnight(sourceDate) };
+  const [sleeps, recoveries, activity] = await Promise.all([
+    SleepSession.find({ user: userId, date: range }).select('date totalSleepMinutes').lean(),
+    RecoveryDailySummary.find({ user: userId, date: { $gte: startKey, $lt: sourceDate } }).select('date recoveryScore').lean(),
+    DailyActivityMetric.find({ user: userId, date: range }).select('date steps').lean(),
+  ]);
+
+  // One value per day — several devices for the same day keep the highest.
+  const byDay = (rows, dayOf, valueOf) => rows.reduce((map, row) => {
+    const value = valueOf(row);
+    if (value != null) map.set(dayOf(row), Math.max(map.get(dayOf(row)) ?? -Infinity, value));
+    return map;
+  }, new Map());
+  const isoDay = (row) => new Date(row.date).toISOString().slice(0, 10);
+  const sleepByDay = byDay(sleeps, isoDay, (r) => r.totalSleepMinutes);
+  const shortLine = goalHours * 60 - SHORT_NIGHT_MINUTES;
+  const avg = (list) => list.reduce((sum, v) => sum + v, 0) / list.length;
+
+  const shortVsFull = (valueByDay) => {
+    const short = [];
+    const full = [];
+    for (const [day, minutes] of sleepByDay) {
+      const value = valueByDay.get(day);
+      if (value != null) (minutes < shortLine ? short : full).push(value);
+    }
+    return short.length >= PATTERN_MIN_NIGHTS && full.length >= PATTERN_MIN_NIGHTS
+      ? { short: avg(short), full: avg(full) }
+      : null;
+  };
+  const recovery = shortVsFull(byDay(recoveries, (r) => r.date, (r) => r.recoveryScore));
+  const steps = shortVsFull(byDay(activity, isoDay, (r) => r.steps));
+  return {
+    sleepRecovery: !!recovery && recovery.full - recovery.short >= 10,
+    sleepActivity: !!steps && steps.full > 0 && (steps.full - steps.short) / steps.full >= 0.15,
+  };
+}
+
+// Consecutive reward days just before sourceDate, from the stored finals.
+async function countRewardStreak(userId, sourceDate) {
+  const finals = await FinalDailyInsight.find({
+    userId, insightType: 'overall', date: { $gte: shiftDateKey(sourceDate, -7), $lt: sourceDate },
+  }).select('date categories.tier').lean();
+  const tierByDate = new Map(finals.map((f) => [f.date, f.categories?.tier]));
+  let days = 0;
+  for (let d = shiftDateKey(sourceDate, -1); tierByDate.get(d) === 'reward'; d = shiftDateKey(d, -1)) days++;
+  return days;
+}
+
 // ------------------------------------------------------------------- prompts
 
 // Wording is deliberately date-anchored ("On {date}") rather than "yesterday" —
@@ -332,29 +399,41 @@ async function collectRecoveryData(userId, dateKey) {
 // insightCategories.js) — never raw numbers. The app already shows every
 // number on the screen around this card, so a number in the text adds
 // nothing and can only contradict the ring next to it.
+// The written-by-a-person voice, plus the hard rules insightTextRules.js
+// enforces after generation (numbers, banned phrases, tense, an action).
 const NO_NUMBERS_RULE = `
-- ABSOLUTELY NO NUMBERS: never write a digit (0-9), a number word (two, three, ten, hundred, ...), a
+- ABSOLUTELY NO NUMBERS: never write a digit (0-9), a number word (two, three, ten, thirty, ...), a
   percentage, a score, hours, minutes, steps, or any other figure. The app already shows every number
   next to this card. Describe it in words only, e.g. "about halfway to your step goal", "a little short
-  of your sleep goal", "well under your protein goal". Use "a short walk", not "a 10-minute walk".
+  of your sleep goal". Say "a short walk after lunch", never "a ten-minute walk".
 - The data is a set of category labels (e.g. stepsVsGoal: "about_half"). Base every claim strictly on
   those labels — never claim something stronger or weaker than the label says, and never mention a
-  pillar whose label is "not_logged" or null except as "not logged yet".
-- dayStatus "day_in_progress" means the day isn't over: speak in "so far" terms and never give a final
-  verdict on the whole day.
-- dayStatus "full_day" means the day is over: describe it in the past tense, call anything "not_logged"
-  simply not logged, and frame the action for the next day — never "now" or "right away".`;
+  pillar whose label is "not_logged" or null except as "not logged".
+- TENSE: only when dayStatus is "day_just_started" or "day_in_progress" is the day still going — then
+  speak in "so far" terms and never give a final verdict. In EVERY other case the day being described is over: past
+  tense, anything "not_logged" was simply not logged, and the action is for tonight or tomorrow —
+  never "now", "right now" or "yet".
+- VOICE: write like a real coach who knows this person, texting them — not a report. Short everyday
+  sentences with contractions ("you're", "didn't"). Warm and calm, never hyped. Lead with how they
+  probably feel, then what to do. Be specific to their labels — never a line that could fit anyone.
+- MEMORY: if the previous day's labels are given, compare naturally ("better than the night before",
+  "second day in a row water was light") — only when something actually changed or repeated, never
+  forced. Never open the same way as the previous day's message, if one is given. Never use the words
+  "today" or "yesterday" — say "the night before" / "the day before" instead.
+- Use their first name at most once, and only when it reads naturally.
+- BANNED, these read as AI: "great sign", "momentum", "crushed", "keep it up", "keep up the great
+  work", "prioritize", "consistency is key", "journey", "it's important to", "remember to", "don't
+  forget", "well done", "amazing", exclamation marks, em or en dashes, emojis.
+- ACTION: the description must contain one small, concrete thing they can do, in a sentence that starts
+  with a verb (Try, Aim, Get, Plan, Add, Give, Keep...), optionally after "Tonight," or "Tomorrow,".
+- You are the take.health Coach. Never claim to be a doctor or a named person, never sign off.`;
 
 const SHARED_RULES = `
 Rules you must follow:${NO_NUMBERS_RULE}
-- Sound like a real coach talking to them, not a data readout. Open by acknowledging how they're
-  actually doing in plain human words, THEN close with guidance that fits the result:
-    - If the result is BELOW where it should be: say, specifically, what to do to make it better.
-    - If the result is GOOD or on track: say specifically what to do to KEEP it that way — never a
-      bare "keep it up" with nothing concrete attached to it.
+- Open by acknowledging how they're actually doing in plain human words, THEN the action:
+    - If the result is BELOW where it should be: what to do to make it better.
+    - If the result is GOOD or on track: one concrete thing that keeps it that way.
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
-- NEVER use the words "today" or "yesterday" — this exact text can be shown to the user a day or
-  weeks after the date it describes. Speak directly to the user as "you".
 - Short: the description must be MAX 2-3 sentences.
 - Never invent foods, symptoms, or facts not implied by the labels. Never name a specific health marker
   or system (blood sugar, cholesterol, metabolism, cardiovascular health, etc.).
@@ -370,18 +449,17 @@ Rules you must follow:${NO_NUMBERS_RULE}
 
 const SLEEP_SHARED_RULES = `
 Rules you must follow:${NO_NUMBERS_RULE}
-- Sound like a real sleep coach talking to them, not a data readout. Open by acknowledging how they're
-  actually doing, THEN close with guidance that fits the result:
-    - lastNightVsGoal "below": say what to do about it, sized by shortBy (slightly_short -> "a little
+- Open by acknowledging how they're actually doing, THEN the action:
+    - lastNightVsGoal "below": what to do about it, sized by shortBy (slightly_short -> "a little
       earlier to bed", well_short -> "a noticeably earlier bedtime").
-    - lastNightVsGoal "within" or "above": say specifically what to do to KEEP it that way (a consistent
-      bedtime, winding down the same way) — never a bare "keep it up".
-- The title must match lastNightVsGoal, not a secondary trend — if it is "below", the title must signal
-  that (e.g. "A Little Short on Sleep"), even if weeklyTrend is positive.
+    - lastNightVsGoal "within" or "above": one concrete thing that keeps it that way (a consistent
+      bedtime, winding down the same way).
+- The title must match lastNightVsGoal and how short it was, not a secondary trend:
+    slightly_short -> a little short, moderately_short -> short, well_short -> well short.
+  Never soften a well_short night into "a little", and never let a positive weeklyTrend set the title.
 - If historyDepth is "insufficient_data" or "raw_comparison", do NOT claim any trend, debt, or regularity
   pattern — say there isn't enough history yet and encourage continued tracking.
 - Warm, positive, encouraging. Never scold, shame, or use alarming language.
-- NEVER use the words "today" or "yesterday". Describe the night without a day-word.
 - Short: the description must be MAX 2-3 sentences.
 - Never name a specific health marker or system (blood sugar, cholesterol, metabolism, etc.).
 - Wellness guidance, not a diagnosis. Plain everyday language, no jargon, no emojis, no medicine/dosages.
@@ -399,44 +477,85 @@ Rules you must follow:${NO_NUMBERS_RULE}
 // in the data, and the generated insight mentioned none of them — only
 // nutrition). This mandates touching every pillar that has real data,
 // briefly, instead of only the worst one.
+// The connection (link) and the kind of day (tier) are picked in code from
+// the user's data (insightCategories.buildOverall) — the model only puts
+// them into words, and the text is checked against them afterwards.
 const OVERALL_SHARED_RULES = `
 Rules you must follow:${NO_NUMBERS_RULE}
-- Sound like a personal caretaker who looked at your day and is telling you about it in person — warm,
-  brief, talking WITH you, not a report read out loud.
-  Good (human, caretaker, short): "You moved really well, but your body didn't get the rest it needed
-  and recovery is low. Try to wind down early tonight and get real sleep in."
-- Plain and literal, never a metaphor or idiom — no "running on empty/fumes," "in the red," "burning
-  the candle," or any other figurative phrase standing in for a plain statement.
-- Structure — EXACTLY 2 short sentences:
-  1. One sentence that covers ALL FOUR pillars — sleep, activity, nutrition, recovery — each in a few
-     words, good or bad, as its label says (e.g. "Your meals are on a fair track and you've barely
-     started moving, while sleep and recovery haven't synced yet."). Never skip a pillar, even an
-     average one. A pillar labelled "not_logged" gets a short "not logged/synced yet" — never called a
-     failure. Two pillars with the same state may share one phrase ("sleep and recovery look strong").
-  2. One sentence with a real, specific, doable action for the pillar that needs attention most —
-     MANDATORY, never drop it. If every logged pillar is good, say how to keep it that way.
-- If activity is "good"/"excellent" while stepsVsGoal is still short of the goal, say in a few words
-  that movement/workout time earned it, so it doesn't read as a mistake next to the step count.
-- HARD LIMIT: the description must be under 240 characters total — keep each pillar to a few words.
-- NEVER use the words "today" or "yesterday". Speak directly to the user as "you".
+- Very simple everyday words that anyone can understand. Plain and literal, never an idiom or
+  figurative phrase ("running on empty", "in the red", "in the tank").
+- EXACTLY 2 short sentences. Sentence 1 is how the day went; sentence 2 is the action and starts with a
+  verb (Try, Aim, Get, Add, Keep...), optionally after "Tonight," or "Tomorrow,".
+- tier decides the message:
+  - "reward": everything came together. Sentence 1 celebrates the whole day; if rewardStreak is
+    second_day, third_day or several_days, say so naturally ("second day in a row", "third day in a
+    row", "another day in a row"). Sentence 2 is a small way to keep it going. Never call anything
+    short, low, missing or needing work.
+  - "incomplete_data": what was logged looked good, but some pillars were not logged. Say both, then
+    ask them to log the missing ones. Never celebrate it as a complete day.
+  - "improve" or "in_progress": follow link.
+- link is the ONE connection the user's data supports. When it is not "none", sentence 1 explains it as
+  simple cause and effect and sentence 2 acts on the cause. Never add any other connection. When link
+  is "none", sentence 1 covers each logged pillar (sleep, activity, nutrition, recovery) in a few
+  words, good or bad, and sentence 2 acts on the one that needs it most.
+- linkEvidence "personal_pattern": you may say it is a pattern for them ("like it usually does for you
+  after a short night"). linkEvidence "general": say "likely", "can" or "may", never as a certainty.
+- If stepsVsGoal is short of the goal, never call the activity good or strong. A logged workout can be
+  credited ("your workout counted"), but the steps still fell short.
+- If sleepVsGoal is "below", never call the sleep excellent or great.
+- A pillar labelled "not_logged" is only ever "not logged", never a failure.
 - Never invent foods, symptoms, or facts the labels don't imply. Never name a specific health marker or
   system (blood sugar, cholesterol, metabolism, cardiovascular health, diabetes, etc.) — a profile
   condition is NOT license to reference it.
-- Plain everyday language, no medical jargon, no emojis.
-- Never diagnose, never name a disease as confirmed, never mention medicine names or dosages.
-- Warm, positive, encouraging. Never scold, shame, or use alarming language.
+- Never diagnose, never mention medicine names or dosages. Warm, never scolding or alarming.
 - Respond with ONLY this JSON, nothing else:
 {"title": "", "description": "", "summary": ""}
-- title: max 6 words, naming the pillar that most needs attention (not a generic "Great Day" when one
-  pillar clearly needs work).
-- description: exactly 2 short, human sentences per the structure above, 120-240 characters.
+- title: max 6 words, about the main point of sentence 1.
+- description: exactly 2 short sentences, 100-240 characters.
 - summary: one line, max 12 words, the single takeaway.`;
 
+// One example per connection and per kind of day, sent only for the one
+// that applies, so the text comes out in exactly this structure and these
+// simple words.
+const OVERALL_EXAMPLES = {
+  alcohol_sleep: 'Drinks the evening before likely cut into your sleep, and your recovery shows it. Tonight, skip the drink and get to bed a little earlier.',
+  sleep_recovery: 'Short sleep likely held back your recovery, which can leave you feeling more tired than usual. Tonight, get to bed a bit earlier so tomorrow starts with more energy.',
+  sleep_activity: 'A short night may have left you low on energy, so moving less makes sense. Tonight, aim for an earlier bedtime and tomorrow will feel easier.',
+  recovery_push: "Your body hadn't fully recovered, but you still pushed hard, which can leave you more tired. Tomorrow, keep it to an easy walk and let your body catch up.",
+  underfuel_active: 'You slept well and moved a lot, but meals came in under what that much activity needs, which may be why recovery stayed only fair. Tomorrow, add a proper meal or snack around your workout to refuel.',
+  underfuel_inactive: "Meals came in light, and with less fuel it's harder to stay active. Tomorrow, add a proper breakfast so you have the energy to move.",
+  workout_protein: 'You got a workout in, but protein was low, and your muscles need it to recover. Tomorrow, add eggs, paneer or dal to one of your meals.',
+  surplus_inactive: 'You ate more than your body used, since movement stayed low. Tomorrow, try a short walk after your biggest meal.',
+  water_active: "You were very active but didn't drink enough water to keep up. Tomorrow, keep a bottle with you and sip through the day.",
+  rested_inactive: "You were well rested and recovered, but that energy didn't turn into movement. Tomorrow, use it with a longer walk.",
+  none: "Your sleep was fair, movement reached about half your goal, meals were on track and recovery wasn't logged. Tomorrow, add a short walk after lunch to get closer to your step goal.",
+  // Only steps came through: nothing to connect, so the text says so and
+  // asks for the rest instead of guessing.
+  only_activity: "Only your steps came through, and they stayed low, so the rest of the day isn't visible. Tomorrow, add a short walk after a meal and log your meals so the full picture shows.",
+  // The live card, while the day is still going.
+  live_none: 'Last night was well short of your sleep goal, steps are still low and no meals are logged so far. Try a short walk in your next break and log your first meal.',
+  live_only_activity: "Only your steps have come through so far, and they're still low. Try a short walk in your next break and log your first meal.",
+  reward_first_day: 'Everything came together, with good sleep, strong recovery, balanced meals and your step goal reached. Days like this build on each other, so keep the same rhythm tomorrow.',
+  reward_streak: "Third day in a row with good sleep, strong recovery, steady meals and your step goal met. That's becoming a real routine, so keep the same bedtime tomorrow and enjoy it.",
+  incomplete_data: "Your sleep and movement looked great, but meals and recovery weren't logged, so the full picture is missing. Tomorrow, log your meals too so we can see how it all fits together.",
+};
+
+const overallExample = (c) => {
+  if (!c) return null;
+  if (c.tier === 'reward') return OVERALL_EXAMPLES[c.rewardStreak === 'first_day' ? 'reward_first_day' : 'reward_streak'];
+  if (c.tier === 'incomplete_data') return OVERALL_EXAMPLES.incomplete_data;
+  if (OVERALL_EXAMPLES[c.link] && c.link !== 'none') return OVERALL_EXAMPLES[c.link];
+  const live = isLiveDay(c.dayStatus);
+  const onlyActivity = c.sleepVsGoal === 'not_logged' && c.meals === 'none_logged' && c.recovery === 'not_logged';
+  if (onlyActivity) return OVERALL_EXAMPLES[live ? 'live_only_activity' : 'only_activity'];
+  return OVERALL_EXAMPLES[live ? 'live_none' : 'none'];
+};
+
 const INSIGHT_SYSTEMS = {
-  overall: `You are a friendly health coach inside the take.health app giving a quick daily roundup across sleep, activity, nutrition, and recovery for the given date — every pillar that has data, not just one.${OVERALL_SHARED_RULES}`,
+  overall: `You are a friendly health coach inside the take.health app giving a quick daily roundup of sleep, activity, nutrition, and recovery for the given date, explaining how they affected each other the way the labels say.${OVERALL_SHARED_RULES}`,
   sleep: `You are a friendly sleep coach inside the take.health app, reasoning like a clinician would: you are given pre-computed sleep categories (that night against the user's sleep goal, plus trend/goal/regularity context when enough history exists) and must turn them into a specific, connected insight rather than generic advice.${SLEEP_SHARED_RULES}`,
   nutrition: `You are a friendly nutrition coach inside the take.health app. Write a daily insight focused only on the user's food, nutrition, and hydration data for the given date.${SHARED_RULES}`,
-  fitness: `You are a friendly fitness coach inside the take.health app, talking to someone about their movement — warm and empathetic, not a stats readout. Lead with where stepsVsGoal puts them against their step goal (not_started, just_started, low, about_half, close_to_goal, goal_met). Never compare against a historical average or "usual pattern" — only against the goal. Close with one doable action sized to the gap (a short walk, a stretch break) if under goal, or how to keep it up if goal_met.${SHARED_RULES}`,
+  fitness: `You are a friendly fitness coach inside the take.health app, talking to someone about their movement — warm and empathetic, not a stats readout. Lead with where stepsVsGoal puts them against their step goal (not_started, just_started, low, about_half, close_to_goal, goal_met). Never compare against a historical average or "usual pattern" — only against the goal. Close with one doable action sized to the gap (a short walk, a stretch break) if under goal, or how to stay there if goal_met. If stepsVsGoal is short of the goal, never call the activity good, strong or going well: a logged workout can be credited ("your workout counted"), but the steps still fell short.${SHARED_RULES}`,
   recovery: `You are a friendly recovery coach inside the take.health app, reasoning like a sports-science clinician: you are given that day's recovery level plus how HRV and resting heart rate compare with the user's own usual, and must explain what they mean for physical readiness.${SHARED_RULES}`,
   smoking: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged smoking (and cravings resisted, if any) for the given date. Frame none or few as a genuine win; never shame what was logged.${SHARED_RULES}`,
   alcohol: `You are a friendly, non-judgmental health coach inside the take.health app. Write a daily insight focused only on the user's logged alcohol for the given date. Frame none or moderate as a genuine win; never shame what was logged.${SHARED_RULES}`,
@@ -460,9 +579,10 @@ const INSIGHT_LABELS = {
   hydration: "Water intake for the given date",
 };
 
-const buildUserPrompt = (profile, label, date, categories) => `User profile: ${JSON.stringify(profile)}
+const buildUserPrompt = (profile, label, date, categories, previous, example) => `User profile: ${JSON.stringify(profile)}
 ${label} for ${date} (category labels):
 ${JSON.stringify(categories)}
+${previous ? `\nPrevious day's labels: ${JSON.stringify(previous.categories)}` : ''}${previous?.message ? `\nPrevious day's message (don't open the same way): "${previous.message}"` : ''}${example ? `\nWrite it in the same structure and the same simple words as this example, adapted to the labels above (never copy a fact the labels don't show): "${example}"` : ''}
 
 Write the insight for this date.`;
 
@@ -470,13 +590,23 @@ Write the insight for this date.`;
 // reaches the model at all.
 const toPromptProfile = ({ age, ...rest }) => rest;
 
-// Digits, percentages, and number words. "one" is excluded on purpose:
-// it's an everyday pronoun ("no one", "one more walk") far more often than
-// a figure, and rejecting it would throw away good insights.
-const NUMBER_PATTERN = /\d|%|\b(zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\b/i;
-
-const containsNumber = (parsed) => [parsed.title, parsed.description, parsed.summary]
-  .some((field) => field && NUMBER_PATTERN.test(String(field)));
+// The day before's labels (and message) so the text can say "better than the
+// night before" — the kind of continuity that reads as a person who has been
+// following along. Final first (permanent), else that day's live card.
+async function getPreviousDayContext(userId, insightType, sourceDate) {
+  const prevDate = shiftDateKey(sourceDate, -1);
+  const final = FINAL_INSIGHT_TYPES.includes(insightType)
+    ? await FinalDailyInsight.findOne({ userId, date: prevDate, insightType }).select('categories description').lean()
+    : null;
+  const source = final
+    ? { categories: final.categories, message: final.description }
+    : await DailyInsight.findOne({ userId, sourceDate: prevDate, insightType })
+      .select('dataSnapshot.categories description').lean()
+      .then((d) => (d?.dataSnapshot?.categories ? { categories: d.dataSnapshot.categories, message: d.description } : null));
+  if (!source) return null;
+  // An older, number-quoting message would only invite the model to copy figures.
+  return NUMBER_PATTERN.test(source.message || '') ? { categories: source.categories } : source;
+}
 
 // ---------------------------------------------------------------- generation
 
@@ -502,61 +632,105 @@ const trimToSentence = (text, max, minKeep = 80) => {
   return lastEnd >= minKeep ? cut.slice(0, lastEnd + 1) : cut.trimEnd();
 };
 
+// Over the limit: keep the first and the last sentence (the last one is the
+// action) before a hard cut, which used to drop the action sentence and
+// fail the check for no reason.
+const fitToLength = (text, max) => {
+  const str = String(text).trim();
+  if (str.length <= max) return str;
+  const parts = str.split(/(?<=[.?])\s+/);
+  if (parts.length > 2) {
+    const firstAndLast = `${parts[0]} ${parts[parts.length - 1]}`;
+    if (firstAndLast.length <= max) return firstAndLast;
+  }
+  return trimToSentence(str, max);
+};
+
 const INSIGHT_LLM_TIMEOUT_MS = 15000;
 
 // Bump whenever the prompts change meaningfully: a cached insight written
 // under an older version is regenerated once, even if its labels are equal.
-const INSIGHT_PROMPT_VERSION = 2;
+const INSIGHT_PROMPT_VERSION = 4;
+
+// First try plus two corrective rewrites.
+const INSIGHT_MAX_ATTEMPTS = 3;
+
+// A rewrite only needs the draft and what's wrong with it — about a third of
+// the tokens of sending the whole prompt again.
+const REPAIR_SYSTEM = `You edit short health-coach messages. Fix ONLY the listed problems and keep everything else: the meaning, the facts, the warm and simple tone, and an action sentence that starts with a verb. A word or phrase listed as a problem must be removed from the title, the description AND the summary. No numbers or number words, no exclamation marks, no dashes, never the words "today" or "yesterday".
+Respond with ONLY this JSON: {"title": "", "description": "", "summary": ""}`;
 
 // The LLM call alone — returns the finished text without saving it, so one
 // call can be stored both as the permanent final and as the next morning's
 // live card.
 async function composeInsight({ userId, profile, insightType, sourceDate, data }) {
   const categories = buildCategories(insightType, data);
-  const messages = [{
+  // Half a day's data against a whole previous day is not a fair comparison,
+  // so the day before is left out once the live day is underway.
+  const previous = categories?.dayStatus === 'day_in_progress'
+    ? null
+    : await getPreviousDayContext(userId, insightType, sourceDate).catch(() => null);
+  const example = insightType === 'overall' ? overallExample(categories) : null;
+  const firstTry = [{
     role: 'user',
-    content: buildUserPrompt(toPromptProfile(profile), INSIGHT_LABELS[insightType], data.date || sourceDate, categories),
+    content: buildUserPrompt(toPromptProfile(profile), INSIGHT_LABELS[insightType], data.date || sourceDate, categories, previous, example),
   }];
+  const dayIsOver = !isLiveDay(categories?.dayStatus);
+  const maxDescription = insightType === 'overall' ? 250 : 220;
 
-  // One corrective retry if the model slips a number in anyway; a second
-  // slip throws, so the previous insight stays rather than showing a number.
-  let parsed;
+  // Checked exactly as it will be stored, after the free code fixes.
+  const shape = (parsed) => {
+    if (!parsed?.title || !parsed?.description) return null;
+    const fixed = autoFix(parsed);
+    return {
+      title: fixed.title.slice(0, 120),
+      description: fitToLength(fixed.description, maxDescription),
+      summary: (fixed.summary || fixed.title).slice(0, 200),
+    };
+  };
+
+  // The text is checked after every attempt; a failing draft goes back with
+  // the exact problems listed. If it still fails after the last attempt
+  // nothing is saved, so the previous insight stays rather than a bad one.
+  let text = null;
   let model;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  let problems = [];
+  for (let attempt = 1; attempt <= INSIGHT_MAX_ATTEMPTS; attempt++) {
+    const repair = text != null;
     const result = await chatCompletionWithFallback({
-      system: INSIGHT_SYSTEMS[insightType],
-      messages,
+      system: repair ? REPAIR_SYSTEM : INSIGHT_SYSTEMS[insightType],
+      messages: repair ? [{
+        role: 'user',
+        content: `Message: ${JSON.stringify(text)}\nLabels it must stay true to: ${JSON.stringify(categories)}\nProblems to fix: ${problems.join('; ')}`,
+      }] : firstTry,
       maxTokens: MAX_TOKENS,
       // Low so the same categories read the same on a re-generation instead
       // of a fresh rewrite each time.
       temperature: 0.3,
-      feature: `daily_insight_${insightType}`,
+      feature: `daily_insight_${insightType}${repair ? '_repair' : ''}`,
       userId,
       // Avg call is ~2.7s; without a cap a stuck provider held one for 191s.
       // On timeout the fallback chain moves on to the next model.
       timeoutMs: INSIGHT_LLM_TIMEOUT_MS,
     });
     model = result.model;
-    parsed = parseJsonResponse(result.text);
-    if (!parsed?.title || !parsed?.description || parsed.description.length < 80) {
-      throw new Error('Model returned no usable title/description');
+    let draft = null;
+    try { draft = shape(parseJsonResponse(result.text)); } catch { /* counted as a problem below */ }
+
+    if (draft) {
+      text = draft;
+      problems = [...findTextProblems(draft, { dayIsOver }), ...findLabelProblems(draft, categories, insightType)];
+      if (draft.description.length < 80) problems.push('description is too short — write two full sentences');
+    } else if (!text) {
+      problems = ['is not the requested JSON'];
     }
-    if (!containsNumber(parsed)) break;
-    if (attempt === 2) throw new Error('Model kept including numbers in the insight');
-    messages.push(
-      { role: 'assistant', content: result.text },
-      { role: 'user', content: 'That answer contains a number. Rewrite it with no digits and no number words at all, same JSON format.' },
-    );
+    if (draft && problems.length === 0) break;
+    if (attempt === INSIGHT_MAX_ATTEMPTS) {
+      throw new Error(`Insight text failed checks: ${problems.join('; ')}`);
+    }
   }
 
-  return {
-    title: String(parsed.title).slice(0, 120),
-    // 'overall' covers four pillars and needs more room than single-topic types.
-    description: trimToSentence(parsed.description, insightType === 'overall' ? 250 : 220),
-    summary: String(parsed.summary || parsed.title).slice(0, 200),
-    categories,
-    model,
-  };
+  return { ...text, categories, model };
 }
 
 function saveDailyInsight({ userId, insightDate, sourceDate, insightType, data, composed }) {
@@ -611,7 +785,7 @@ const OWN_SOURCE_TYPES = new Set(['sleep', 'recovery']);
 
 async function buildProfile(userId) {
   const user = await User.findById(userId)
-    .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours profile.lifestyle.waterGoalMl nutritionGoal.goal')
+    .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours profile.lifestyle.waterGoalMl profile.lifestyle.stepGoal nutritionGoal.goal')
     .lean();
 
   return {
@@ -635,6 +809,9 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
   // Same default the lifestyle-goals API reports when the user never set one.
   const waterGoalMl = user?.profile?.lifestyle?.waterGoalMl || 2000;
   const isPartialDay = !isFinal && sourceDate === istDateKey();
+  // With isPartialDay, decides whether the live card is in the "day just
+  // started" window where comparing with the day before still makes sense.
+  const beforeNoon = isPartialDay && istHour() < 12;
   if (insightType === 'sleep') {
     const sleepGoalHours = user?.profile?.lifestyle?.sleepGoalHours;
     const analysis = await getSleepClinicalAnalysis(userId, { age: profile.age, sleepGoalHours, asOfDate: sourceDate });
@@ -655,8 +832,7 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
     // check that claim against). Same baseline math activityScoreInsightService
     // already uses for its own goal/baseline notification logic.
     if (!overallData) return null;
-    const guidance = getExerciseGuidance(profile.age, null);
-    const baseline = await getActivityInsight(userId, guidance.stepsGoal);
+    const baseline = await getActivityInsight(userId, getStepGoal(user).goalSteps);
     return {
       ...insightData.fitness(overallData),
       // Goal, not a historical trend average — "today vs your goal" is the
@@ -668,6 +844,7 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
       // just deprioritized — a prompt instruction to prefer one number over
       // another still let the model reach for the trend anyway.
       stepGoal: baseline.stepGoal,
+      beforeNoon,
       // true only for the on-demand same-day refresh (see
       // getLatestActivityDateKey in insightController.js) — unlike a
       // completed night's sleep, the day's steps are still accumulating, so
@@ -682,9 +859,21 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
     // its own dedicated collector (same one the standalone 'recovery' type
     // uses), fetched here too so 'overall' isn't silently missing it.
     if (!overallData) return null;
-    const recovery = await collectRecoveryData(userId, sourceDate);
+    const sleepGoalHours = getSleepGoal(user).goalHours;
+    const sleepShortfall = overallData.sleepMinutes ? sleepGoalHours * 60 - overallData.sleepMinutes : 0;
+    const [recovery, patterns, rewardStreakBefore] = await Promise.all([
+      collectRecoveryData(userId, sourceDate),
+      // Only a meaningfully short night can become a sleep connection.
+      sleepShortfall > SHORT_NIGHT_MINUTES
+        ? getPersonalPatterns(userId, sourceDate, sleepGoalHours).catch(() => null)
+        : null,
+      isPartialDay ? 0 : countRewardStreak(userId, sourceDate).catch(() => 0),
+    ]);
     return {
       ...overallData,
+      sleepGoalHours,
+      patterns,
+      rewardStreakBefore,
       recovery: recovery ? {
         // The ring on the dashboard shows recoveryScore (the final 0-100 number),
         // not physiologyScore (an internal 70%-weighted sub-component of it) —
@@ -703,12 +892,15 @@ async function collectDataForType(insightType, userId, sourceDate, { user, profi
       // in progress, so nutrition/activity being thin isn't necessarily a
       // shortfall yet, just "not logged so far."
       isPartialDay,
+      beforeNoon,
       waterGoalMl,
     };
   }
   if (!overallData) return null;
   const typeData = insightData[insightType](overallData);
-  return (insightType === 'nutrition' || insightType === 'hydration') ? { ...typeData, waterGoalMl } : typeData;
+  return (insightType === 'nutrition' || insightType === 'hydration')
+    ? { ...typeData, waterGoalMl, isPartialDay, beforeNoon }
+    : typeData;
 }
 
 /**
