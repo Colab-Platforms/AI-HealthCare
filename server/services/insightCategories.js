@@ -80,7 +80,147 @@ const sleepDebtBand = (hours) => {
   return 'large';
 };
 
-const dayStatus = (data) => (data.isPartialDay ? 'day_in_progress' : 'full_day');
+// The live card may compare with the day before only while the new day has
+// barely begun (before noon, almost nothing logged). Once real data builds
+// up, "less than the day before" would compare half a day with a whole one.
+const barelyStarted = (data) => {
+  const actual = data.activityDetail?.steps?.actual ?? data.steps;
+  const goal = data.activityDetail?.steps?.goal ?? data.stepGoal;
+  return ['not_logged', 'not_started', 'just_started'].includes(progressBand(actual, goal))
+    && (data.meals?.length || 0) <= 1;
+};
+
+const dayStatus = (data) => {
+  if (!data.isPartialDay) return 'full_day';
+  return data.beforeNoon && barelyStarted(data) ? 'day_just_started' : 'day_in_progress';
+};
+
+const isLiveDay = (status) => status === 'day_in_progress' || status === 'day_just_started';
+
+// ------------------------------------------------- overall: links and tiers
+//
+// The overall insight explains how one pillar affected the others ("short
+// sleep held back recovery"). The model never decides that connection: it
+// is picked here, from the user's actual data, and the text is checked
+// against it afterwards (insightTextRules.findLabelProblems).
+
+const LOW_STEPS = new Set(['not_started', 'just_started', 'low']);
+const GOOD = new Set(['good', 'excellent']);
+const LOW_SCORE = new Set(['needs_attention', 'fair']);
+const MEANINGFUL_SHORT = new Set(['moderately_short', 'well_short']);
+// Calories/protein "under goal" only means the user ate too little when the
+// day was actually logged — one logged meal is a logging gap, not undereating.
+const MIN_MEALS_FOR_INTAKE = 2;
+const enoughMealsLogged = (data) => (data.meals?.length || 0) >= MIN_MEALS_FOR_INTAKE;
+
+const sleepVsGoal = (minutes, goalHours) => {
+  if (!minutes || !goalHours) return { vs: 'not_logged', shortBy: null };
+  const shortfall = goalHours * 60 - minutes;
+  return shortfall > 0
+    ? { vs: 'below', shortBy: sleepShortfallBand(shortfall) }
+    : { vs: 'within', shortBy: null };
+};
+
+const alcoholBand = (units) => {
+  if (units == null) return 'not_logged';
+  if (units === 0) return 'none';
+  return units <= 2 ? 'moderate' : 'high';
+};
+
+// A logged workout counts as real activity even on a low-step day.
+const activityLevel = (c) => {
+  if (c.stepsVsGoal === 'goal_met' || (c.workout === 'workout_logged' && c.activity === 'excellent')) return 'high';
+  if (LOW_STEPS.has(c.stepsVsGoal) && c.workout !== 'workout_logged') return 'low';
+  return 'medium';
+};
+
+function pickTier(c, data) {
+  if (isLiveDay(c.dayStatus)) return 'in_progress';
+  const sleepOk = c.sleepVsGoal === 'within';
+  const activityOk = c.stepsVsGoal === 'goal_met';
+  const nutritionOk = enoughMealsLogged(data) && GOOD.has(c.nutrition);
+  // Recovery needs a wearable most users don't have, so it can't be a
+  // requirement — but when it is there, it has to be good too.
+  const recoveryOk = c.recovery === 'not_logged' || GOOD.has(c.recovery);
+  if (sleepOk && activityOk && nutritionOk && recoveryOk && scoreBand(data.healthScore) === 'excellent') {
+    return 'reward';
+  }
+  // A high score built from only the pillars that were logged is not a
+  // reward day — the missing ones were never measured.
+  const sleepLogged = c.sleepVsGoal !== 'not_logged';
+  const activityLogged = c.stepsVsGoal !== 'not_logged' || c.workout === 'workout_logged';
+  const mealsLogged = c.meals !== 'none_logged';
+  const loggedAreGood = (!sleepLogged || sleepOk) && (!activityLogged || activityOk)
+    && (!mealsLogged || nutritionOk) && recoveryOk;
+  const anyLogged = sleepLogged || activityLogged || mealsLogged;
+  const anyMissing = !sleepLogged || !activityLogged || !mealsLogged;
+  return anyLogged && anyMissing && loggedAreGood ? 'incomplete_data' : 'improve';
+}
+
+const streakLabel = (daysBefore = 0) => {
+  if (daysBefore <= 0) return 'first_day';
+  if (daysBefore === 1) return 'second_day';
+  if (daysBefore === 2) return 'third_day';
+  return 'several_days';
+};
+
+// Strongest connection first. Only last night's sleep is known while the day
+// is still in progress — activity and meals aren't finished yet, so links
+// built on them would be premature.
+function pickLink(c) {
+  const sleepShort = c.sleepVsGoal === 'below' && MEANINGFUL_SHORT.has(c.sleepShortBy);
+  const recoveryLow = LOW_SCORE.has(c.recovery);
+  if (['moderate', 'high'].includes(c.alcohol) && (sleepShort || recoveryLow)) return 'alcohol_sleep';
+  if (sleepShort && recoveryLow) return 'sleep_recovery';
+  if (isLiveDay(c.dayStatus)) return 'none';
+
+  const activity = activityLevel(c);
+  if (sleepShort && activity === 'low') return 'sleep_activity';
+  if (c.recovery === 'needs_attention' && activity === 'high') return 'recovery_push';
+  if (c.calories === 'under_goal' && activity === 'high') return 'underfuel_active';
+  if (c.calories === 'under_goal' && activity === 'low') return 'underfuel_inactive';
+  if (c.workout === 'workout_logged' && c.protein === 'under_goal') return 'workout_protein';
+  if (c.calories === 'over_goal' && activity === 'low') return 'surplus_inactive';
+  if (['just_started', 'low'].includes(c.water) && activity === 'high') return 'water_active';
+  if (c.sleepVsGoal === 'within' && GOOD.has(c.recovery) && activity === 'low') return 'rested_inactive';
+  if (c.tier === 'reward') return 'all_good';
+  return 'none';
+}
+
+// patterns: what the user's own last two weeks show (see
+// dailyInsightService.getPersonalPatterns). Without one the text has to hedge.
+const LINK_PATTERN = { sleep_recovery: 'sleepRecovery', sleep_activity: 'sleepActivity' };
+
+function buildOverall(data) {
+  const sleep = sleepVsGoal(data.sleepMinutes, data.sleepGoalHours);
+  const sleepScore = scoreBand(data.scoreComponents?.sleep);
+  const enoughMeals = enoughMealsLogged(data);
+  const c = {
+    dayStatus: dayStatus(data),
+    // A night short of the goal is never "excellent" here, even when the
+    // duration-only score is high — the Sleep card would be saying "short".
+    sleep: sleep.vs === 'below' && sleepScore === 'excellent' ? 'good' : sleepScore,
+    sleepVsGoal: sleep.vs,
+    activity: scoreBand(data.scoreComponents?.activity),
+    stepsVsGoal: progressBand(data.activityDetail?.steps?.actual, data.activityDetail?.steps?.goal),
+    workout: data.workouts?.length ? 'workout_logged' : 'no_workout_logged',
+    nutrition: scoreBand(data.scoreComponents?.nutrition),
+    meals: mealsBand(data.meals?.length),
+    calories: enoughMeals ? intakeBand(data.calories, data.calorieGoal) : 'not_enough_meals_logged',
+    protein: enoughMeals ? intakeBand(data.protein, data.proteinGoal) : 'not_enough_meals_logged',
+    water: progressBand(data.waterGlasses, data.waterGoalMl),
+    recovery: data.recovery ? scoreBand(data.recovery.recoveryScore) : 'not_logged',
+    alcohol: alcoholBand(data.alcoholUnits),
+  };
+  if (sleep.shortBy) c.sleepShortBy = sleep.shortBy;
+  c.tier = pickTier(c, data);
+  if (c.tier === 'reward') c.rewardStreak = streakLabel(data.rewardStreakBefore);
+  c.link = pickLink(c);
+  if (c.link !== 'none' && c.link !== 'all_good') {
+    c.linkEvidence = data.patterns?.[LINK_PATTERN[c.link]] ? 'personal_pattern' : 'general';
+  }
+  return c;
+}
 
 const builders = {
   fitness: (data) => ({
@@ -106,14 +246,16 @@ const builders = {
   },
 
   nutrition: (data) => ({
+    dayStatus: dayStatus(data),
     meals: mealsBand(data.meals?.length),
-    caloriesVsGoal: intakeBand(data.calories, data.calorieGoal),
-    proteinVsGoal: intakeBand(data.protein, data.proteinGoal),
+    caloriesVsGoal: enoughMealsLogged(data) ? intakeBand(data.calories, data.calorieGoal) : 'not_enough_meals_logged',
+    proteinVsGoal: enoughMealsLogged(data) ? intakeBand(data.protein, data.proteinGoal) : 'not_enough_meals_logged',
     foodQuality: foodQualityBand(data.healthyFoodsCount, data.junkFoodsCount),
     waterVsGoal: progressBand(data.waterGlasses, data.waterGoalMl),
   }),
 
   hydration: (data) => ({
+    dayStatus: dayStatus(data),
     waterVsGoal: progressBand(data.waterGlasses, data.waterGoalMl),
   }),
 
@@ -134,16 +276,7 @@ const builders = {
       : data.alcoholUnits === 0 ? 'none' : data.alcoholUnits <= 2 ? 'moderate' : 'high',
   }),
 
-  overall: (data) => ({
-    dayStatus: dayStatus(data),
-    sleep: scoreBand(data.scoreComponents?.sleep),
-    activity: scoreBand(data.scoreComponents?.activity),
-    stepsVsGoal: progressBand(data.activityDetail?.steps?.actual, data.activityDetail?.steps?.goal),
-    nutrition: scoreBand(data.scoreComponents?.nutrition),
-    meals: mealsBand(data.meals?.length),
-    water: progressBand(data.waterGlasses, data.waterGoalMl),
-    recovery: data.recovery ? scoreBand(data.recovery.recoveryScore) : 'not_logged',
-  }),
+  overall: buildOverall,
 };
 
 function buildCategories(insightType, data) {
@@ -158,4 +291,4 @@ function sameCategories(a, b) {
   return norm(a) === norm(b);
 }
 
-module.exports = { buildCategories, sameCategories, progressBand, scoreBand };
+module.exports = { buildCategories, sameCategories, progressBand, scoreBand, isLiveDay };

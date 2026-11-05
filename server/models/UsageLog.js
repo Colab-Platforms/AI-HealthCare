@@ -13,6 +13,11 @@ const MODEL_PRICING = {
     // OpenRouter models — verify against https://openrouter.ai/models before relying on cost totals
     'google/gemini-2.5-flash':      { input: 0.30, output: 2.50, cacheRead: 0.075, cacheWrite: 0 },
     'google/gemini-2.5-flash-lite': { input: 0.10, output: 0.40, cacheRead: 0.025, cacheWrite: 0 },
+    // Insight model chain. Before these were listed, every call fell through
+    // to the Sonnet default below and was recorded at ~10x its real cost.
+    'nvidia/nemotron-3-super-120b-a12b': { input: 0.30, output: 2.40, cacheRead: 0, cacheWrite: 0 },
+    'anthropic/claude-haiku-4.5':        { input: 1.00, output: 5.00, cacheRead: 0.10, cacheWrite: 1.25 },
+    'anthropic/claude-haiku-5.5':        { input: 0.10, output: 0.50, cacheRead: 0.01, cacheWrite: 0.125 },
 };
 
 const FREE_PRICING = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
