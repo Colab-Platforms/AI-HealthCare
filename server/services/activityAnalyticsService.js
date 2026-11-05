@@ -6,6 +6,7 @@ const User = require('../models/User');
 const HealthGoal = require('../models/HealthGoal');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
+const { getStepGoal } = require('../utils/stepGoal');
 const { buildActivityInsight } = require('./activityScoreInsightService');
 const { mergeDeviceRows } = require('../utils/wearableMerge');
 
@@ -126,7 +127,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
     DailyHealthScore.find({ userId, date: { $gte: startStr, $lte: endStr } }).select('date components.activity').lean(),
     ExerciseLog.find({ userId, timestamp: { $gte: exerciseLogWindowStart, $lte: dateMatch.$lte || new Date() } })
       .select('duration category caloriesBurned timestamp').lean(),
-    User.findById(userId).select('profile.age').lean(),
+    User.findById(userId).select('profile.age profile.lifestyle.stepGoal').lean(),
     HealthGoal.findOne({ userId, isActive: true }).select('age goalType').lean(),
   ]);
 
@@ -139,7 +140,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   const guidance = getExerciseGuidance(healthGoal?.age ?? user?.profile?.age, healthGoal?.goalType ?? null);
   const dailyCardioTarget = Math.round((guidance.cardioMinutesPerWeek / 7) * 10) / 10;
   const goals = {
-    steps: guidance.stepsGoal,
+    steps: getStepGoal(user, healthGoal?.age ?? user?.profile?.age).goalSteps,
     activeMinutes: dailyCardioTarget,
     cardioMinutes: dailyCardioTarget,
     strengthSessionsPerWeek: guidance.strengthSessionsPerWeek,

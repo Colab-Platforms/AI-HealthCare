@@ -12,6 +12,7 @@ const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
 const { invalidateUserHealthCache, userKeys } = require('../utils/cacheKeys');
 const { getSleepGoal } = require('../utils/sleepGoal');
+const { getStepGoal } = require('../utils/stepGoal');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
@@ -904,7 +905,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       sleepToday: history[history.length - 1]?.sleep ?? null,
       hasWearableConnected,
       goals: {
-        steps: userWithLogs?.profile?.lifestyle?.stepGoal || 10000,
+        steps: getStepGoal(userWithLogs).goalSteps,
         sleep: getSleepGoal(userWithLogs).goalHours,
         water: userWithLogs?.profile?.lifestyle?.waterGoalMl || 2000, // ml — directly comparable to history[].water / nutritionData.waterIntake, no glass conversion needed
         weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65
