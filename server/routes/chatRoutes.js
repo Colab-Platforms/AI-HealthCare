@@ -18,6 +18,7 @@ const { buildDashboardData } = require('../controllers/healthController');
 const cache = require('../utils/cache');
 const { userKeys } = require('../utils/cacheKeys');
 const { getSleepGoal } = require('../utils/sleepGoal');
+const { getStepGoal } = require('../utils/stepGoal');
 const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
 const UsageLog = require('../models/UsageLog');
 
@@ -199,7 +200,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       const freshLifestyle = userLogs?.profile?.lifestyle || lifestyle;
       const goalsFromProfile = userLogs?.nutritionGoal || goals;
       const dashGoals = dashboardCache?.goals || {
-        steps: freshLifestyle.stepGoal || 10000,
+        steps: getStepGoal({ profile: { age: profile.age, lifestyle: freshLifestyle } }).goalSteps,
         sleep: getSleepGoal({ profile: { age: profile.age, lifestyle: freshLifestyle } }).goalHours,
         water: freshLifestyle.waterGoalMl || 2000,
         calories: goalsFromProfile.calorieGoal || 2100,

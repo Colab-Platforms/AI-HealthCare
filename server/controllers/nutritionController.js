@@ -4,6 +4,7 @@ const NutritionSummary = require('../models/NutritionSummary');
 const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
 const { getSleepGoal } = require('../utils/sleepGoal');
+const { getStepGoal } = require('../utils/stepGoal');
 const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
@@ -1343,7 +1344,7 @@ exports.getLifestyleGoals = async (req, res) => {
     const lifestyle = user?.profile?.lifestyle || {};
     res.json({
       success: true,
-      stepGoal: lifestyle.stepGoal || 10000,
+      stepGoal: getStepGoal(user).goalSteps,
       sleepGoalHours: getSleepGoal(user).goalHours,
       waterGoalMl: lifestyle.waterGoalMl || 2000,
     });

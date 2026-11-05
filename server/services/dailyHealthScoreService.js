@@ -13,6 +13,7 @@ const { calculateDietQualityScore } = require('./dietQualityScoreService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 const { getSleepGoal } = require('../utils/sleepGoal');
+const { getStepGoal } = require('../utils/stepGoal');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
 // it uses the population-to-personal baseline blend below. Hydration is
@@ -22,6 +23,7 @@ const { getSleepGoal } = require('../utils/sleepGoal');
 // poor) habit and reward it with 100, instead of measuring against the goal
 // they actually see in the app. Fixed goal here, matching that exactly.
 //
+// (A goal the user set themselves still wins — see utils/stepGoal.js.)
 // Steps used to be fixed at 10,000 for every user here too, but that number
 // has no age-based backing (unlike the WHO/ACSM/CDC minutes-based guidance
 // below) — it's not even a health guideline at all, it originated from a
@@ -147,6 +149,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     healthGoal?.goalType ?? null,
   );
   const dailyCardioTarget = guidance.cardioMinutesPerWeek / 7;
+  const stepGoal = getStepGoal(user, healthGoal?.age ?? user?.profile?.age).goalSteps;
 
   // --- Sleep ---
   // Always max across rows, never sum — two devices for the same date measure
@@ -272,8 +275,8 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // movement minutes, without the same workout ever being counted twice.
   let stepsScore = null;
   if (stepsEntry?.steps && !mobilityLimited) {
-    raw.activity.steps = { actual: stepsEntry.steps, goal: guidance.stepsGoal, source: 'device' };
-    stepsScore = saturatingToGoal(stepsEntry.steps, guidance.stepsGoal);
+    raw.activity.steps = { actual: stepsEntry.steps, goal: stepGoal, source: 'device' };
+    stepsScore = saturatingToGoal(stepsEntry.steps, stepGoal);
   }
 
   // Cardio-minutes from deliberately logged exercise (running, gym, yoga,

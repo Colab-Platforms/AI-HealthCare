@@ -25,7 +25,8 @@ const MIN_BASELINE_DAYS = 7; // need real history before trusting a personal bas
 //    ~36% drop from normal that's worth surfacing).
 //
 // stepGoal is never modified by this — it stays exactly what the user set.
-async function getActivityInsight(userId, stepGoal = 10000) {
+// stepGoal: from utils/stepGoal.js — callers always pass it.
+async function getActivityInsight(userId, stepGoal) {
   const recentSince = new Date();
   recentSince.setUTCDate(recentSince.getUTCDate() - RECENT_WINDOW_DAYS);
   recentSince.setUTCHours(0, 0, 0, 0);

@@ -1008,15 +1008,13 @@ exports.getSleepSummaryData = async (req, res) => {
 exports.getActivityInsightData = async (req, res) => {
   try {
     const User = require('../models/User');
-    const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
-    const user = await User.findById(req.user._id).select('profile.age').lean();
-    // Same age-based WHO-guideline goal the Activity ring and
-    // scoreComponents.activity are computed against (dailyHealthScoreService,
-    // dailyInsightService's 'fitness' branch) — this endpoint used to read a
-    // separate, unrelated profile.lifestyle.stepGoal field instead (defaulting
-    // to 10,000), so its "X of your goal" message disagreed with the ring
-    // sitting right next to it, which was already showing "X of 7,500".
-    const stepGoal = getExerciseGuidance(user?.profile?.age, null).stepsGoal;
+    const { getStepGoal } = require('../utils/stepGoal');
+    const user = await User.findById(req.user._id).select('profile.age profile.lifestyle.stepGoal').lean();
+    // Same goal the Activity ring and scoreComponents.activity are computed
+    // against (utils/stepGoal.js) — this endpoint once read the stored
+    // 10,000 default instead, so its "X of your goal" message disagreed with
+    // the ring sitting right next to it, which was showing "X of 7,500".
+    const stepGoal = getStepGoal(user).goalSteps;
 
     const insight = await getActivityInsight(req.user._id, stepGoal);
     res.json({ success: true, ...insight });
