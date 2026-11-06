@@ -9,15 +9,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const OUTPUT_PATH = path.join(__dirname, '../waitlist-emails-export.csv');
 
-// Some local networks (VPN/router/antivirus DNS filtering) block Node's direct SRV
-// queries (used by mongodb+srv:// URIs) even though the OS's own resolver works fine
-// via nslookup. If the machine's configured DNS can't resolve the SRV record, retry
-// once against a public resolver before giving up — this script-only workaround
-// doesn't touch config/db.js, which already connects fine for the main app.
 const ensureSrvResolvable = async (uri) => {
     if (!uri.startsWith('mongodb+srv://')) return;
-    // new URL() parses any scheme:// generically, so this correctly pulls just the
-    // hostname (e.g. cluster0.ij9yb3s.mongodb.net) regardless of userinfo/db-name/query string.
     const host = new URL(uri).hostname;
     try {
         await dns.promises.resolveSrv(`_mongodb._tcp.${host}`);
@@ -25,7 +18,7 @@ const ensureSrvResolvable = async (uri) => {
         console.warn(`Default DNS couldn't resolve the SRV record (${e.code}) — retrying via public DNS (8.8.8.8, 1.1.1.1)...`);
         dns.setServers(['8.8.8.8', '1.1.1.1']);
         await dns.promises.resolveSrv(`_mongodb._tcp.${host}`); // let this throw if it still fails — real problem, not just DNS
-    }
+    }2
 };
 
 const csvEscape = (value) => {

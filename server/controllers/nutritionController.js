@@ -18,6 +18,7 @@ const { getWaterAnalytics, WaterAnalyticsInputError } = require('../services/wat
 const { calculateDietQualityScore } = require('../services/dietQualityScoreService');
 const { buildNutritionInsight } = require('../services/nutritionInsightService');
 const { classifyCalendarBand } = require('../utils/calendarBand');
+const { getNutritionTrends: getNutritionTrendsData, NutritionTrendInputError } = require('../services/nutritionTrendService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -1898,6 +1899,24 @@ exports.getNutritionScore = async (req, res) => {
       message: 'Failed to get nutrition score',
       error: error.message
     });
+  }
+};
+
+// GET /api/nutrition/trends?range=W|M|3M
+// Average nutrition score, daily calories and food-quality score for the last
+// 7 / 30 / 90 days in a single call. Logic lives in nutritionTrendService.js.
+exports.getNutritionTrends = async (req, res) => {
+  try {
+    const range = String(req.query.range || 'W').toUpperCase();
+    const cacheKey = `nutrition_trends:${req.user._id}:${range}`;
+    const data = await cache.getOrSet(cacheKey, () => getNutritionTrendsData(req.user._id, range), 300);
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof NutritionTrendInputError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    console.error('Get nutrition trends error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get nutrition trends', error: error.message });
   }
 };
 
