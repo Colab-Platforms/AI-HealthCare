@@ -35,6 +35,7 @@ router.get('/water/history', apiLimiter, nutritionController.getWaterHistory);
 router.get('/summary/daily', apiLimiter, nutritionController.getDailySummary);
 router.get('/nutrition-score', apiLimiter, nutritionController.getNutritionScore);
 router.get('/summary/weekly', apiLimiter, nutritionController.getWeeklySummary);
+router.get('/trends', apiLimiter, nutritionController.getNutritionTrends);
 router.get('/activity/week', apiLimiter, nutritionController.getActivityWeek);
 router.get('/recommendations', apiLimiter, nutritionController.getRecommendations);
 router.get('/food-image', apiLimiter, nutritionController.getFoodImage);
