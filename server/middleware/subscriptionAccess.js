@@ -78,6 +78,11 @@ exports.requireFeature = (featureKey) => {
   };
 };
 
+// Shared with services that need the same "is this subscription live?" rule
+// (e.g. shopifyOfferService, which must never turn a paying user into a trial).
+exports.isEntitled = isEntitled;
+exports.FREE_PLAN_KEY = FREE_PLAN_KEY;
+
 // /doctors/book handles both video and in-person appointments — only video
 // consults are plan-gated, so this only runs the check when req.body.type
 // is 'video', letting in-person bookings through untouched.

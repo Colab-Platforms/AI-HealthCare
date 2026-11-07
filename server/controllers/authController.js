@@ -12,6 +12,7 @@ const gamificationService = require('../services/gamificationService');
 const RefreshToken = require('../models/RefreshToken');
 const { upsertToken, deactivateToken } = require('../services/fcmTokenService');
 const WaitlistUserEmail = require('../models/WaitlistUserEmail');
+const shopifyOfferService = require('../services/shopifyOfferService');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const NotificationPreference = require('../models/NotificationPreference');
@@ -773,6 +774,9 @@ exports.register = async (req, res) => {
       });
 
       markWaitlistConverted(waitlistEntry);
+      // Bought from the Shopify store with this email? 30-day trial instead of 14.
+      // Never throws; updates `user` in memory so the response shows the new end date.
+      await shopifyOfferService.applyOnSignup(user);
 
       // Default notification preferences (all reminder types on, schema
       // defaults) — unconditional, no profile dependency. Without this, a
@@ -1222,6 +1226,7 @@ exports.googleAuth = async (req, res) => {
         subscription,
       });
       markWaitlistConverted(waitlistEntry);
+      await shopifyOfferService.applyOnSignup(user); // Shopify buyer -> 30-day trial (never throws)
     } else if (!user.googleId) {
       // Existing password-based account with the same email — link it instead of creating a duplicate
       user.googleId = googleId;
@@ -1405,6 +1410,7 @@ exports.appleAuth = async (req, res) => {
         subscription,
       });
       markWaitlistConverted(waitlistEntry);
+      await shopifyOfferService.applyOnSignup(user); // Shopify buyer -> 30-day trial (never throws)
     } else if (!user.appleId) {
       // Existing password-based account with the same email — link it instead of creating a duplicate
       user.appleId = appleId;

@@ -89,6 +89,19 @@ const runSubscriptionLifecycleCron = async () => {
   try {
     const now = new Date();
 
+    // Shopify card offers waiting for a paid plan to end (shopifyOfferService,
+    // rule D): give those users their trial BEFORE the downgrade below, so they
+    // go from the paid plan straight to the trial instead of to 'free'.
+    // Required here, not at the top: subscriptionAccess (which the offer service
+    // uses) imports this file, and a top-level require would be circular.
+    try {
+      const { applyPendingCredits } = require('./shopifyOfferService');
+      const applied = await applyPendingCredits(now);
+      if (applied) console.log(`[Subscription Lifecycle] Shopify offer trials started after paid plan: ${applied}`);
+    } catch (offerErr) {
+      console.error('[Subscription Lifecycle] Shopify pending offers failed:', offerErr.message);
+    }
+
     // Paid plan, period end has passed, and the gateway never marked it renewed/cancelled.
     const expiredResult = await User.updateMany(
       {

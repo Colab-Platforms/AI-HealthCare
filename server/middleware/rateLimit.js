@@ -166,4 +166,17 @@ const publicShareLimiter = rateLimit({
   message: { message: 'Too many requests. Please try again in a minute.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter };
+// Shopify card offer redeem. Order numbers are sequential, so this is what stops
+// someone cycling through them; 10 tries per 15 min still leaves room for typos.
+const offerRedeemLimiter = rateLimit({
+  store: buildStore('offer-redeem'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter };
