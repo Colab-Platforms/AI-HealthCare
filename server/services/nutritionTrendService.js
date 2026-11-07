@@ -1,19 +1,13 @@
 const NutritionSummary = require('../models/NutritionSummary');
-const HealthGoal = require('../models/HealthGoal');
-const User = require('../models/User');
-const { calculateDietQualityScore } = require('./dietQualityScoreService');
+const DailyHealthScore = require('../models/DailyHealthScore');
+const { calculateDailyScore } = require('./dailyHealthScoreService');
+const { getActiveScoreConfig } = require('../utils/scoreConfig');
 
 // Rolling windows ending today (UTC), matching the W / M / 3M toggle in the app.
+// DailyHealthScore keeps 90 days, which is exactly the longest window (3M).
 const RANGE_DAYS = { W: 7, M: 30, '3M': 90 };
 
 class NutritionTrendInputError extends Error {}
-
-const TOTAL_FIELDS = [
-  'totalCalories', 'totalProtein', 'totalCarbs', 'totalFats',
-  'totalFiber', 'totalSugar', 'totalSodium', 'totalSaturatedFat',
-  'totalVitaminA', 'totalVitaminC', 'totalVitaminD', 'totalVitaminB12',
-  'totalIron', 'totalCalcium', 'totalPotassium', 'totalMagnesium', 'totalOmega3',
-];
 
 const dayStr = (d) => d.toISOString().split('T')[0];
 const mean = (nums) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null);
@@ -21,13 +15,15 @@ const round = (n) => (n === null ? null : Math.round(n));
 
 /**
  * One average per metric for the selected timeframe, plus a per-day series.
- * Only LOGGED days (totalCalories > 0) count toward averages — an empty day
- * would otherwise drag every average toward zero. Missing days appear in the
+ * Averages count only days that have data; days without data appear in the
  * series as null so the chart can leave a gap.
  *
- *  - score:    Nutrition Score of the averaged day (same as nutrition-score?range=weekly);
- *              the series holds each day's own score
- *  - calories: mean of daily consumed calories + the daily series
+ *  - score:    the Health Score's nutrition component per day
+ *              (GET /health/score -> dailyHealthScore.components.nutrition =
+ *              meals logged + nutrition score + calorie closeness).
+ *              Read from the persisted DailyHealthScore rows; today's is
+ *              recalculated first. average = mean of the daily values.
+ *  - calories: daily consumed calories (NutritionSummary.totalCalories)
  *  - quality:  healthy foods share per day = healthyFoodsCount / totalFoodsCount * 100
  *              (average = mean of daily values)
  */
@@ -41,29 +37,33 @@ async function getNutritionTrends(userId, range) {
   end.setUTCHours(0, 0, 0, 0);
   const start = new Date(end);
   start.setUTCDate(start.getUTCDate() - (days - 1));
+  const startKey = dayStr(start);
+  const endKey = dayStr(end);
 
-  const [user, healthGoal, summaries] = await Promise.all([
-    User.findById(userId).select('profile.age profile.gender profile.weight').lean(),
-    HealthGoal.findOne({ userId, isActive: true }).select('goalType currentWeight').lean(),
+  // Refresh today's row the same way /health/score does before reading the window.
+  const config = await getActiveScoreConfig();
+  await calculateDailyScore(userId, endKey, { config }).catch(() => null);
+
+  const [scoreRows, summaries] = await Promise.all([
+    DailyHealthScore.find({ userId, date: { $gte: startKey, $lte: endKey } })
+      .select('date components.nutrition').lean(),
     NutritionSummary.find({
       userId,
       date: { $gte: start, $lte: end },
       totalCalories: { $gt: 0 },
-    }).select(`date calorieGoal healthyFoodsCount totalFoodsCount ${TOTAL_FIELDS.join(' ')}`).lean(),
+    }).select('date calorieGoal healthyFoodsCount totalFoodsCount totalCalories').lean(),
   ]);
 
-  const profileBase = {
-    age: user?.profile?.age,
-    gender: user?.profile?.gender,
-    goalType: healthGoal?.goalType,
-    weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
-  };
+  // A day only has a nutrition score if the component exists on its row
+  // (absent = nothing logged), not a fake zero.
+  const scoreByDate = new Map();
+  for (const r of scoreRows) {
+    if (typeof r.components?.nutrition === 'number') scoreByDate.set(r.date, r.components.nutrition);
+  }
 
-  const byDate = new Map();
+  const summaryByDate = new Map();
   for (const s of summaries) {
-    const scoreResult = calculateDietQualityScore(s, { ...profileBase, calorieGoal: s.calorieGoal });
-    byDate.set(dayStr(s.date), {
-      score: scoreResult.score,
+    summaryByDate.set(dayStr(s.date), {
       calories: Math.round(Number(s.totalCalories) || 0),
       quality: s.totalFoodsCount > 0 ? Math.round(((Number(s.healthyFoodsCount) || 0) / s.totalFoodsCount) * 100) : 0,
       calorieGoal: Number(s.calorieGoal) || null,
@@ -77,34 +77,21 @@ async function getNutritionTrends(userId, range) {
     const d = new Date(start);
     d.setUTCDate(d.getUTCDate() + i);
     const key = dayStr(d);
-    const row = byDate.get(key);
-    scoreSeries.push({ date: key, value: row ? row.score : null });
+    const sc = scoreByDate.get(key);
+    const row = summaryByDate.get(key);
+    scoreSeries.push({ date: key, value: sc === undefined ? null : Math.round(sc) });
     calorieSeries.push({ date: key, value: row ? row.calories : null });
     qualitySeries.push({ date: key, value: row ? row.quality : null });
   }
 
-  const rows = [...byDate.values()];
-
-  // Period score = score of the AVERAGED day (average nutrient totals across
-  // logged days, then run the formula once). Same method as
-  // GET /nutrition-score?range=weekly|monthly, so both endpoints agree.
-  let periodScore = null;
-  if (summaries.length) {
-    const averagedTotals = {};
-    for (const field of TOTAL_FIELDS) {
-      averagedTotals[field] = mean(summaries.map((s) => Number(s[field]) || 0));
-    }
-    const avgCalorieGoal = mean(summaries.map((s) => Number(s.calorieGoal) || 0)) || undefined;
-    periodScore = calculateDietQualityScore(averagedTotals, { ...profileBase, calorieGoal: avgCalorieGoal }).score;
-  }
-
+  const rows = [...summaryByDate.values()];
   return {
     range,
     days,
-    startDate: dayStr(start),
-    endDate: dayStr(end),
+    startDate: startKey,
+    endDate: endKey,
     daysLogged: rows.length,
-    score: { average: periodScore, series: scoreSeries },
+    score: { average: round(mean([...scoreByDate.values()])), series: scoreSeries },
     calories: {
       dailyAverage: round(mean(rows.map((r) => r.calories))),
       goalAverage: round(mean(rows.map((r) => r.calorieGoal).filter((g) => g))),
