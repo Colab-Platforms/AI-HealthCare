@@ -28,7 +28,8 @@ const round = (n) => (n === null ? null : Math.round(n));
  *  - score:    Nutrition Score of the averaged day (same as nutrition-score?range=weekly);
  *              the series holds each day's own score
  *  - calories: mean of daily consumed calories + the daily series
- *  - quality:  mean of per-day averageHealthScore (calorie-weighted food health score)
+ *  - quality:  healthy foods share per day = healthyFoodsCount / totalFoodsCount * 100
+ *              (average = mean of daily values)
  */
 async function getNutritionTrends(userId, range) {
   const days = RANGE_DAYS[range];
@@ -48,7 +49,7 @@ async function getNutritionTrends(userId, range) {
       userId,
       date: { $gte: start, $lte: end },
       totalCalories: { $gt: 0 },
-    }).select(`date calorieGoal averageHealthScore ${TOTAL_FIELDS.join(' ')}`).lean(),
+    }).select(`date calorieGoal healthyFoodsCount totalFoodsCount ${TOTAL_FIELDS.join(' ')}`).lean(),
   ]);
 
   const profileBase = {
@@ -64,7 +65,7 @@ async function getNutritionTrends(userId, range) {
     byDate.set(dayStr(s.date), {
       score: scoreResult.score,
       calories: Math.round(Number(s.totalCalories) || 0),
-      quality: Number(s.averageHealthScore) || 0,
+      quality: s.totalFoodsCount > 0 ? Math.round(((Number(s.healthyFoodsCount) || 0) / s.totalFoodsCount) * 100) : 0,
       calorieGoal: Number(s.calorieGoal) || null,
     });
   }

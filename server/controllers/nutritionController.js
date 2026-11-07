@@ -1908,8 +1908,13 @@ exports.getNutritionScore = async (req, res) => {
 exports.getNutritionTrends = async (req, res) => {
   try {
     const range = String(req.query.range || 'W').toUpperCase();
-    const cacheKey = `nutrition_trends:${req.user._id}:${range}`;
-    const data = await cache.getOrSet(cacheKey, () => getNutritionTrendsData(req.user._id, range), 300);
+    // Today's NutritionSummary can be stale; refresh it first (same as the
+    // single-day /nutrition-score does) so today's score matches that API.
+    // Not cached, so the daily values always agree with the daily endpoint.
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    await updateDailySummary(req.user._id, today);
+    const data = await getNutritionTrendsData(req.user._id, range);
     res.json({ success: true, ...data });
   } catch (error) {
     if (error instanceof NutritionTrendInputError) {
