@@ -7,6 +7,7 @@ const User = require('../models/User');
 // (POST /users/fcm-token used to) produced a token no push was ever sent to.
 
 const PLATFORMS = new Set(['web', 'android', 'ios']);
+const MOBILE_PLATFORMS = new Set(['android', 'ios']);
 const MIN_TOKEN_LENGTH = 20;
 const MAX_TOKEN_LENGTH = 4096;
 const MAX_LABEL_LENGTH = 100;
@@ -31,18 +32,30 @@ const normalizeLabel = (label) =>
 const upsertToken = async (userId, rawToken, { platform, deviceLabel, defaultPlatform = 'web' } = {}) => {
   const token = normalizeToken(rawToken);
   if (!token) return null;
+  const resolvedPlatform = normalizePlatform(platform, defaultPlatform);
 
   await FCMToken.findOneAndUpdate(
     { token },
     {
       userId,
-      platform: normalizePlatform(platform, defaultPlatform),
+      platform: resolvedPlatform,
       deviceLabel: normalizeLabel(deviceLabel),
       isActive: true,
       lastUsedAt: new Date(),
     },
     { upsert: true, new: true }
   );
+
+  // One active token per phone platform. A reinstall or token refresh gives
+  // the same phone a new token while the old one can stay deliverable, so
+  // every push reached that phone twice. The app sends no device id to tell
+  // two phones apart, so the newest token wins; web keeps one per browser.
+  if (MOBILE_PLATFORMS.has(resolvedPlatform)) {
+    await FCMToken.updateMany(
+      { userId, platform: resolvedPlatform, token: { $ne: token }, isActive: true },
+      { isActive: false }
+    );
+  }
   return token;
 };
 

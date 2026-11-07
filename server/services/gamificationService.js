@@ -43,16 +43,8 @@ const BADGES = {
   HEALTH_LEGEND:     { id: 'health_legend',       name: 'Health Legend',     icon: '🌟', desc: 'Reach Health Legend tier' },
 };
 
-const notify = (userId, title, message, icon = '🏆') => {
-  require('./notificationService').createNotification(userId, {
-    type: 'gamification_badge',
-    title,
-    message,
-    icon,
-    priority: 'high',
-  }).catch(console.error);
-};
-
+// Points, tiers and badges are recorded and shown in the app, but no longer
+// sent as notifications (tier/badge/near-badge pushes are switched off).
 const pushBadge = (user, badge) => {
   user.gamification.badges.push({
     badgeId:  badge.id,
@@ -60,7 +52,6 @@ const pushBadge = (user, badge) => {
     icon:     badge.icon,
     earnedAt: new Date(),
   });
-  notify(user._id, '🏅 New Badge Unlocked!', `You earned the ${badge.icon} ${badge.name} badge!`);
 };
 
 class GamificationService {
@@ -130,11 +121,6 @@ class GamificationService {
 
       if (tierUpgraded) {
         user.gamification.currentTier = newTier.name;
-        notify(userId,
-          `${newTier.icon} Tier Upgraded!`,
-          `You've reached the ${newTier.name} tier!`,
-          newTier.icon
-        );
       }
 
       // ✅ FIX: Do NOT overwrite healthScore from gamification points
@@ -257,77 +243,6 @@ class GamificationService {
     if (totalPoints >= 1000 && !has(BADGES.HEALTH_LEGEND.id)) award(BADGES.HEALTH_LEGEND);
 
     if (modified) await user.save();
-
-    // Near-badge nudge — max once per day per user
-    const todayKey = `near_badge_nudge_${new Date().toISOString().split('T')[0]}_${userId}`;
-    const alreadySentToday = await GamificationLog.exists({ user: userId, uniqueActionKey: todayKey });
-    if (!alreadySentToday) {
-      await this.sendNearBadgeNudges(userId, todayKey).catch(console.error);
-    }
-  }
-
-  // Checks progress toward locked badges and nudges if close (max once/day enforced by caller)
-  async sendNearBadgeNudges(userId, todayKey) {
-    const user = await User.findById(userId).select('gamification name').lean();
-    if (!user) return;
-
-    const has = (id) => (user.gamification?.badges || []).some(b => b.badgeId === id);
-    const { sendToUser } = require('./fcmService');
-
-    const reportCount = await HealthReport.countDocuments({ user: userId, status: 'completed' });
-    const streak      = await this.getCurrentStreak(userId);
-
-    const nudges = [];
-
-    // Report Pro — 5 reports needed, nudge when 1 away (4 done)
-    if (!has('report_pro') && reportCount === 4) {
-      nudges.push({ title: '📋 Badge Almost Yours!', body: 'Upload 1 more report to unlock the Report Pro badge!' });
-    }
-
-    // Health Historian — 10 reports, nudge at 8+
-    if (!has('health_historian') && reportCount >= 8 && reportCount < 10) {
-      nudges.push({ title: '🗂️ Almost There!', body: `${10 - reportCount} more report(s) to unlock Health Historian badge!` });
-    }
-
-    // 7-Day Streak — nudge at day 5 or 6
-    if (!has('week_streak') && streak >= 5 && streak < 7) {
-      nudges.push({ title: '🔥 Streak Badge Close!', body: `${7 - streak} more day(s) to unlock the 7-Day Streak badge! Keep going!` });
-    }
-
-    // 30-Day Streak — nudge at 25+
-    if (!has('month_streak') && streak >= 25 && streak < 30) {
-      nudges.push({ title: '⚡ 30-Day Legend Close!', body: `Just ${30 - streak} more day(s) to unlock the 30-Day Streak badge!` });
-    }
-
-    // Hydration Hero — nudge at 5-6 water days
-    if (!has('hydration_hero')) {
-      const waterDays = await GamificationLog.distinct('uniqueActionKey', { user: userId, actionType: 'water_intake' });
-      if (waterDays.length >= 5 && waterDays.length < 7) {
-        nudges.push({ title: '💧 Hydration Hero Almost!', body: `Log water ${7 - waterDays.length} more day(s) to unlock the Hydration Hero badge!` });
-      }
-    }
-
-    // Nutrition Star — nudge at 5-6 food days
-    if (!has('nutrition_star')) {
-      const foodLogs = await GamificationLog.find({ user: userId, actionType: 'food_log' }).select('uniqueActionKey').lean();
-      const foodDays = new Set(foodLogs.map(l => l.uniqueActionKey?.split('_').slice(-2, -1)[0])).size;
-      if (foodDays >= 5 && foodDays < 7) {
-        nudges.push({ title: '🥗 Nutrition Star Close!', body: `Log meals ${7 - foodDays} more day(s) to unlock the Nutrition Star badge!` });
-      }
-    }
-
-    // Send only 1 nudge at a time (most relevant = first one found)
-    if (nudges.length > 0) {
-      await sendToUser(userId, nudges[0]);
-      // Mark as sent today so we don't spam
-      await GamificationLog.create({
-        user: userId,
-        actionType: 'system_event',
-        pointsAwarded: 0,
-        description: 'Near-badge nudge sent',
-        uniqueActionKey: todayKey,
-      }).catch(() => {}); // ignore duplicate key errors
-    }
   }
 
   async getProfile(userId) {
@@ -380,3 +295,4 @@ class GamificationService {
 }
 
 module.exports = new GamificationService();
+module.exports.TIERS = TIERS;

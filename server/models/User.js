@@ -249,7 +249,10 @@ const userSchema = new mongoose.Schema({
     totalPoints: { type: Number, default: 0 },
     currentTier: { 
       type: String, 
-      enum: ['Health Novice', 'Wellness Warrior', 'Fitness Champion', 'Health Master'],
+      // Must list every tier in gamificationService's TIERS (checked by a
+      // test): 'Health Legend' was missing, so every save past 1,000 points
+      // failed validation and the points were never stored.
+      enum: ['Health Novice', 'Wellness Warrior', 'Fitness Champion', 'Health Master', 'Health Legend'],
       default: 'Health Novice'
     },
     badges: [{

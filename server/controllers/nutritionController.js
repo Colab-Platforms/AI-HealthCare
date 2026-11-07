@@ -804,6 +804,22 @@ exports.deleteFoodLog = async (req, res) => {
 // real save-path uses (calculateBMR/TDEE/CalorieTarget/Macros/Progress, and
 // the static checkRequestedRate helper) are reused verbatim — no formula is
 // re-implemented here, so this can never silently drift from the real thing.
+// Names the timeframe the pace was measured over. A goal sent without a
+// readable targetWeeks/targetDate is measured over a 12-week default, and
+// saying so is what makes that visible instead of a puzzling cap.
+const paceWarning = (rateCheck) => {
+  const over = rateCheck.timeframeReceived
+    ? `over ${rateCheck.weeksUsed} weeks`
+    : `over ${rateCheck.weeksUsed} weeks, assumed because no timeframe was received`;
+  return `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week ${over}) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`;
+};
+
+// Consent-flow fields every goal response shares.
+const paceDetails = (rateCheck) => ({
+  weeksUsed: rateCheck.weeksUsed ?? null,
+  timeframeReceived: rateCheck.timeframeReceived ?? null,
+});
+
 exports.previewGoal = async (req, res) => {
   try {
     const sanitizedData = {
@@ -841,9 +857,8 @@ exports.previewGoal = async (req, res) => {
     res.json({
       success: true,
       wouldRequireConsent: rateCheck.isUnsafe,
-      warningMessage: rateCheck.isUnsafe
-        ? `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
-        : null,
+      warningMessage: rateCheck.isUnsafe ? paceWarning(rateCheck) : null,
+      ...paceDetails(rateCheck),
       previewBmr: draft.bmr,
       previewTdee: draft.tdee,
       previewCalorieTarget: draft.dailyCalorieTarget,
@@ -890,7 +905,8 @@ exports.setHealthGoal = async (req, res) => {
       return res.status(422).json({
         success: false,
         requiresConsent: true,
-        warningMessage: `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+        warningMessage: paceWarning(rateCheck),
+        ...paceDetails(rateCheck),
       });
     }
 
@@ -1047,7 +1063,8 @@ exports.updateHealthGoal = async (req, res) => {
       return res.status(422).json({
         success: false,
         requiresConsent: true,
-        warningMessage: `Your requested pace (${Math.abs(rateCheck.requestedWeeklyRate)} kg/week) exceeds the safe maximum (${rateCheck.maxRate} kg/week) for this goal. We'll use the safe pace instead — resubmit with acknowledgeUnsafe: true to confirm and proceed.`
+        warningMessage: paceWarning(rateCheck),
+        ...paceDetails(rateCheck),
       });
     }
 
@@ -1140,27 +1157,23 @@ exports.setCalorieOverride = async (req, res) => {
       });
     }
 
-    // Personalized LOW floor — same formula calculateCalorieTarget() uses
-    // internally for auto-calculated targets (its safeMinimum). A manual
-    // override bypasses that function entirely, so it's checked separately here.
-    const personalizedFloor = Math.max(
-      healthGoal.gender === 'male' ? 1500 : 1200,
-      Math.round((healthGoal.bmr || 0) * 1.1)
-    );
-    const belowFloor = value < personalizedFloor;
+    // A goal saved without TDEE would treat the whole value as a surplus.
+    if (!healthGoal.tdee) healthGoal.calculateTDEE();
 
-    // HIGH side — a value far above TDEE implies an extreme weekly weight-gain
-    // rate. Reuses the exact same rate-cap fractions and reverse-calculation
-    // (calories -> implied rate) as HealthGoal's own consent check, imported
-    // from the model so the two can never silently drift apart.
-    const { MAX_WEEKLY_RATE_FRACTION, KCAL_PER_KG_FAT } = HealthGoal;
-    const calorieAdjust = value - (healthGoal.tdee || 0);
-    const impliedWeeklyRate = (calorieAdjust * 7) / KCAL_PER_KG_FAT;
-    const maxRateFraction = impliedWeeklyRate < 0
-      ? MAX_WEEKLY_RATE_FRACTION.weight_loss
-      : (healthGoal.goalType === 'muscle_gain' ? MAX_WEEKLY_RATE_FRACTION.muscle_gain : MAX_WEEKLY_RATE_FRACTION.weight_gain);
-    const maxRate = maxRateFraction * (healthGoal.currentWeight || 70);
-    const exceedsRateCap = Math.abs(impliedWeeklyRate) > maxRate;
+    // Personalized floor plus the implied weekly pace against the same rate
+    // cap as the goal form (HealthGoal.checkCalorieOverride). The pace check
+    // never fired before: KCAL_PER_KG_FAT wasn't exported from the model, so
+    // the pace was NaN and "NaN > cap" is always false.
+    const {
+      personalizedFloor, belowFloor, impliedWeeklyRate, maxRate, exceedsRateCap,
+    } = HealthGoal.checkCalorieOverride({
+      value,
+      tdee: healthGoal.tdee,
+      bmr: healthGoal.bmr,
+      currentWeight: healthGoal.currentWeight,
+      goalType: healthGoal.goalType,
+      gender: healthGoal.gender,
+    });
 
     if ((belowFloor || exceedsRateCap) && !acknowledgeUnsafe) {
       const warningMessage = belowFloor

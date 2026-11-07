@@ -203,6 +203,29 @@ healthGoalSchema.statics.checkRequestedRate = function ({ goalType, currentWeigh
     isUnsafe: Math.abs(requestedWeeklyRate) > maxRate,
     requestedWeeklyRate: Math.round(requestedWeeklyRate * 100) / 100,
     maxRate: Math.round(maxRate * 100) / 100,
+    // Surfaced so a missing or unreadable timeframe is visible: it silently
+    // became 12 weeks, which made a 48-week goal look unsafe.
+    weeksUsed: Math.round(weeksAvailable),
+    timeframeReceived: !!targetDate,
+  };
+};
+
+// The same safety checks for a calorie target the user typed in themselves,
+// which bypasses calculateCalorieTarget(): the personalized floor, and the
+// weekly pace those calories imply against the same rate cap.
+healthGoalSchema.statics.checkCalorieOverride = function ({ value, tdee, bmr, currentWeight, goalType, gender }) {
+  const personalizedFloor = Math.max(gender === 'male' ? 1500 : 1200, Math.round((bmr || 0) * 1.1));
+  const impliedWeeklyRate = ((value - tdee) * 7) / KCAL_PER_KG_FAT;
+  const maxRateFraction = impliedWeeklyRate < 0
+    ? MAX_WEEKLY_RATE_FRACTION.weight_loss
+    : (goalType === 'muscle_gain' ? MAX_WEEKLY_RATE_FRACTION.muscle_gain : MAX_WEEKLY_RATE_FRACTION.weight_gain);
+  const maxRate = maxRateFraction * (currentWeight || 70);
+  return {
+    personalizedFloor,
+    belowFloor: value < personalizedFloor,
+    impliedWeeklyRate,
+    maxRate,
+    exceedsRateCap: Math.abs(impliedWeeklyRate) > maxRate,
   };
 };
 
@@ -447,4 +470,5 @@ module.exports = mongoose.model('HealthGoal', healthGoalSchema);
 // check in nutritionController.js — reuses this exact constant instead of
 // re-declaring it and risking the two silently drifting apart.
 module.exports.MAX_WEEKLY_RATE_FRACTION = MAX_WEEKLY_RATE_FRACTION;
+module.exports.KCAL_PER_KG_FAT = KCAL_PER_KG_FAT;
 module.exports.KCAL_PER_KG_FAT = KCAL_PER_KG_FAT;

@@ -619,76 +619,9 @@ if (!process.env.VERCEL) {
   // scripts/registerFinalInsightSchedule.js). An in-process cron missed the
   // day on any restart/deploy at 23:59 and would double-run with 2 instances.
 
-  // Streak Loss Warning — every evening at 8 PM IST (was 8 PM UTC = 1:30 AM IST)
-  cron.schedule("0 20 * * *", async () => {
-    console.log("🔥 Running streak loss warning cron...");
-    await runStreakWarningCron();
-  }, { timezone: "Asia/Kolkata" });
-
-  async function runStreakWarningCron() {
-    try {
-      const GamificationLog = require("./models/GamificationLog");
-      const User = require("./models/User");
-      const { sendToUser } = require("./services/fcmService");
-      const gamificationService = require("./services/gamificationService");
-
-      // Start of "today" in IST, not the host's (UTC) midnight — otherwise "logged
-      // today" would start at 5:30 AM IST and miss anything logged before that.
-      // IST has no DST, so a fixed +5:30 offset is exact.
-      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-      const DAY_MS = 24 * 60 * 60 * 1000;
-      const today = new Date(Math.floor((Date.now() + IST_OFFSET_MS) / DAY_MS) * DAY_MS - IST_OFFSET_MS);
-
-      // Find users who logged something yesterday (have a streak) but NOT today
-      const activeUserIds = await GamificationLog.distinct("user", {
-        createdAt: { $gte: new Date(today.getTime() - 24 * 60 * 60 * 1000), $lt: today }
-      });
-
-      if (!activeUserIds.length) return;
-
-      // Filter: logged today already = no warning needed
-      const loggedTodayIds = await GamificationLog.distinct("user", {
-        createdAt: { $gte: today }
-      });
-      const loggedTodaySet = new Set(loggedTodayIds.map(id => id.toString()));
-
-      const toWarn = activeUserIds.filter(id => !loggedTodaySet.has(id.toString()));
-
-      // Process in bounded-concurrency batches rather than one user at a time.
-      // The previous loop awaited a streak query, an FCM send AND a fixed 100ms
-      // sleep per user in sequence — so the run took at least 100ms × users,
-      // several minutes once the user base grew, all while holding a Mongo
-      // connection. Batching keeps FCM from being hammered without serialising
-      // the whole job.
-      const BATCH = 20;
-      let warned = 0;
-
-      for (let i = 0; i < toWarn.length; i += BATCH) {
-        const batch = toWarn.slice(i, i + BATCH);
-        const results = await Promise.all(batch.map(async (userId) => {
-          try {
-            const streak = await gamificationService.getCurrentStreak(userId);
-            if (streak < 3) return 0; // Only warn if streak worth saving (3+ days)
-
-            await sendToUser(userId, {
-              title: "🔥 Don't break your streak!",
-              body: `You have a ${streak}-day streak! Log any activity today before midnight to keep it alive.`,
-              data: { type: "streak_warning", screen: "dashboard" }
-            });
-            return 1;
-          } catch (err) {
-            console.error(`Streak warning failed for user ${userId}:`, err.message);
-            return 0;
-          }
-        }));
-        warned += results.reduce((a, b) => a + b, 0);
-      }
-
-      console.log(`✅ Streak warnings sent to ${warned} users`);
-    } catch (err) {
-      console.error("❌ Streak warning cron error:", err.message);
-    }
-  }
+  // The 8 PM "Don't break your streak!" push was removed along with the other
+  // gamification notifications (tier, badge, near-badge); streaks themselves
+  // are still tracked and shown in the app.
 
   // Optional: Run on startup to ensure fresh data
   // syncFoodSafetyDatabase();
