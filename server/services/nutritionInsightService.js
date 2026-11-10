@@ -153,4 +153,20 @@ function buildNutritionInsight(scoreResult) {
   };
 }
 
-module.exports = { buildNutritionInsight };
+// A day with no food logged has nothing to rate: the formula alone would give
+// it the full junk-control 40 for "no sugar, no sodium", which read as a real
+// score for a day the user simply hadn't logged.
+function buildNotLoggedInsight() {
+  return {
+    band: 'not_logged',
+    headline: 'No meals logged yet',
+    overallSummary: 'No meals logged yet. Log your first meal to see your Nutrition Score.',
+    summary: 'Log your first meal to see your Nutrition Score.',
+    topGaps: [],
+    topExcesses: [],
+    recommendations: [],
+    disclaimer: 'This is a wellness insight based on your logged food, not medical or dietetic advice.',
+  };
+}
+
+module.exports = { buildNutritionInsight, buildNotLoggedInsight };
