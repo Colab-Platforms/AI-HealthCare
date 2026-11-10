@@ -16,7 +16,7 @@ const { buildMedicalContextForAI } = require('../utils/medicalContext');
 const gamificationService = require('../services/gamificationService');
 const { getWaterAnalytics, WaterAnalyticsInputError } = require('../services/waterAnalyticsService');
 const { calculateDietQualityScore } = require('../services/dietQualityScoreService');
-const { buildNutritionInsight } = require('../services/nutritionInsightService');
+const { buildNutritionInsight, buildNotLoggedInsight } = require('../services/nutritionInsightService');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getNutritionTrends: getNutritionTrendsData, NutritionTrendInputError } = require('../services/nutritionTrendService');
 
@@ -1881,6 +1881,26 @@ exports.getNutritionScore = async (req, res) => {
       weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
     };
 
+    // Same "logged day" rule as the calendar and period views below, which
+    // skip empty days: no food means no score, not the 40 the moderation half
+    // of the formula gives for eating nothing. 0 rather than null so clients
+    // parsing a number keep working; hasLoggedFood says which it is.
+    const hasLoggedFood = (summary?.totalFoodsCount || 0) > 0 || (summary?.totalCalories || 0) > 0;
+    if (!hasLoggedFood) {
+      return res.json({
+        success: true,
+        requestedDate: targetDateStr,
+        isViewingToday: isToday,
+        profileUsed: profile,
+        hasLoggedFood: false,
+        score: 0,
+        healthyNutrientsScore: 0,
+        junkControlScore: 0,
+        breakdown: { healthyNutrients: [], junkControl: [] },
+        insight: buildNotLoggedInsight(),
+      });
+    }
+
     const scoreResult = calculateDietQualityScore(summary, profile);
     const insight = buildNutritionInsight(scoreResult);
 
@@ -1902,6 +1922,7 @@ exports.getNutritionScore = async (req, res) => {
       requestedDate: targetDateStr,
       isViewingToday: isToday,
       profileUsed: profile,
+      hasLoggedFood: true,
       ...scoreResult,
       insight
     });
