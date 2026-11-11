@@ -652,7 +652,7 @@ export default function UserActivity() {
         <PlatformGrowthStats filters={filters} />
 
         {/* Returning users — distinct days active, who they are, what they use */}
-        <ReturningUsers filters={filters} />
+        <ReturningUsers />
 
         {/* Feature Usage Analytics - Expandable with User Breakdown */}
         <FeatureUsageAnalytics stats={stats} filters={filters} />
