@@ -26,6 +26,17 @@ const FEATURE_COLORS = {
 
 const MIN_DAYS_OPTIONS = [2, 4, 7, 10];
 const PAGE_SIZE = 10;
+// Same cap the API enforces.
+const MAX_RANGE_DAYS = 90;
+const RANGE_PRESETS = [7, 30, 90];
+
+const dateKey = (date) => date.toLocaleDateString('en-CA');
+const lastNDays = (days) => ({
+  startDate: dateKey(new Date(Date.now() - (days - 1) * 86400000)),
+  endDate: dateKey(new Date()),
+});
+const daysInRange = ({ startDate, endDate }) =>
+  Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
 
 const featureName = (category) => FEATURE_NAMES[category] || category;
 
@@ -34,7 +45,10 @@ const csvCell = (value) => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-export default function ReturningUsers({ filters }) {
+// Has its own date range (default: last 30 days) instead of the page filter,
+// whose 7-day default is too short to see who comes back.
+export default function ReturningUsers() {
+  const [range, setRange] = useState(() => lastNDays(30));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [minDays, setMinDays] = useState(4);
@@ -45,8 +59,8 @@ export default function ReturningUsers({ filters }) {
   const latestRequest = useRef(0);
 
   const params = (overrides = {}) => ({
-    startDate: filters.startDate,
-    endDate: filters.endDate,
+    startDate: range.startDate,
+    endDate: range.endDate,
     minDays,
     page,
     limit: PAGE_SIZE,
@@ -67,8 +81,31 @@ export default function ReturningUsers({ filters }) {
   };
 
   // A new range or threshold starts again from page 1.
-  useEffect(() => { setPage(1); }, [filters.startDate, filters.endDate, minDays]);
-  useEffect(() => { fetchData(); }, [filters.startDate, filters.endDate, minDays, page]);
+  useEffect(() => { setPage(1); }, [range.startDate, range.endDate, minDays]);
+  useEffect(() => { fetchData(); }, [range.startDate, range.endDate, minDays, page]);
+
+  // Keeps the range valid (start <= end, never past today, max 90 days) by
+  // moving the other end, instead of sending a request the API rejects.
+  const changeRange = (field, value) => {
+    if (!value) return;
+    const today = dateKey(new Date());
+    const next = { ...range, [field]: value > today ? today : value };
+    if (next.startDate > next.endDate) {
+      if (field === 'startDate') next.endDate = next.startDate;
+      else next.startDate = next.endDate;
+    }
+    if (daysInRange(next) > MAX_RANGE_DAYS) {
+      const shift = (MAX_RANGE_DAYS - 1) * 86400000;
+      if (field === 'startDate') next.endDate = dateKey(new Date(new Date(next.startDate).getTime() + shift));
+      else next.startDate = dateKey(new Date(new Date(next.endDate).getTime() - shift));
+      toast(`Range limited to ${MAX_RANGE_DAYS} days`);
+    }
+    setRange(next);
+  };
+
+  const activePreset = range.endDate === dateKey(new Date())
+    ? RANGE_PRESETS.find((d) => daysInRange(range) === d)
+    : null;
 
   const handleExport = async () => {
     setExporting(true);
@@ -125,6 +162,35 @@ export default function ReturningUsers({ filters }) {
           <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">
             Who comes back, how often, and what they use
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {RANGE_PRESETS.map((d) => (
+            <button
+              key={d}
+              onClick={() => setRange(lastNDays(d))}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activePreset === d ? 'bg-indigo-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              Last {d} days
+            </button>
+          ))}
+          <input
+            type="date"
+            value={range.startDate}
+            max={range.endDate}
+            onChange={(e) => changeRange('startDate', e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700"
+          />
+          <span className="text-xs font-bold text-slate-400">to</span>
+          <input
+            type="date"
+            value={range.endDate}
+            min={range.startDate}
+            max={dateKey(new Date())}
+            onChange={(e) => changeRange('endDate', e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700"
+          />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Came back on</span>
