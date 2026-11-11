@@ -5,6 +5,7 @@ import ActivityDetailModal from '../components/ActivityDetailModal';
 import LiveUsersModal from '../components/LiveUsersModal';
 import FeatureUsageAnalytics from '../components/FeatureUsageAnalytics';
 import PlatformGrowthStats from '../components/PlatformGrowthStats';
+import ReturningUsers from '../components/ReturningUsers';
 import {
   Activity, Search, Filter, Calendar,
   ChevronLeft, ChevronRight, RefreshCcw,
@@ -649,6 +650,9 @@ export default function UserActivity() {
 
         {/* Platform Growth & User Metrics */}
         <PlatformGrowthStats filters={filters} />
+
+        {/* Returning users — distinct days active, who they are, what they use */}
+        <ReturningUsers filters={filters} />
 
         {/* Feature Usage Analytics - Expandable with User Breakdown */}
         <FeatureUsageAnalytics stats={stats} filters={filters} />

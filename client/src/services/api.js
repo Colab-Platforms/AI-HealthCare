@@ -349,7 +349,8 @@ export const activityService = {
   exportLogs: (params) => api.get('activity/export', { params, responseType: 'blob' }),
   exportUsers: () => api.get('activity/export-users', { responseType: 'blob' }),
   getFeatureStats: (params) => api.get('activity/feature-stats', { params }),
-  getDauMau: (params) => api.get('activity/dau-mau', { params })
+  getDauMau: (params) => api.get('activity/dau-mau', { params }),
+  getReturningUsers: (params) => api.get('activity/returning-users', { params })
 };
 
 export const fcmService = {
