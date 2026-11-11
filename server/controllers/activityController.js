@@ -574,6 +574,129 @@ exports.getDauMau = async (req, res) => {
   }
 };
 
+// Days a user came back on, bucketed. "Retention" on the growth card is only
+// DAU ÷ MAU; this is the per-user view: how many distinct days each user was
+// active in the window, who the returning ones are, and what they use.
+const RETURNING_BUCKETS = [
+  { key: '1', label: '1 day only', min: 1, max: 1 },
+  { key: '2-3', label: '2-3 days', min: 2, max: 3 },
+  { key: '4-9', label: '4-9 days', min: 4, max: 9 },
+  { key: '10-19', label: '10-19 days', min: 10, max: 19 },
+  { key: '20+', label: '20+ days', min: 20, max: Infinity },
+];
+// Login/logout and system events aren't a feature anyone comes back for.
+const NON_FEATURE_CATEGORIES = ['authentication', 'system'];
+const RETURNING_MAX_RANGE_DAYS = 90;
+
+// @desc    Returning users: distinct active days per user, who they are, top features
+// @route   GET /api/activity/returning-users?startDate&endDate&minDays=4&page=1&limit=10
+exports.getReturningUsers = async (req, res) => {
+  try {
+    const end = req.query.endDate ? new Date(req.query.endDate) : new Date();
+    end.setHours(23, 59, 59, 999);
+    const start = req.query.startDate ? new Date(req.query.startDate) : new Date(end.getTime() - 29 * 86400000);
+    start.setHours(0, 0, 0, 0);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+      return res.status(400).json({ success: false, message: 'Invalid startDate/endDate' });
+    }
+    if ((end - start) / 86400000 > RETURNING_MAX_RANGE_DAYS) {
+      return res.status(400).json({ success: false, message: `Date range too large — max ${RETURNING_MAX_RANGE_DAYS} days` });
+    }
+    const minDays = Math.min(Math.max(parseInt(req.query.minDays, 10) || 4, 2), 90);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+
+    const staffIds = await User.distinct('_id', { role: { $in: ['admin', 'superadmin'] } });
+
+    const [result] = await ActivityLog.aggregate([
+      { $match: { timestamp: { $gte: start, $lte: end }, user: { $nin: staffIds } } },
+      {
+        $group: {
+          _id: { user: '$user', category: '$category' },
+          events: { $sum: 1 },
+          days: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp', timezone: 'Asia/Kolkata' } } },
+          lastActive: { $max: '$timestamp' },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.user',
+          features: {
+            $push: {
+              $cond: [{ $in: ['$_id.category', NON_FEATURE_CATEGORIES] }, '$$REMOVE', { category: '$_id.category', events: '$events' }],
+            },
+          },
+          events: { $sum: '$events' },
+          daySets: { $push: '$days' },
+          lastActive: { $max: '$lastActive' },
+        },
+      },
+      {
+        $project: {
+          features: 1,
+          events: 1,
+          lastActive: 1,
+          daysActive: { $size: { $reduce: { input: '$daySets', initialValue: [], in: { $setUnion: ['$$value', '$$this'] } } } },
+        },
+      },
+      {
+        $facet: {
+          buckets: [{ $group: { _id: '$daysActive', users: { $sum: 1 } } }],
+          returningTotal: [{ $match: { daysActive: { $gte: minDays } } }, { $count: 'n' }],
+          featureSummary: [
+            { $match: { daysActive: { $gte: minDays } } },
+            { $unwind: '$features' },
+            { $group: { _id: '$features.category', users: { $sum: 1 }, events: { $sum: '$features.events' } } },
+            { $sort: { users: -1, events: -1 } },
+          ],
+          users: [
+            { $match: { daysActive: { $gte: minDays } } },
+            { $sort: { daysActive: -1, events: -1 } },
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'u', pipeline: [{ $project: { name: 1, email: 1 } }] } },
+            { $unwind: { path: '$u', preserveNullAndEmptyArrays: true } },
+          ],
+        },
+      },
+    ], { allowDiskUse: true });
+
+    const byDays = result?.buckets || [];
+    const buckets = RETURNING_BUCKETS.map((b) => ({
+      key: b.key,
+      label: b.label,
+      users: byDays.filter((d) => d._id >= b.min && d._id <= b.max).reduce((sum, d) => sum + d.users, 0),
+    }));
+    const activeUsers = buckets.reduce((sum, b) => sum + b.users, 0);
+    const returningUsers = result?.returningTotal?.[0]?.n || 0;
+
+    res.json({
+      success: true,
+      range: { startDate: start.toISOString(), endDate: end.toISOString() },
+      minDays,
+      activeUsers,
+      returningUsers,
+      returningPercent: activeUsers > 0 ? Math.round((returningUsers / activeUsers) * 1000) / 10 : 0,
+      buckets,
+      featureSummary: (result?.featureSummary || []).map((f) => ({ category: f._id, users: f.users, events: f.events })),
+      users: (result?.users || []).map((u) => ({
+        userId: u._id,
+        // Activity outlives a deleted account.
+        name: u.u ? (u.u.name || 'Unknown') : 'Deleted user',
+        email: u.u?.email || null,
+        daysActive: u.daysActive,
+        events: u.events,
+        lastActive: u.lastActive,
+        topFeatures: (u.features || []).sort((a, b) => b.events - a.events).slice(0, 3),
+      })),
+      pagination: { page, limit, total: returningUsers, totalPages: Math.ceil(returningUsers / limit) },
+    });
+  } catch (error) {
+    console.error('Error fetching returning users:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get day-wise activity count (+ action breakdown) for one user for a given month
 // @route   GET /api/activity/heatmap?month=YYYY-MM
 exports.getUserActivityHeatmap = async (req, res) => {
