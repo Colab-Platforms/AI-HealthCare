@@ -523,7 +523,7 @@ exports.loginWithPhoneOtp = async (req, res) => {
     await RefreshToken.create({
       userId: user._id,
       token: rawRefreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: RefreshToken.expiryFromNow(),
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -874,7 +874,7 @@ exports.register = async (req, res) => {
     await RefreshToken.create({
       userId: user._id,
       token: rawRefreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: RefreshToken.expiryFromNow(),
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -965,7 +965,7 @@ exports.registerDoctor = async (req, res) => {
     await RefreshToken.create({
       userId: user._id,
       token: rawRefreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: RefreshToken.expiryFromNow(),
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -1060,7 +1060,7 @@ exports.login = async (req, res) => {
       await RefreshToken.create({
         userId: user._id,
         token: rawRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: RefreshToken.expiryFromNow(),
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
       });
@@ -1260,7 +1260,7 @@ exports.googleAuth = async (req, res) => {
     await RefreshToken.create({
       userId: user._id,
       token: rawRefreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: RefreshToken.expiryFromNow(),
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -1440,7 +1440,7 @@ exports.appleAuth = async (req, res) => {
     await RefreshToken.create({
       userId: user._id,
       token: rawRefreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: RefreshToken.expiryFromNow(),
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -1500,7 +1500,7 @@ exports.appleAuth = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     const { refreshToken, fcmToken } = req.body;
-    if (refreshToken) {
+    if (typeof refreshToken === 'string' && refreshToken) {
       await RefreshToken.deleteOne({ token: refreshToken });
     }
     // Stop pushes to the device that is logging out, or the next person on a
@@ -1536,9 +1536,9 @@ exports.refresh = async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) return res.status(401).json({ message: 'Refresh token required' });
 
-    const stored = await RefreshToken.findOne({ token: refreshToken });
-    if (!stored || stored.expiresAt < new Date()) {
-      if (stored) await stored.deleteOne();
+    // Validates and slides the session expiry forward (see RefreshToken.consume).
+    const stored = await RefreshToken.consume(refreshToken);
+    if (!stored) {
       return res.status(401).json({ code: 'REFRESH_EXPIRED', message: 'Session expired. Please login again.' });
     }
 
