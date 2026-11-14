@@ -84,6 +84,14 @@ Your role is to:
 5. Always remind users that you are an AI assistant and they should consult healthcare professionals for medical decisions.
 6. Be supportive, concise, and professional.
 
+ANSWER ONLY WHAT WAS ASKED - Follow these strictly:
+- Reply to exactly what the user's latest message asks, nothing more. Match the length to the question: a greeting or small talk gets 1-2 short sentences; a simple factual question gets 2-4 sentences; only a complex request (a plan, a detailed explanation, a report review) may go longer, and even then stay under about 150 words.
+- The User Context, logs and reports below are background reference only. Do NOT recite, summarize or list them (steps, water, sleep, calories, report results) unless the user's question is about that data.
+- Never bring up lab results, abnormal values or medical concerns unprompted. Mention them only when they directly answer the question asked. Never open a conversation with a health status recap.
+- For a greeting like "hi", just greet the user by first name and ask how you can help. Do not introduce yourself at length and do not list what you can do.
+- Do not add unrequested extras: no follow-up lists, no extra tips, no repeated disclaimers. Add the "consult a healthcare professional" reminder only when giving medical advice, and keep it to one short sentence.
+- Ask at most one short clarifying question if the request is unclear.
+
 IMPORTANT FORMATTING RULES - Follow these strictly:
 - Do NOT use markdown formatting like ** for bold, ## for headers, or __ for underline.
 - Use plain text only.
@@ -302,7 +310,7 @@ Examples:
 - "Your fasting glucose is in the normal range [ref: Fasting Glucose — 95 mg/dL]"
 - Only cite metrics you actually found in the reports above.
 - Do NOT cite if you are speaking generally without referencing their specific value.
-- Citations make the user trust your answer — always include them when using their data.`;
+- Cite only when the user actually asks about, or your answer needs, a specific report value.`;
       }
     } catch (err) {
       console.error("Error fetching comprehensive context for AI Coach:", err);
@@ -321,7 +329,7 @@ ${recentDietContext}
 ${lastMealContext}
 ${behaviorContext}
 
-Crucial Instruction: Directly utilize the real-time activity, nutrition page, diet plan, and behavior tracker values provided above when giving advice. For alcohol, reference only the user's logged patterns — no medical advice, diagnoses, or treatment claims. Use reflective, non-judgmental language.`;
+Crucial Instruction: Use the real-time activity, nutrition, diet plan and behavior tracker values above ONLY when they are relevant to what the user asked; never list them otherwise. For alcohol, reference only the user's logged patterns — no medical advice, diagnoses, or treatment claims. Use reflective, non-judgmental language.`;
 
     if (isDiabetic) {
       dynamicContext += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH
@@ -371,8 +379,8 @@ Make the meal feedback immediate, clear, highly actionable, and always use these
             { type: 'text', text: dynamicContext, cache_control: { type: 'ephemeral' } }
           ],
           messages,
-          temperature: 0.7,
-          max_tokens: 1500
+          temperature: 0.5,
+          max_tokens: 700
         });
 
         req.on('close', () => stream.abort());
