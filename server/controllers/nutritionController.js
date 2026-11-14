@@ -222,6 +222,11 @@ const normalizeAnalysisResult = (item) => {
 
   // ─── PURE AI ANALYSIS (BYPASSING LEGACY STANDARDS OVERRIDE) ───
   // We now rely 100% on Claude Sonnet 4.6's reasoning for accuracy
+  // Fields the client never uses (meal-level totals live in calories/protein/carbs/fats; detail is per dish)
+  ['healthScore', 'healthScore10', 'sugar', 'sodium', 'micronutrients',
+   'healthBenefitsSummary', 'alternatives', 'foodItem', 'totalNutrition', 'nutrition']
+    .forEach(k => delete base[k]);
+
   return base;
 }
 
