@@ -37,6 +37,7 @@ const badRequest = (message, extra = {}) => Object.assign(new Error(message), { 
 const isPaidActive = (user) => {
   const sub = user?.subscription;
   if (!sub || !GRANTING_PLAN_KEYS.includes(sub.plan)) return false;
+  if (sub.grantSource) return false; // free Take+ (Shopify offer) — still offered the upgrade
   if (sub.status === 'expired' || sub.status === 'inactive') return false;
   const end = sub.currentPeriodEnd || sub.endDate;
   return !!end && new Date(end) > new Date();

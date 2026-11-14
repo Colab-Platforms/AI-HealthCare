@@ -1,11 +1,15 @@
-// "Buy from the Shopify store, get 30 days of the free trial in the app."
+// "Buy from the Shopify store, get 30 days of Take+ in the app."
 //
-// This reuses the existing trial exactly as signup grants it — plan 'free_trial'
-// (all PAID_FEATURES, see scripts/syncRazorpayPlans.js), only with a different
-// currentPeriodEnd. Everything downstream already handles that plan:
+// The buyer is moved to the real paid plan, 'take_plus', with autoRenew off and
+// subscription.grantSource = 'shopify_offer' so it is never mistaken for a paid
+// subscription (admin paid list, vault upgrade prompt, renewal email). The rest
+// is the existing machinery:
 //   - subscriptionAccess.isEntitled         -> feature access until currentPeriodEnd
 //   - subscriptionLifecycleService cron     -> downgrade to 'free' when it passes
-//   - trial-ending reminder cron            -> email before it ends
+//   - trial-ending reminder cron            -> "your free Take+ ends soon" email
+// If the user subscribes while the offer runs, the Razorpay subscription starts
+// when the offer ends (subscriptionController.subscribe), so the 30 days are
+// used up first and the paid period follows.
 //
 // What a buyer gets (offer days = SHOPIFY_OFFER_DAYS, 30):
 //   A. on the 14-day trial, bought after joining -> +30 days after the trial ends
@@ -16,14 +20,18 @@
 //       webhook can't overwrite it)
 //
 // If the offer product is returned/refunded or the order cancelled AFTER the
-// offer was given, the offer is revoked: the account goes back to exactly what
-// it had before (previousSubscription), and the person still can't claim again.
+// offer was given, the offer is revoked: the account goes back to what it had
+// before (previousSubscription), and the person still can't claim again.
+// Rule A's "+30 after the trial" is given as take_plus right away, ending on
+// the same date (trial end + 30), so the user never loses a day.
 //
 // Safety:
 //   - An order number alone proves nothing (they're sequential): the order's
-//     email or verified phone must match the account.
+//     email must match the account (or the checkout email the user enters).
 //   - Once per account (unique redeemedBy) and once per person (no other
-//     redeemed order may share this order's email/phone) — revoked ones included.
+//     redeemed order may share this order's email) — revoked ones included.
+//   - Phone is NOT used for matching for now (no OTP verification yet); phone
+//     hashes are still stored so it can be switched back on later.
 //   - Only eligible orders: paid, not cancelled/refunded, offer product.
 
 const crypto = require('crypto');
@@ -33,13 +41,15 @@ const ProcessedWebhook = require('../models/ProcessedWebhook');
 const shopifyAdmin = require('./shopifyAdminService');
 const { isEntitled, FREE_PLAN_KEY } = require('../middleware/subscriptionAccess');
 const {
-    getOfferConfig, parseOrderNumberInput, normalizeOrderName, normalizeEmail, normalizePhone,
+    getOfferConfig, parseOrderNumberInput, normalizeOrderName, normalizeEmail,
     hashIdentifier, identityHashes, normalizeWebhookOrder, normalizeGraphqlOrder, normalizeRefund,
     finalEligibility,
 } = require('../utils/shopifyOrder');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_PLAN_KEY = 'free_trial';
+const OFFER_PLAN_KEY = 'take_plus';
+const GRANT_SOURCE = 'shopify_offer';
 const PENDING_BATCH = 500;
 const USER_FIELDS = 'email isEmailVerified phone isPhoneVerified subscription createdAt';
 
@@ -63,9 +73,9 @@ class OfferError extends Error {
 }
 
 // Same definition of "paid" as the admin subscription list and the renewal cron:
-// anything that isn't free or the free trial, and still live per isEntitled.
+// anything that isn't free, the free trial or a free grant, and still live.
 const hasActivePaidPlan = (sub) => Boolean(
-    sub && sub.plan !== FREE_PLAN_KEY && sub.plan !== TRIAL_PLAN_KEY && isEntitled(sub)
+    sub && sub.plan !== FREE_PLAN_KEY && sub.plan !== TRIAL_PLAN_KEY && !sub.grantSource && isEntitled(sub)
 );
 
 const snapshotOf = (sub = {}) => ({
@@ -83,11 +93,11 @@ const snapshotOf = (sub = {}) => ({
  * Take the offer back. The purchase is flipped to 'revoked' with a conditional
  * update first, so this runs once even if several refund webhooks race.
  *   pending -> nothing on the account yet; the lifecycle cron will now skip it.
- *   applied -> the account goes back to previousSubscription: the trial end it
- *              had before (A: original 14-day end, B: signup's 14 days), or
- *              'free' if it had no live trial (C, D).
- * The account is only touched if it is still on exactly the trial this offer
- * gave — if the user has since bought a plan, that plan is left alone.
+ *   applied -> the account goes back to previousSubscription: the 14-day trial
+ *              it had before if that trial is still running (A, B), otherwise
+ *              'free' (C, D).
+ * The account is only touched if it is still on exactly the grant this offer
+ * gave — if a payment has since gone through, that plan is left alone.
  */
 const revokeOffer = async (purchase, reason, now = new Date()) => {
     const before = await ShopifyPurchase.findOneAndUpdate(
@@ -106,6 +116,8 @@ const revokeOffer = async (purchase, reason, now = new Date()) => {
     const restoreTrial = prev.plan === TRIAL_PLAN_KEY && prev.currentPeriodEnd && new Date(prev.currentPeriodEnd) > now;
     const set = restoreTrial
         ? {
+            'subscription.plan': TRIAL_PLAN_KEY,
+            'subscription.status': 'active',
             'subscription.currentPeriodEnd': prev.currentPeriodEnd,
             'subscription.endDate': prev.currentPeriodEnd,
             ...(prev.startDate ? { 'subscription.startDate': prev.startDate } : {}),
@@ -113,7 +125,7 @@ const revokeOffer = async (purchase, reason, now = new Date()) => {
             'subscription.renewalReminderSentAt': null,
         }
         : {
-            // Same downgrade the lifecycle cron applies when a trial ends.
+            // Same downgrade the lifecycle cron applies when a plan ends.
             'subscription.plan': FREE_PLAN_KEY,
             'subscription.status': 'expired',
             'subscription.autoRenew': false,
@@ -122,9 +134,18 @@ const revokeOffer = async (purchase, reason, now = new Date()) => {
             'subscription.statusUpdatedAt': now,
         };
 
+    // Still on exactly this grant: take_plus marked as the offer, or a
+    // free_trial grant given before the offer moved to take_plus.
     const res = await User.updateOne(
-        { _id: before.redeemedBy, 'subscription.plan': TRIAL_PLAN_KEY, 'subscription.currentPeriodEnd': before.grantedUntil },
-        { $set: set }
+        {
+            _id: before.redeemedBy,
+            'subscription.currentPeriodEnd': before.grantedUntil,
+            $or: [
+                { 'subscription.plan': OFFER_PLAN_KEY, 'subscription.grantSource': GRANT_SOURCE },
+                { 'subscription.plan': TRIAL_PLAN_KEY },
+            ],
+        },
+        { $set: set, $unset: { 'subscription.grantSource': '' } }
     );
     console.log(`↩️  [ShopifyOffer] ${before.orderName} revoked (${reason}) — user ${before.redeemedBy} `
         + (res.modifiedCount ? (restoreTrial ? `back to trial ending ${new Date(prev.currentPeriodEnd).toISOString()}` : 'back to free') : 'changed plan since, left as is'));
@@ -240,10 +261,6 @@ const identityMatches = (purchase, user, secret) => {
         const email = normalizeEmail(user.email);
         if (email && purchase.emailHashes.includes(hashIdentifier('email', email, secret))) return true;
     }
-    if (user.isPhoneVerified) {
-        const phone = normalizePhone(user.phone);
-        if (phone && purchase.phoneHashes.includes(hashIdentifier('phone', phone, secret))) return true;
-    }
     return false;
 };
 
@@ -274,9 +291,10 @@ const decideOffer = (user, purchase, now, days) => {
     return { kind: 'applied', end, keepStart: trialRunning && Boolean(sub.startDate) };
 };
 
-// Subscription fields for a trial ending at `end`, same shape signup writes.
-const trialFields = (end, now, keepStart) => ({
-    'subscription.plan': TRIAL_PLAN_KEY,
+// Subscription fields for the offer: take_plus until `end`, marked as a grant.
+const offerFields = (end, now, keepStart) => ({
+    'subscription.plan': OFFER_PLAN_KEY,
+    'subscription.grantSource': GRANT_SOURCE,
     'subscription.status': 'active',
     'subscription.currentPeriodEnd': end,
     'subscription.endDate': end,
@@ -289,14 +307,13 @@ const trialFields = (end, now, keepStart) => ({
     'subscription.renewalReminderSentAt': null,
 });
 
-// Once per person: has any other order sharing this order's email/phone already
-// been redeemed (by any account, revoked included)?
+// Once per person: has any other order sharing this order's email already
+// been redeemed (by any account, revoked included)? Phone is ignored for now.
 const personAlreadyRedeemed = async (purchase) => {
-    const or = [];
-    if (purchase.emailHashes?.length) or.push({ emailHashes: { $in: purchase.emailHashes } });
-    if (purchase.phoneHashes?.length) or.push({ phoneHashes: { $in: purchase.phoneHashes } });
-    if (!or.length) return false;
-    return Boolean(await ShopifyPurchase.exists({ _id: { $ne: purchase._id }, redeemedBy: { $ne: null }, $or: or }));
+    if (!purchase.emailHashes?.length) return false;
+    return Boolean(await ShopifyPurchase.exists({
+        _id: { $ne: purchase._id }, redeemedBy: { $ne: null }, emailHashes: { $in: purchase.emailHashes },
+    }));
 };
 
 /**
@@ -346,7 +363,7 @@ const claimAndGrant = async (purchase, user, via, now = new Date()) => {
         return statusOf(claimed, false);
     }
 
-    const set = trialFields(decision.end, now, decision.keepStart);
+    const set = offerFields(decision.end, now, decision.keepStart);
     try {
         // updateOne by _id also drops the cached copy `protect` uses (User model hook).
         await User.updateOne({ _id: user._id }, { $set: set });
@@ -359,7 +376,7 @@ const claimAndGrant = async (purchase, user, via, now = new Date()) => {
     }
 
     await ShopifyPurchase.updateOne({ _id: claimed._id }, { $set: { grantedUntil: decision.end } });
-    console.log(`🎁 [ShopifyOffer] ${claimed.orderName} -> user ${user._id} (${via}), trial until ${decision.end.toISOString()}`);
+    console.log(`🎁 [ShopifyOffer] ${claimed.orderName} -> user ${user._id} (${via}), take_plus until ${decision.end.toISOString()}`);
     return { ...statusOf({ ...claimed.toObject(), grantedUntil: decision.end }, false), subscriptionSet: set };
 };
 
@@ -377,7 +394,7 @@ function statusOf(purchase, alreadyRedeemed) {
 /**
  * Rule D, second half: give the waiting days to users whose paid plan has ended.
  * Called by the subscription lifecycle cron BEFORE its downgrade, so the user
- * moves straight from the paid plan to the trial instead of to 'free'. Also
+ * moves straight from the paid plan to the offer instead of to 'free'. Also
  * catches users a Razorpay webhook already set to 'free'.
  */
 const applyPendingCredits = async (now = new Date()) => {
@@ -398,9 +415,9 @@ const applyPendingCredits = async (now = new Date()) => {
             );
             if (flipped.modifiedCount !== 1) continue;
             try {
-                await User.updateOne({ _id: user._id }, { $set: trialFields(end, now, false) });
+                await User.updateOne({ _id: user._id }, { $set: offerFields(end, now, false) });
                 applied += 1;
-                console.log(`🎁 [ShopifyOffer] pending ${p.orderName} applied to user ${user._id}, trial until ${end.toISOString()}`);
+                console.log(`🎁 [ShopifyOffer] pending ${p.orderName} applied to user ${user._id}, take_plus until ${end.toISOString()}`);
             } catch (err) {
                 await ShopifyPurchase.updateOne({ _id: p._id }, { $set: { grantStatus: 'pending' }, $unset: { grantedUntil: '', previousSubscription: '' } });
                 throw err;
@@ -497,7 +514,7 @@ const getStatusForUser = async (userId) => {
  * Called right after a new account is created (all three signup paths). Never
  * throws — a problem here must not break signup; the Redeem screen still works
  * later. Updates the passed user document in memory so the signup response
- * already shows the 30-day trial.
+ * already shows the 30 days of Take+.
  */
 const applyOnSignup = async (user) => {
     try {
@@ -530,17 +547,13 @@ const applyOnSignup = async (user) => {
 // ---------------------------------------------------------------------------
 
 // A buyer who already has an account gets the offer as soon as the order is
-// eligible. Only verified emails / phones are trusted for this.
+// eligible. Only verified emails are trusted for this (phone ignored for now).
 const grantToExistingUser = async (purchase, order) => {
     if (!purchase?.eligible || purchase.redeemedBy) return null;
     const emails = [...new Set(order.emails.map(normalizeEmail).filter(Boolean))];
-    const phones = [...new Set(order.phones.map(normalizePhone).filter(Boolean))];
-    const or = [];
-    if (emails.length) or.push({ email: { $in: emails }, isEmailVerified: true });
-    if (phones.length) or.push({ phone: { $in: phones }, isPhoneVerified: true });
-    if (!or.length) return null;
+    if (!emails.length) return null;
 
-    const user = await User.findOne({ $or: or, isActive: true }).select(USER_FIELDS).lean();
+    const user = await User.findOne({ email: { $in: emails }, isEmailVerified: true, isActive: true }).select(USER_FIELDS).lean();
     if (!user) return null;
     try {
         return await claimAndGrant(purchase, user, 'webhook');
@@ -595,5 +608,6 @@ module.exports = {
     applyOnSignup,
     handleWebhook,
     // exposed for tests
-    _internal: { hasActivePaidPlan, identityMatches, decideOffer, trialFields },
+    _internal: { hasActivePaidPlan, identityMatches, decideOffer, offerFields },
+    GRANT_SOURCE,
 };
