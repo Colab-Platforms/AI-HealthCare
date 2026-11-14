@@ -24,9 +24,9 @@ const orderFields = (withProduct) => `
   lineItems(first: 50) { nodes { sku title quantity ${withProduct ? 'product { legacyResourceId }' : ''} } }
 `;
 
-// Deliberately NOT SHOPIFY_STORE_DOMAIN: that one points at the Fastrr/catalog
-// store used by routes/fastrrRoutes.js. The card offer reads the retail store
-// ("Take Limited") the cards are handed out from. No fallback, so a missing
+// Deliberately NOT SHOPIFY_STORE_DOMAIN: that one points at the old Fastrr test
+// store. The card offer and the shop (modules/shop) both use the retail store
+// ("Take Limited"). No fallback, so a missing
 // value fails closed instead of silently reading the wrong store.
 const getConfig = () => ({
     domain: process.env.SHOPIFY_ADMIN_STORE_DOMAIN,
@@ -136,4 +136,6 @@ const listOrdersSince = async (sinceDate, after = null) => {
     return { nodes: data.orders.nodes, pageInfo: data.orders.pageInfo };
 };
 
-module.exports = { isConfigured, findOrderByName, fetchOrderById, listOrdersSince, getConfig };
+// `graphql` is also used by the shop catalog sync (modules/shop), so both
+// features share one client with the same timeout / rate-limit backoff.
+module.exports = { isConfigured, findOrderByName, fetchOrderById, listOrdersSince, getConfig, graphql, ShopifyApiError };

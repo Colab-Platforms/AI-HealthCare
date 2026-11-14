@@ -179,4 +179,18 @@ const offerRedeemLimiter = rateLimit({
   message: { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter };
+// Shop cart writes (add / change quantity / remove). Per-user, Redis-backed. A
+// shopper taps "+" a few times a minute at most; 60/min only stops a runaway
+// client retry loop or a script.
+const shopWriteLimiter = rateLimit({
+  store: buildStore('shop-write'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter, shopWriteLimiter };

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const shopifyOfferService = require('../services/shopifyOfferService');
+const catalogSyncService = require('../modules/shop/services/catalogSyncService');
 const { verifyShopifyHmac } = require('../utils/shopifyOrder');
 
 /**
@@ -35,6 +36,19 @@ router.post('/webhooks', async (req, res) => {
     if (expectedShop && shop && shop.toLowerCase() !== expectedShop.toLowerCase()) {
         console.warn(`[Shopify webhook] ${topic || '?'} rejected: unknown shop ${shop}`);
         return res.status(401).json({ message: 'Unknown shop' });
+    }
+
+    // Product / inventory / collection topics keep the shop catalog in sync;
+    // order topics go to the card offer, unchanged.
+    if (catalogSyncService.isCatalogTopic(topic)) {
+        try {
+            const result = await catalogSyncService.handleWebhook({ topic, body: req.body });
+            console.log(`[Shopify webhook] ${topic} ${result.id || '-'} -> ${result.result || `ignored (${result.ignored})`}`);
+            return res.status(200).json({ received: true });
+        } catch (error) {
+            console.error(`[Shopify webhook] ${topic} catalog sync failed:`, error.message);
+            return res.status(500).json({ received: false }); // Shopify retries; the fetch-back is idempotent
+        }
     }
 
     try {

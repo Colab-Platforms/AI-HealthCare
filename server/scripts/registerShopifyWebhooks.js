@@ -16,7 +16,13 @@ const dotenv = require('dotenv');
 dotenv.config();
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const TOPICS = ['orders/create', 'orders/paid', 'orders/cancelled', 'refunds/create'];
+const TOPICS = [
+  // card offer
+  'orders/create', 'orders/paid', 'orders/cancelled', 'refunds/create',
+  // shop catalog sync (modules/shop) — needs read_products + read_inventory
+  'products/create', 'products/update', 'products/delete', 'inventory_levels/update',
+  'collections/create', 'collections/update', 'collections/delete',
+];
 
 (async () => {
   const domain = process.env.SHOPIFY_ADMIN_STORE_DOMAIN;

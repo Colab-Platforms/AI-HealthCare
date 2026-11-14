@@ -411,7 +411,7 @@ try {
     { path: "/api/waitlist", module: "./routes/waitlistRoutes" },
     { path: "/api/creator", module: "./routes/creatorRoutes" },
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
-    { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
+    { path: "/api/shop", module: "./modules/shop/routes" }, // Shop: catalog, cart, Fastrr catalog pull
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots
     { path: "/api", module: "./routes/chatRoutes" }, // 🔚 Generic catch-all goes last
   ];
