@@ -15,6 +15,7 @@ const storage = require('../services/vaultStorage');
 const { hashToken, newToken } = require('../controllers/vaultShareController');
 const { toVaultReport } = require('../scripts/migrateLegacyVaultDocs');
 const config = require('../config/vault');
+const grants = require('../services/vaultStorageGrants');
 
 const ID = '64b7f0c2a1b2c3d4e5f60718';
 
@@ -143,8 +144,95 @@ test('migration maps a legacy document to an unfiled legacy report', () => {
   assert.match(r.note, /Dr Mehta/);
 });
 
-test('free-tier limits default to 10MB per file, 1GB quota, and are env-overridable', () => {
+test('config defaults: 10MB free base, 50MB per payment, 10MB max file; free/trial never earn', () => {
+  assert.equal(config.FREE_BASE_BYTES, 10 * 1024 * 1024);
+  assert.equal(config.GRANT_BYTES_PER_PAYMENT, 50 * 1024 * 1024);
   assert.equal(config.MAX_FILE_BYTES, 10 * 1024 * 1024);
-  assert.equal(config.DEFAULT_QUOTA_BYTES, 1024 * 1024 * 1024);
-  assert.equal(config.quotaForPlan('premium'), config.DEFAULT_QUOTA_BYTES);
+  assert.ok(config.GRANTING_PLAN_KEYS.includes('take_plus'));
+  assert.ok(!config.GRANTING_PLAN_KEYS.includes('free'));
+  assert.ok(!config.GRANTING_PLAN_KEYS.includes('free_trial'));
+});
+
+const MB = 1024 * 1024;
+
+test('limit = base + grants: the 10 -> 60 -> 110 -> 110 -> 160 timeline', () => {
+  const limitAfter = (payments) => svc.buildUsage({ usedBytes: 0, grantedBytes: payments * config.GRANT_BYTES_PER_PAYMENT }).limitBytes / MB;
+  assert.equal(limitAfter(0), 10);  // month 1, free
+  assert.equal(limitAfter(1), 60);  // month 2, paid
+  assert.equal(limitAfter(2), 110); // month 3, paid
+  assert.equal(limitAfter(2), 110); // month 4, free: no new payment, nothing lost
+  assert.equal(limitAfter(3), 160); // month 5, paid
+});
+
+test('buildUsage: remaining, earned, over-limit and the deprecated quotaBytes alias', () => {
+  const u = svc.buildUsage({ usedBytes: 4 * MB, grantedBytes: 50 * MB }, { planKey: 'take_plus', paidActive: true });
+  assert.equal(u.limitBytes, 60 * MB);
+  assert.equal(u.quotaBytes, u.limitBytes);
+  assert.equal(u.remainingBytes, 56 * MB);
+  assert.equal(u.baseBytes, 10 * MB);
+  assert.equal(u.earnedBytes, 50 * MB);
+  assert.equal(u.overLimit, false);
+  assert.deepEqual(u.plan, { key: 'take_plus', paidActive: true });
+
+  const over = svc.buildUsage({ usedBytes: 25 * MB, grantedBytes: 0 });
+  assert.equal(over.overLimit, true);
+  assert.equal(over.remainingBytes, 0);
+});
+
+test('isPaidActive: needs an eligible plan, a live status and an unexpired period', () => {
+  const future = new Date(Date.now() + 864e5);
+  const past = new Date(Date.now() - 864e5);
+  assert.equal(svc.isPaidActive({ subscription: { plan: 'take_plus', status: 'active', currentPeriodEnd: future } }), true);
+  // cancelled but still inside the period they paid for
+  assert.equal(svc.isPaidActive({ subscription: { plan: 'take_plus', status: 'cancelled', currentPeriodEnd: future } }), true);
+  assert.equal(svc.isPaidActive({ subscription: { plan: 'take_plus', status: 'active', currentPeriodEnd: past } }), false);
+  assert.equal(svc.isPaidActive({ subscription: { plan: 'take_plus', status: 'expired', currentPeriodEnd: future } }), false);
+  assert.equal(svc.isPaidActive({ subscription: { plan: 'free', status: 'active', currentPeriodEnd: future } }), false);
+  assert.equal(svc.isPaidActive({ subscription: { plan: 'free_trial', status: 'active', currentPeriodEnd: future } }), false);
+  assert.equal(svc.isPaidActive({}), false);
+  assert.equal(svc.isPaidActive(undefined), false);
+});
+
+test('storage-full message: upgrade for free, delete-hint for paid, view-only note when over limit', () => {
+  const free = svc.describeStorageLimit(svc.buildUsage({ usedBytes: 10 * MB }, { planKey: 'free' }), 2 * MB);
+  assert.equal(free.code, 'STORAGE_LIMIT_EXCEEDED');
+  assert.equal(free.upgrade.available, true);
+  assert.equal(free.upgrade.planKey, 'take_plus');
+  assert.equal(free.requestedBytes, 2 * MB);
+  assert.match(free.message, /upgrade your plan/i);
+
+  const paid = svc.describeStorageLimit(svc.buildUsage({ usedBytes: 60 * MB, grantedBytes: 50 * MB }, { planKey: 'take_plus', paidActive: true }));
+  assert.equal(paid.upgrade.available, false);
+  assert.match(paid.message, /Delete a few documents/);
+  assert.match(paid.message, /50 MB/);
+
+  const over = svc.describeStorageLimit(svc.buildUsage({ usedBytes: 25 * MB }, { planKey: 'free' }));
+  assert.match(over.message, /over its storage limit/);
+  assert.match(over.message, /still view and download/);
+});
+
+test('storageLimitError is a 403 whose payload is spread into the response', () => {
+  const err = svc.storageLimitError(svc.buildUsage({ usedBytes: 10 * MB }), 1);
+  assert.equal(err.status, 403);
+  assert.equal(err.details.code, 'STORAGE_LIMIT_EXCEEDED');
+  assert.ok(err.details.usage);
+  assert.equal(err.details.message, undefined); // message travels on the Error itself
+  assert.match(err.message, /storage/i);
+});
+
+test('grant key prefers the payment id so payment.captured + subscription.charged cannot double-credit', () => {
+  const periodEnd = new Date('2026-12-01T00:00:00Z');
+  assert.equal(grants.grantKeyForPayment({ _id: 'x', razorpayPaymentId: 'pay_1', razorpaySubscriptionId: 'sub_1' }, periodEnd), 'rzp:pay_1');
+  assert.equal(
+    grants.grantKeyForPayment({ _id: 'x', razorpaySubscriptionId: 'sub_1' }, periodEnd),
+    `sub:sub_1:${Math.floor(periodEnd.getTime() / 1000)}`
+  );
+  assert.equal(grants.grantKeyForPayment({ _id: 'abc123' }), 'pay:abc123');
+});
+
+test('free and trial payments never earn storage (no DB touched)', async () => {
+  for (const planKey of ['free', 'free_trial']) {
+    const r = await grants.grantForPayment({ userId: ID, payment: { _id: 'p', razorpayPaymentId: 'pay_x' }, planKey });
+    assert.deepEqual(r, { granted: false, reason: 'plan_not_eligible' });
+  }
 });

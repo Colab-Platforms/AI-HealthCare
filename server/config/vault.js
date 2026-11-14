@@ -15,14 +15,35 @@ const intFromEnv = (name, fallback) => {
 };
 
 const MAX_FILE_BYTES = intFromEnv('VAULT_MAX_FILE_BYTES', 10 * MB);
-const DEFAULT_QUOTA_BYTES = intFromEnv('VAULT_DEFAULT_QUOTA_BYTES', 1024 * MB); // 1 GB
 const MAX_FILES_PER_UPLOAD = intFromEnv('VAULT_MAX_FILES_PER_UPLOAD', 10);
 
-// Optional per-plan quota overrides (bytes). Unlisted plans get the default.
-const QUOTA_BY_PLAN = {
-  free: DEFAULT_QUOTA_BYTES,
-  free_trial: DEFAULT_QUOTA_BYTES,
-};
+/* ───────────────────────── Storage limit (EDIT HERE) ─────────────────────────
+ * A user's vault limit is:
+ *
+ *     FREE_BASE_BYTES  +  (sum of every storage grant they have earned)
+ *
+ * Every successful paid subscription payment earns GRANT_BYTES_PER_PAYMENT, and
+ * grants are permanent: if the user later drops to the free plan the limit just
+ * stops growing, nothing is taken away. Both numbers can be changed here or via
+ * env without touching any other code.
+ *
+ *   month 1 free            -> 10 MB
+ *   month 2 paid  (+50 MB)  -> 60 MB
+ *   month 3 paid  (+50 MB)  -> 110 MB
+ *   month 4 free            -> 110 MB   (no growth until they pay again)
+ *   month 5 paid  (+50 MB)  -> 160 MB
+ *
+ * Changing FREE_BASE_BYTES applies to everyone immediately (the limit is
+ * recomputed on each request). Changing GRANT_BYTES_PER_PAYMENT only affects
+ * grants created from now on; existing grants keep the size they were given.
+ */
+const FREE_BASE_BYTES = intFromEnv('VAULT_FREE_BYTES', 50 * MB);
+const GRANT_BYTES_PER_PAYMENT = intFromEnv('VAULT_GRANT_BYTES', 100 * MB);
+
+// Subscription plans that earn a grant when a payment succeeds. `free` and the
+// 14-day `free_trial` are deliberately absent. basic/premium are retired plans
+// kept so existing subscribers still earn storage.
+const GRANTING_PLAN_KEYS = ['take_plus', 'basic', 'premium'];
 
 // mime -> how it is stored on Cloudinary. PDFs go in as `image` so Cloudinary
 // can report the page count; text goes in as `raw`.
@@ -60,12 +81,12 @@ const PURGE_GRACE_HOURS = 24;
 
 const CLOUDINARY_ROOT = 'takehealth/vault';
 
-const quotaForPlan = (plan) => QUOTA_BY_PLAN[plan] || DEFAULT_QUOTA_BYTES;
-
 module.exports = {
   MB,
   MAX_FILE_BYTES,
-  DEFAULT_QUOTA_BYTES,
+  FREE_BASE_BYTES,
+  GRANT_BYTES_PER_PAYMENT,
+  GRANTING_PLAN_KEYS,
   MAX_FILES_PER_UPLOAD,
   ALLOWED_FILE_TYPES,
   PRESET_CATEGORIES,
@@ -74,5 +95,4 @@ module.exports = {
   UPLOAD_SESSION_TTL_SEC,
   PURGE_GRACE_HOURS,
   CLOUDINARY_ROOT,
-  quotaForPlan,
 };

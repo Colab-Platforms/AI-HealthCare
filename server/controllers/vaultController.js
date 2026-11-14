@@ -251,11 +251,9 @@ exports.signUploads = handle(async (req, res) => {
     total += size;
   }
 
-  // Early, friendly quota check. The authoritative (atomic) check is in createReports.
-  const usage = await svc.getUsage(req.user);
-  if (usage.usedBytes + total > usage.quotaBytes) {
-    throw httpError(413, 'Not enough vault storage left for these files', { code: 'QUOTA_EXCEEDED', usage });
-  }
+  // Early, friendly check (also blocks users already over their limit). The
+  // authoritative atomic check is in createReports.
+  await svc.assertCanStore(req.user, total);
 
   const uploads = files.map((f, index) => ({ index, mime: f.mime, size: Number(f.size), ...storage.signUpload({ userId: req.user._id, mime: f.mime }) }));
   const expiresAt = new Date(Date.now() + UPLOAD_SESSION_TTL_SEC * 1000);
@@ -327,7 +325,7 @@ exports.createReports = handle(async (req, res) => {
     if (granted.resourceType === 'image' && !cfg.formats.includes(asset.format)) { await reject('INVALID_FORMAT'); continue; }
 
     const reserved = await svc.reserveBytes(req.user, asset.bytes);
-    if (!reserved) { await reject('QUOTA_EXCEEDED'); continue; }
+    if (!reserved) { await reject('STORAGE_LIMIT_EXCEEDED'); continue; }
 
     const originalName = trimString(item.originalName, 200);
     const fallbackTitle = originalName.replace(/\.[^.]+$/, '') || 'Untitled report';
@@ -368,7 +366,13 @@ exports.createReports = handle(async (req, res) => {
     await logActivity(userId, 'UPLOAD_MEDICAL_DOCUMENT', 'medical', { count: created.length, folderId: folder ? String(folder._id) : null }, req);
   }
 
-  res.status(created.length ? 201 : 400).json({ reports: created, failed, usage: await svc.getUsage(req.user) });
+  const usage = await svc.getUsage(req.user);
+  const body = { reports: created, failed, usage };
+  if (failed.some((f) => f.reason === 'STORAGE_LIMIT_EXCEEDED')) {
+    const { message, code, upgrade } = svc.describeStorageLimit(usage);
+    body.storageLimit = { code, message, upgrade };
+  }
+  res.status(created.length ? 201 : 400).json(body);
 });
 
 /* ═══════════════════════════ Reports ═══════════════════════════ */
