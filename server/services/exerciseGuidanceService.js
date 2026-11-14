@@ -11,7 +11,7 @@
 // build a progress bar against ("87/150 min"), not a range with a conditional
 // clause it has to parse. Deliberately activity-agnostic: cardioMinutesPerWeek
 // counts ANY activity tagged category:'cardio' in activityCatalog.js (badminton,
-// swimming, dancing, running, ...), strengthSessionsPerWeek counts ANY activity
+// swimming, dancing, running, ...), strengthMinutesPerWeek counts ANY activity
 // tagged category:'strength' — never a specific sport. See exerciseAdherenceService.js
 // for how actual logged minutes are compared against these targets.
 //
@@ -28,24 +28,26 @@ function getExerciseGuidance(age, goalType, profession = null) {
   // in older adults") plus the CDC/WHO youth 60-min/day MVPA equivalent and
   // the widely-cited 7,500-10,000/day adult range for overall health and
   // longevity. NOT goal-type-adjusted — no published source varies a step
-  // target by weight_loss/muscle_gain the way cardio-minutes/strength-sessions
+  // target by weight_loss/muscle_gain the way cardio/strength minutes
   // do, so goalType intentionally has no effect on this one field.
   const base = {
     youth: {
       cardioMinutesPerWeek: 420, // 60 min/day, mostly aerobic play or sport
-      strengthSessionsPerWeek: 3, // bodyweight/bone-building focus
+      strengthMinutesPerWeek: 90, // bodyweight/bone-building focus
       stepsGoal: 7000, // CDC/WHO 60-min/day MVPA equivalent (6,000-8,000 range, midpoint)
       note: 'Avoid heavy weight-loading — growth plates still developing',
     },
     adult: {
       cardioMinutesPerWeek: 150, // WHO's lower bound for moderate-intensity — the safe baseline target
-      strengthSessionsPerWeek: 2, // major muscle groups
+      // WHO/ACSM publish strength as 2+ days/week, not minutes; the app tracks
+      // minutes only, at 30 min per training day (2 x 30).
+      strengthMinutesPerWeek: 60, // major muscle groups
       stepsGoal: 7500, // lower bound of the 7,500-10,000/day range for overall health/longevity
       note: null,
     },
     older_adult: {
       cardioMinutesPerWeek: 150, // low-impact preferred
-      strengthSessionsPerWeek: 3, // more important at this age, not less
+      strengthMinutesPerWeek: 90, // more important at this age, not less
       stepsGoal: 8602, // exact steps/day translation of WHO's 30-min/day MVPA for older adults
       note: 'Include balance training for fall prevention',
     },
@@ -54,12 +56,16 @@ function getExerciseGuidance(age, goalType, profession = null) {
   const guidance = { ...base, ageBucket };
 
   if (goalType === 'muscle_gain') {
-    guidance.strengthSessionsPerWeek = 4; // resistance training becomes the primary focus
+    guidance.strengthMinutesPerWeek = 120; // resistance training becomes the primary focus
     guidance.cardioMinutesPerWeek = 60; // minimal, recovery-focused only
   } else if (goalType === 'weight_loss') {
-    guidance.note = [guidance.note, 'Keep strength sessions up while cutting calories — preserves muscle while losing fat.']
+    guidance.note = [guidance.note, 'Keep strength training up while cutting calories — preserves muscle while losing fat.']
       .filter(Boolean).join(' ');
   }
+
+  // What the app shows: minutes per day, so it never has to divide itself.
+  // strengthMinutesPerWeek stays for the exact scoring math.
+  guidance.strengthMinutesPerDay = Math.round((guidance.strengthMinutesPerWeek / 7) * 10) / 10;
 
   if (profession === 'desk_job') {
     guidance.professionNote = 'Desk-based work means low incidental daily movement — short movement breaks every hour are worth adding on top of the above.';

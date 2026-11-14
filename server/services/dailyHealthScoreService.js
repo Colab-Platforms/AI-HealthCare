@@ -11,6 +11,7 @@ const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, up
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
+const { scoreActivity } = require('./activityScoreFormula');
 const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
 const { getSleepGoal } = require('../utils/sleepGoal');
 const { getStepGoal } = require('../utils/stepGoal');
@@ -88,7 +89,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-  const [nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
+  const [nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthLogsLast7Days] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     // DailyActivityMetric, not the legacy WearableData.dailyMetrics[] array —
     // that array is no longer reliably kept in sync (WHOOP and some other
@@ -127,11 +128,12 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     // consistent weekly routine the same accurate "on track" answer instead of
     // oscillating 100/0/100/0 through the week. Same rolling-window principle
     // recoveryScoreService.js already uses for HRV/RHR baselines.
-    ExerciseLog.countDocuments({
+    // Durations, not just a count: strength is scored in minutes.
+    ExerciseLog.find({
       userId,
       category: 'strength',
       timestamp: { $gte: new Date(dayEnd.getTime() - 7 * 86400000), $lt: dayEnd },
-    }),
+    }).select('duration').lean(),
   ]);
 
   const components = {};
@@ -250,7 +252,6 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const stepsEntry = activityMetrics.length
     ? mergeDeviceRows(activityMetrics, ['steps', 'activeMinutes'])
     : null;
-  const activityParts = [];
   // Grouped under raw.activity (not flat raw.xxx like Sleep/Hydration/
   // Nutrition above) specifically because the flat names here were
   // ambiguous in practice — "exerciseMinutes", "cardioExerciseMinutes" and
@@ -273,10 +274,8 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // Google/Health Connect sends 0% of the time) still gets fair credit from
   // steps, and a swim/cycle with near-zero steps still gets fair credit from
   // movement minutes, without the same workout ever being counted twice.
-  let stepsScore = null;
   if (stepsEntry?.steps && !mobilityLimited) {
     raw.activity.steps = { actual: stepsEntry.steps, goal: stepGoal, source: 'device' };
-    stepsScore = saturatingToGoal(stepsEntry.steps, stepGoal);
   }
 
   // Cardio-minutes from deliberately logged exercise (running, gym, yoga,
@@ -293,19 +292,15 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // logged). Manual cardio is used ONLY as a fallback for a day the device
   // reports nothing at all. `source` is surfaced on the field itself so the
   // client can show which it was.
-  let movementScore = null;
   const deviceActiveMinutes = stepsEntry?.activeMinutes || 0;
+  let movementMinutes = null;
   if (deviceActiveMinutes > 0) {
-    raw.activity.movementMinutes = { actual: deviceActiveMinutes, goal: Math.round(dailyCardioTarget * 10) / 10, source: 'device' };
-    movementScore = saturatingToGoal(deviceActiveMinutes, dailyCardioTarget);
+    movementMinutes = { actual: deviceActiveMinutes, goal: dailyCardioTarget, source: 'device' };
   } else if (cardioMinutes > 0) {
-    raw.activity.movementMinutes = { actual: cardioMinutes, goal: Math.round(dailyCardioTarget * 10) / 10, source: 'manual' };
-    movementScore = saturatingToGoal(cardioMinutes, dailyCardioTarget);
+    movementMinutes = { actual: cardioMinutes, goal: dailyCardioTarget, source: 'manual' };
   }
-
-  const cardioCandidates = [stepsScore, movementScore].filter((s) => s != null);
-  if (cardioCandidates.length > 0) {
-    activityParts.push(Math.max(...cardioCandidates));
+  if (movementMinutes) {
+    raw.activity.movementMinutes = { ...movementMinutes, goal: Math.round(dailyCardioTarget * 10) / 10 };
   }
 
   if (exerciseLogs.length > 0) {
@@ -322,32 +317,25 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     };
   }
 
-  // Strength: a rolling 7-day window, not "did they train today" — strength
-  // guidance is 2-3 sessions/WEEK, not daily, so a single day's yes/no reads a
-  // correctly-spaced rest day as a failure. A trailing week gives every day of
-  // a consistent weekly routine the same accurate "on track" answer instead of
-  // oscillating 100/0/100/0 through the week (see the ExerciseLog.countDocuments
-  // call above). Only scored once strengthSessionsLast7Days > 0 — this used to
-  // also trigger on ANY exercise log today regardless of category (`||
-  // exerciseLogs.length > 0`), which meant logging a run or swim (pure
-  // cardio) silently turned this signal on at 0/100 and dragged the average
-  // down for someone who has never done strength training at all. No separate
-  // "today" check is needed: the 7-day window above already spans
-  // [today-6, tomorrow), so a strength session logged today is already
-  // counted in strengthSessionsLast7Days the moment it's logged.
-  if (strengthSessionsLast7Days > 0) {
-    raw.activity.strengthSessions = {
-      actual: strengthSessionsLast7Days,
-      goal: guidance.strengthSessionsPerWeek,
-      window: 'last_7_days',
-      source: 'manual',
-    };
-    activityParts.push(Math.min(100, (strengthSessionsLast7Days / guidance.strengthSessionsPerWeek) * 100));
-  }
+  // Strength: minutes only, averaged per day over the last 7 days so a
+  // correctly-spaced rest day doesn't read as a failure — see
+  // activityScoreFormula.js.
+  const strengthMinutes7d = strengthLogsLast7Days.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
 
-  if (activityParts.length > 0) {
-    components.activity = activityParts.reduce((sum, score) => sum + score, 0) / activityParts.length;
-  }
+  // Scoring itself lives in activityScoreFormula.js (shared with the Activity
+  // tab insight). cardio.usedFrom tells the app whether steps or movement
+  // minutes set the cardio score.
+  const activity = scoreActivity({
+    steps: stepsEntry?.steps || 0,
+    stepGoal,
+    movementMinutes,
+    strengthMinutes7d,
+    strengthGoalMinutesPerWeek: guidance.strengthMinutesPerWeek,
+    mobilityLimited,
+  });
+  if (activity.cardio) raw.activity.cardio = activity.cardio;
+  if (activity.strength) raw.activity.strength = { ...activity.strength, source: 'manual' };
+  if (activity.score != null) components.activity = activity.score;
 
   // --- Hydration — scored against the app's fixed water goal (glasses, not
   // ml — the NutritionSummary field is mislabeled, not the data).

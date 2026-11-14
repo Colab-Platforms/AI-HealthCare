@@ -7,12 +7,13 @@ const HealthGoal = require('../models/HealthGoal');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { getStepGoal } = require('../utils/stepGoal');
-const { buildActivityInsight } = require('./activityScoreInsightService');
+const { buildActivityInsight, activityBreakdown } = require('./activityScoreInsightService');
 const { mergeDeviceRows } = require('../utils/wearableMerge');
+const { strengthGoalPerDay } = require('./activityScoreFormula');
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
-const STRENGTH_WINDOW_DAYS = 7; // rolling window — see the comment on strengthSessionsLast7Days below
+const STRENGTH_WINDOW_DAYS = 7; // rolling window — see strengthMinutesEndingOn below
 
 class ActivityAnalyticsInputError extends Error {}
 
@@ -139,11 +140,14 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   // response shares the same goals block instead of recomputing it per day.
   const guidance = getExerciseGuidance(healthGoal?.age ?? user?.profile?.age, healthGoal?.goalType ?? null);
   const dailyCardioTarget = Math.round((guidance.cardioMinutesPerWeek / 7) * 10) / 10;
+  // Grouped the same way as each day's `breakdown`: cardio (either target
+  // is enough) and strength (minutes per day).
   const goals = {
-    steps: getStepGoal(user, healthGoal?.age ?? user?.profile?.age).goalSteps,
-    activeMinutes: dailyCardioTarget,
-    cardioMinutes: dailyCardioTarget,
-    strengthSessionsPerWeek: guidance.strengthSessionsPerWeek,
+    cardio: {
+      steps: getStepGoal(user, healthGoal?.age ?? user?.profile?.age).goalSteps,
+      movementMinutes: dailyCardioTarget,
+    },
+    strength: { minutesPerDay: strengthGoalPerDay(guidance.strengthMinutesPerWeek) },
   };
 
   const activityScoreByDate = {};
@@ -187,19 +191,20 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   }
 
   // Strength: rolling 7-day count ending on each output day, not "did they
-  // train today" — strength guidance is 2-3 sessions/WEEK, not daily, so a
+  // train today" — strength guidance is per WEEK, not daily, so a
   // single day's yes/no reads a correctly-spaced rest day as a failure (see
   // dailyHealthScoreService.js's identical rolling-window rationale). Built
   // once from the already-fetched exerciseLogs rather than one query per day.
-  function strengthSessionsEndingOn(dateStr) {
+  function strengthMinutesEndingOn(dateStr) {
     const dayEnd = parseDateOnlyUTC(dateStr);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1); // exclusive upper bound
     const windowStart = new Date(dayEnd.getTime() - STRENGTH_WINDOW_DAYS * 86400000);
-    return exerciseLogs.filter((log) =>
-      log.category === 'strength' &&
-      new Date(log.timestamp) >= windowStart &&
-      new Date(log.timestamp) < dayEnd
-    ).length;
+    return exerciseLogs
+      .filter((log) =>
+        log.category === 'strength' &&
+        new Date(log.timestamp) >= windowStart &&
+        new Date(log.timestamp) < dayEnd)
+      .reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
   }
 
   // Union of every date with ANY signal — device, manual, or a persisted
@@ -220,7 +225,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
   const entries = dateList.map((date) => {
     const device = deviceByDate[date] || { steps: 0, activeMinutes: 0, caloriesBurned: 0 };
     const manual = manualByDate[date] || { cardioMinutes: 0, totalMinutes: 0, sessionsCount: 0, caloriesBurned: 0 };
-    const strengthSessionsLast7Days = strengthSessionsEndingOn(date);
+    const strengthMinutesLast7Days = strengthMinutesEndingOn(date);
     const activityScore = activityScoreByDate[date];
 
     // Movement/cardio signal: device's passive active-minutes takes priority
@@ -233,9 +238,9 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
     // matching what fed the real Activity Score.
     let movementMinutes = null;
     if (device.activeMinutes > 0) {
-      movementMinutes = { actual: device.activeMinutes, goal: goals.activeMinutes, source: 'device' };
+      movementMinutes = { actual: device.activeMinutes, goal: goals.cardio.movementMinutes, source: 'device' };
     } else if (manual.cardioMinutes > 0) {
-      movementMinutes = { actual: manual.cardioMinutes, goal: goals.cardioMinutes, source: 'manual' };
+      movementMinutes = { actual: manual.cardioMinutes, goal: goals.cardio.movementMinutes, source: 'manual' };
     }
 
     const entry = {
@@ -253,7 +258,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
         totalExerciseMinutes: manual.totalMinutes,
         sessionsCount: manual.sessionsCount,
         caloriesBurned: manual.caloriesBurned,
-        strengthSessionsLast7Days,
+        strengthMinutesLast7Days,
       },
       // The signal that actually feeds the Activity Score's "movement" slot —
       // see the comment above.
@@ -264,9 +269,11 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
       activityScore: typeof activityScore === 'number' ? Math.round(activityScore * 10) / 10 : null,
       calendarBand: typeof activityScore === 'number' ? classifyCalendarBand(activityScore) : null,
     };
+    // Which signal set each pillar (cardio.usedFrom: 'steps' | 'movement').
+    entry.breakdown = activityBreakdown(entry, guidance.strengthMinutesPerWeek);
 
     if (isSingleDayLookup && typeof activityScore === 'number') {
-      entry.insight = buildActivityInsight(entry);
+      entry.insight = buildActivityInsight(entry, guidance.strengthMinutesPerWeek);
     }
 
     return entry;
@@ -290,15 +297,18 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
     const avgManualCardioMinutes = average(group.map((g) => g.manual.cardioMinutes)) || 0;
     const periodAverages = {
       device: { steps: average(group.map((g) => g.device.steps)) || 0, activeMinutes: avgDeviceActiveMinutes, caloriesBurned: 0 },
-      manual: { cardioMinutes: avgManualCardioMinutes, strengthSessionsLast7Days: average(group.map((g) => g.manual.strengthSessionsLast7Days)) || 0 },
+      manual: {
+        cardioMinutes: avgManualCardioMinutes,
+        strengthMinutesLast7Days: average(group.map((g) => g.manual.strengthMinutesLast7Days)) || 0,
+      },
       // Same device-priority/manual-fallback rule as the per-day entries —
       // built from the period's own averages so the insight for a
       // weekly/monthly bucket stays consistent with how each day inside it
       // was actually scored.
       movementMinutes: avgDeviceActiveMinutes > 0
-        ? { actual: avgDeviceActiveMinutes, goal: goals.activeMinutes, source: 'device' }
+        ? { actual: avgDeviceActiveMinutes, goal: goals.cardio.movementMinutes, source: 'device' }
         : avgManualCardioMinutes > 0
-          ? { actual: avgManualCardioMinutes, goal: goals.cardioMinutes, source: 'manual' }
+          ? { actual: avgManualCardioMinutes, goal: goals.cardio.movementMinutes, source: 'manual' }
           : null,
       goals,
       activityScore: avgActivityScore,
@@ -320,7 +330,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
       // "on an average day this period" — one computation per bucket (a
       // handful of weeks/months), not per day, so this stays cheap even over
       // a multi-year range.
-      insight: typeof avgActivityScore === 'number' ? buildActivityInsight(periodAverages) : null,
+      insight: typeof avgActivityScore === 'number' ? buildActivityInsight(periodAverages, guidance.strengthMinutesPerWeek) : null,
     };
   });
 

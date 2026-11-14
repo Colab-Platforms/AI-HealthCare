@@ -122,6 +122,10 @@ exports.logExercise = async (req, res) => {
       });
     }
 
+    if (!isValidDurationMinutes(duration)) {
+      return res.status(400).json({ success: false, message: DURATION_ERROR });
+    }
+
     const weightKg = await getCachedUserWeight(req.user._id);
     const { calories, metValue } = ExerciseLog.calculateCalories(activityType, intensity, duration, weightKg);
 
@@ -281,7 +285,7 @@ exports.getActivityCatalog = async (req, res) => {
   }
 };
 
-// Target-vs-actual for cardio-minutes/strength-sessions, at any granularity
+// Target-vs-actual for cardio and strength minutes, at any granularity
 // (daily/weekly/monthly/yearly, or a custom date/range) — same date-param
 // contract as sleep/water/activity analytics. Targets come from the user's
 // own exerciseGuidance (age+goal+profession), never hardcoded here.
@@ -303,7 +307,7 @@ exports.getExerciseAdherenceData = async (req, res) => {
 
     const data = await getExerciseAdherence(req.user._id, range, { date, startDate, endDate }, {
       cardioMinutesPerWeek: guidance.cardioMinutesPerWeek,
-      strengthSessionsPerWeek: guidance.strengthSessionsPerWeek,
+      strengthMinutesPerWeek: guidance.strengthMinutesPerWeek,
     });
 
     res.json({ success: true, ...data });
@@ -315,6 +319,16 @@ exports.getExerciseAdherenceData = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to get exercise adherence', error: error.message });
   }
 };
+
+// Duration is always minutes (a number, or a numeric string like "30").
+// Anything else ("1h", NaN, negative, more than a day) is rejected so the
+// cardio/strength minutes behind the Activity Score can't be skewed.
+const MAX_DURATION_MINUTES = 24 * 60;
+const isValidDurationMinutes = (v) => {
+  const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= MAX_DURATION_MINUTES;
+};
+const DURATION_ERROR = `duration must be a number of minutes between 1 and ${MAX_DURATION_MINUTES}`;
 
 // Get exercise logs (paginated, filterable)
 exports.getExerciseLogs = async (req, res) => {
@@ -401,6 +415,10 @@ exports.updateExerciseLog = async (req, res) => {
     if (updates.activityType && !isValidActivityId(updates.activityType)) {
       return res.status(400).json({ success: false, message: `Unknown activity type: ${updates.activityType}` });
     }
+    if (updates.duration !== undefined && !isValidDurationMinutes(updates.duration)) {
+      return res.status(400).json({ success: false, message: DURATION_ERROR });
+    }
+    if (updates.duration !== undefined) updates.duration = Number(updates.duration);
 
     const exerciseLog = await ExerciseLog.findOne({ _id: id, userId: req.user._id });
 

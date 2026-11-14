@@ -16,9 +16,9 @@ const { buildActivityInsight } = require('../services/activityScoreInsightServic
 function baseDay(overrides = {}) {
   return {
     device: { steps: 0, caloriesBurned: 0 },
-    manual: { strengthSessionsLast7Days: 0 },
+    manual: { strengthMinutesLast7Days: 0 },
     movementMinutes: null,
-    goals: { steps: 7500, cardioMinutes: 21.4, strengthSessionsPerWeek: 2 },
+    goals: { cardio: { steps: 7500, movementMinutes: 21.4 }, strength: { minutesPerDay: 8.6 } },
     activityScore: 0,
     ...overrides,
   };
@@ -28,7 +28,7 @@ test('steps far below goal, but a logged swim clears the cardio bar: cardio show
   const day = baseDay({
     device: { steps: 2000 },
     movementMinutes: { actual: 40, goal: 21.4, source: 'manual' },
-    activityScore: 100, // cardio maxed via movement; strength never engaged, so omitted from the real score too
+    activityScore: 50, // cardio maxed via movement; no strength, which now counts as 0
   });
   const insight = buildActivityInsight(day);
   const cardioGap = insight.topGaps.find((g) => g.signal === 'cardio');
@@ -58,17 +58,14 @@ test('both steps and movement are short: one cardio gap shown (not two), crediti
   assert.equal(cardioGaps[0].via, 'steps', 'steps (40%) beats movement minutes (23%), so it should be credited as the winning sub-signal');
 });
 
-test('recommendation count matches the 2-pillar model (cardio + strength), never a leftover 3rd signal', () => {
+test('no strength at all counts as a 0 strength gap, not an omitted signal', () => {
   const day = baseDay({
     device: { steps: 1000 },
     movementMinutes: null,
-    manual: { strengthSessionsLast7Days: 0 },
-    activityScore: 13,
+    activityScore: 7,
   });
   const insight = buildActivityInsight(day);
-  // Strength is omitted here (never engaged, no log today) — see the gate
-  // fix in dailyHealthScoreService.js — so only one signal (cardio) exists,
-  // and its point-gain is computed over nSignals=1, not a stale 3.
-  assert.equal(insight.topGaps.length, 1);
-  assert.equal(insight.topGaps[0].signal, 'cardio');
+  assert.deepEqual(insight.topGaps.map((g) => g.signal).sort(), ['cardio', 'strength']);
+  const strengthRec = insight.recommendations.find((r) => /strength/.test(r.action));
+  assert.equal(strengthRec.estimatedPointGain, 50, 'reaching the strength target adds (100-0)/2 points');
 });

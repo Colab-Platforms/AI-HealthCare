@@ -75,7 +75,7 @@ function resolveWindow(range, { date, startDate: customStart, endDate: customEnd
   return { matchStart, matchEnd };
 }
 
-// weeklyTargets = { cardioMinutesPerWeek, strengthSessionsPerWeek } — the
+// weeklyTargets = { cardioMinutesPerWeek, strengthMinutesPerWeek } — the
 // user's exerciseGuidance numbers. Targets scale linearly with the window's
 // length in days (a 30-day month gets ~4.3x the weekly target, a single day
 // gets 1/7th) so "adherence %" stays meaningful at any granularity.
@@ -92,17 +92,19 @@ async function getExerciseAdherence(userId, range = 'weekly', options = {}, week
   const cardioMinutes = logs
     .filter(l => l.category === 'cardio')
     .reduce((sum, l) => sum + (l.duration || 0), 0);
-  const strengthSessions = logs.filter(l => l.category === 'strength').length;
+  const strengthMinutes = logs
+    .filter(l => l.category === 'strength')
+    .reduce((sum, l) => sum + (l.duration || 0), 0);
 
   const cardioTarget = Math.round(weeklyTargets.cardioMinutesPerWeek * scale);
-  const strengthTarget = Math.max(1, Math.round(weeklyTargets.strengthSessionsPerWeek * scale));
+  const strengthTarget = Math.round(weeklyTargets.strengthMinutesPerWeek * scale);
 
   const pct = (actual, target) => (target > 0 ? Math.round(Math.min(100, (actual / target) * 100)) : null);
 
   return {
     range,
     cardioMinutesPerWeek: { target: cardioTarget, actual: cardioMinutes, adherencePercent: pct(cardioMinutes, cardioTarget) },
-    strengthSessionsPerWeek: { target: strengthTarget, actual: strengthSessions, adherencePercent: pct(strengthSessions, strengthTarget) },
+    strengthMinutes: { target: strengthTarget, actual: strengthMinutes, adherencePercent: pct(strengthMinutes, strengthTarget) },
   };
 }
 

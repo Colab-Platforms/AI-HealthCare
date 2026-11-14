@@ -6,59 +6,60 @@
 // activityInsightService.js — because that file already answers a different
 // question (personal-baseline drop-detection vs a goal); this one explains
 // the Activity Score itself.
-const { saturatingToGoal } = require('./healthScoreFormulas');
+const { scoreActivity } = require('./activityScoreFormula');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 
 const SIGNAL_LABELS = {
   cardio: 'Cardio',
-  strengthSessions: 'Strength',
+  strength: 'Strength',
 };
 
 const SIGNAL_ADVICE = {
   cardio: 'more steps (a walk, stairs, extra errands on foot) or a logged cardio session (cycling, swimming, sports)',
-  strengthSessions: 'a logged strength/resistance session — gym, bodyweight training, or resistance bands',
+  strength: 'a logged strength/resistance session — gym, bodyweight training, or resistance bands',
 };
+
+/**
+ * The same cardio/strength breakdown the persisted score uses, from one
+ * activityAnalyticsService day (or period-average) entry. The exact weekly
+ * strength target is passed separately; the response only carries it per day.
+ */
+function activityBreakdown({ device, manual, movementMinutes, goals }, strengthMinutesPerWeek = (goals?.strength?.minutesPerDay || 0) * 7) {
+  const { cardio, strength } = scoreActivity({
+    steps: device?.steps || 0,
+    stepGoal: goals?.cardio?.steps,
+    movementMinutes,
+    strengthMinutes7d: manual?.strengthMinutesLast7Days || 0,
+    strengthGoalMinutesPerWeek: strengthMinutesPerWeek,
+  });
+  return { cardio, strength };
+}
 
 /**
  * @param {Object} day - one entry from activityAnalyticsService (device, manual, movementMinutes, goals, activityScore)
  * @returns {Object} { band, headline, overallSummary, topGaps, recommendations, disclaimer }
  */
-function buildActivityInsight(day) {
-  const { device, manual, movementMinutes, goals, activityScore } = day;
+function buildActivityInsight(day, strengthMinutesPerWeek) {
+  const { device, movementMinutes, goals, activityScore } = day;
 
-  // Steps and Movement Minutes both describe the same underlying behavior
-  // (walking moves both together) — same merge dailyHealthScoreService.js's
-  // actual score now uses: take the BETTER of the two as one Cardio signal,
-  // not two separate ones. Showing both as separate gaps here would have
-  // recommended "walk more" on a day the real score already maxed out from a
-  // logged swim, and the estimated point-gain for improving the LOSING
-  // sub-signal would be arithmetically wrong (only the winning one feeds the
-  // real score). This keeps the insight consistent with how the score
-  // actually moves.
-  const stepsScore = (device.steps > 0 || goals.steps) ? saturatingToGoal(device.steps, goals.steps) : null;
-  const movementScore = movementMinutes ? saturatingToGoal(movementMinutes.actual, movementMinutes.goal) : null;
-
+  // Built from the shared formula so gaps and point-gains match the real score.
+  const { cardio, strength } = activityBreakdown(day, strengthMinutesPerWeek);
   const signals = [];
-  if (stepsScore != null || movementScore != null) {
-    const useSteps = movementScore == null || (stepsScore != null && stepsScore >= movementScore);
+  if (cardio) {
+    // usedFrom is null when there was no cardio data at all (scored as 0):
+    // report it against the step goal.
+    const useSteps = cardio.usedFrom !== 'movement';
     signals.push({
       key: 'cardio',
-      actual: useSteps ? device.steps : movementMinutes.actual,
-      goal: useSteps ? goals.steps : movementMinutes.goal,
+      actual: useSteps ? (device?.steps || 0) : movementMinutes.actual,
+      goal: useSteps ? goals.cardio.steps : movementMinutes.goal,
       source: useSteps ? 'device' : (movementMinutes?.source || 'device'),
       via: useSteps ? 'steps' : 'movement minutes',
-      score: Math.max(stepsScore ?? -Infinity, movementScore ?? -Infinity),
+      score: cardio.score,
     });
   }
-  // Same gate dailyHealthScoreService.js's real score uses: only shown once
-  // the user has actually done a strength session in the last 7 days (which
-  // already includes today, the moment one is logged) — not merely because
-  // the field exists on the day object. Showing a 0/100 strength gap here for
-  // someone who has simply never trained with weights would not match what
-  // the real score does (it omits the signal entirely in that case).
-  if (goals.strengthSessionsPerWeek && manual?.strengthSessionsLast7Days > 0) {
-    const strengthScore = Math.min(100, (manual.strengthSessionsLast7Days / goals.strengthSessionsPerWeek) * 100);
-    signals.push({ key: 'strengthSessions', actual: manual.strengthSessionsLast7Days, goal: goals.strengthSessionsPerWeek, source: 'manual', score: strengthScore });
+  if (strength) {
+    signals.push({ key: 'strength', actual: strength.actualMinutesPerDay, goal: strength.goalMinutesPerDay, unit: 'min/day', source: 'manual', score: strength.score });
   }
 
   const band = classifyCalendarBand(activityScore) || 'low';
@@ -79,7 +80,7 @@ function buildActivityInsight(day) {
       label: SIGNAL_LABELS[g.key],
       source: g.source || 'manual',
       ...(g.key === 'cardio' ? { via: g.via } : {}),
-      message: `${SIGNAL_LABELS[g.key]} was ${pct}% of your target (${g.actual} vs ${g.goal})${viaNote}.`,
+      message: `${SIGNAL_LABELS[g.key]} was ${pct}% of your target (${g.actual} vs ${g.goal}${g.unit ? ` ${g.unit}` : ''})${viaNote}.`,
     };
   });
 
@@ -106,4 +107,4 @@ function buildActivityInsight(day) {
   };
 }
 
-module.exports = { buildActivityInsight };
+module.exports = { buildActivityInsight, activityBreakdown };
