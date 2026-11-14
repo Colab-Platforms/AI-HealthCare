@@ -9,7 +9,7 @@ const FAIL_TEXT = {
   NOT_UPLOADED: 'was not received by storage',
   FILE_TOO_LARGE: 'is too large',
   INVALID_FORMAT: 'is not a supported format',
-  QUOTA_EXCEEDED: 'does not fit in your remaining storage',
+  STORAGE_LIMIT_EXCEEDED: 'does not fit in your remaining storage',
   SAVE_FAILED: 'could not be saved',
 };
 
@@ -65,7 +65,10 @@ export default function UploadSheet({ open, onClose, lockedFolderId = null, onUp
         source,
         onProgress: (i, p) => setProgress((prev) => ({ ...prev, [i]: p })),
       });
-      res.failed?.forEach((f) => toast.error(`A file ${FAIL_TEXT[f.reason] || 'failed'} (${f.reason})`));
+      if (res.storageLimit) toast.error(res.storageLimit.message, { duration: 6000 });
+      res.failed
+        ?.filter((f) => f.reason !== 'STORAGE_LIMIT_EXCEEDED')
+        .forEach((f) => toast.error(`A file ${FAIL_TEXT[f.reason] || 'failed'} (${f.reason})`));
       toast.success(`${res.reports.length} report${res.reports.length === 1 ? '' : 's'} saved`);
       onUploaded?.(res);
       onClose();

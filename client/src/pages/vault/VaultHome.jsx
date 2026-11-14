@@ -75,7 +75,7 @@ export default function VaultHome() {
 
   const filtering = !!(q.trim() || from || to);
   const usage = data?.usage;
-  const pct = usage ? Math.min(100, (usage.usedBytes / usage.quotaBytes) * 100) : 0;
+  const pct = usage ? Math.min(100, (usage.usedBytes / usage.limitBytes) * 100) : 0;
 
   return (
     <PageShell>
@@ -120,8 +120,14 @@ export default function VaultHome() {
             <div className="h-full bg-[#2B3F86] rounded-full transition-all" style={{ width: `${Math.max(pct, 1)}%` }} />
           </div>
           <p className="text-[11px] text-slate-500 font-semibold mt-1.5">
-            {formatBytes(usage.usedBytes)} of {formatBytes(usage.quotaBytes)} used
+            {formatBytes(usage.usedBytes)} of {formatBytes(usage.limitBytes)} used
+            {usage.earnedBytes > 0 && ` · ${formatBytes(usage.earnedBytes)} earned`}
           </p>
+          {usage.overLimit && (
+            <p className="text-[11px] text-red-600 font-semibold mt-1">
+              Over your storage limit — you can still view and download. Delete some reports or upgrade to add new ones.
+            </p>
+          )}
         </div>
       )}
 

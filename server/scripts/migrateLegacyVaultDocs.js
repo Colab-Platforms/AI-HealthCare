@@ -7,7 +7,7 @@
  *     node scripts/migrateLegacyVaultDocs.js             # apply
  *
  * Safe to re-run: vault_reports.legacyDocId is unique, so already-migrated
- * documents are skipped. Used storage is added to each user's vault quota.
+ * documents are skipped. Used storage is added to each user's vault usage.
  * Target DB: USE_STAGING_DB=true -> MONGODB_URI_STAGING, else MONGODB_URI.
  */
 const path = require('path');
@@ -68,9 +68,8 @@ const run = async () => {
   const MedicalDocument = require('../models/MedicalDocument');
   const VaultReport = require('../models/VaultReport');
   const VaultUsage = require('../models/VaultUsage');
-  const User = require('../models/User');
   const { extractPublicId } = require('../services/cloudinary');
-  const { quotaForPlan } = require('../config/vault');
+  const { FREE_BASE_BYTES } = require('../config/vault');
 
   const done = new Set((await VaultReport.distinct('legacyDocId', { legacyDocId: { $ne: null } })).map(String));
   const bytesByUser = new Map();
@@ -96,10 +95,11 @@ const run = async () => {
 
   if (!dryRun) {
     for (const [userId, bytes] of bytesByUser) {
-      const user = await User.findById(userId).select('subscription.plan').lean();
+      // Legacy documents count toward the limit. A user who ends up over it keeps
+      // every file; they just can't upload more until they free space or pay.
       await VaultUsage.updateOne(
         { userId },
-        { $inc: { usedBytes: bytes }, $setOnInsert: { quotaBytes: quotaForPlan(user?.subscription?.plan) } },
+        { $inc: { usedBytes: bytes }, $setOnInsert: { grantedBytes: 0, quotaBytes: FREE_BASE_BYTES } },
         { upsert: true }
       );
     }

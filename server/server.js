@@ -510,6 +510,19 @@ if (!process.env.VERCEL) {
     }
   });
 
+  // Medical Vault storage grants — nightly safety net: create any +storage grant a
+  // failed webhook step missed (from paid Payment rows) and rebuild each user's
+  // stored limit from the grants ledger. Idempotent.
+  const { syncGrantsFromPayments } = require("./services/vaultStorageGrants");
+  cron.schedule("30 2 * * *", async () => {
+    try {
+      const stats = await syncGrantsFromPayments({ includeManualPaidUsers: false });
+      if (stats.grantsCreated || stats.reconcile.usersChanged) console.log("[VaultGrant] nightly sync", JSON.stringify(stats));
+    } catch (err) {
+      console.error("[VaultGrant] nightly sync failed:", err.message);
+    }
+  });
+
   // DPDPA Account Deletion — midnight daily
   const { runDeletionCron, runDeletionReminderCron, runUnconsentedMinorGraceCron } = require('./controllers/privacyController');
   cron.schedule('0 0 * * *', async () => {

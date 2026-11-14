@@ -8,7 +8,15 @@ const VaultReport = require('../models/VaultReport');
 const VaultUsage = require('../models/VaultUsage');
 const VaultShare = require('../models/VaultShare');
 const storage = require('./vaultStorage');
-const { quotaForPlan, PRESET_CATEGORIES, FOLDER_COLORS, PURGE_GRACE_HOURS } = require('../config/vault');
+const {
+  MB,
+  FREE_BASE_BYTES,
+  GRANT_BYTES_PER_PAYMENT,
+  GRANTING_PLAN_KEYS,
+  PRESET_CATEGORIES,
+  FOLDER_COLORS,
+  PURGE_GRACE_HOURS,
+} = require('../config/vault');
 
 /* ───────────────────────── helpers ───────────────────────── */
 
@@ -19,31 +27,112 @@ const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const badRequest = (message, extra = {}) => Object.assign(new Error(message), { status: 400, ...extra });
 
-/* ───────────────────────── quota ───────────────────────── */
+/* ───────────────────────── quota ─────────────────────────
+ * limit = FREE_BASE_BYTES + grantedBytes (see config/vault.js for the rules).
+ * Pipeline updates run with { timestamps: false } because Mongoose cannot
+ * merge its updatedAt $set into an aggregation-pipeline update.
+ */
 
-const getUsage = async (user) => {
-  const quotaBytes = quotaForPlan(user.subscription?.plan);
-  // $setOnInsert keeps an existing counter; quotaBytes is refreshed below so a
-  // plan change takes effect without a migration.
-  await VaultUsage.updateOne(
-    { userId: user._id },
-    { $setOnInsert: { usedBytes: 0 } },
+/** Is this user currently on a paid plan whose period has not ended? */
+const isPaidActive = (user) => {
+  const sub = user?.subscription;
+  if (!sub || !GRANTING_PLAN_KEYS.includes(sub.plan)) return false;
+  if (sub.status === 'expired' || sub.status === 'inactive') return false;
+  const end = sub.currentPeriodEnd || sub.endDate;
+  return !!end && new Date(end) > new Date();
+};
+
+/** Pure: shape the usage block returned to the app. */
+const buildUsage = ({ usedBytes = 0, grantedBytes = 0 }, { planKey = 'free', paidActive = false } = {}) => {
+  const limitBytes = FREE_BASE_BYTES + grantedBytes;
+  return {
+    usedBytes,
+    limitBytes,
+    remainingBytes: Math.max(0, limitBytes - usedBytes),
+    baseBytes: FREE_BASE_BYTES,
+    earnedBytes: grantedBytes,
+    overLimit: usedBytes > limitBytes,
+    plan: { key: planKey, paidActive },
+    quotaBytes: limitBytes, // deprecated alias of limitBytes, kept so older app builds keep working
+  };
+};
+
+const ensureUsage = (userId) =>
+  VaultUsage.updateOne(
+    { userId },
+    { $setOnInsert: { usedBytes: 0, grantedBytes: 0, quotaBytes: FREE_BASE_BYTES } },
     { upsert: true }
   );
-  const usage = await VaultUsage.findOneAndUpdate(
-    { userId: user._id },
-    { $set: { quotaBytes } },
-    { new: true }
+
+/**
+ * Recompute the stored quota from the current config and the user's grants,
+ * and return the usage document. Safe to call on every request.
+ */
+const refreshQuota = (userId) =>
+  VaultUsage.findOneAndUpdate(
+    { userId },
+    [
+      {
+        $set: {
+          usedBytes: { $ifNull: ['$usedBytes', 0] },
+          grantedBytes: { $ifNull: ['$grantedBytes', 0] },
+          quotaBytes: { $add: [FREE_BASE_BYTES, { $ifNull: ['$grantedBytes', 0] }] },
+        },
+      },
+    ],
+    { new: true, timestamps: false }
   ).lean();
-  return { usedBytes: usage.usedBytes, quotaBytes: usage.quotaBytes };
+
+const getUsage = async (user) => {
+  await ensureUsage(user._id);
+  const doc = await refreshQuota(user._id);
+  return buildUsage(doc, { planKey: user.subscription?.plan || 'free', paidActive: isPaidActive(user) });
+};
+
+/** Pure: the humble "storage full" payload for the app. */
+const describeStorageLimit = (usage, requestedBytes = 0) => {
+  const grantMb = Math.round(GRANT_BYTES_PER_PAYMENT / MB);
+  const upgradeAvailable = !usage.plan.paidActive;
+
+  let message;
+  if (usage.overLimit) {
+    message = upgradeAvailable
+      ? 'Your vault is over its storage limit. You can still view and download your documents. Delete some or upgrade your plan to add new ones.'
+      : 'Your vault is over its storage limit. You can still view and download your documents. Delete a few to add new ones.';
+  } else if (upgradeAvailable) {
+    message = 'Your vault storage is full. Please upgrade your plan to add more documents.';
+  } else {
+    message = `Your vault storage is full. Your storage grows by ${grantMb} MB with every monthly payment.`;
+  }
+
+  return {
+    code: 'STORAGE_LIMIT_EXCEEDED',
+    message,
+    usage,
+    requestedBytes,
+    upgrade: { available: upgradeAvailable, planKey: 'take_plus', grantBytesPerPayment: GRANT_BYTES_PER_PAYMENT },
+  };
+};
+
+/** Error (HTTP 403) carrying describeStorageLimit's payload; controllers spread `details` into the response. */
+const storageLimitError = (usage, requestedBytes = 0) => {
+  const { message, ...details } = describeStorageLimit(usage, requestedBytes);
+  return Object.assign(new Error(message), { status: 403, details });
+};
+
+/** Throws STORAGE_LIMIT_EXCEEDED unless `bytes` more still fit. Returns the usage block. */
+const assertCanStore = async (user, bytes) => {
+  const usage = await getUsage(user);
+  if (usage.overLimit || usage.usedBytes + bytes > usage.limitBytes) throw storageLimitError(usage, bytes);
+  return usage;
 };
 
 /**
  * Atomically claim `bytes` of the user's quota. The conditional filter makes
- * concurrent uploads unable to exceed the quota. Returns false when full.
+ * concurrent uploads unable to exceed the limit. Returns false when full.
  */
 const reserveBytes = async (user, bytes) => {
-  await getUsage(user); // ensure the doc exists and quota is current
+  await getUsage(user); // ensure the doc exists and quotaBytes is current
   const res = await VaultUsage.updateOne(
     {
       userId: user._id,
@@ -59,7 +148,8 @@ const releaseBytes = async (userId, bytes) => {
   // Pipeline update clamps at zero so a double release can never go negative.
   await VaultUsage.updateOne(
     { userId },
-    [{ $set: { usedBytes: { $max: [0, { $subtract: ['$usedBytes', bytes] }] } } }]
+    [{ $set: { usedBytes: { $max: [0, { $subtract: [{ $ifNull: ['$usedBytes', 0] }, bytes] }] } } }],
+    { timestamps: false }
   );
 };
 
@@ -221,7 +311,14 @@ module.exports = {
   toObjectId,
   escapeRegex,
   badRequest,
+  isPaidActive,
+  buildUsage,
+  ensureUsage,
+  refreshQuota,
   getUsage,
+  describeStorageLimit,
+  storageLimitError,
+  assertCanStore,
   reserveBytes,
   releaseBytes,
   refreshFolderStats,

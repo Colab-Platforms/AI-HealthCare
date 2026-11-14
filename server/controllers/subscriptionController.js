@@ -8,6 +8,7 @@ const { getClient } = require('../services/razorpayService');
 const { generateInvoiceNumber, streamInvoicePDF } = require('../services/invoiceService');
 const emailService = require('../services/emailService');
 const { PAST_DUE_GRACE_DAYS } = require('../services/subscriptionLifecycleService');
+const { safeGrantForPayment } = require('../services/vaultStorageGrants');
 
 // Single greppable tag for the whole payment flow (Render logs: search "[Payment]")
 // so one transaction can be traced end-to-end from the subscribe click to the
@@ -273,6 +274,8 @@ exports.handleWebhook = async (req, res) => {
                 });
                 payment.invoiceNumber = generateInvoiceNumber(payment);
                 await payment.save();
+                // Medical Vault: +storage for this paid month (idempotent per payment id; never throws).
+                await safeGrantForPayment({ userId: user._id, payment, planKey, periodEnd });
                 logPayment('webhook:plan_applied', { userId: user._id.toString(), planKey, billingCycle, via: 'payment.captured' });
                 break;
             }
@@ -309,6 +312,8 @@ exports.handleWebhook = async (req, res) => {
                 });
                 payment.invoiceNumber = generateInvoiceNumber(payment);
                 await payment.save();
+                // Medical Vault: +storage for this paid month (idempotent per payment id; never throws).
+                await safeGrantForPayment({ userId: user._id, payment, planKey, periodEnd });
                 logPayment('webhook:plan_applied', { userId: user._id.toString(), planKey, billingCycle, via: 'subscription.charged' });
                 break;
             }
