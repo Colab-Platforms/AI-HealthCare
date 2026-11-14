@@ -43,9 +43,8 @@ const TRIAL_PLAN_KEY = 'free_trial';
 const PENDING_BATCH = 500;
 const USER_FIELDS = 'email isEmailVerified phone isPhoneVerified subscription createdAt';
 
-const NOT_FOUND_MESSAGE = 'We couldn’t find an eligible order for your account. '
-    + 'Use the same email or phone number you used at checkout (verify your phone in your profile first), '
-    + 'and check the order number on your invoice.';
+const NOT_FOUND_MESSAGE = 'We couldn’t find an eligible order with these details. '
+    + 'Check the order number on your invoice and enter the email address you used at checkout.';
 
 const INELIGIBLE_MESSAGES = {
     cancelled: 'This order was cancelled, so it isn’t eligible for the offer.',
@@ -437,12 +436,26 @@ const refreshFromShopify = async (orderName) => {
     }
 };
 
-const redeemForUser = async (userId, input) => {
+// The buyer may have used a different email at checkout than in the app. Typing
+// that checkout email next to the order number proves the order is theirs the
+// same way the account email does: order numbers are guessable, the email on
+// someone else's order is not. Optional — without it the account email is used.
+const checkoutEmailMatches = (purchase, checkoutEmail, secret) => Boolean(
+    checkoutEmail && purchase.emailHashes.includes(hashIdentifier('email', checkoutEmail, secret))
+);
+
+const redeemForUser = async (userId, input, checkoutEmailInput) => {
     const cfg = getOfferConfig();
     if (!cfg.matchSecret) throw new OfferError(503, 'NOT_CONFIGURED', 'This offer isn’t available right now.');
 
     const parsed = parseOrderNumberInput(input);
     if (!parsed) throw new OfferError(400, 'INVALID_ORDER_NUMBER', 'Please enter a valid order number, for example TAKE11005.');
+
+    const hasCheckoutEmail = checkoutEmailInput != null && String(checkoutEmailInput).trim() !== '';
+    const checkoutEmail = hasCheckoutEmail ? normalizeEmail(checkoutEmailInput) : null;
+    if (hasCheckoutEmail && !checkoutEmail) {
+        throw new OfferError(400, 'INVALID_EMAIL', 'Please enter the email address you used when placing the order.');
+    }
 
     const user = await User.findById(userId).select(USER_FIELDS).lean();
     if (!user) throw new OfferError(404, 'USER_NOT_FOUND', 'Account not found.');
@@ -454,7 +467,8 @@ const redeemForUser = async (userId, input) => {
 
     // Same answer whether the order doesn't exist or isn't this user's, so the
     // response never confirms that someone else's order number is real.
-    if (!purchase || !identityMatches(purchase, user, cfg.matchSecret)) {
+    if (!purchase || !(identityMatches(purchase, user, cfg.matchSecret)
+        || checkoutEmailMatches(purchase, checkoutEmail, cfg.matchSecret))) {
         throw new OfferError(404, 'NOT_FOUND', NOT_FOUND_MESSAGE);
     }
 

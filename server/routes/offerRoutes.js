@@ -25,10 +25,13 @@ router.get('/shopify', apiLimiter, async (req, res) => {
     }
 });
 
-// POST /api/offers/shopify/redeem  { "orderNumber": "TAKE11005" }
+// POST /api/offers/shopify/redeem  { "orderNumber": "TAKE11005", "checkoutEmail": "buyer@gmail.com" }
+// checkoutEmail is optional: needed only when the order was placed with a
+// different email than the one on the app account.
 router.post('/shopify/redeem', offerRedeemLimiter, async (req, res) => {
     try {
-        res.json({ success: true, data: await shopifyOfferService.redeemForUser(req.user._id, req.body?.orderNumber) });
+        const { orderNumber, checkoutEmail } = req.body || {};
+        res.json({ success: true, data: await shopifyOfferService.redeemForUser(req.user._id, orderNumber, checkoutEmail) });
     } catch (err) {
         fail(res, 'redeem', err);
     }
