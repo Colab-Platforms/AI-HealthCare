@@ -9,6 +9,7 @@ const { generateInvoiceNumber, streamInvoicePDF } = require('../services/invoice
 const emailService = require('../services/emailService');
 const { PAST_DUE_GRACE_DAYS } = require('../services/subscriptionLifecycleService');
 const { safeGrantForPayment } = require('../services/vaultStorageGrants');
+const { GRANT_SOURCE } = require('../services/shopifyOfferService');
 
 // Single greppable tag for the whole payment flow (Render logs: search "[Payment]")
 // so one transaction can be traced end-to-end from the subscribe click to the
@@ -29,6 +30,15 @@ exports.getPlans = async (req, res) => {
 // subscription — set far enough out (~10 years) that it never matters in practice;
 // the subscription still auto-charges every cycle until the user cancels.
 const TOTAL_COUNT_BY_CYCLE = { monthly: 120, quarterly: 40, yearly: 10 };
+
+// When the account is on a still-running free grant (Shopify store offer), the
+// date it ends; otherwise null. Razorpay needs start_at in the future, so a
+// grant ending within the next hour is treated as already over.
+const offerGrantEnd = (sub, now = Date.now()) => {
+    if (!sub || sub.grantSource !== GRANT_SOURCE || !sub.currentPeriodEnd) return null;
+    const end = new Date(sub.currentPeriodEnd);
+    return end.getTime() > now + 60 * 60 * 1000 ? end : null;
+};
 
 // POST /api/subscription/subscribe { planId }
 // Autopay flow: creates a real Razorpay Subscription (not a one-time Order), so
@@ -83,10 +93,17 @@ exports.subscribe = async (req, res) => {
 
         const totalCount = TOTAL_COUNT_BY_CYCLE[plan.billingCycle] || 120;
 
+        // Free Take+ from the Shopify store offer still running: the user approves
+        // autopay now, but Razorpay's first charge (and so the paid period) starts
+        // when the free days end, so none of them are lost.
+        const offerEndsAt = offerGrantEnd(user.subscription);
+        if (offerEndsAt) logPayment('subscribe:deferred_until_offer_end', { userId: user._id.toString(), startAt: offerEndsAt.toISOString() });
+
         const subscription = await razorpay.subscriptions.create({
             plan_id: plan.razorpayPlanId,
             customer_notify: 1,
             total_count: totalCount,
+            ...(offerEndsAt ? { start_at: Math.floor(offerEndsAt.getTime() / 1000) } : {}),
             notes: {
                 internal_user_id: user._id.toString(),
                 internal_plan_key: plan.key,
@@ -250,8 +267,11 @@ exports.handleWebhook = async (req, res) => {
                 if (!plan) break; // can't credit access without knowing which plan was paid for
 
                 const periodDays = billingCycle === 'yearly' ? 365 : billingCycle === 'quarterly' ? 90 : 30;
-                const periodEnd = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000);
+                // Paid during the Shopify offer: the paid days start after the free ones.
+                const paidFrom = offerGrantEnd(user.subscription, 0)?.getTime() || Date.now();
+                const periodEnd = new Date(Math.max(paidFrom, Date.now()) + periodDays * 24 * 60 * 60 * 1000);
 
+                user.subscription.grantSource = undefined;
                 user.subscription.status = 'active';
                 user.subscription.statusUpdatedAt = new Date();
                 user.subscription.plan = planKey;
@@ -289,6 +309,7 @@ exports.handleWebhook = async (req, res) => {
                 // an early/late downgrade.
                 const periodEnd = new Date(subscriptionEntity.current_end * 1000);
 
+                user.subscription.grantSource = undefined; // paid from here on, no longer the free offer
                 user.subscription.status = 'active';
                 user.subscription.statusUpdatedAt = new Date();
                 user.subscription.plan = planKey;

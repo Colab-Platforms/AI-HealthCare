@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const { _internal } = require('../services/shopifyOfferService');
 
-const { decideOffer, trialFields, hasActivePaidPlan } = _internal;
+const { decideOffer, offerFields, hasActivePaidPlan } = _internal;
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-11-06T12:00:00Z');
@@ -70,14 +70,21 @@ test('D: a paid plan whose period already ended is treated like C, not pending',
     assert.equal(d.kind, 'applied');
 });
 
-test('trial fields reuse the existing free_trial plan and re-arm the trial-ending email', () => {
+test('D: a running offer grant is not a paid plan (a second grant is never "pending")', () => {
+    const sub = { plan: 'take_plus', grantSource: 'shopify_offer', status: 'active', currentPeriodEnd: at('2026-12-01T12:00:00Z') };
+    assert.equal(hasActivePaidPlan(sub), false);
+});
+
+test('offer fields give take_plus marked as the Shopify grant and re-arm the ending email', () => {
     const end = at('2026-12-06T12:00:00Z');
-    const f = trialFields(end, NOW, false);
-    assert.equal(f['subscription.plan'], 'free_trial');
+    const f = offerFields(end, NOW, false);
+    assert.equal(f['subscription.plan'], 'take_plus');
+    assert.equal(f['subscription.grantSource'], 'shopify_offer');
+    assert.equal(f['subscription.autoRenew'], false);
     assert.equal(f['subscription.status'], 'active');
     assert.equal(f['subscription.currentPeriodEnd'], end);
     assert.equal(f['subscription.endDate'], end);
     assert.equal(f['subscription.renewalReminderSentAt'], null);
     assert.equal(f['subscription.startDate'], NOW);
-    assert.equal('subscription.startDate' in trialFields(end, NOW, true), false, 'a running trial keeps its start date');
+    assert.equal('subscription.startDate' in offerFields(end, NOW, true), false, 'a running trial keeps its start date');
 });

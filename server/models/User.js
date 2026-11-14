@@ -211,6 +211,10 @@ const userSchema = new mongoose.Schema({
     razorpayCustomerId: String,
     razorpaySubscriptionId: String, // only set if the account is on the Subscriptions (auto-renew) flow
     renewalReminderSentAt: Date, // dedupes the manual-renewal reminder email while on the one-time-payment flow
+    // Set while the current plan was given for free rather than paid for:
+    // 'shopify_offer' = 30 days of take_plus from the Shopify store offer
+    // (shopifyOfferService). Cleared by every successful payment and on downgrade.
+    grantSource: { type: String, enum: ['shopify_offer'] },
   },
   healthMetrics: {
     bmi: Number,

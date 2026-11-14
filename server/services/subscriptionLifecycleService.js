@@ -20,6 +20,7 @@ const runRenewalReminderCron = async () => {
 
     const dueSoon = await User.find({
       'subscription.plan': { $nin: ['free', 'free_trial'] },
+      'subscription.grantSource': null, // free Take+ from the Shopify offer gets the trial-ending email instead
       'subscription.status': 'active',
       'subscription.autoRenew': false,
       'subscription.currentPeriodEnd': { $gte: now, $lte: reminderWindowEnd },
@@ -56,20 +57,31 @@ const runTrialEndingReminderCron = async () => {
     const now = new Date();
     const reminderWindowEnd = new Date(now.getTime() + RENEWAL_REMINDER_DAYS_BEFORE * 24 * 60 * 60 * 1000);
 
+    // Free Take+ from the Shopify store offer (grantSource) ends the same way a
+    // trial does, so it gets this email too.
     const endingSoon = await User.find({
-      'subscription.plan': 'free_trial',
+      $or: [
+        { 'subscription.plan': 'free_trial' },
+        { 'subscription.grantSource': 'shopify_offer' },
+      ],
       'subscription.status': 'active',
       'subscription.currentPeriodEnd': { $gte: now, $lte: reminderWindowEnd },
       'subscription.renewalReminderSentAt': null,
     }).select('name email subscription');
 
     for (const user of endingSoon) {
+      const isOffer = user.subscription.grantSource === 'shopify_offer';
+      const endsOn = new Date(user.subscription.currentPeriodEnd).toLocaleDateString('en-IN');
       try {
         await emailService.sendEmail({
           to: user.email,
-          subject: 'Your take.health free trial is ending soon',
-          html: `<p>Hi ${user.name || 'there'},</p>
-                 <p>Your free trial ends on ${new Date(user.subscription.currentPeriodEnd).toLocaleDateString('en-IN')}.
+          subject: isOffer ? 'Your free Take+ access is ending soon' : 'Your take.health free trial is ending soon',
+          html: isOffer
+            ? `<p>Hi ${user.name || 'there'},</p>
+                 <p>Your free Take+ access ends on ${endsOn}.
+                 Subscribe to Take+ from your Subscription page to keep uninterrupted access.</p>`
+            : `<p>Hi ${user.name || 'there'},</p>
+                 <p>Your free trial ends on ${endsOn}.
                  Upgrade to Pro or Pro Plus from your Subscription page to keep uninterrupted access to paid features.</p>`,
         });
         user.subscription.renewalReminderSentAt = now;
@@ -115,6 +127,7 @@ const runSubscriptionLifecycleCron = async () => {
           'subscription.status': 'expired',
           'subscription.autoRenew': false,
         },
+        $unset: { 'subscription.grantSource': '' },
       }
     );
 

@@ -35,8 +35,10 @@ exports.getSubscribers = async (req, res) => {
 
         // free_trial isn't a paid subscription — excluded from the default view, but an
         // admin can still explicitly filter ?plan=free_trial to see trial users.
-        const filter = { 'subscription.plan': { $nin: ['free', 'free_trial'] } };
+        // Free Take+ from the Shopify store offer (grantSource set) isn't paid either.
+        const filter = { 'subscription.plan': { $nin: ['free', 'free_trial'] }, 'subscription.grantSource': null };
         if (plan) filter['subscription.plan'] = plan;
+        if (req.query.grantSource) filter['subscription.grantSource'] = req.query.grantSource;
         if (status) filter['subscription.status'] = status;
         if (search) {
             filter.$or = [
