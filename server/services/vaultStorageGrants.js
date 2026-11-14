@@ -12,6 +12,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
+require('../models/Plan'); // registers the model: Payment.populate('plan') fails in standalone scripts without it
 const VaultUsage = require('../models/VaultUsage');
 const VaultStorageGrant = require('../models/VaultStorageGrant');
 const { ensureUsage, refreshQuota } = require('./vaultService');
