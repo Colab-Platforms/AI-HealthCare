@@ -37,7 +37,7 @@ export default function AdminShopOrder() {
   const open = (type, refund = null) => { setForm({ method: "manual_upi" }); setModal({ type, refund }); };
 
   if (loading && !o) return <Spinner />;
-  if (!o) return <div className="max-w-5xl mx-auto px-4 py-6"><Link to="/admin/shop?tab=orders" className="text-sm text-blue-600">← Orders</Link></div>;
+  if (!o) return <div className="w-full max-w-5xl mx-auto px-4 py-6"><Link to="/admin/shop?tab=orders" className="text-sm text-blue-600">← Orders</Link></div>;
 
   const pr = o.pricing || {};
   const canCancel = ["paid", "cod_pending"].includes(o.paymentStatus) && o.fulfillmentStatus === "unfulfilled";
@@ -45,7 +45,7 @@ export default function AdminShopOrder() {
   const canRetrySync = ["needs_attention", "failed"].includes(o.shopifySyncStatus);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-5">
       <SEO title={`${o.internalOrderId} | Shop admin`} />
       <Link to="/admin/shop?tab=orders" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Orders</Link>
 

@@ -41,7 +41,7 @@ export default function AdminShopCustomer() {
   }, [userId]);
 
   if (loading) return <Spinner />;
-  if (!data) return <div className="max-w-5xl mx-auto px-4 py-6"><Link to="/admin/shop?tab=customers" className="text-sm text-blue-600">← Customers</Link></div>;
+  if (!data) return <div className="w-full max-w-5xl mx-auto px-4 py-6"><Link to="/admin/shop?tab=customers" className="text-sm text-blue-600">← Customers</Link></div>;
 
   const { customer, cart, orders, events } = data;
   // Group the timeline by day (newest first).
@@ -52,7 +52,7 @@ export default function AdminShopCustomer() {
   }, {});
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-5">
       <SEO title={`${customer.name || "Customer"} | Shop admin`} />
       <Link to="/admin/shop?tab=customers" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Customers</Link>
       <div>

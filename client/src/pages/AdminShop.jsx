@@ -460,7 +460,7 @@ export default function AdminShop() {
   const goTab = (id) => setParams({ tab: id });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-5">
       <SEO title="Shop | Admin" />
       <div>
         <h1 className="text-xl font-bold text-slate-900">Shop</h1>
