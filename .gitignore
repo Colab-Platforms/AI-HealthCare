@@ -47,6 +47,9 @@ coverage/
 # Misc
 .vercel
 
+# Personal scratch work (generated PDFs, one-off scripts) — keep local only
+scratch/
+
 # Firebase SW — merged into sw.js, this file is redundant
 client/public/firebase-messaging-sw.js
 
