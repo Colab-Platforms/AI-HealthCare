@@ -84,7 +84,7 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 | **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
 | **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). **Flag `SHOP_SHOPIFY_ORDER_SYNC` OFF** until Fastrr confirms it doesn't create Shopify orders. Live-store test baaki (§10a) |
 | **M4** | Cancel (customer + admin), refunds (Fastrr Refund API + report sync), Shopify cancel + refund record, duplicate-payment / store-cancel refunds, admin refund actions | ✅ Code + 20 tests + staging DB E2E (48/48, Fastrr + Shopify mock). Auto-refund **OFF** by default. Real Fastrr refund test baaki (keys). §10 |
-| **Admin** | Shop admin APIs + pages (overview, products, orders + timeline, carts, customer journey + `shop_events`, attention, refunds) in existing web admin (`client/`) | ⏳ Next |
+| **Admin** | Shop admin APIs + pages (overview, products, orders + timeline, carts, customer journey + `shop_events`, attention, refunds) in existing web admin (`client/`) | ✅ Backend APIs + 14 tests. ✅ Pages written (`/admin/shop`). ⚠️ Web build abhi verify nahi hua (§10b) |
 
 ---
 
@@ -358,6 +358,18 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 **Monday ko:** Fastrr keys → real refund test (staging test payment → cancel → approve → report). Fastrr se confirm: `order_id` platform id chalta hai (abhi wahi bhejte hain), partial refund, report status values (mapping: SUCCESS/COMPLETED/REFUNDED → completed, INITIATED → initiated, FAIL* → failed, baaki → processing). Management decisions → `SHOP_USER_CANCEL`, `SHOP_AUTO_REFUND`, `SHOP_AUTO_REFUND_MAX_RUPEES`. **Return / RTO** abhi nahi (post-launch).
 
 ---
+
+## 10b. Shop admin (2026-11-16)
+
+**Event log `shop_events`** (TTL `SHOP_EVENTS_RETENTION_DAYS`, default 180; `SHOP_EVENTS=false` = off): search, product_view, cart_add/update/remove/clear, checkout_start/error, payment_page_open, payment_success/failed, order_cancelled/shipped/delivered, refund_requested/completed. Response ke baad likha jaata hai (fire-and-forget). Catalog routes pe `lib/optionalUser.js` — app token bheje toh event user se linked (sirf JWT verify, DB lookup nahi), warna anonymous. **Privacy policy mein likhna hai** (browsing/search activity 180 din).
+
+**Admin APIs** (`/api/shop/admin`, admin/superadmin): `GET /overview?range=today|7d|30d|90d` (orders, gross/refunded/net revenue, AOV, prepaid/COD, abandoned checkouts, funnel, top products, daily IST, attention counts) · `GET /orders?status=&paymentMethod=&q=&from=&to=&attention=&page=&limit=` (search: TH id / phone / email / name / #TAKE…) · `GET /orders/:id` (sab + merged timeline, Shopify admin link, token kabhi nahi) · `POST /orders/:id/retry-sync` · `POST /orders/:id/review/resolve {note}` · `GET /attention` · `GET /products` (stock, held, sold 30d, hidden, weight) · `POST /products/sync` · `GET /carts?abandoned=` · `GET /customers?q=` · `GET /customers/:userId` (journey) · `GET /refunds?status=` + M4 actions.
+
+**Web pages** (`client/src`): `pages/AdminShop.jsx` (tabs: Overview, Orders, Needs attention, Products, Carts, Customers, Refunds — `?tab=`), `pages/AdminShopOrder.jsx` (detail + actions: retry sync, resolve review, cancel, refund, approve/retry/mark-paid, manual refund + timeline), `pages/AdminShopCustomer.jsx` (cart, checkouts, journey timeline), `components/shopAdmin/ShopAdminUI.jsx`, `services/api.js → shopAdminService`, routes in `PrivateApp.jsx`, menu "Shop" in `Layout.jsx`. Revenue chart: single series, `#2563eb` validated (dataviz validator), hover tooltip + "Show as table".
+
+**⚠️ Web build verify baaki:** is laptop ka `client/node_modules` adhoora hai (vite missing, esbuild wrong-platform binary, `@babel/parser` khaali) — isliye `npm run build` yahan nahi chala. Office laptop pe ya `cd client && npm install && npm run build` ke baad check karo; Vercel deploy bhi build chalata hai. Imports manually verified (sab icons/components project mein already use hote hain).
+
+**Tests:** `tests/shopAdmin.test.js` (14) — data real routes se (4 shoppers: delivered, COD, abandoned, cancel+refund): event log, 401/403, overview numbers, list filters/search/paging, detail timeline, attention + retry/resolve, products held/sold, carts abandoned, customers + journey, refunds. Event order tie-break (createdAt + _id) bug isi se mila.
 
 ## 11. Fastrr — docs facts + kya lena hai
 

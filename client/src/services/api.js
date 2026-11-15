@@ -518,3 +518,25 @@ export const privacyService = {
 };
 
 export default api;
+
+// Shop admin (in-app shop: orders, refunds, catalog, carts, customers) — /api/shop/admin
+export const shopAdminService = {
+  overview: (range) => api.get('shop/admin/overview', { params: { range } }),
+  attention: () => api.get('shop/admin/attention'),
+  orders: (params) => api.get('shop/admin/orders', { params }),
+  order: (orderId) => api.get(`shop/admin/orders/${orderId}`),
+  retrySync: (orderId) => api.post(`shop/admin/orders/${orderId}/retry-sync`),
+  resolveReview: (orderId, note) => api.post(`shop/admin/orders/${orderId}/review/resolve`, { note }),
+  cancelOrder: (orderId, reason) => api.post(`shop/admin/orders/${orderId}/cancel`, { reason }),
+  createRefund: (orderId, data) => api.post(`shop/admin/orders/${orderId}/refunds`, data),
+  approveRefund: (orderId, refundId) => api.post(`shop/admin/orders/${orderId}/refunds/${refundId}/approve`),
+  retryRefund: (orderId, refundId) => api.post(`shop/admin/orders/${orderId}/refunds/${refundId}/retry`),
+  markRefundPaid: (orderId, refundId, data) => api.post(`shop/admin/orders/${orderId}/refunds/${refundId}/mark-paid`, data),
+  manualRefund: (orderId, data) => api.post(`shop/admin/orders/${orderId}/refunds/manual`, data),
+  products: () => api.get('shop/admin/products'),
+  syncCatalog: () => api.post('shop/admin/products/sync'),
+  carts: (params) => api.get('shop/admin/carts', { params }),
+  customers: (q) => api.get('shop/admin/customers', { params: { q } }),
+  customer: (userId) => api.get(`shop/admin/customers/${userId}`),
+  refunds: (status) => api.get('shop/admin/refunds', { params: { status } }),
+};

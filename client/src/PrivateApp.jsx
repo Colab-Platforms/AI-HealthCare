@@ -43,6 +43,9 @@ const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
 const AdminCreatorApplications = lazy(() => import("./pages/AdminCreatorApplications"));
 const AdminAppVersion = lazy(() => import("./pages/AdminAppVersion"));
+const AdminShop = lazy(() => import("./pages/AdminShop"));
+const AdminShopOrder = lazy(() => import("./pages/AdminShopOrder"));
+const AdminShopCustomer = lazy(() => import("./pages/AdminShopCustomer"));
 // const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
@@ -702,6 +705,36 @@ export default function PrivateApp() {
                   <AdminRoute>
                     <Layout isAdmin>
                       <AdminAppVersion />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/shop"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminShop />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/shop/orders/:orderId"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminShopOrder />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/shop/customers/:userId"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminShopCustomer />
                     </Layout>
                   </AdminRoute>
                 }

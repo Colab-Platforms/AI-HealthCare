@@ -36,6 +36,7 @@ import {
   Menu,
   X,
   Smartphone,
+  ShoppingBag,
 } from "lucide-react";
 import { ArrowUp } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -71,7 +72,8 @@ const doctorNavItems = [
 const adminExtraNavItems = [
   { path: "/admin", icon: LayoutDashboard, label: "Admin Panel" },
   { path: "/admin/support", icon: MessageCircle, label: "Support Tickets" },
-  { path: "/admin/app-version", icon: Smartphone, label: "App Version" }
+  { path: "/admin/app-version", icon: Smartphone, label: "App Version" },
+  { path: "/admin/shop", icon: ShoppingBag, label: "Shop" }
 ];
 
 export default function Layout({
