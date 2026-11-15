@@ -14,6 +14,9 @@ const Order = require('../../../models/Order');
 const Cart = require('../models/Cart');
 const config = require('../config');
 const fastrr = require('./fastrrClient');
+const reservations = require('./stockReservationService');
+const notifier = require('./orderNotifier');
+const shopifyOrderSync = require('./shopifyOrderSyncService');
 const { transition } = require('../lib/orderStateMachine');
 const { interpretStatus, verifyAgainstOrder, confirmedOrderFields } = require('../lib/fastrrOrderMapper');
 const { isValidFastrrOrderId } = require('../lib/checkoutLogic');
@@ -88,10 +91,18 @@ const afterConfirmed = async (order, { needsReview = false, source = 'system', e
     } catch (err) {
         console.error(`[Shop/fastrr] ${order.internalOrderId}: cart clear failed: ${err.message}`);
     }
-    // M3 picks up shopifySyncStatus=pending and creates the Shopify order.
-    await transition(Order, {
+    // Stock stays held until the Shopify order exists (Shopify reduces stock then).
+    try {
+        await reservations.extend(order._id, new Date(Date.now() + config.reservationUntilSyncedMs));
+    } catch (err) {
+        console.error(`[Shop/fastrr] ${order.internalOrderId}: reservation extend failed: ${err.message}`);
+    }
+    const queued = await transition(Order, {
         orderId: order._id, field: 'shopifySyncStatus', to: needsReview ? 'needs_attention' : 'pending', source, eventId,
     });
+    await notifier.notify(order, 'confirmed');
+    // M3: create the Shopify order (behind SHOP_SHOPIFY_ORDER_SYNC; the cron sweep is the backup).
+    if (queued && !needsReview) await shopifyOrderSync.enqueue(queued);
 };
 
 /**
@@ -233,12 +244,23 @@ const reconcile = async ({ now = Date.now(), log = console.log } = {}) => {
                     ],
                 },
             });
-            if (expired) stats.expired += 1;
+            if (expired) {
+                stats.expired += 1;
+                await reservations.release(order._id);
+            }
         } catch (err) {
             stats.errors += 1;
             console.error(`[Shop/reconcile] ${order.internalOrderId}: ${err.message}`);
         }
     });
+
+    // 3) M3: create Shopify orders that are waiting / failed earlier (no-op while the flag is off).
+    try {
+        stats.shopify = await shopifyOrderSync.sweep({ deadline });
+    } catch (err) {
+        stats.errors += 1;
+        console.error(`[Shop/reconcile] Shopify sweep failed: ${err.message}`);
+    }
 
     log(`[Shop/reconcile] ${JSON.stringify(stats)}`);
     return stats;

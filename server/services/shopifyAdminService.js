@@ -32,6 +32,9 @@ const getConfig = () => ({
     domain: process.env.SHOPIFY_ADMIN_STORE_DOMAIN,
     token: process.env.SHOPIFY_ADMIN_TOKEN,
     version: process.env.SHOPIFY_API_VERSION || '2026-10',
+    // Tests / local runs only: point at a local Shopify mock (e.g. http://127.0.0.1:4010).
+    // Unset in every real environment, so calls go to https://<domain>.
+    baseUrl: (process.env.SHOPIFY_ADMIN_API_BASE_URL || '').replace(/\/+$/, '') || null,
 });
 
 const isConfigured = () => {
@@ -42,16 +45,17 @@ const isConfigured = () => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class ShopifyApiError extends Error {
-    constructor(message, errors) {
+    constructor(message, errors, status = null) {
         super(message);
         this.errors = errors || [];
+        this.status = status; // HTTP status (null when unknown)
     }
 }
 
 // GraphQL call with a timeout and backoff on Shopify's rate limit (HTTP 429 or a
 // THROTTLED error) — the store's API budget is shared with every other app on it.
 const graphql = async (query, variables = {}) => {
-    const { domain, token, version } = getConfig();
+    const { domain, token, version, baseUrl } = getConfig();
     if (!domain || !token) throw new Error('Shopify Admin API is not configured (SHOPIFY_ADMIN_STORE_DOMAIN / SHOPIFY_ADMIN_TOKEN)');
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -59,7 +63,7 @@ const graphql = async (query, variables = {}) => {
         const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
         let res;
         try {
-            res = await fetch(`https://${domain}/admin/api/${version}/graphql.json`, {
+            res = await fetch(`${baseUrl || `https://${domain}`}/admin/api/${version}/graphql.json`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
                 body: JSON.stringify({ query, variables }),
@@ -74,14 +78,16 @@ const graphql = async (query, variables = {}) => {
             continue;
         }
         const json = await res.json().catch(() => ({}));
-        const throttled = json.errors?.some((e) => e.extensions?.code === 'THROTTLED');
+        const throttled = Array.isArray(json.errors) && json.errors.some((e) => e.extensions?.code === 'THROTTLED');
         if (throttled && attempt < MAX_ATTEMPTS) {
             await sleep(1000 * attempt);
             continue;
         }
         if (!res.ok || json.errors) {
-            const msg = json.errors?.map((e) => e.message).join('; ') || `HTTP ${res.status}`;
-            throw new ShopifyApiError(`Shopify Admin API error: ${msg}`, json.errors);
+            // GraphQL errors are a list; auth failures (401/403) send a plain string.
+            const list = Array.isArray(json.errors) ? json.errors : json.errors ? [{ message: String(json.errors) }] : [];
+            const msg = list.map((e) => e.message).join('; ') || `HTTP ${res.status}`;
+            throw new ShopifyApiError(`Shopify Admin API error: ${msg}`, list, res.status);
         }
         return json.data;
     }

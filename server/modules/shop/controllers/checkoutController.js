@@ -1,6 +1,7 @@
 const checkoutService = require('../services/checkoutService');
 const orderService = require('../services/orderService');
 const fastrrOrderService = require('../services/fastrrOrderService');
+const shopifyOrderSync = require('../services/shopifyOrderSyncService');
 const config = require('../config');
 const { sendError } = require('../lib/shopError');
 
@@ -107,6 +108,20 @@ exports.runReconciliation = async (req, res) => {
     } catch (err) {
         console.error('[Shop/reconcile] failed:', err.message);
         res.status(500).json({ ok: false }); // QStash retries
+    }
+};
+
+// POST /api/shop/internal/shopify-sync   { orderId }   (QStash, right after payment)
+// Always 200: retries are paced by the reconciliation cron (Shopify's order
+// search lags a few seconds, so an instant QStash retry could double-create).
+exports.runShopifySync = async (req, res) => {
+    const orderId = String(req.body?.orderId || '');
+    if (!/^[a-f0-9]{24}$/i.test(orderId)) return res.status(400).json({ ok: false, code: 'INVALID_ORDER_ID' });
+    try {
+        res.json({ ok: true, ...(await shopifyOrderSync.syncOrder(orderId)) });
+    } catch (err) {
+        console.error('[Shop/shopifySync] failed:', err.message);
+        res.json({ ok: false });
     }
 };
 

@@ -22,6 +22,8 @@ const TOPICS = [
   // shop catalog sync (modules/shop) — needs read_products + read_inventory
   'products/create', 'products/update', 'products/delete', 'inventory_levels/update',
   'collections/create', 'collections/update', 'collections/delete',
+  // shop orders (M3): shipped / delivered / tracking — needs read_orders (+ read_fulfillments)
+  'orders/fulfilled', 'orders/partially_fulfilled', 'fulfillments/create', 'fulfillments/update',
 ];
 
 (async () => {

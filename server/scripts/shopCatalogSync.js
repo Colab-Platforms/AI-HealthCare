@@ -56,7 +56,9 @@ if (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONME
   const Collection = require('../modules/shop/models/Collection');
   const Cart = require('../modules/shop/models/Cart');
   const Order = require('../models/Order');
-  await Promise.all([Product.createIndexes(), Collection.createIndexes(), Cart.createIndexes()]);
+  const StockReservation = require('../modules/shop/models/StockReservation');
+  // Production runs with autoIndex off: the unique + TTL indexes on stock holds exist only if created here.
+  await Promise.all([Product.createIndexes(), Collection.createIndexes(), Cart.createIndexes(), StockReservation.createIndexes()]);
   // syncIndexes also drops the old global-unique idempotencyKey index.
   const dropped = await Order.syncIndexes();
   if (dropped.length) console.log(`Order: dropped old indexes ${dropped.join(', ')}`);

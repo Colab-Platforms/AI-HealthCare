@@ -116,6 +116,9 @@ const orderSchema = new mongoose.Schema({
         default: 'not_started',
     },
     shopifySyncAttempts: { type: Number, default: 0 },
+    shopifySyncLeaseUntil: Date, // one worker at a time creates the Shopify order
+    // Pushes already sent for this order (shipped / delivered / cancelled) — each once.
+    notified: [String],
     shopifySyncError: String,
     shopifyOrderId: String,
     shopifyOrderName: String,

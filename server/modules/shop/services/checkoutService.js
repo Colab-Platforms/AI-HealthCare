@@ -15,6 +15,7 @@ const Product = require('../models/Product');
 const config = require('../config');
 const fastrr = require('./fastrrClient');
 const fastrrOrderService = require('./fastrrOrderService');
+const reservations = require('./stockReservationService');
 const { ShopError } = require('../lib/shopError');
 const { evaluateCart, indexVariants } = require('../lib/cartEvaluator');
 const {
@@ -124,6 +125,14 @@ const ensureToken = async (order, baseUrl) => {
         return leased;
     }
 
+    // Hold the stock before the user can pay (released / re-tied to the token below).
+    try {
+        await reservations.reserve(leased, new Date(Date.now() + config.reservationHoldMs()));
+    } catch (err) {
+        await Order.updateOne({ _id: order._id }, { $set: { tokenLeaseUntil: null } });
+        throw err;
+    }
+
     let token;
     try {
         token = await fastrr.createCheckoutToken(buildCheckoutTokenPayload({
@@ -134,6 +143,7 @@ const ensureToken = async (order, baseUrl) => {
         }));
     } catch (err) {
         await Order.updateOne({ _id: order._id }, { $set: { tokenLeaseUntil: null } });
+        await reservations.release(order._id);
         console.error(`[Shop/checkout] ${leased.internalOrderId}: Fastrr token failed: ${err.message}`);
         throw new ShopError(502, 'CHECKOUT_PROVIDER_ERROR', 'Could not start checkout. Please try again.', { retryable: true });
     }
@@ -151,6 +161,8 @@ const ensureToken = async (order, baseUrl) => {
         },
         { new: true }
     ).lean();
+    // Payment is possible until the token expires; hold a little past that.
+    await reservations.extend(order._id, new Date(token.expiresAt.getTime() + config.reservationAfterTokenMs));
     console.log(`[Shop/checkout] ${saved.internalOrderId}: Fastrr token issued (fastrr order ${token.fastrrOrderId})`);
     return saved;
 };

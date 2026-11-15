@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const shopifyOfferService = require('../services/shopifyOfferService');
 const catalogSyncService = require('../modules/shop/services/catalogSyncService');
+const shopOrderSync = require('../modules/shop/services/shopifyOrderSyncService');
+const shopConfig = require('../modules/shop/config');
+
+// Order topics the card offer (shopifyOfferService) acts on.
+const OFFER_TOPICS = new Set(['orders/create', 'orders/paid', 'orders/cancelled', 'refunds/create']);
 const { verifyShopifyHmac } = require('../utils/shopifyOrder');
 
 /**
@@ -49,6 +54,25 @@ router.post('/webhooks', async (req, res) => {
         } catch (error) {
             console.error(`[Shopify webhook] ${topic} catalog sync failed:`, error.message);
             return res.status(500).json({ received: false }); // Shopify retries; the fetch-back is idempotent
+        }
+    }
+
+    // take.health app orders (tagged take-app): shipped / delivered / cancelled /
+    // COD paid -> our Order (fetch-back, never the payload). Card offer below
+    // still sees the order topics it uses, unless SHOP_APP_ORDERS_CARD_OFFER=false.
+    if (shopOrderSync.isOrderLifecycleTopic(topic)) {
+        try {
+            const appOrder = await shopOrderSync.findAppOrder(topic, req.body);
+            if (appOrder) {
+                const r = await shopOrderSync.handleWebhook(appOrder, topic, req.body);
+                console.log(`[Shopify webhook] ${topic} app order ${appOrder.internalOrderId} -> ${r.ignored ? `ignored (${r.ignored})` : (r.changes.join(', ') || 'no change')}`);
+                if (!OFFER_TOPICS.has(topic) || !shopConfig.appOrdersGetCardOffer()) return res.status(200).json({ received: true });
+            } else if (!OFFER_TOPICS.has(topic)) {
+                return res.status(200).json({ received: true }); // fulfilment topic for a non-app order: nothing to do
+            }
+        } catch (error) {
+            console.error(`[Shopify webhook] ${topic} app order update failed:`, error.message);
+            return res.status(500).json({ received: false }); // Shopify retries; applying is idempotent
         }
     }
 

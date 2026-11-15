@@ -309,6 +309,22 @@ class FakeCollection {
                     return { matchedCount: 1, modifiedCount: 1 };
                 });
             },
+            updateMany(filter, update) {
+                self.calls.push(['updateMany', filter, update]);
+                return self.query(() => {
+                    const hits = self.docs.filter((d) => matches(d, filter));
+                    hits.forEach((d) => self.updateDoc(d, update, filter));
+                    return { matchedCount: hits.length, modifiedCount: hits.length };
+                });
+            },
+            deleteMany(filter = {}) {
+                self.calls.push(['deleteMany', filter]);
+                return self.query(() => {
+                    const before = self.docs.length;
+                    self.docs = self.docs.filter((d) => !matches(d, filter));
+                    return { deletedCount: before - self.docs.length };
+                });
+            },
             async bulkWrite(ops) {
                 await tick();
                 let matched = 0;

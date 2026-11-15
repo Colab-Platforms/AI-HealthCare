@@ -17,7 +17,7 @@ const { FakeCollection } = require('./helpers/fakeMongo');
 const { startFastrrMock, placedOrder, fastrrOrder, API_KEY, API_SECRET } = require('./helpers/fastrrMock');
 
 const ENV = {
-    FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '500',
+    FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000',
     JWT_SECRET: 'test-jwt-secret', SHOP_PUBLIC_BASE_URL: 'https://shop.test',
     SHOP_APP_DEEP_LINK: undefined, SHOP_HIDE_SUBSCRIBE_VARIANTS: undefined, SHOP_CHECKOUT_PAGE_SECRET: undefined,
     SHOP_MAX_QTY_PER_ITEM: undefined, SHOP_MAX_CART_LINES: undefined,
@@ -49,6 +49,14 @@ const orders = new FakeCollection(Order, { unique: [['internalOrderId'], ['user'
 const carts = new FakeCollection(Cart, { unique: [['user']] });
 const products = new FakeCollection(Product, { unique: [['shopifyProductId']] });
 const collections = new FakeCollection(Collection, { unique: [['shopifyCollectionId']] });
+const StockReservation = require('../modules/shop/models/StockReservation');
+const holds = new FakeCollection(StockReservation, { unique: [['order', 'variantId']] });
+// Any model call that isn't faked fails at once instead of waiting on a DB that isn't there.
+mongoose.set('bufferCommands', false);
+// Push notifications: recorded, never sent.
+const fcm = require('../services/fcmService');
+const pushes = [];
+fcm.sendToUser = async (userId, payload) => { pushes.push({ userId: String(userId), ...payload }); return { success: true }; };
 const restores = [];
 let mock;
 let server;
@@ -110,7 +118,7 @@ test.before(async () => {
     }
     mock = await startFastrrMock();
     process.env.FASTRR_BASE_URL = mock.baseUrl;
-    for (const c of [orders, carts, products, collections]) restores.push(c.install());
+    for (const c of [orders, carts, products, collections, holds]) restores.push(c.install());
 
     collections.seed({ shopifyCollectionId: '501', handle: 'frontpage', title: 'Home page', imageUrl: null });
     collections.seed({ shopifyCollectionId: '502', handle: 'all-take-products', title: 'All Take Products' });

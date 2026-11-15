@@ -43,6 +43,18 @@ async function main() {
     const mock = await startFastrrMock();
     Object.assign(process.env, { FASTRR_BASE_URL: mock.baseUrl, FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_CATALOG_PUSH: 'false' });
     delete process.env.REDIS_URL; // per-process rate limits; don't touch shared Redis
+    // M3: Shopify is a local mock too — NEVER the live store from this script.
+    const { startShopifyMock, TOKEN: SHOPIFY_MOCK_TOKEN } = require('../tests/helpers/shopifyMock');
+    const shopify = await startShopifyMock();
+    Object.assign(process.env, {
+        SHOPIFY_ADMIN_API_BASE_URL: shopify.baseUrl, SHOPIFY_ADMIN_TOKEN: SHOPIFY_MOCK_TOKEN,
+        SHOPIFY_WEBHOOK_SECRET: 'e2e-webhook-secret', SHOP_SHOPIFY_ORDER_SYNC: 'true', SHOP_ORDER_PUSH: 'false',
+    });
+    delete process.env.SHOPIFY_CLIENT_SECRET;
+    if (!String(process.env.SHOPIFY_ADMIN_API_BASE_URL).startsWith('http://127.0.0.1:')) {
+        console.error('Refusing to run: Shopify must point at the local mock.');
+        process.exit(1);
+    }
 
     const connectDB = require('../config/db');
     await connectDB();
@@ -57,6 +69,7 @@ async function main() {
     const Order = require('../models/Order');
     const Cart = require('../modules/shop/models/Cart');
     const Product = require('../modules/shop/models/Product');
+    const StockReservation = require('../modules/shop/models/StockReservation');
     const { isHiddenVariant, availableQty } = require('../modules/shop/lib/catalogMapper');
 
     await Order.createIndexes();
@@ -83,6 +96,7 @@ async function main() {
     const app = express();
     app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); } }));
     app.use('/api/shop', require('../modules/shop/routes'));
+    app.use('/api/shopify', require('../routes/shopifyWebhookRoutes'));
     const server = http.createServer(app);
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -101,6 +115,7 @@ async function main() {
         return { status: res.status, json, text };
     };
     const V = variant.shopifyVariantId;
+    shopify.state.inventory[V] = 50; // the mock Shopify store knows this variant
     const price = variant.price;
 
     try {
@@ -153,7 +168,7 @@ async function main() {
         r = await call('POST', '/fastrr/webhook', { auth: false, body: { order_id: o.fastrrOrderId, status: 'SUCCESS' } });
         check('webhook -> 200', r.status === 200);
         o = await Order.findOne({ internalOrderId: orderId }).lean();
-        check('order paid in real DB, Shopify sync queued', o.paymentStatus === 'paid' && o.shopifySyncStatus === 'pending', `${o.paymentStatus}/${o.shopifySyncStatus}`);
+        check('order paid in real DB, Shopify order created (sync on in this script)', o.paymentStatus === 'paid' && o.shopifySyncStatus === 'synced', `${o.paymentStatus}/${o.shopifySyncStatus}`);
         check('address + payment saved', o.shippingAddress?.city === 'Pune' && o.payment?.pgTransactionId === 'pay_ABC');
         r = await call('POST', '/fastrr/webhook', { auth: false, body: { order_id: o.fastrrOrderId } });
         o = await Order.findOne({ internalOrderId: orderId }).lean();
@@ -198,16 +213,62 @@ async function main() {
         check('token for a non-existent user -> 401', res.status === 401);
         r = await call('POST', '/internal/reconcile-orders', { auth: false, body: {} });
         check('unsigned cron call rejected', r.status === 401 || r.status === 503, `status ${r.status}`);
+
+        console.log('\n7. M3 — stock hold, Shopify order, shipping updates');
+        await StockReservation.createIndexes();
+        const rIdx = await StockReservation.collection.indexes();
+        check('shop_stock_reservations has TTL index', rIdx.some((i) => i.key.expiresAt === 1 && i.expireAfterSeconds === 0));
+        const stockBefore = shopify.state.inventory[V];
+        await call('POST', '/cart/items', { body: { variantId: V, quantity: 2 } });
+        r = await call('POST', '/checkout', { headers: { 'Idempotency-Key': `e2e-${crypto.randomUUID()}` } });
+        const m3Id = r.json.orderId;
+        let m3 = await Order.findOne({ internalOrderId: m3Id }).lean();
+        let hold = await StockReservation.findOne({ order: m3._id }).lean();
+        check('checkout holds stock in real DB, tied to token expiry', hold && hold.quantity === 2
+            && hold.expiresAt.getTime() === m3.fastrrTokenExpiresAt.getTime() + 5 * 60 * 1000);
+        mock.state.orders.set(m3.fastrrOrderId, placedOrder(m3.fastrrOrderId, { items: [{ variantId: V, quantity: 2 }], subtotal: (2 * price) / 100 }));
+        await call('POST', '/fastrr/webhook', { auth: false, body: { order_id: m3.fastrrOrderId } });
+        m3 = await Order.findOne({ internalOrderId: m3Id }).lean();
+        check('paid -> Shopify order created (mock), id saved', m3.shopifySyncStatus === 'synced' && Boolean(m3.shopifyOrderId), `${m3.shopifySyncStatus} ${m3.shopifyOrderName}`);
+        const sent = shopify.byTag(m3Id)?._variables;
+        check('Shopify got our price, MH province, +91 phone, stock decrement', sent
+            && sent.order.lineItems[0].priceSet.shopMoney.amount === (price / 100).toFixed(2)
+            && sent.order.shippingAddress.provinceCode === 'MH' && sent.order.phone === '+919876543210'
+            && sent.options.inventoryBehaviour === 'DECREMENT_IGNORING_POLICY');
+        check('Shopify stock reduced once (by 2)', shopify.state.inventory[V] === stockBefore - 2, `${stockBefore} -> ${shopify.state.inventory[V]}`);
+        hold = await StockReservation.findOne({ order: m3._id }).lean();
+        check('hold shortened after Shopify has the order', hold && hold.expiresAt.getTime() < Date.now() + 3 * 60 * 1000);
+
+        const signed = async (topic, body) => {
+            const raw = JSON.stringify(body);
+            return fetch(`${base}/api/shopify/webhooks`, { method: 'POST', body: raw, headers: {
+                'Content-Type': 'application/json', 'X-Shopify-Topic': topic, 'X-Shopify-Shop-Domain': process.env.SHOPIFY_ADMIN_STORE_DOMAIN,
+                'X-Shopify-Hmac-Sha256': crypto.createHmac('sha256', 'e2e-webhook-secret').update(raw, 'utf8').digest('base64'),
+            } });
+        };
+        shopify.fulfil(m3Id);
+        let wh = await signed('fulfillments/create', { id: 1, order_id: Number(m3.shopifyOrderId) });
+        r = await call('GET', `/orders/${m3Id}`);
+        check('warehouse ships -> app shows shipped + tracking', wh.status === 200 && r.json.status === 'shipped' && r.json.tracking?.number === 'AWB123');
+        shopify.deliver(m3Id);
+        wh = await signed('fulfillments/update', { id: 1, order_id: Number(m3.shopifyOrderId) });
+        r = await call('GET', `/orders/${m3Id}`);
+        check('courier delivers -> app shows delivered', wh.status === 200 && r.json.status === 'delivered' && Boolean(r.json.deliveredAt));
+        r = await call('POST', '/internal/shopify-sync', { auth: false, body: { orderId: String(m3._id) } });
+        check('unsigned shopify-sync call rejected', r.status === 401 || r.status === 503, `status ${r.status}`);
     } finally {
         if (KEEP) {
             console.log(`\n--keep: left user ${email} (${user._id}) and their cart/orders in staging.`);
         } else {
+            const mine = await Order.find({ user: user._id }).select('_id').lean();
+            await StockReservation.deleteMany({ order: { $in: mine.map((x) => x._id) } });
             const [ord, crt] = await Promise.all([Order.deleteMany({ user: user._id }), Cart.deleteMany({ user: user._id })]);
             await User.deleteOne({ _id: user._id });
             console.log(`\nCleanup: deleted ${ord.deletedCount} order(s), ${crt.deletedCount} cart(s), 1 user from staging.`);
         }
         await new Promise((r) => server.close(r));
         await mock.close();
+        await shopify.close();
         await mongoose.disconnect();
     }
 

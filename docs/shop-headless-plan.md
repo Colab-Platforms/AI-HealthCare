@@ -75,7 +75,7 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 |---|---|---|
 | **M1** | Catalog sync + catalog APIs + Fastrr catalog pull + server cart + Order model/state machine | ✅ Code done, staging pe test pass. **Prod deploy/scripts baaki**, M1 gaps §7 |
 | **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
-| **M3** | Shopify order create (QStash, idempotent via tag lookup), fulfilment/refund/paid webhooks, My Orders APIs, FCM notifications | ⏳ Needs Shopify token with `write_orders` + protected customer data access |
+| **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). **Flag `SHOP_SHOPIFY_ORDER_SYNC` OFF** until Fastrr confirms it doesn't create Shopify orders. Live-store test baaki (§10a) |
 | **M4** | Refunds (Fastrr Refund API + Refund Report cron), admin view, alerts | ⏳ |
 
 ---
@@ -299,6 +299,29 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 **Known risk:** Fastrr ka `fallbackUrl` "native checkout" (Shopify website) ho sakta hai → no-redirect rule se conflict. Fastrr se confirm karna hai.
 
 ---
+
+## 10a. M3 — kya bana (2026-11-15, uncommitted)
+
+**Flow:** payment confirm → hold 24h → `shopifySyncStatus: pending` → QStash `POST /api/shop/internal/shopify-sync` (local: inline) → claim (60s lease) → Shopify mein `TH-…` tag se search (pehle ban chuka ho toh adopt) → `orderCreate` → `synced` + `shopifyOrderId`, hold 2 min. Fail: transient → `failed`, cron 2 min baad retry (search-lag ki wajah se turant nahi); permanent (userErrors / 401 / 403) ya 5 attempts → `needs_attention` + `[ALERT]` log.
+
+**orderCreate input (store schema se verify kiya, API 2026-10):** lineItems (variant gid + humara `priceSet`), prepaid → `transactions: [SALE/SUCCESS]`, COD → `financialStatus: PENDING`, shipping + COD charge = shippingLines, coupon = `itemFixedDiscountCode`, tags `take-app, TH-…, Prepaid|COD`, `sourceIdentifier`, `taxesIncluded: true`, phone E.164 (+91, invalid ho toh chhod ke note mein), state → provinceCode (`lib/indiaStates.js`), `options.inventoryBehaviour: DECREMENT_IGNORING_POLICY`, `sendReceipt` off, `test` flag.
+
+**Shopify → hum** (`/api/shopify/webhooks`, HMAC): `orders/create|paid|cancelled|fulfilled|partially_fulfilled`, `fulfillments/create|update` → take-app order? → Shopify se fetch-back → shipped/delivered (+tracking), COD paid, cancelled (COD → cancelled; prepaid → review "refund due", M4). Card offer ko order topics milte rahenge jab tak `SHOP_APP_ORDERS_CARD_OFFER=true`.
+
+**Stock reservation** (`shop_stock_reservations`, TTL): checkout pe 15 min, token ke baad token expiry + 5 min, paid → 24h, Shopify order bana → 2 min, cancel/expire → release. Insert-then-count: do log last unit ke liye kabhi dono nahi jeet sakte (worst case dono retry). Naya error `STOCK_UNAVAILABLE` 409 (+`availableQty`).
+
+**Push** (`SHOP_ORDER_PUSH`): confirmed / shipped / delivered / cancelled, har event ek baar (`Order.notified`).
+
+**Bugs mile + fix (tests se):** `shopifyAdminService` 401/403 pe `errors` string hota hai → pehle TypeError (card offer pe bhi galat error message) — fixed; `failed → failed` pe lease clear nahi hota tha — fixed.
+
+**Tests:** `tests/shopShopifyOrders.test.js` (35) + `tests/helpers/shopifyMock.js` (Shopify Admin API mock: token, variant/phone/province validation, stock decrement, tag search, "created but response lost"). Mutation check: tag lookup hatao → 5 fail, reservation check hatao → 2 fail, BYPASS → 4 fail. `scripts/shopStagingE2E.js` ab M3 bhi (42/42 staging DB pe; Shopify hamesha mock, script live store ko chhoo hi nahi sakti).
+
+**Live store test checklist (office, Fastrr confirm ke baad):**
+1. Warehouse/ops ko PEHLE batao (time window, tag `take-app` + `TEST`), auto-sync (Shiprocket) pause/exclude karwao.
+2. `.env`: `SHOP_SHOPIFY_ORDER_SYNC=true`, `SHOP_SHOPIFY_TEST_ORDERS=true`, `SHOP_SHOPIFY_SEND_RECEIPT=false`, apna email/phone.
+3. `node scripts/registerShopifyWebhooks.js --url=https://www.take.health --dry-run` → naye topics dekho, phir apply.
+4. 1 order → Shopify admin mein check (price, address, MH, phone, stock −qty) → turant cancel + restock.
+5. Token scopes: `.env` token mein `write_orders` hai, `read_inventory` nahi dikha — Shopify dev se confirm.
 
 ## 10. M3 / M4 (outline)
 - **M3:** QStash job → Shopify `orderCreate` (tags `take-app`, `TH-xxx`; pehle tag se search karke duplicate avoid), retry + `needs_attention`. Webhooks `orders/fulfilled`, `fulfillments/*`, `orders/cancelled`, `refunds/create` → fulfillmentStatus/tracking. My Orders APIs. FCM push. Token scopes: `write_orders`, protected customer data.

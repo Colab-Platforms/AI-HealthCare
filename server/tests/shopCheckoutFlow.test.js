@@ -17,7 +17,7 @@ const { startFastrrMock, placedOrder, fastrrOrder, API_KEY, API_SECRET } = requi
 const ENV = {
     FASTRR_API_KEY: API_KEY,
     FASTRR_API_SECRET: API_SECRET,
-    FASTRR_TIMEOUT_MS: '500',
+    FASTRR_TIMEOUT_MS: '3000',
     JWT_SECRET: 'test-jwt-secret',
     SHOP_PUBLIC_BASE_URL: 'https://shop.test',
     SHOP_APP_DEEP_LINK: 'takehealth://shop/order/{orderId}?status={status}',
@@ -59,6 +59,14 @@ const orders = new FakeCollection(Order, { unique: [['internalOrderId'], ['user'
 const carts = new FakeCollection(Cart, { unique: [['user']] });
 const products = new FakeCollection(Product, { unique: [['shopifyProductId']] });
 const collections = new FakeCollection(Collection, { unique: [['shopifyCollectionId']] });
+const StockReservation = require('../modules/shop/models/StockReservation');
+const holds = new FakeCollection(StockReservation, { unique: [['order', 'variantId']] });
+// Any model call that isn't faked fails at once instead of waiting on a DB that isn't there.
+mongoose.set('bufferCommands', false);
+// Push notifications: recorded, never sent.
+const fcm = require('../services/fcmService');
+const pushes = [];
+fcm.sendToUser = async (userId, payload) => { pushes.push({ userId: String(userId), ...payload }); return { success: true }; };
 const restores = [];
 
 let mock;
@@ -76,7 +84,7 @@ test.before(async () => {
     }
     mock = await startFastrrMock();
     process.env.FASTRR_BASE_URL = mock.baseUrl;
-    for (const c of [orders, carts, products, collections]) restores.push(c.install());
+    for (const c of [orders, carts, products, collections, holds]) restores.push(c.install());
 
     const app = express();
     app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); } }));
@@ -146,7 +154,7 @@ const pay = (order, opts = {}) => {
 const webhook = (body) => fastrrOrderService.handleWebhook(body);
 
 test.beforeEach(() => {
-    orders.docs = []; carts.docs = []; products.docs = []; collections.docs = [];
+    orders.docs = []; carts.docs = []; products.docs = []; collections.docs = []; holds.docs = []; pushes.length = 0;
     mock.reset();
     seedCatalog();
 });

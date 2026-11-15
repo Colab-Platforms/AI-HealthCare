@@ -79,6 +79,33 @@ module.exports = {
     // Min gap between on-demand Fastrr status checks of one order (app polling).
     onDemandSyncGapMs: 10 * 1000,
 
+    // ── Shopify order sync (M3) ────────────────────────────────────────────
+    // OFF until confirmed that Fastrr does not also create Shopify orders
+    // (otherwise every order would exist twice). See docs/shop-headless-plan.md.
+    shopifyOrderSync: () => boolEnv('SHOP_SHOPIFY_ORDER_SYNC', false),
+    // Mark created orders as Shopify test orders (live-store testing only).
+    shopifyTestOrders: () => boolEnv('SHOP_SHOPIFY_TEST_ORDERS', false),
+    // Shopify's own order-confirmation / shipping emails. Off: the app notifies.
+    shopifySendReceipt: () => boolEnv('SHOP_SHOPIFY_SEND_RECEIPT', false),
+    shopifySyncMaxAttempts: () => intEnv('SHOP_SHOPIFY_SYNC_MAX_ATTEMPTS', 5),
+    shopifySyncLeaseMs: 60 * 1000,
+    // A failed attempt is retried by the cron no sooner than this — Shopify's
+    // order search can lag a few seconds behind a create, and the retry looks
+    // the order up by tag first to avoid creating it twice.
+    shopifyRetryAfterMs: 2 * 60 * 1000,
+    // App orders also count for the Shopify card offer (management decision).
+    appOrdersGetCardOffer: () => boolEnv('SHOP_APP_ORDERS_CARD_OFFER', true),
+    orderPushNotifications: () => boolEnv('SHOP_ORDER_PUSH', true),
+
+    // ── Stock reservation (M3) ─────────────────────────────────────────────
+    // Held while the user is paying; then tied to the Fastrr token's expiry.
+    reservationHoldMs: () => intEnv('SHOP_RESERVATION_MINUTES', 15) * 60 * 1000,
+    reservationAfterTokenMs: 5 * 60 * 1000,
+    // Paid but not yet in Shopify: keep holding (Shopify stock not reduced yet).
+    reservationUntilSyncedMs: 24 * 60 * 60 * 1000,
+    // After the Shopify order exists: brief hold until its inventory webhook lands.
+    reservationAfterSyncedMs: 2 * 60 * 1000,
+
     // ── Reconciliation (QStash cron) ───────────────────────────────────────
     reconcile: {
         pendingOlderThanMs: 15 * 60 * 1000,   // give the webhook time first

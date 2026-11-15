@@ -8,7 +8,7 @@
 //   WebView (signed)   GET  /checkout/:orderId/page, /checkout/:orderId/return
 //   Fastrr pull        GET  /fastrr/products, /fastrr/collections, /fastrr/collection-products
 //   Fastrr push        POST /fastrr/webhook
-//   QStash schedule    POST /internal/catalog-sync, /internal/reconcile-orders
+//   QStash             POST /internal/catalog-sync, /internal/reconcile-orders, /internal/shopify-sync
 
 const express = require('express');
 const router = express.Router();
@@ -50,5 +50,6 @@ router.get('/orders/:orderId', protect, apiLimiter, checkout.getOrder);
 // Internal
 router.post('/internal/catalog-sync', verifyQStash, catalog.runCatalogSync);
 router.post('/internal/reconcile-orders', verifyQStash, checkout.runReconciliation);
+router.post('/internal/shopify-sync', verifyQStash, checkout.runShopifySync);
 
 module.exports = router;
