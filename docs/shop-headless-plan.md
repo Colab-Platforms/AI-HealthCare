@@ -3,18 +3,20 @@
 > **Single source of truth for the in-app shop.** Kisi bhi laptop se kaam shuru karo toh pehle ye file padho.
 > Purani files `fastrr-shiprocket-checkout-integration-plan.md` aur `fastrr-integration-reference-and-test-plan.md` OUTDATED hain (wo purane `fastrrRoutes.js` ke liye thi, jo delete ho chuka hai).
 >
-> Last updated: 2026-11-15 (M2 code + tests done) · Branch: `Staging`
+> Last updated: 2026-11-15 (M1–M3 code + tests done & pushed, commit `0aa3ae9`; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
 
 ---
 
 ## 0. Naye laptop pe kaise resume karein
 
-1. `git pull` (Staging branch) — M1 code + ye doc aa jayega.
+1. `git pull` (Staging branch) — M1–M3 code + ye doc aa jayega.
 2. `cd server && npm install`
 3. `server/.env` git mein NAHI hota. Office laptop se ye values copy karo (password manager / secure chat se, public jagah nahi):
    `MONGODB_URI`, `MONGODB_URI_STAGING`, `JWT_SECRET`, `SHOPIFY_ADMIN_STORE_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_API_VERSION`, `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET`, Redis, QStash (`QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`), aur baaki jo office `.env` mein hai.
-4. Check: `node scripts/shopCatalogSync.js --preview` (sirf read, DB nahi chhoota) aur
-   `node --test tests/shopCatalog.test.js tests/shopCartAndOrder.test.js tests/shopCheckoutLogic.test.js tests/shopFastrrClient.test.js tests/shopCheckoutFlow.test.js` (88 tests, DB/Fastrr ki zarurat nahi).
+4. Check (sab `server/` se):
+   - `node scripts/shopCatalogSync.js --preview` (sirf Shopify read, DB nahi chhoota)
+   - `node --test tests/shop*.test.js` — 155 tests (DB / Fastrr / Shopify sab mock; kuch real nahi chhoota). Expected: 154 pass, 1 fail = `shopifyOfferRules` "Rahul" (card-offer, date-dependent, pre-existing, shop se unrelated)
+   - `node scripts/shopStagingE2E.js` — asli **staging** MongoDB pe M1–M3 flow (42 checks), Fastrr + Shopify mock; apna data khud delete karta hai. Sirf `*staging` DB pe chalta hai.
 5. Claude ko bolo: **"docs/shop-headless-plan.md padho aur wahan se continue karo"**. Claude ki memory laptop-specific hai, isliye saara context isi file mein hai.
 
 ---
@@ -32,6 +34,11 @@
 | Cart | **Server cart** (DB mein) — multi-device, price/stock server-side check |
 | Code location | `server/modules/shop/` (mounted at `/api/shop`) |
 | Subscribe variants | **Implemented as (a)**, flag `SHOP_HIDE_SUBSCRIBE_VARIANTS` **default `true`** (chhupe hue). Management "b" chahe toh flag `false`. Dekho §8 |
+| Idempotency-Key | **Flutter app banata hai** (UUID v4 per checkout attempt), backend sirf validate + unique index. Flow: Flutter guide §5 |
+| Checkout UI | **Fastrr ka page** (phone OTP, address, coupon, payment). Flutter sirf WebView container banata hai — app mein phone/address fields NAHI |
+| Deep link | `takehealth://shop/order/{orderId}?status={status}` — `takehealth://` scheme app mein pehle se registered hai (wearables OAuth `takehealth://wearables?provider=…`), Flutter sirf `shop` route add kare |
+| GST invoice | **Apna backend invoice NAHI banayega** (do invoice series ban jaati). App orders asli Shopify orders hain → jo system website orders ka invoice banata hai (Shopify GST app / Shiprocket) wahi banayega, dispatch pe. Shopify products pe HSN + GST rate chahiye (§7 #6) |
+| Address / phone | Fastrr se aata hai, per-order `orders` mein save; user profile overwrite NAHI; Shopify order + invoice + courier ke liye use |
 
 ---
 
@@ -76,7 +83,7 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 | **M1** | Catalog sync + catalog APIs + Fastrr catalog pull + server cart + Order model/state machine | ✅ Code done, staging pe test pass. **Prod deploy/scripts baaki**, M1 gaps §7 |
 | **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
 | **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). **Flag `SHOP_SHOPIFY_ORDER_SYNC` OFF** until Fastrr confirms it doesn't create Shopify orders. Live-store test baaki (§10a) |
-| **M4** | Refunds (Fastrr Refund API + Refund Report cron), admin view, alerts | ⏳ |
+| **M4** | Refunds (Fastrr Refund API + Refund Report cron), user cancel, admin view (stuck orders, retry sync), alerts | ⏳ Not started. Plan + kya bina external ke ban sakta hai: §10 |
 
 ---
 
@@ -188,12 +195,12 @@ Berberine variants (price paise): 1 pack One-Time `57199514222897` ₹1499 · 1 
 
 | # | Gap | Owner / Action |
 |---|---|---|
-| 1 | ~~Code commit/push nahi hua tha~~ M1 commit `82ebe81` mein hai. **M2 abhi uncommitted** (2026-11-15) | Review ke baad commit + push |
+| 1 | ~~Code commit/push~~ ✅ M1 `82ebe81`, M2 `fa374b3`, M3 `0aa3ae9` — sab `origin/Staging` pe pushed (2026-11-15). Render (`ai-healthcare-1-0i51.onrender.com`) Staging auto-deploy karta hai — M2/M3 routes wahan live | — |
 | 2 | Prod deploy + prod sync + webhooks register + QStash schedule | Deploy ke baad scripts (§4 Scripts) |
 | 3 | ~~Subscribe variants filter~~ ✅ done (M2): list/detail/cart/checkout/Fastrr feed se hidden, `minPrice` visible variants se | Management confirm kare (§8) |
 | 4 | **Product weight 0** saare variants pe → Fastrr shipping galat | Shopify dev weights daale |
 | 5 | **`descriptionHtml` khaali** | Shopify dev se poochho description kahan hai (metafields/theme) → query mein add |
-| 6 | **HSN code / GST rate** product pe nahi hai (Order items mein field hai, source nahi) | Shopify metafield ya config map decide karo — invoice/M3 se pehle |
+| 6 | **HSN code / GST rate** product pe nahi hai | Invoice Shopify-side banega (§1) → HSN/GST rate **Shopify products pe** set karwao + Shopify India tax settings on. Ops/Shopify dev — go-live blocker (§14) |
 | 7 | ~~`.env.example` Fastrr block purana~~ ✅ updated (M2) | — |
 | 8 | Price-change + out-of-stock paths ab tests mein covered. Fastrr collections/collection-products endpoints real staging pe abhi bhi untested | Staging E2E (§9a) |
 | 9 | Desktop CSV (`Shop-Backend-Steps.csv`): Step 1 → Done, Step 22 se "(if Fastrr does not do it)" hatana | Excel band karke update |
@@ -209,11 +216,14 @@ Berberine variants (price paise): 1 pack One-Time `57199514222897` ₹1499 · 1 
    - (a) **Recommended:** app mein chhupao + checkout pe reject. Koi nuksaan nahi, list price = actual price.
    - Nahi chhupaya → customer ₹1349 mein ek baar kharidega, next month kuch nahi aayega → ₹150 loss/order + complaints.
    - (b) Real subscription → Fastrr recurring support chahiye; bada kaam, post-launch.
-2. **Flutter deep link** (payment ke baad app pe wapas) — e.g. `takehealth://shop/order/:id`. Env placeholder rakhenge.
-3. **Management (END mein poochna):**
-   - App orders pe card-offer 30-day trial trigger ho ya `take-app` tag wale orders exclude?
-   - COD max limit + COD fee
-   - Refund/return policy
+2. ~~Flutter deep link~~ ✅ resolved: `takehealth://shop/order/{orderId}` (scheme pehle se registered, §1).
+3. **Management (Monday, 2026-11-17):**
+   - App orders pe card-offer 30-day trial? → flag `SHOP_APP_ORDERS_CARD_OFFER` (default `true` = haan)
+   - COD max limit + COD fee (Fastrr dashboard pe set hota hai)
+   - **Refund/return policy** (M4 isi pe depend): ship hone ke baad cancel? return kitne din? khula supplement pack wapas?
+   - **COD refund kaise** (online refund possible nahi): UPI pe manual transfer / store credit?
+   - Auto-refund limit (e.g. ₹2000 se upar admin approve)?
+   - Policy page + privacy policy update (gateway ko URLs chahiye; address/phone Fastrr + Shopify ke saath share hota hai — likhna)
 
 ---
 
@@ -300,7 +310,7 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 
 ---
 
-## 10a. M3 — kya bana (2026-11-15, uncommitted)
+## 10a. M3 — kya bana (2026-11-15, commit `0aa3ae9`, pushed)
 
 **Flow:** payment confirm → hold 24h → `shopifySyncStatus: pending` → QStash `POST /api/shop/internal/shopify-sync` (local: inline) → claim (60s lease) → Shopify mein `TH-…` tag se search (pehle ban chuka ho toh adopt) → `orderCreate` → `synced` + `shopifyOrderId`, hold 2 min. Fail: transient → `failed`, cron 2 min baad retry (search-lag ki wajah se turant nahi); permanent (userErrors / 401 / 403) ya 5 attempts → `needs_attention` + `[ALERT]` log.
 
@@ -322,11 +332,28 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 3. `node scripts/registerShopifyWebhooks.js --url=https://www.take.health --dry-run` → naye topics dekho, phir apply.
 4. 1 order → Shopify admin mein check (price, address, MH, phone, stock −qty) → turant cancel + restock.
 5. Token scopes: `.env` token mein `write_orders` hai, `read_inventory` nahi dikha — Shopify dev se confirm.
+6. Live store pe sirf "test" naam/address kaafi NAHI (automation naam nahi padhta: AWB, stock, email, invoice no., card offer trigger ho sakte hain) — ops ko **pehle** batana zaroori. Behtar: Shopify dev se development store.
 
-## 10. M3 / M4 (outline)
-- **M3:** QStash job → Shopify `orderCreate` (tags `take-app`, `TH-xxx`; pehle tag se search karke duplicate avoid), retry + `needs_attention`. Webhooks `orders/fulfilled`, `fulfillments/*`, `orders/cancelled`, `refunds/create` → fulfillmentStatus/tracking. My Orders APIs. FCM push. Token scopes: `write_orders`, protected customer data.
-  - **Check:** Fastrr ka Shopify app agar store pe installed hai toh wo khud order bana sakta hai → duplicate. Fastrr call Q2.
-- **M4:** Fastrr Refund Initiate API + Refund Report cron → `refunds[]`, admin view, alerts (sync failed, stuck pending).
+**Shopify token findings (2026-11-15, store se read):** `.env` token = Take Limited (`2jfdfm-vp`, INR); has `write_orders`, `read_all_orders`, `write_customers`, `read/write_products`; **no** `read_inventory`/`write_inventory` listed. Isme risky extra scopes bhi hain (`write_script_tags`, `write_customer_data_erasure`, …). Shopify dev ki pasted list (write_themes, payments/bank read, …) **alag token** hai. Recommendation: backend ke liye alag custom app, sirf: `read_products, read_inventory, write_inventory, write_orders, read_all_orders, read_fulfillments, write_customers` + protected customer data (Level 2).
+
+## 10. M4 — plan (not started)
+
+**Amish ke liye:** "Cancel order" (ship hone se pehle) → Shopify `orderCancel` + restock + prepaid refund; store-cancel / duplicate payment → auto-refund; refund status app mein (`refund_initiated` → `refunded`, statuses + `refunds[]` already model mein); RTO → `returned`.
+**Admin ke liye** (existing `admin` middleware, `middleware/auth.js`): stuck orders list (`needs_attention`, `review.needed`, pending > 1h), Shopify sync retry, manual/partial refund, alerts (email).
+**APIs (planned):** `POST /api/shop/orders/:id/cancel`, `GET /api/shop/admin/orders?filter=`, `POST /api/shop/admin/orders/:id/retry-sync`, `POST /api/shop/admin/orders/:id/refund`, refund-report cron (QStash). Collection: `orders` hi (koi nayi nahi).
+
+| M4 part | Bina external ke ban sakta hai? | Monday ko chahiye |
+|---|---|---|
+| Admin list / retry / review clear | ✅ | — |
+| Alerts | ✅ | alert email address |
+| User cancel (pre-ship) | ✅ (`orderCancel` schema verified) | policy: kab tak cancel |
+| Refund initiate (Fastrr) | ✅ mock pe (API shape docs mein) | keys; partial refund? `order_id` = platform ya fastrr id? |
+| Refund status cron | ✅ mock pe | same |
+| Auto-refund (dup payment / store cancel) | ✅ flag ke peeche, default OFF | auto-refund limit |
+| COD refund | ⚠️ online possible nahi | policy (manual UPI / store credit) |
+| Return / RTO | ❌ post-launch | return policy |
+
+Decision wale parts env flags pe, safe defaults ke saath (auto-refund off, admin-only refund). Real test: Fastrr staging pe test UPI/card se pay → cancel → refund → report; prod pe pehla refund chhota amount.
 
 ---
 
@@ -345,7 +372,15 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 - Webhook (M2): `https://www.take.health/api/shop/fastrr/webhook`
 - Domain whitelist: `www.take.health`
 
-**Unse lena (top priority):** staging key+secret, `fallbackUrl` off ho sakta hai?, paisa kiske account + settlement, auto Shiprocket shipment / Shopify order create (double shipment/order risk), apna order id bhej sakte hain?
+**Unse lena (Monday 2026-11-17, top priority):**
+1. Staging + prod API key/secret
+2. Staging test UPI / card details (refund test ke liye bhi)
+3. **Fastrr khud Shopify order banata hai ya nahi** (haan → `SHOP_SHOPIFY_ORDER_SYNC` off hi rahega, warna duplicate)
+4. Refund: partial chalta hai? `order_id` = platform ya fastrr id? kitne din?
+5. Webhook URL + catalog URLs + domain whitelist unke system mein
+6. Phone se saved address auto-fill hota hai?
+7. `fallbackUrl` off ho sakta hai?, paisa kiske account + settlement, auto Shiprocket shipment (double shipment risk)
+8. UPI intent links ke exact schemes (Flutter WebView ke liye)
 Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi — inke **jawab yahan section 13 mein paste karo**.
 
 ---
@@ -366,9 +401,62 @@ Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi
 | `SHOP_CHECKOUT_PAGE_SECRET`, `SHOP_CHECKOUT_PAGE_TTL_MIN` | optional | default: JWT_SECRET se derive, 120 min |
 | `SHOP_PLACEHOLDER_IMAGE_URL` | optional | Fastrr `catalog_data.image_url` jab item ki image na ho |
 | `FASTRR_TIMEOUT_MS`, `FASTRR_CHECKOUT_UI_URL`, `FASTRR_FALLBACK_URL`, `FASTRR_CATALOG_PUSH` | optional | 10000 / auto (staging bundle for staging API) / humara return page / true |
+| `SHOP_SHOPIFY_ORDER_SYNC` | Vercel + Render | **default `false`** — Fastrr confirm ke baad hi `true` (M3) |
+| `SHOP_SHOPIFY_TEST_ORDERS`, `SHOP_SHOPIFY_SEND_RECEIPT` | optional | `false` / `false` — test orders sirf live-store testing ke waqt `true` |
+| `SHOP_SHOPIFY_SYNC_MAX_ATTEMPTS` | optional | 5 |
+| `SHOP_APP_ORDERS_CARD_OFFER` | optional | `true` (management decision) |
+| `SHOP_ORDER_PUSH` | optional | `true` (confirmed / shipped / delivered / cancelled push) |
+| `SHOP_RESERVATION_MINUTES` | optional | 15 (stock hold, phir token expiry se bandha) |
+| `SHOPIFY_ADMIN_API_BASE_URL` | **tests / local only** | Shopify mock URL. Real environments mein **kabhi set mat karna** |
 
 ---
 
 ## 13. Fastrr / Shopify dev ke jawab (yahan paste karo)
 
-_(empty)_
+_(empty — Monday 2026-11-17 ke jawab yahan)_
+
+---
+
+## 14. Go-live plan (target: Monday 17 Nov prep → Tuesday 18 Nov main pe test + live)
+
+**Status (2026-11-15):** M1–M3 code + 155 tests + staging DB E2E done, pushed. M4 not started. **Fastrr ke saath ek bhi real test abhi tak nahi hua** — sabse bada risk.
+
+### A. Go-live blockers (inke bina live NAHI)
+| # | Kya | Owner |
+|---|---|---|
+| 1 | Fastrr staging + prod keys; **real payment test** (UPI + COD) | Fastrr / aap |
+| 2 | Fastrr confirm: khud Shopify order nahi banata | Fastrr |
+| 3 | Fastrr ko webhook URL, catalog URLs, domain whitelist | Aap |
+| 4 | **Flutter app ready** (6 screens + WebView container, UPI intents, deep link) + store review time | Flutter team |
+| 5 | Shopify token: `write_orders` + protected customer data + `read_inventory` | Shopify dev |
+| 6 | Refund/return policy page + privacy policy update | Management |
+| 7 | GST invoice system confirm (website orders ka jo hai wahi) + Shopify products pe HSN/GST rate | Ops / Shopify dev |
+| 8 | **Render kis DB pe hai** (staging ya prod?) — Render dashboard → Environment (`USE_STAGING_DB`, `MONGODB_URI*`). Flutter dev wahi URL testing ke liye use karega | Aap |
+
+### B. Monday (code side)
+- M4 ka bina-decision wala hissa: admin stuck-orders list, retry sync, alerts (tests ke saath). Auto-refund / user cancel flags ke peeche (default off).
+- Fastrr keys aate hi: `scripts/shopStagingE2E.js` real Fastrr staging ke saath + phone pe UPI test.
+- Launch ke pehle din refunds **manual (Fastrr dashboard)** — orders kam honge, safe.
+
+### C. Tuesday deploy order
+1. `Staging` → `main` merge + push
+2. Env vars **Vercel + Render dono**: Fastrr keys, `SHOP_PUBLIC_BASE_URL=https://www.take.health`, `SHOP_SHOPIFY_ORDER_SYNC=true` (sirf agar Fastrr ne #2 confirm kiya), `SHOP_SHOPIFY_TEST_ORDERS=true` (sirf test ke liye)
+3. Deploy → prod pe `node scripts/shopCatalogSync.js` (indexes **including stock-hold TTL/unique** + catalog; prod `autoIndex` off hai, isliye zaroori)
+4. `node scripts/registerShopifyWebhooks.js --url=https://www.take.health --dry-run` → apply (**sirf ek URL**)
+5. `node scripts/registerShopCatalogSchedule.js https://www.take.health` (catalog 03:30 IST + reconciliation */10)
+6. Live test: ops ko pehle batao → 1 prepaid + 1 COD → Shopify admin check (price, address/MH, phone, stock) → cancel + restock
+7. Sab theek → `SHOP_SHOPIFY_TEST_ORDERS=false` → launch
+
+**Rollback:** `SHOP_SHOPIFY_ORDER_SYNC=false` (Shopify order banna band). Checkout band karna ho → Fastrr keys hatao → `POST /checkout` = 503 `CHECKOUT_UNAVAILABLE`; catalog + cart chalte rahenge.
+
+### D. Post-launch (non-blocking)
+Auto-refund + user cancel + returns/RTO (baaki M4), Shopify weights (shipping accuracy) + descriptions, abandoned cart, Swagger docs for shop APIs, Shopify token least-privilege app, "Download invoice" link in app.
+
+### E. Flutter handoff
+- Guide: **`docs/shop-flutter-api-guide.md`** (Word copy desktop pe `TakeHealth-Shop-API-for-Flutter.docx`). Real responses (journey test se), 6 screens + WebView container, Idempotency-Key flow, WebView/UPI/deep link, polling, statuses, 24 error codes, push.
+- Testing base URL: `https://ai-healthcare-1-0i51.onrender.com/api/shop` (Staging auto-deploy; checkout = 503 jab tak Render pe Fastrr keys nahi).
+
+### F. Known pre-existing test failures (shop se unrelated)
+- `shopifyOfferRules.test.js` "Rahul" — card-offer, date-dependent (aaj se fail; last commit pe bhi) → card-offer owner
+- `vault.test.js` 4 fail (storage config defaults) — pre-existing
+- `wearableScoreDedup.staging.test.js` staging DB connect pe hang → `npm test` poora khatam nahi hota; shop tests alag se chalao (§0)

@@ -69,7 +69,7 @@ let phase = '';
 const summarize = (res) => {
     if (res.json) {
         const s = JSON.stringify(res.json);
-        return s.length > 700 ? `${s.slice(0, 700)}…` : s;
+        return process.env.SHOP_JOURNEY_FULL ? s : (s.length > 700 ? `${s.slice(0, 700)}…` : s);
     }
     const title = /<title>([^<]*)<\/title>/.exec(res.text)?.[1];
     const deep = /takehealth:\/\/[^"'<\s]+/.exec(res.text)?.[0];
