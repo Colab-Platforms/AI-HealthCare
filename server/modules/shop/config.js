@@ -97,6 +97,18 @@ module.exports = {
     appOrdersGetCardOffer: () => boolEnv('SHOP_APP_ORDERS_CARD_OFFER', true),
     orderPushNotifications: () => boolEnv('SHOP_ORDER_PUSH', true),
 
+    // ── Cancel + refunds (M4) ──────────────────────────────────────────────
+    // Customer may cancel until the warehouse ships (management policy, MG1).
+    userCancelEnabled: () => boolEnv('SHOP_USER_CANCEL', true),
+    // Refunds are sent to Fastrr automatically only when ON and within the
+    // limit; otherwise they wait for an admin (MG6). Default: always admin.
+    autoRefund: () => boolEnv('SHOP_AUTO_REFUND', false),
+    autoRefundMaxPaise: () => intEnv('SHOP_AUTO_REFUND_MAX_RUPEES', 2000) * 100,
+    // Record completed refunds on the Shopify order (bookkeeping only — the
+    // money moves through Fastrr).
+    shopifyRecordRefunds: () => boolEnv('SHOP_SHOPIFY_RECORD_REFUNDS', true),
+    refundReportMaxPages: 20,
+
     // ── Stock reservation (M3) ─────────────────────────────────────────────
     // Held while the user is paying; then tied to the Fastrr token's expiry.
     reservationHoldMs: () => intEnv('SHOP_RESERVATION_MINUTES', 15) * 60 * 1000,

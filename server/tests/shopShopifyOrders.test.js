@@ -483,14 +483,20 @@ test('webhook: store cancels a COD order -> cancelled, stock hold released, push
     assert.deepEqual(pushes.map((p) => p.data.event), ['cancelled']);
 });
 
-test('webhook: store cancels a PREPAID order -> flagged "refund due" for a human (refunds are M4)', async () => {
+test('webhook: store cancels a PREPAID order -> refund requested for admin approval (auto-refund off by default)', async () => {
     const o = await syncedOrder();
     shopify.cancel(o.internalOrderId);
     await shopifyWebhook('orders/cancelled', { id: Number(o.shopifyOrderId), tags: `take-app, ${o.internalOrderId}` });
     const after = get(o);
-    assert.equal(after.paymentStatus, 'paid');
-    assert.equal(after.review.needed, true);
-    assert.deepEqual(after.review.reasons, ['CANCELLED_IN_SHOPIFY_REFUND_DUE']);
+    assert.equal(after.paymentStatus, 'refund_pending');
+    assert.equal(after.fulfillmentStatus, 'cancelled');
+    assert.equal(after.cancelledBy, 'store');
+    assert.equal(after.refunds.length, 1);
+    assert.equal(after.refunds[0].source, 'store_cancel');
+    assert.equal(after.refunds[0].status, 'requested');
+    assert.equal(after.refunds[0].amount, 299800);
+    await shopifyWebhook('orders/cancelled', { id: Number(o.shopifyOrderId), tags: `take-app, ${o.internalOrderId}` }); // replay
+    assert.equal(get(o).refunds.length, 1);
 });
 
 test('webhook: orders/create for our order heals a sync that never got recorded', async () => {

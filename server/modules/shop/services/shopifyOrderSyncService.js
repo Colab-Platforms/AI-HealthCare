@@ -17,6 +17,7 @@ const config = require('../config');
 const client = require('./shopifyOrderClient');
 const reservations = require('./stockReservationService');
 const notifier = require('./orderNotifier');
+const refunds = require('./refundService');
 const { transition, TRANSITIONS } = require('../lib/orderStateMachine');
 const { toOrderCreateVariables, readShopifyOrder, tagFor, legacyId, SHOP_TAG } = require('../lib/shopifyOrderMapper');
 
@@ -60,6 +61,19 @@ const markFailed = async (order, err, { permanent }) => {
     return to;
 };
 
+// The customer cancelled while we were creating the Shopify order: cancel it
+// there too, so the warehouse never ships it.
+const cancelIfCancelledMeanwhile = async (orderId, shopifyNode) => {
+    const now = await Order.findById(orderId).select('cancelledAt internalOrderId').lean();
+    if (!now?.cancelledAt) return;
+    try {
+        const { userErrors } = await client.cancelOrder(shopifyNode.legacyResourceId || legacyId(shopifyNode.id), { reason: 'CUSTOMER', staffNote: 'Cancelled in the app while the order was being created' });
+        if (userErrors.length) alert(now, `cancelled in app but Shopify cancel failed: ${userErrors.map((e) => e.message).join('; ')} — CANCEL IN SHOPIFY MANUALLY`);
+    } catch (err) {
+        alert(now, `cancelled in app but Shopify cancel failed: ${err.message} — CANCEL IN SHOPIFY MANUALLY`);
+    }
+};
+
 /**
  * Create (or adopt) the Shopify order for one of our orders.
  * @returns {Promise<{ result: string }>} synced | adopted | failed | needs_attention | skipped:<why>
@@ -84,6 +98,7 @@ const syncOrder = async (orderId) => {
         const existing = await client.findOrderByTag(tagFor(order));
         if (existing) {
             await markSynced(order, existing, 'adopted existing');
+            if (!existing.cancelledAt) await cancelIfCancelledMeanwhile(order._id, existing);
             return { result: 'adopted' };
         }
         const { order: created, userErrors } = await client.createOrder(toOrderCreateVariables(order, {
@@ -95,6 +110,7 @@ const syncOrder = async (orderId) => {
             return { result: await markFailed(order, new Error(msg), { permanent: true }) };
         }
         await markSynced(order, created, 'created');
+        await cancelIfCancelledMeanwhile(order._id, created);
         return { result: 'synced' };
     } catch (err) {
         return { result: await markFailed(order, err, { permanent: !client.isTransient(err) }) };
@@ -215,12 +231,16 @@ const applyShopifyOrder = async (order, node) => {
             const p = await transition(Order, { orderId: order._id, field: 'paymentStatus', to: 'cancelled', source: 'shopify' });
             if (p) { current = p; changes.push('payment:cancelled'); }
         } else if (current.paymentStatus === 'paid') {
-            // Money was taken: refund is M4. Make sure a human sees it.
-            await Order.updateOne(
-                { _id: order._id, 'review.reasons': { $ne: 'CANCELLED_IN_SHOPIFY_REFUND_DUE' } },
-                { $set: { 'review.needed': true, 'review.flaggedAt': new Date() }, $push: { 'review.reasons': 'CANCELLED_IN_SHOPIFY_REFUND_DUE' } }
-            );
-            alert(order, 'cancelled in Shopify after prepaid payment — refund due');
+            // Money was taken and the store cancelled: refund it (auto or admin
+            // approval, per SHOP_AUTO_REFUND). Skipped if a refund already exists
+            // (e.g. the customer's own cancel, which also cancels in Shopify).
+            const hasRefund = (current.refunds || []).some((r) => r.kind === 'order' && r.status !== 'failed');
+            if (!hasRefund) {
+                await Order.updateOne({ _id: order._id, cancelledAt: null }, { $set: { cancelledAt: new Date(), cancelledBy: 'store' } });
+                const r = await refunds.requestRefund({ orderId: order._id, source: 'store_cancel', reason: 'Cancelled by the store', requestedBy: 'shopify' });
+                current = r.order;
+                changes.push('refund:requested');
+            }
         }
         await reservations.release(order._id);
         await notifier.notify(current, 'cancelled');

@@ -91,6 +91,8 @@ async function main() {
     // Throwaway user + real JWT (real `protect` loads it from staging).
     const email = `shop-e2e-${Date.now()}@example.invalid`;
     const user = await User.create({ name: 'Shop E2E (delete me)', email, password: crypto.randomBytes(16).toString('hex') });
+    const adminUser = await User.create({ name: 'Shop E2E admin (delete me)', email: `admin-${email}`, role: 'admin', password: crypto.randomBytes(16).toString('hex') });
+    const adminToken = jwt.sign({ id: adminUser._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30m' });
     const token = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30m' });
 
     const app = express();
@@ -256,6 +258,35 @@ async function main() {
         check('courier delivers -> app shows delivered', wh.status === 200 && r.json.status === 'delivered' && Boolean(r.json.deliveredAt));
         r = await call('POST', '/internal/shopify-sync', { auth: false, body: { orderId: String(m3._id) } });
         check('unsigned shopify-sync call rejected', r.status === 401 || r.status === 503, `status ${r.status}`);
+
+        console.log('\n8. M4 — cancel + refund (real DB positional updates)');
+        const asAdmin = (method, path, body) => fetch(`${api}${path}`, { method, body: body ? JSON.stringify(body) : undefined,
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` } }).then(async (x) => ({ status: x.status, json: await x.json().catch(() => null) }));
+        await call('POST', '/cart/items', { body: { variantId: V, quantity: 1 } });
+        r = await call('POST', '/checkout', { headers: { 'Idempotency-Key': `e2e-${crypto.randomUUID()}` } });
+        const m4Id = r.json.orderId;
+        let m4 = await Order.findOne({ internalOrderId: m4Id }).lean();
+        mock.state.orders.set(m4.fastrrOrderId, placedOrder(m4.fastrrOrderId, { items: [{ variantId: V, quantity: 1 }], subtotal: price / 100 }));
+        await call('POST', '/fastrr/webhook', { auth: false, body: { order_id: m4.fastrrOrderId } });
+        const stockBeforeCancel = shopify.state.inventory[V];
+        r = await call('POST', `/orders/${m4Id}/cancel`, { body: { reason: 'e2e cancel' } });
+        check('customer cancel -> 200, refund in progress, Shopify cancelled + restocked', r.status === 200 && r.json.status === 'refund_initiated'
+            && Boolean(shopify.byTag(m4Id)?.cancelledAt) && shopify.state.inventory[V] === stockBeforeCancel + 1, `status ${r.status} ${r.json?.status}`);
+        m4 = await Order.findOne({ internalOrderId: m4Id }).lean();
+        check('refund waits for admin (auto-refund off)', m4.refunds?.[0]?.status === 'requested' && m4.paymentStatus === 'refund_pending');
+        r = await call('POST', `/admin/orders/${m4Id}/refunds/${m4.refunds[0].refundId}/approve`);
+        check('customer cannot use admin API -> 403', r.status === 403);
+        const [ap1, ap2] = await Promise.all([1, 2].map(() => asAdmin('POST', `/admin/orders/${m4Id}/refunds/${m4.refunds[0].refundId}/approve`)));
+        check('admin double-approve -> one 200, one 409, one Fastrr refund call (real DB claim)', [ap1.status, ap2.status].sort().join() === '200,409'
+            && mock.callsTo('/api/v1/external/refund/initiate').length === 1, `${ap1.status},${ap2.status}`);
+        mock.settleRefund(mock.state.refunds[0].ref_id);
+        const { syncRefundStatuses } = require('../modules/shop/services/refundService');
+        await syncRefundStatuses();
+        m4 = await Order.findOne({ internalOrderId: m4Id }).lean();
+        check('Fastrr report -> refund completed, order refunded, recorded in Shopify', m4.refunds[0].status === 'completed'
+            && m4.paymentStatus === 'refunded' && m4.refunds[0].shopifyRecorded === true && shopify.byTag(m4Id).refunds.length === 1);
+        r = await call('GET', `/orders/${m4Id}`);
+        check('app shows refunded', r.json.status === 'refunded' && r.json.refund?.status === 'completed');
     } finally {
         if (KEEP) {
             console.log(`\n--keep: left user ${email} (${user._id}) and their cart/orders in staging.`);
@@ -263,8 +294,8 @@ async function main() {
             const mine = await Order.find({ user: user._id }).select('_id').lean();
             await StockReservation.deleteMany({ order: { $in: mine.map((x) => x._id) } });
             const [ord, crt] = await Promise.all([Order.deleteMany({ user: user._id }), Cart.deleteMany({ user: user._id })]);
-            await User.deleteOne({ _id: user._id });
-            console.log(`\nCleanup: deleted ${ord.deletedCount} order(s), ${crt.deletedCount} cart(s), 1 user from staging.`);
+            await User.deleteMany({ _id: { $in: [user._id, adminUser._id] } });
+            console.log(`\nCleanup: deleted ${ord.deletedCount} order(s), ${crt.deletedCount} cart(s), 2 users (shopper + admin) from staging.`);
         }
         await new Promise((r) => server.close(r));
         await mock.close();

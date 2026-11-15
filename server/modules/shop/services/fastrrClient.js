@@ -146,6 +146,48 @@ const listOrders = async ({ startDate, endDate, status, page = 0, limit = 250 })
     return unwrap(json, 'order list');
 };
 
+// ── Refunds (M4) ───────────────────────────────────────────────────────────
+// Refund APIs answer { status: true|false, data: … } (not { ok, result }).
+
+const unwrapRefund = (json, what) => {
+    if (json?.status !== true) {
+        const msg = json?.message || json?.error?.message || json?.data?.message || `${what} failed`;
+        throw new FastrrApiError(`Fastrr ${what}: ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`, { code: 'REJECTED' });
+    }
+    return json.data;
+};
+
+/**
+ * Start a refund. ONE attempt, never retried here: if the response is lost the
+ * refund may still have happened — the caller marks it "unknown" and matches
+ * it from the refund report instead of sending money twice.
+ * @param {object} p
+ * @param {string} p.orderId   Fastrr order id (platform_order_id) of the payment
+ * @param {number} p.amountPaise
+ * @returns {Promise<{ refundId: string, transactionId: string|null, status: string }>}
+ */
+const initiateRefund = async ({ orderId, amountPaise }) => {
+    const json = await post('/api/v1/external/refund/initiate',
+        { amount: Number((amountPaise / 100).toFixed(2)), order_id: String(orderId) },
+        { maxAttempts: 1, retryTimeouts: false, timestamp: false });
+    const data = unwrapRefund(json, 'refund initiate');
+    const r = data?.data || {};
+    if (data?.success === false || !r.id) {
+        throw new FastrrApiError(`Fastrr refund initiate: ${r.message || data?.message || 'no refund id returned'}`, { code: 'REJECTED' });
+    }
+    return { refundId: String(r.id), transactionId: r.transaction_id ? String(r.transaction_id) : null, status: String(r.status || 'INITIATED') };
+};
+
+/**
+ * Refund report for a date window (YYYY-MM-DD, inclusive), one page.
+ * @returns {Promise<{ total: number, refunds: Array }>}
+ */
+const refundReport = async ({ from, to, page = 0 }) => {
+    const json = await post('/api/v1/external/refund/reports', { page, from, to }, { timestamp: false });
+    const data = unwrapRefund(json, 'refund report');
+    return { total: Number(data?.total_refunds || 0), refunds: Array.isArray(data?.refunds) ? data.refunds : [] };
+};
+
 // ── Catalog push (best effort; Fastrr also pulls our catalog APIs) ─────────
 
 const pushCatalog = async (path, body) => {
@@ -165,6 +207,8 @@ module.exports = {
     createCheckoutToken,
     getOrderDetails,
     listOrders,
+    initiateRefund,
+    refundReport,
     pushProduct,
     pushCollection,
 };

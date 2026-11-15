@@ -131,14 +131,37 @@ const orderSchema = new mongoose.Schema({
     tracking: { number: String, url: String, courier: String },
     deliveredAt: Date,
 
+    // Every refund (M4). Moved only by modules/shop/services/refundService.
+    //   requested -> initiating -> initiated -> processing -> completed
+    //                            \-> failed (Fastrr said no; admin may retry)
+    //                            \-> unknown (timeout: may have gone through; matched from Fastrr's report, never auto-retried)
     refunds: [{
         _id: false,
-        amount: Number, // paise
+        refundId: { type: String, required: true },        // R-XXXXXXXXXX
+        kind: { type: String, enum: ['order', 'duplicate_payment'], default: 'order' },
+        source: { type: String, enum: ['user_cancel', 'admin_cancel', 'store_cancel', 'admin', 'duplicate_payment'] },
+        amount: { type: Number, required: true },           // paise
         reason: String,
-        fastrrRefundId: String,
-        status: String,
+        method: { type: String, enum: ['fastrr', 'manual_upi', 'bank_transfer', 'store_credit', 'other'], default: 'fastrr' },
+        status: { type: String, enum: ['requested', 'initiating', 'initiated', 'processing', 'completed', 'failed', 'unknown'], default: 'requested' },
+        fastrrOrderId: String,     // which Fastrr payment is refunded (order_id / platform_order_id)
+        fastrrRefundId: String,    // Fastrr refund ref_id
+        fastrrTransactionId: String,
+        reference: String,         // manual refunds: UPI / bank reference
+        error: String,
+        requestedBy: String,       // user id / admin id / "system"
+        approvedBy: String,
+        shopifyRecorded: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now },
+        updatedAt: Date,
+        initiatedAt: Date,
+        completedAt: Date,
     }],
+    refundVersion: { type: Number, default: 0 }, // optimistic lock: refunds can never exceed what was paid
+
+    cancelledAt: Date,
+    cancelledBy: { type: String, enum: ['user', 'admin', 'store', null], default: null },
+    cancelReason: String,
 
     invoiceNumber: String,
 
@@ -157,5 +180,6 @@ orderSchema.index({ user: 1, idempotencyKey: 1 }, { unique: true });
 orderSchema.index({ user: 1, createdAt: -1 });                       // "My Orders"
 orderSchema.index({ paymentStatus: 1, createdAt: 1 });               // stuck-pending reconciliation
 orderSchema.index({ shopifySyncStatus: 1, updatedAt: 1 });           // Shopify sync retry
+orderSchema.index({ 'refunds.status': 1 }, { sparse: true });        // open refunds (status sync cron)
 
 module.exports = mongoose.model('Order', orderSchema);

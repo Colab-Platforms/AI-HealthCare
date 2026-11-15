@@ -15,6 +15,8 @@ const Cart = require('../models/Cart');
 const config = require('../config');
 const fastrr = require('./fastrrClient');
 const reservations = require('./stockReservationService');
+const refunds = require('./refundService');
+const { toPaise } = require('../lib/money');
 const notifier = require('./orderNotifier');
 const shopifyOrderSync = require('./shopifyOrderSyncService');
 const { transition } = require('../lib/orderStateMachine');
@@ -66,6 +68,18 @@ const applyDetails = async (order, details, { source, eventId = null }) => {
             // old WebView and a refreshed one). Money for the second must be refunded.
             await flagForReview(order._id, `DUPLICATE_PAYMENT:${fid}`);
             console.error(`[Shop/fastrr] ${order.internalOrderId}: second confirmed Fastrr order ${fid} — flagged for refund`);
+            // Money was actually taken a second time (prepaid): refund that payment.
+            const received = set.payment?.amountReceived ?? toPaise(details.total_amount_payable); // paise
+            if (outcome === 'paid' && received > 0) {
+                try {
+                    await refunds.requestRefund({
+                        orderId: order._id, kind: 'duplicate_payment', source: 'duplicate_payment', fastrrOrderId: fid,
+                        amountPaise: received, reason: `Second payment for the same order (Fastrr ${fid})`,
+                    });
+                } catch (err) {
+                    console.error(`[ALERT][Shop/fastrr] ${order.internalOrderId}: duplicate-payment refund request failed: ${err.message}`);
+                }
+            }
             return { result: 'duplicate_payment', status: current.paymentStatus };
         }
         return { result: 'unchanged', status: current?.paymentStatus };
@@ -254,7 +268,15 @@ const reconcile = async ({ now = Date.now(), log = console.log } = {}) => {
         }
     });
 
-    // 3) M3: create Shopify orders that are waiting / failed earlier (no-op while the flag is off).
+    // 3) M4: refund statuses from Fastrr's refund report (only when refunds are open).
+    try {
+        stats.refunds = await refunds.syncRefundStatuses({ now });
+    } catch (err) {
+        stats.errors += 1;
+        console.error(`[Shop/reconcile] refund status sync failed: ${err.message}`);
+    }
+
+    // 4) M3: create Shopify orders that are waiting / failed earlier (no-op while the flag is off).
     try {
         stats.shopify = await shopifyOrderSync.sweep({ deadline });
     } catch (err) {

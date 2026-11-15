@@ -83,7 +83,8 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 | **M1** | Catalog sync + catalog APIs + Fastrr catalog pull + server cart + Order model/state machine | ✅ Code done, staging pe test pass. **Prod deploy/scripts baaki**, M1 gaps §7 |
 | **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
 | **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). **Flag `SHOP_SHOPIFY_ORDER_SYNC` OFF** until Fastrr confirms it doesn't create Shopify orders. Live-store test baaki (§10a) |
-| **M4** | Refunds (Fastrr Refund API + Refund Report cron), user cancel, admin view (stuck orders, retry sync), alerts | ⏳ Not started. Plan + kya bina external ke ban sakta hai: §10 |
+| **M4** | Cancel (customer + admin), refunds (Fastrr Refund API + report sync), Shopify cancel + refund record, duplicate-payment / store-cancel refunds, admin refund actions | ✅ Code + 20 tests + staging DB E2E (48/48, Fastrr + Shopify mock). Auto-refund **OFF** by default. Real Fastrr refund test baaki (keys). §10 |
+| **Admin** | Shop admin APIs + pages (overview, products, orders + timeline, carts, customer journey + `shop_events`, attention, refunds) in existing web admin (`client/`) | ⏳ Next |
 
 ---
 
@@ -336,24 +337,25 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 
 **Shopify token findings (2026-11-15, store se read):** `.env` token = Take Limited (`2jfdfm-vp`, INR); has `write_orders`, `read_all_orders`, `write_customers`, `read/write_products`; **no** `read_inventory`/`write_inventory` listed. Isme risky extra scopes bhi hain (`write_script_tags`, `write_customer_data_erasure`, …). Shopify dev ki pasted list (write_themes, payments/bank read, …) **alag token** hai. Recommendation: backend ke liye alag custom app, sirf: `read_products, read_inventory, write_inventory, write_orders, read_all_orders, read_fulfillments, write_customers` + protected customer data (Level 2).
 
-## 10. M4 — plan (not started)
+## 10. M4 — kya bana (2026-11-16)
 
-**Amish ke liye:** "Cancel order" (ship hone se pehle) → Shopify `orderCancel` + restock + prepaid refund; store-cancel / duplicate payment → auto-refund; refund status app mein (`refund_initiated` → `refunded`, statuses + `refunds[]` already model mein); RTO → `returned`.
-**Admin ke liye** (existing `admin` middleware, `middleware/auth.js`): stuck orders list (`needs_attention`, `review.needed`, pending > 1h), Shopify sync retry, manual/partial refund, alerts (email).
-**APIs (planned):** `POST /api/shop/orders/:id/cancel`, `GET /api/shop/admin/orders?filter=`, `POST /api/shop/admin/orders/:id/retry-sync`, `POST /api/shop/admin/orders/:id/refund`, refund-report cron (QStash). Collection: `orders` hi (koi nayi nahi).
+**Files:** `services/refundService.js` (refunds), `services/cancelService.js` (cancel), `controllers/shopAdminController.js` (admin actions), `fastrrClient.initiateRefund/refundReport`, `shopifyOrderClient.cancelOrder/recordRefund` (schema store se verify kiya: `orderCancel(orderId, restock!, reason!, notifyCustomer, staffNote)` async job; `refundCreate(input{orderId, transactions[{parentId, amount, gateway, kind: REFUND}]})`).
 
-| M4 part | Bina external ke ban sakta hai? | Monday ko chahiye |
-|---|---|---|
-| Admin list / retry / review clear | ✅ | — |
-| Alerts | ✅ | alert email address |
-| User cancel (pre-ship) | ✅ (`orderCancel` schema verified) | policy: kab tak cancel |
-| Refund initiate (Fastrr) | ✅ mock pe (API shape docs mein) | keys; partial refund? `order_id` = platform ya fastrr id? |
-| Refund status cron | ✅ mock pe | same |
-| Auto-refund (dup payment / store cancel) | ✅ flag ke peeche, default OFF | auto-refund limit |
-| COD refund | ⚠️ online possible nahi | policy (manual UPI / store credit) |
-| Return / RTO | ❌ post-launch | return policy |
+**Customer cancel** `POST /api/shop/orders/:orderId/cancel {reason?}` — sirf paid/COD + unfulfilled. Order: (1) Shopify live re-check (ship ho gaya? → 409 + humara copy update) (2) Shopify `orderCancel` restock (refuse kare → 502 `SHOPIFY_CANCEL_FAILED`, humara kuch nahi badla) (3) fulfilment → cancelled (4) COD → payment cancelled; prepaid → refund request (5) hold release + push. Sync chal raha ho (lease) → 409 `CANCEL_IN_PROGRESS`. Shopify mein bante waqt cancel hua → bante hi Shopify cancel. Flag `SHOP_USER_CANCEL` (default on; off → 403 `CANCEL_DISABLED`). App order mein naye fields: `canCancel`, `cancelledAt`, `refund {status: in_progress|completed, amount, completedAt}`.
 
-Decision wale parts env flags pe, safe defaults ke saath (auto-refund off, admin-only refund). Real test: Fastrr staging pe test UPI/card se pay → cancel → refund → report; prod pe pehla refund chhota amount.
+**Refund lifecycle** (`orders.refunds[]`): `requested → initiating → initiated → processing → completed`, ya `failed` (admin retry) / `unknown` (timeout: shayad ho gaya — **kabhi auto re-send nahi**, Fastrr report se order number + amount se match). Safety: total refunds ≤ paid (optimistic lock `refundVersion`, parallel admin clicks bhi), approve claim conditional (double click = ek Fastrr call), refund initiate single attempt. Payment status: paid → refund_pending → partially_refunded / refunded. Completed → push + Shopify `refundCreate` (bookkeeping, `SHOP_SHOPIFY_RECORD_REFUNDS`).
+
+**Auto vs admin:** `SHOP_AUTO_REFUND` (default **false**) + `SHOP_AUTO_REFUND_MAX_RUPEES` (2000) — sirf system refunds (customer cancel, store cancel, duplicate payment) pe; admin-created / admin-cancel = approved. Baaki `requested` reh ke `[ALERT]` log (admin panel pe dikhega).
+
+**Triggers:** customer cancel, admin cancel, Shopify `orders/cancelled` (prepaid → refund request, pehle wala "refund due" flag hata), duplicate payment (doosre Fastrr order ka refund, order `paid` hi rehta, Shopify pe record nahi, push nahi).
+
+**Admin APIs** (`/api/shop/admin`, `protect + authorize('admin','superadmin')`): `POST /orders/:id/cancel`, `POST /orders/:id/refunds {amountPaise?, reason}` (partial allowed), `POST /orders/:id/refunds/:refundId/approve`, `/retry` (failed only), `/mark-paid {method, reference}` (requested/failed/unknown → manual complete), `POST /orders/:id/refunds/manual {amountPaise, method, reference}` (COD / out-of-band). Methods: `manual_upi | bank_transfer | store_credit | other`.
+
+**Cron:** reconciliation (*/10) ab refund report bhi sync karta hai (sirf jab open refunds hon; pagination).
+
+**Tests:** `tests/shopRefunds.test.js` (20) — cancel (prepaid/COD/shipped/Shopify refuse/disabled/in-progress/unsynced), approve double-click, report sync + Shopify record, auto on/off + limit, partial + parallel over-refund, timeout → unknown → adopted, failed → retry, manual COD refund, store cancel, duplicate payment, admin 403/404/503, cron. Mutation check: lock hatao / claim guard hatao / timeout = failed / Shopify refuse ignore → har ek pe test fail. Fake-Mongo bug mila + fix (positional `$` ek hi baar resolve hona chahiye — real Mongo jaisa). Staging DB E2E section 8 (real positional updates, real admin role).
+
+**Monday ko:** Fastrr keys → real refund test (staging test payment → cancel → approve → report). Fastrr se confirm: `order_id` platform id chalta hai (abhi wahi bhejte hain), partial refund, report status values (mapping: SUCCESS/COMPLETED/REFUNDED → completed, INITIATED → initiated, FAIL* → failed, baaki → processing). Management decisions → `SHOP_USER_CANCEL`, `SHOP_AUTO_REFUND`, `SHOP_AUTO_REFUND_MAX_RUPEES`. **Return / RTO** abhi nahi (post-launch).
 
 ---
 
@@ -407,6 +409,9 @@ Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi
 | `SHOP_APP_ORDERS_CARD_OFFER` | optional | `true` (management decision) |
 | `SHOP_ORDER_PUSH` | optional | `true` (confirmed / shipped / delivered / cancelled push) |
 | `SHOP_RESERVATION_MINUTES` | optional | 15 (stock hold, phir token expiry se bandha) |
+| `SHOP_USER_CANCEL` | optional | `true` — customer ship hone tak cancel kar sakta hai (MG1) |
+| `SHOP_AUTO_REFUND`, `SHOP_AUTO_REFUND_MAX_RUPEES` | optional | `false` / 2000 — off = har refund admin approve kare (MG6) |
+| `SHOP_SHOPIFY_RECORD_REFUNDS` | optional | `true` — completed refund Shopify order pe record |
 | `SHOPIFY_ADMIN_API_BASE_URL` | **tests / local only** | Shopify mock URL. Real environments mein **kabhi set mat karna** |
 
 ---
@@ -434,7 +439,8 @@ _(empty — Monday 2026-11-17 ke jawab yahan)_
 | 8 | **Render kis DB pe hai** (staging ya prod?) — Render dashboard → Environment (`USE_STAGING_DB`, `MONGODB_URI*`). Flutter dev wahi URL testing ke liye use karega | Aap |
 
 ### B. Monday (code side)
-- M4 ka bina-decision wala hissa: admin stuck-orders list, retry sync, alerts (tests ke saath). Auto-refund / user cancel flags ke peeche (default off).
+- ~~M4~~ ✅ done (2026-11-16): cancel + refunds, flags safe defaults. Next: **shop admin** (APIs + pages in `client/`) — stuck orders, retry sync, refunds UI, alerts, overview, products, carts, journey.
+- Local `server/.env` mein Fastrr placeholder block add hai (`FASTRR_API_KEY=` / `FASTRR_API_SECRET=` khaali) — Monday ko staging keys wahin bharni hain + Render env.
 - Fastrr keys aate hi: `scripts/shopStagingE2E.js` real Fastrr staging ke saath + phone pe UPI test.
 - Launch ke pehle din refunds **manual (Fastrr dashboard)** — orders kam honge, safe.
 

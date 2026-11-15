@@ -121,10 +121,13 @@ const unsetPath = (doc, path) => {
 };
 
 const applyUpdate = (doc, update, filter) => {
+    // Like MongoDB, "$" is resolved ONCE against the document as it was before
+    // the update — not re-evaluated after earlier fields of the same update changed it.
+    const before = clone(doc);
     for (const [op, fields] of Object.entries(update)) {
         if (!op.startsWith('$')) throw new Error('fakeMongo: replacement updates are not supported');
         for (const [rawPath, val] of Object.entries(fields)) {
-            const path = resolvePositional(doc, rawPath, filter);
+            const path = resolvePositional(before, rawPath, filter);
             switch (op) {
                 case '$set': setPath(doc, path, clone(val)); break;
                 case '$unset': unsetPath(doc, path); break;

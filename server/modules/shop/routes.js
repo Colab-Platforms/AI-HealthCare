@@ -4,7 +4,8 @@
 //
 //   Public (catalog)   GET  /products, /products/:handle, /collections
 //   Logged-in (cart)   GET/DELETE /cart, POST /cart/items, PATCH/DELETE /cart/items/:variantId
-//   Logged-in (orders) POST /checkout, GET /orders, GET /orders/:orderId
+//   Logged-in (orders) POST /checkout, GET /orders, GET /orders/:orderId, POST /orders/:orderId/cancel
+//   Admin              /admin/* (admin / superadmin role) — cancel + refunds (M4)
 //   WebView (signed)   GET  /checkout/:orderId/page, /checkout/:orderId/return
 //   Fastrr pull        GET  /fastrr/products, /fastrr/collections, /fastrr/collection-products
 //   Fastrr push        POST /fastrr/webhook
@@ -13,12 +14,13 @@
 const express = require('express');
 const router = express.Router();
 
-const { protect } = require('../../middleware/auth');
+const { protect, authorize } = require('../../middleware/auth');
 const { verifyQStash } = require('../../middleware/qstashAuth');
 const { apiLimiter, shopWriteLimiter, shopCheckoutLimiter, shopWebhookLimiter } = require('../../middleware/rateLimit');
 const catalog = require('./controllers/catalogController');
 const cart = require('./controllers/cartController');
 const checkout = require('./controllers/checkoutController');
+const admin = require('./controllers/shopAdminController');
 
 // Catalog
 router.get('/products', apiLimiter, catalog.listProducts);
@@ -46,6 +48,18 @@ router.get('/checkout/:orderId/page', apiLimiter, checkout.checkoutPage);
 router.get('/checkout/:orderId/return', apiLimiter, checkout.checkoutReturn);
 router.get('/orders', protect, apiLimiter, checkout.listOrders);
 router.get('/orders/:orderId', protect, apiLimiter, checkout.getOrder);
+router.post('/orders/:orderId/cancel', protect, shopWriteLimiter, checkout.cancelOrder);
+
+// Admin (M4 actions; read-only admin APIs are added in the admin phase)
+const adminRouter = express.Router();
+adminRouter.use(protect, authorize('admin', 'superadmin'));
+adminRouter.post('/orders/:orderId/cancel', admin.cancelOrder);
+adminRouter.post('/orders/:orderId/refunds', admin.createRefund);
+adminRouter.post('/orders/:orderId/refunds/manual', admin.markManualRefund);
+adminRouter.post('/orders/:orderId/refunds/:refundId/approve', admin.approveRefund);
+adminRouter.post('/orders/:orderId/refunds/:refundId/retry', admin.retryRefund);
+adminRouter.post('/orders/:orderId/refunds/:refundId/mark-paid', admin.markManualRefund);
+router.use('/admin', adminRouter);
 
 // Internal
 router.post('/internal/catalog-sync', verifyQStash, catalog.runCatalogSync);

@@ -2,6 +2,8 @@ const checkoutService = require('../services/checkoutService');
 const orderService = require('../services/orderService');
 const fastrrOrderService = require('../services/fastrrOrderService');
 const shopifyOrderSync = require('../services/shopifyOrderSyncService');
+const cancelService = require('../services/cancelService');
+const { toAppOrder } = require('../lib/orderView');
 const config = require('../config');
 const { sendError } = require('../lib/shopError');
 
@@ -43,6 +45,18 @@ exports.listOrders = async (req, res) => {
         res.json(await orderService.listOrders(req.user._id, { cursor: req.query.cursor, limit: req.query.limit }));
     } catch (err) {
         sendError(res, err, 'Shop/listOrders');
+    }
+};
+
+// POST /api/shop/orders/:orderId/cancel   { reason? }
+exports.cancelOrder = async (req, res) => {
+    try {
+        const order = await cancelService.cancelOrder({
+            orderId: req.params.orderId, userId: req.user._id, by: 'user', reason: req.body?.reason,
+        });
+        res.json(toAppOrder(order));
+    } catch (err) {
+        sendError(res, err, 'Shop/cancelOrder');
     }
 };
 

@@ -2,6 +2,7 @@
 // derived from the three internal status fields, plus the raw fields for detail.
 
 const { paiseToRupees } = require('./money');
+const config = require('../config');
 
 const money = (paise) => (paise === null || paise === undefined ? null : { paise, rupees: paiseToRupees(paise) });
 
@@ -72,8 +73,29 @@ const appAddress = (a) => (a ? {
     country: a.country || null,
 } : null);
 
+// Order-level refund summary for the app (duplicate-payment refunds are internal).
+const REFUND_IN_PROGRESS = new Set(['requested', 'initiating', 'initiated', 'processing', 'unknown']);
+const refundSummary = (o) => {
+    const list = (o.refunds || []).filter((r) => r.kind !== 'duplicate_payment' && r.status !== 'failed');
+    if (!list.length) return null;
+    const total = list.reduce((n, r) => n + r.amount, 0);
+    const inProgress = list.some((r) => REFUND_IN_PROGRESS.has(r.status));
+    const completed = list.filter((r) => r.status === 'completed');
+    return {
+        status: inProgress ? 'in_progress' : 'completed', // in_progress = initiated / waiting; completed = money returned
+        amount: money(total),
+        completedAt: !inProgress && completed.length ? completed.map((r) => r.completedAt).sort().pop() || null : null,
+    };
+};
+
+const canCancel = (o) => config.userCancelEnabled()
+    && ['paid', 'cod_pending'].includes(o.paymentStatus) && o.fulfillmentStatus === 'unfulfilled';
+
 const toAppOrder = (o) => ({
     ...toAppOrderSummary(o),
+    canCancel: canCancel(o),
+    cancelledAt: o.cancelledAt || null,
+    refund: refundSummary(o),
     paymentStatus: o.paymentStatus,
     fulfillmentStatus: o.fulfillmentStatus,
     items: (o.items || []).map(toAppItem),

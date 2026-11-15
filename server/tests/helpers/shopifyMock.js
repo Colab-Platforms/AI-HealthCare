@@ -59,6 +59,10 @@ const startShopifyMock = async ({ variants = {} } = {}) => {
             displayFinancialStatus: order.transactions?.length ? 'PAID' : (order.financialStatus || 'PENDING'),
             displayFulfillmentStatus: 'UNFULFILLED',
             fulfillments: [],
+            transactions: order.transactions?.length
+                ? [{ id: `gid://shopify/OrderTransaction/${id}1`, kind: 'SALE', status: 'SUCCESS', gateway: order.transactions[0].gateway, amountSet: { shopMoney: { amount: order.transactions[0].amountSet.shopMoney.amount } } }]
+                : [],
+            refunds: [],
             _variables: { order, options },
         };
         state.orders.push(node);
@@ -75,7 +79,8 @@ const startShopifyMock = async ({ variants = {} } = {}) => {
             if (req.headers['x-shopify-access-token'] !== TOKEN) return send(401, { errors: '[API] Invalid API key or access token' });
             if (!/\/admin\/api\/[^/]+\/graphql\.json$/.test(req.url)) return send(404, { errors: 'Not Found' });
             const { query = '', variables = {} } = JSON.parse(raw || '{}');
-            const op = query.includes('orderCreate(') ? 'create' : query.includes('orders(') ? 'search' : query.includes('order(') ? 'fetch' : 'other';
+            const op = query.includes('orderCancel(') ? 'cancel' : query.includes('refundCreate(') ? 'refund'
+                : query.includes('orderCreate(') ? 'create' : query.includes('orders(') ? 'search' : query.includes('order(') ? 'fetch' : 'other';
             state.calls.push({ op, variables });
 
             const forced = findNext(op);
@@ -94,6 +99,24 @@ const startShopifyMock = async ({ variants = {} } = {}) => {
                     const m = /tag:'([^']+)'/.exec(variables.q || '');
                     const nodes = m ? state.orders.filter((o) => o.tags.includes(m[1])) : [];
                     return send(200, { data: { orders: { nodes: nodes.slice(0, 5).map(publicNode) } } });
+                }
+                case 'cancel': {
+                    const o = state.orders.find((x) => x.id === variables.id);
+                    if (!o) return send(200, { data: { orderCancel: { job: null, orderCancelUserErrors: [{ field: ['orderId'], message: 'Order not found', code: 'NOT_FOUND' }] } } });
+                    if (o.cancelledAt) return send(200, { data: { orderCancel: { job: null, orderCancelUserErrors: [{ field: ['orderId'], message: 'Order is already cancelled', code: 'INVALID' }] } } });
+                    if (o.displayFulfillmentStatus !== 'UNFULFILLED') return send(200, { data: { orderCancel: { job: null, orderCancelUserErrors: [{ field: ['orderId'], message: 'Cannot cancel a fulfilled order', code: 'INVALID' }] } } });
+                    o.cancelledAt = new Date().toISOString();
+                    o._cancel = { reason: variables.reason, note: variables.note };
+                    for (const li of o._variables.order.lineItems) state.inventory[legacy(li.variantId)] += li.quantity; // restock: true
+                    return send(200, { data: { orderCancel: { job: { id: 'gid://shopify/Job/1', done: false }, orderCancelUserErrors: [] } } });
+                }
+                case 'refund': {
+                    const { input } = variables;
+                    const o = state.orders.find((x) => x.id === input.orderId);
+                    const t = input.transactions?.[0];
+                    if (!o || !t || !o.transactions.some((x) => x.id === t.parentId)) return send(200, { data: { refundCreate: { refund: null, userErrors: [{ field: ['transactions'], message: 'Invalid parent transaction' }] } } });
+                    o.refunds.push({ amount: t.amount, gateway: t.gateway, note: input.note });
+                    return send(200, { data: { refundCreate: { refund: { id: `gid://shopify/Refund/${o.refunds.length}` }, userErrors: [] } } });
                 }
                 case 'fetch': {
                     const o = state.orders.find((x) => x.id === variables.id);

@@ -80,6 +80,7 @@ const startFastrrMock = async () => {
         orders: new Map(),  // fastrr order id -> details result
         next: [],           // queued overrides: { path, status, body, delayMs }
         tokenSeq: 0,
+        refunds: [],        // refunds Fastrr has accepted (report source)
         tokenTtlMs: 30 * 60 * 1000,
     };
 
@@ -121,6 +122,26 @@ const startFastrrMock = async () => {
                     if (!o) return send(200, { ok: false, error: { message: 'order not found' } });
                     return send(200, { ok: true, result: o });
                 }
+                case '/api/v1/external/refund/initiate': {
+                    const o = state.orders.get(String(body?.order_id));
+                    if (!o || o.status !== 'SUCCESS') return send(200, { status: false, message: 'Order not eligible for refund' });
+                    const already = state.refunds.filter((r) => r.platform_order_id === o.order_id).reduce((n, r) => n + r.refund_amount, 0);
+                    if (Number(body.amount) <= 0 || already + Number(body.amount) > Number(o.total_amount_payable) + 0.001) {
+                        return send(200, { status: false, message: 'Refund amount exceeds order amount' });
+                    }
+                    const id = crypto.randomUUID();
+                    state.refunds.push({
+                        ref_id: id, payment_platform: 'Razorpay', amount: Number(body.amount), status: 'INITIATED', refunded: false,
+                        message: 'Refund Request Queued', order_id: Number(o.fastrr_order_id), platform_order_id: o.order_id,
+                        refund_amount: Number(body.amount), refund_type: 'FULL', created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+                    });
+                    return send(200, { status: true, data: { success: true, data: { id, transaction_id: 'Rfnd' + state.refunds.length, amount: Number(body.amount), status: 'INITIATED', message: 'Refund Request Queued' } } });
+                }
+                case '/api/v1/external/refund/reports': {
+                    const list = state.refunds.map(({ platform_order_id, ...r }) => r);
+                    const page = Number(body?.page || 0);
+                    return send(200, { status: true, data: { total_refunds: list.length, refunds: list.slice(page * 2, page * 2 + 2) } });
+                }
                 case '/wh/v1/custom/product':
                 case '/wh/v1/custom/collection':
                     return send(200, { ok: true, errorCode: null, result: true });
@@ -136,7 +157,13 @@ const startFastrrMock = async () => {
         baseUrl,
         state,
         callsTo: (path) => state.calls.filter((c) => c.path === path),
-        reset: () => { state.calls.length = 0; state.orders.clear(); state.next.length = 0; state.tokenSeq = 0; state.tokenTtlMs = 30 * 60 * 1000; },
+        /** Fastrr's side finishes a refund (shows up in the next report). */
+        settleRefund: (refId, status = 'SUCCESS') => {
+            const r = state.refunds.find((x) => x.ref_id === refId);
+            r.status = status; r.refunded = status === 'SUCCESS'; r.updated_at = new Date().toISOString();
+            return r;
+        },
+        reset: () => { state.calls.length = 0; state.orders.clear(); state.next.length = 0; state.tokenSeq = 0; state.tokenTtlMs = 30 * 60 * 1000; state.refunds.length = 0; },
         close: () => new Promise((r) => server.close(r)),
     };
 };

@@ -1,8 +1,8 @@
 # take.health Shop — API & Integration Guide for the Flutter App
 
 **For:** Flutter developer building the in-app shop
-**Backend status:** Catalog, cart, checkout (Fastrr), orders, Shopify order creation, shipping updates — built and tested (M1–M3). Refunds / cancel by user are **not** built yet (see §12).
-**Last updated:** 15 Nov 2026
+**Backend status:** Catalog, cart, checkout (Fastrr), orders, Shopify order creation, shipping updates, **order cancel + refunds** — built and tested (M1–M4). Returns / exchanges are not built yet (see §12).
+**Last updated:** 16 Nov 2026 (added: cancel order, refund info, refund pushes)
 
 All response examples below are **real responses** captured from the backend while running the test journey (only the product/order ids are from test data).
 
@@ -81,7 +81,7 @@ Cart writes 60/min, checkout 20/min, reads 200/min. Over the limit → `429 { "c
 | 4 | **Payment (WebView container only)** — shows Fastrr's own checkout page; Flutter adds just the top bar + ✕ and the URL handling | opens `checkoutPageUrl` (see §6) |
 | 5 | **Order result** — "Checking payment…" → success / failed / expired | `GET /orders/:orderId` (polling, §7) |
 | 6 | **My Orders** — list of placed orders | `GET /orders` |
-| 7 | **Order detail** — items, price breakdown, address, status, tracking | `GET /orders/:orderId` |
+| 7 | **Order detail** — items, price breakdown, address, status, tracking, refund info, **Cancel order** button (only when `canCancel`) | `GET /orders/:orderId`, `POST /orders/:orderId/cancel` |
 
 App-level:
 - **Cart badge** (icon in app bar) = `summary.itemCount` from any cart response.
@@ -426,6 +426,8 @@ After the warehouse ships (`status: "shipped"`), `tracking` is filled:
 "tracking": { "number": "AWB123", "url": "https://track/AWB123", "courier": "Delhivery" }
 ```
 
+Note: the full example above was captured before cancel/refunds were added — every order response now **also** has `canCancel`, `cancelledAt` and `refund` (see the table and the example below).
+
 → show courier + AWB and a **Track** button that opens `tracking.url` in the browser. After delivery: `"status": "delivered"`, `"deliveredAt": "2026-11-20T10:00:00.000Z"`.
 
 | Field | Notes |
@@ -435,8 +437,47 @@ After the warehouse ships (`status: "shipped"`), `tracking` is filled:
 | `shippingAddress` | `null` until payment is done (address is entered on Fastrr's page). |
 | `expectedDelivery` | `YYYY-MM-DD` or `null`. |
 | `tracking` | `null` until shipped. |
+| `canCancel` | `true` → show the **Cancel order** button (placed and not shipped yet). |
+| `cancelledAt` | When it was cancelled, or `null`. |
+| `refund` | `null`, or an object: `status` (`in_progress` or `completed`), `amount` (money), `completedAt` → show "Refund of ₹X initiated — reaches your account in 5–7 working days" / "₹X refunded on <date>". |
+
+Example after the customer cancelled a prepaid order (from the M4 tests):
+
+```json
+{
+  "orderId": "TH-261116-27QE52FB",
+  "status": "refund_initiated",
+  "canCancel": false,
+  "cancelledAt": "2026-11-16T09:12:40.118Z",
+  "refund": { "status": "in_progress", "amount": { "paise": 299800, "rupees": 2998 }, "completedAt": null },
+  "paymentStatus": "refund_pending",
+  "fulfillmentStatus": "cancelled"
+}
+```
 
 Errors: `404 ORDER_NOT_FOUND` (wrong id, or another user's order).
+
+### 4.8 `POST /orders/:orderId/cancel` — cancel an order (login required)
+
+Show the button only when the order has `canCancel: true`, and ask for confirmation first ("Cancel this order? Your refund will be started.").
+
+**Body (optional):**
+
+```json
+{ "reason": "Ordered by mistake" }
+```
+
+**Response `200`:** the full updated order (same shape as §4.7), e.g. `status: "refund_initiated"` with a `refund` object for prepaid orders, or `status: "cancelled"` for COD (nothing to refund).
+
+What happens: the order is cancelled with the warehouse (Shopify) first; if that works, the order is cancelled and — for prepaid — the refund is started (it may need a quick approval by the team before the money moves; the app just shows "refund initiated"). Pushes: `cancelled`, then `refund_initiated` and later `refunded` (§10).
+
+| HTTP | `code` | Meaning → what to show |
+|---|---|---|
+| 409 | `CANCEL_NOT_ALLOWED` | Already shipped / already cancelled → "This order can't be cancelled any more" + refresh the order |
+| 409 | `CANCEL_IN_PROGRESS` | Order is being handed to the warehouse right now → "Please try again in a minute" (`retryAfterMs`) |
+| 403 | `CANCEL_DISABLED` | Cancelling from the app is switched off → "Please contact support" |
+| 502 | `SHOPIFY_CANCEL_FAILED` | Couldn't cancel with the warehouse → "Couldn't cancel right now, please try again or contact support" (nothing was changed) |
+| 404 | `ORDER_NOT_FOUND` | Wrong id / not this user's order |
 
 ---
 
@@ -670,6 +711,10 @@ My Orders only shows `confirmed` and later. Map unknown future values to a neutr
 | 502 | `CHECKOUT_PROVIDER_ERROR` | checkout | "Couldn't start checkout. Try again." (`retryable: true`, same key) |
 | 503 | `CHECKOUT_UNAVAILABLE` | checkout | "Checkout is temporarily unavailable" — hide/disable Checkout |
 | 404 | `ORDER_NOT_FOUND` | orders | "Order not found" |
+| 409 | `CANCEL_NOT_ALLOWED` | cancel | Already shipped / cancelled — refresh the order |
+| 409 | `CANCEL_IN_PROGRESS` | cancel | Retry after `retryAfterMs` |
+| 403 | `CANCEL_DISABLED` | cancel | "Please contact support" |
+| 502 | `SHOPIFY_CANCEL_FAILED` | cancel | "Try again or contact support" (nothing changed) |
 | 429 | `RATE_LIMITED` | any | Back off a few seconds |
 | 500 | `INTERNAL_ERROR` | any | Generic "Something went wrong" |
 | 401 | (no `code`) | protected APIs | Normal app auth handling |
@@ -692,6 +737,8 @@ Sent through the app's existing FCM setup (the app already registers its FCM tok
 | `shipped` | "Your order is on the way" — "TH-… has shipped with Delhivery." |
 | `delivered` | "Order delivered" |
 | `cancelled` | "Order cancelled" |
+| `refund_initiated` | "Refund initiated" — "Refund of ₹X for TH-… has started. It usually reaches your account in 5–7 working days." |
+| `refunded` | "Refund completed" — "₹X for TH-… has been refunded." |
 
 On tap (and on receive while the app is open): if `type == "shop_order"` → open **Order detail** for `orderId` (and refresh it if it's already open). Each event is sent once per order.
 
@@ -713,7 +760,7 @@ On tap (and on receive while the app is open): if `type == "shop_order"` → ope
 - [ ] Payment WebView: UPI intent handling, return/deep-link interception, close confirmation
 - [ ] Order result: polling (3 s, max 60 s) + success / failed / expired / still-checking states
 - [ ] My Orders: list + pagination
-- [ ] Order detail: items, price breakdown, address, status chip, tracking + Track button
+- [ ] Order detail: items, price breakdown, address, status chip, tracking + Track button, refund info, **Cancel order** (only if `canCancel`, with confirmation) → `POST /orders/:orderId/cancel`
 - [ ] Cart badge from `summary.itemCount`
 
 **Logic**
@@ -736,7 +783,7 @@ On tap (and on receive while the app is open): if `type == "shop_order"` → ope
 
 Don't build UI for these yet (backend work pending):
 
-- Cancel order by the user, return / exchange, refund status details (only the status values in §8 exist)
+- Return / exchange after delivery (policy pending)
 - Invoice download (invoices come from the store's Shopify/warehouse system)
 - Saved addresses in the app (Fastrr's page remembers addresses by phone number — to be confirmed)
 - Coupons in the app (applied on Fastrr's page)

@@ -57,6 +57,62 @@ const createOrder = async ({ order, options }) => {
 };
 
 /**
+ * Cancel the Shopify order (M4). Restocks the items; no customer email (the
+ * app notifies); no refund here — the money goes back through Fastrr and is
+ * recorded separately with recordRefund(). Shopify runs the cancel as a job.
+ * @returns {Promise<{ userErrors: Array }>}
+ */
+const cancelOrder = async (shopifyOrderId, { reason = 'CUSTOMER', staffNote = '' } = {}) => {
+    const data = await graphql(
+        `mutation ($id: ID!, $reason: OrderCancelReason!, $note: String) {
+           orderCancel(orderId: $id, restock: true, reason: $reason, notifyCustomer: false, staffNote: $note) {
+             job { id done }
+             orderCancelUserErrors { field message code }
+           }
+         }`,
+        { id: toGid(shopifyOrderId), reason, note: staffNote }
+    );
+    return { userErrors: data.orderCancel?.orderCancelUserErrors || [] };
+};
+
+/** The order's successful SALE transaction (parent for a refund record). */
+const fetchSaleTransaction = async (shopifyOrderId) => {
+    const data = await graphql(
+        `query ($id: ID!) { order(id: $id) { transactions(first: 20) { id kind status gateway amountSet { shopMoney { amount } } } } }`,
+        { id: toGid(shopifyOrderId) }
+    );
+    return (data.order?.transactions || []).find((t) => t.kind === 'SALE' && t.status === 'SUCCESS') || null;
+};
+
+/**
+ * Record a refund that already happened through Fastrr (bookkeeping: Shopify
+ * shows the order as refunded; no money moves — the sale's gateway is external).
+ * @returns {Promise<{ refundId: string|null, userErrors: Array, skipped?: string }>}
+ */
+const recordRefund = async ({ shopifyOrderId, amountPaise, note }) => {
+    const sale = await fetchSaleTransaction(shopifyOrderId);
+    if (!sale) return { refundId: null, userErrors: [], skipped: 'no sale transaction' };
+    const data = await graphql(
+        `mutation ($input: RefundInput!) { refundCreate(input: $input) { refund { id } userErrors { field message } } }`,
+        {
+            input: {
+                orderId: toGid(shopifyOrderId),
+                note,
+                notify: false,
+                transactions: [{
+                    orderId: toGid(shopifyOrderId),
+                    parentId: sale.id,
+                    amount: (amountPaise / 100).toFixed(2),
+                    gateway: sale.gateway,
+                    kind: 'REFUND',
+                }],
+            },
+        }
+    );
+    return { refundId: data.refundCreate?.refund?.id || null, userErrors: data.refundCreate?.userErrors || [] };
+};
+
+/**
  * Worth retrying? Network errors, timeouts, 5xx and throttling yes. Bad token /
  * missing scope / bad request no — those need a human.
  */
@@ -70,4 +126,4 @@ const isTransient = (err) => {
     return codes.some((c) => c === 'THROTTLED' || c === 'INTERNAL_SERVER_ERROR');
 };
 
-module.exports = { findOrderByTag, fetchOrder, createOrder, isTransient, toGid };
+module.exports = { findOrderByTag, fetchOrder, createOrder, cancelOrder, fetchSaleTransaction, recordRefund, isTransient, toGid };

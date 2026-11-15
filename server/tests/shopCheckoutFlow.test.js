@@ -40,9 +40,10 @@ require.cache[authPath] = {
         protect: (req, res, next) => {
             const id = (req.headers.authorization || '').replace(/^Bearer /, '');
             if (!mongoose.isValidObjectId(id)) return res.status(401).json({ message: 'Not authorized' });
-            req.user = { _id: new mongoose.Types.ObjectId(id) };
+            req.user = { _id: new mongoose.Types.ObjectId(id), role: req.headers['x-test-role'] || 'user' };
             next();
         },
+        authorize: (...roles) => (req, res, next) => (roles.includes(req.user?.role) ? next() : res.status(403).json({ message: 'Not authorized for this action' })),
     },
 };
 
