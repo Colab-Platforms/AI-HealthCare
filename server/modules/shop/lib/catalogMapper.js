@@ -3,6 +3,7 @@
 //   our Product document       -> app response / Fastrr catalog-API response
 
 const { toPaise, paiseToDecimalString, paiseToRupees } = require('./money');
+const config = require('../config');
 
 const STATUS_MAP = { ACTIVE: 'active', DRAFT: 'draft', ARCHIVED: 'archived' };
 
@@ -85,11 +86,29 @@ const availableQty = (product, variant) => {
     return Math.max(0, variant.inventoryQty || 0);
 };
 
-const isPurchasable = (product, variant) => availableQty(product, variant) > 0;
+// A "Subscribe" variant (title or any option value mentions subscribe /
+// subscription) is not sold while SHOP_HIDE_SUBSCRIBE_VARIANTS is on: our
+// checkout has no recurring billing. Hidden everywhere — app list/detail, cart,
+// checkout and the Fastrr feed.
+const SUBSCRIBE_RE = /subscri/i;
+const isHiddenVariant = (variant) => {
+    if (!variant || !config.hideSubscribeVariants()) return false;
+    if (SUBSCRIBE_RE.test(variant.title || '')) return true;
+    return (variant.options || []).some((o) => SUBSCRIBE_RE.test(o?.value || ''));
+};
+
+const visibleVariants = (product) => (product?.variants || []).filter((v) => !isHiddenVariant(v));
+
+const isPurchasable = (product, variant) => !isHiddenVariant(variant) && availableQty(product, variant) > 0;
 
 // ── App responses ───────────────────────────────────────────────────────────
 
 const money = (paise) => ({ paise, rupees: paiseToRupees(paise) });
+
+const minVisiblePrice = (p) => {
+    const prices = visibleVariants(p).map((v) => v.price).filter((n) => Number.isFinite(n));
+    return prices.length ? Math.min(...prices) : null;
+};
 
 const toAppVariant = (product, v) => ({
     id: v.shopifyVariantId,
@@ -107,27 +126,30 @@ const toAppProductSummary = (p) => ({
     handle: p.handle,
     title: p.title,
     imageUrl: p.images?.[0]?.url || null,
-    minPrice: money(p.minPrice),
-    inStock: (p.variants || []).some((v) => isPurchasable(p, v)),
+    // Computed, not the stored minPrice: that one may be a hidden (subscribe) variant.
+    // null when nothing is sellable.
+    minPrice: minVisiblePrice(p) === null ? null : money(minVisiblePrice(p)),
+    inStock: visibleVariants(p).some((v) => isPurchasable(p, v)),
 });
 
 const toAppProductDetail = (p) => ({
     ...toAppProductSummary(p),
-    descriptionHtml: p.descriptionHtml,
-    vendor: p.vendor,
-    productType: p.productType,
-    tags: p.tags,
-    images: p.images,
+    // Always present (never undefined) so the app's typed models can rely on the keys.
+    descriptionHtml: p.descriptionHtml || '',
+    vendor: p.vendor || '',
+    productType: p.productType || '',
+    tags: p.tags || [],
+    images: p.images || [],
     collections: (p.collections || []).map((c) => ({ id: c.shopifyCollectionId, handle: c.handle, title: c.title })),
-    variants: (p.variants || []).map((v) => toAppVariant(p, v)),
+    variants: visibleVariants(p).map((v) => toAppVariant(p, v)),
 });
 
 const toAppCollection = (c) => ({
     id: c.shopifyCollectionId,
     handle: c.handle,
     title: c.title,
-    descriptionHtml: c.descriptionHtml,
-    imageUrl: c.imageUrl,
+    descriptionHtml: c.descriptionHtml || '',
+    imageUrl: c.imageUrl || null,
 });
 
 // ── Fastrr catalog-API responses (shape from Fastrr's "SRC Custom Integration" docs) ──
@@ -141,6 +163,21 @@ const iso = (d) => (d ? new Date(d).toISOString() : null);
 // make Fastrr treat it as out of stock).
 const UNLIMITED_QTY_FOR_FASTRR = 9999;
 
+// Fastrr's product shape has a top-level options list: [{ name, values[] }],
+// built from the variants it can sell (order of first appearance kept).
+const fastrrOptions = (variants) => {
+    const byName = new Map();
+    for (const v of variants) {
+        for (const o of v.options || []) {
+            if (!o?.name) continue;
+            if (!byName.has(o.name)) byName.set(o.name, []);
+            const values = byName.get(o.name);
+            if (!values.includes(o.value)) values.push(o.value);
+        }
+    }
+    return [...byName].map(([name, values]) => ({ name, values }));
+};
+
 const toFastrrProduct = (p) => ({
     id: Number(p.shopifyProductId),
     title: p.title,
@@ -152,7 +189,7 @@ const toFastrrProduct = (p) => ({
     updated_at: iso(p.shopifyUpdatedAt),
     tags: (p.tags || []).join(', '),
     status: p.status === 'active' ? 'active' : 'draft',
-    variants: (p.variants || []).map((v) => {
+    variants: visibleVariants(p).map((v) => {
         const qty = availableQty(p, v);
         return {
             id: Number(v.shopifyVariantId),
@@ -172,6 +209,7 @@ const toFastrrProduct = (p) => ({
         };
     }),
     image: p.images?.[0]?.url ? { src: p.images[0].url } : null,
+    options: fastrrOptions(visibleVariants(p)),
 });
 
 const toFastrrCollection = (c) => ({
@@ -189,6 +227,8 @@ module.exports = {
     mapShopifyCollection,
     availableQty,
     isPurchasable,
+    isHiddenVariant,
+    visibleVariants,
     toAppProductSummary,
     toAppProductDetail,
     toAppCollection,

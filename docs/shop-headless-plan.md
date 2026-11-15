@@ -3,7 +3,7 @@
 > **Single source of truth for the in-app shop.** Kisi bhi laptop se kaam shuru karo toh pehle ye file padho.
 > Purani files `fastrr-shiprocket-checkout-integration-plan.md` aur `fastrr-integration-reference-and-test-plan.md` OUTDATED hain (wo purane `fastrrRoutes.js` ke liye thi, jo delete ho chuka hai).
 >
-> Last updated: 2026-11-14 · Branch: `Staging`
+> Last updated: 2026-11-15 (M2 code + tests done) · Branch: `Staging`
 
 ---
 
@@ -13,7 +13,8 @@
 2. `cd server && npm install`
 3. `server/.env` git mein NAHI hota. Office laptop se ye values copy karo (password manager / secure chat se, public jagah nahi):
    `MONGODB_URI`, `MONGODB_URI_STAGING`, `JWT_SECRET`, `SHOPIFY_ADMIN_STORE_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_API_VERSION`, `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET`, Redis, QStash (`QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`), aur baaki jo office `.env` mein hai.
-4. Check: `node scripts/shopCatalogSync.js --preview` (sirf read, DB nahi chhoota) aur `node --test tests/shopCatalog.test.js tests/shopCartAndOrder.test.js`.
+4. Check: `node scripts/shopCatalogSync.js --preview` (sirf read, DB nahi chhoota) aur
+   `node --test tests/shopCatalog.test.js tests/shopCartAndOrder.test.js tests/shopCheckoutLogic.test.js tests/shopFastrrClient.test.js tests/shopCheckoutFlow.test.js` (88 tests, DB/Fastrr ki zarurat nahi).
 5. Claude ko bolo: **"docs/shop-headless-plan.md padho aur wahan se continue karo"**. Claude ki memory laptop-specific hai, isliye saara context isi file mein hai.
 
 ---
@@ -30,7 +31,7 @@
 | Payment | **COD + Prepaid** dono |
 | Cart | **Server cart** (DB mein) — multi-device, price/stock server-side check |
 | Code location | `server/modules/shop/` (mounted at `/api/shop`) |
-| Subscribe variants | **Pending decision** — recommendation (a): app mein chhupao + checkout pe reject (env flag `SHOP_HIDE_SUBSCRIBE_VARIANTS`). Dekho §8 |
+| Subscribe variants | **Implemented as (a)**, flag `SHOP_HIDE_SUBSCRIBE_VARIANTS` **default `true`** (chhupe hue). Management "b" chahe toh flag `false`. Dekho §8 |
 
 ---
 
@@ -73,7 +74,7 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 | Milestone | Kya | Status |
 |---|---|---|
 | **M1** | Catalog sync + catalog APIs + Fastrr catalog pull + server cart + Order model/state machine | ✅ Code done, staging pe test pass. **Prod deploy/scripts baaki**, M1 gaps §7 |
-| **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ⏳ Next. 80% bina Fastrr keys ke ban sakta hai |
+| **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
 | **M3** | Shopify order create (QStash, idempotent via tag lookup), fulfilment/refund/paid webhooks, My Orders APIs, FCM notifications | ⏳ Needs Shopify token with `write_orders` + protected customer data access |
 | **M4** | Refunds (Fastrr Refund API + Refund Report cron), admin view, alerts | ⏳ |
 
@@ -187,14 +188,14 @@ Berberine variants (price paise): 1 pack One-Time `57199514222897` ₹1499 · 1 
 
 | # | Gap | Owner / Action |
 |---|---|---|
-| 1 | **Code commit/push nahi hua tha** (2026-11-14 tak) | Commit + push (see §12) |
+| 1 | ~~Code commit/push nahi hua tha~~ M1 commit `82ebe81` mein hai. **M2 abhi uncommitted** (2026-11-15) | Review ke baad commit + push |
 | 2 | Prod deploy + prod sync + webhooks register + QStash schedule | Deploy ke baad scripts (§4 Scripts) |
-| 3 | **Subscribe variants** filter (decision pending) | §8 — decision ke baad `SHOP_HIDE_SUBSCRIBE_VARIANTS` flag: list/detail/cart/checkout/Fastrr feed se hatao, `minPrice` recalc |
+| 3 | ~~Subscribe variants filter~~ ✅ done (M2): list/detail/cart/checkout/Fastrr feed se hidden, `minPrice` visible variants se | Management confirm kare (§8) |
 | 4 | **Product weight 0** saare variants pe → Fastrr shipping galat | Shopify dev weights daale |
 | 5 | **`descriptionHtml` khaali** | Shopify dev se poochho description kahan hai (metafields/theme) → query mein add |
 | 6 | **HSN code / GST rate** product pe nahi hai (Order items mein field hai, source nahi) | Shopify metafield ya config map decide karo — invoice/M3 se pehle |
-| 7 | `.env.example` mein Fastrr block ka comment purana (`/shiprocket/products`, `/api/checkout/start`) | M2 mein update |
-| 8 | Fastrr collections/collection-products, price-change, out-of-stock paths E2E test nahi | M2 testing ke saath |
+| 7 | ~~`.env.example` Fastrr block purana~~ ✅ updated (M2) | — |
+| 8 | Price-change + out-of-stock paths ab tests mein covered. Fastrr collections/collection-products endpoints real staging pe abhi bhi untested | Staging E2E (§9a) |
 | 9 | Desktop CSV (`Shop-Backend-Steps.csv`): Step 1 → Done, Step 22 se "(if Fastrr does not do it)" hatana | Excel band karke update |
 | 10 | Local `exceljs` install nahi (unrelated, `/api/creator` load fail locally) | `npm install` |
 | 11 | Variant > 20 per product → truncation warning (abhi max 6) | Monitor; zarurat pe `VARIANTS_PER_PRODUCT` badhao |
@@ -229,6 +230,69 @@ Berberine variants (price paise): 1 pack One-Time `57199514222897` ₹1499 · 1 
 | 7 | Catalog push | Product refresh ke baad Fastrr `https://checkout-api.shiprocket.com/wh/v1/custom/product` aur `/collection` pe signed push | No |
 | 8 | Tests | Fastrr mock ke saath | No |
 | — | Real E2E on staging | token, page, test payment, webhook | **Yes** |
+
+### 9a. M2 — kya bana (2026-11-15)
+
+**Files** (`server/modules/shop/`)
+| File | Kaam |
+|---|---|
+| `services/fastrrClient.js` | Signed POST (`X-Api-Key` + base64 HMAC of exact raw body, fresh `timestamp`), timeout, retry on network/429/5xx. **Token create timeout pe retry NAHI** (Fastrr order ban chuka ho sakta hai). 511 = auth error. `createCheckoutToken`, `getOrderDetails`, `listOrders`, `pushProduct`, `pushCollection` |
+| `services/checkoutService.js` | `startCheckout` (idempotent), `ensureToken` (token lease), `checkoutPage`, `checkoutReturn` |
+| `services/fastrrOrderService.js` | **Ek hi path** Fastrr → humara Order: `syncOrder` (fetch-back + apply), `handleWebhook`, `syncPendingThrottled` (poll/return), `reconcile` (cron) |
+| `services/orderService.js` | My Orders list (sirf placed orders, cursor) + detail (pending pe throttled Fastrr check) |
+| `lib/checkoutLogic.js` | `TH-YYMMDD-XXXXXXXX` ids, idempotency key format, `cartHash`, Fastrr token payload, signed page links |
+| `lib/fastrrOrderMapper.js` | Fastrr details → `paid`/`cod_pending`/`failed`/`pending`, address/pricing/payment mapping (paise), sanity checks |
+| `lib/orderView.js` | App ke liye ek `status` + order shape (token/review/user kabhi nahi bhejte) |
+| `lib/checkoutPage.js` | WebView HTML (escaped; token `<script>` se break-out nahi kar sakta) |
+| `controllers/checkoutController.js` | Thin controllers; page pe `no-store`, `no-referrer` |
+
+**APIs** (`/api/shop`)
+| Method + Path | Auth | Kaam |
+|---|---|---|
+| `POST /checkout` header `Idempotency-Key` (8–128 chars; body `idempotencyKey` bhi chalega) | protect, 20/min/user | → `{orderId, status, amount, itemCount, checkoutPageUrl, expiresAt}` |
+| `GET /checkout/:orderId/page?exp=&sig=` | signed link (HMAC, 2h) | WebView: Fastrr JS load + `HeadlessCheckout.addToCart(evt, token, {fallbackUrl, isInitiatedFromApp:true})`. Token expire → same order pe naya token |
+| `GET /checkout/:orderId/return?oid=&ost=` | public | Fastrr `redirect_url`. `ost` pe trust nahi — Fastrr se check karke **humara** status deep link mein |
+| `GET /orders?cursor=&limit=` | protect | My Orders (pending/failed/expired checkouts nahi dikhte) |
+| `GET /orders/:orderId` | protect (owner only) | Detail; pending ho toh Fastrr check max 1 baar / 10s |
+| `POST /fastrr/webhook` | public, 300/min/IP | Sirf `order_id` → fetch-back. Garbage → 400, unknown → 200, Fastrr down → 500 (retry) |
+| `POST /internal/reconcile-orders` | QStash signature | Har 10 min |
+
+**Error codes (app ke liye, `{code, message, ...}`)**: `IDEMPOTENCY_KEY_REQUIRED` 400 · `CART_EMPTY` 400 · `CART_HAS_ISSUES` 409 (+`cart`) · `PRICE_CHANGED` 409 (+`cart`; naya price dikhao, **naye key** se dobara) · `IDEMPOTENCY_KEY_REUSED` 409 · `ORDER_ALREADY_PLACED` 409 (+`orderId`) · `CHECKOUT_CLOSED` 409 (expired/failed → naye key se) · `CHECKOUT_IN_PROGRESS` 409 (+`retryAfterMs`, same key se retry) · `CHECKOUT_PROVIDER_ERROR` 502 (same key se retry) · `CHECKOUT_UNAVAILABLE` 503 · `ORDER_NOT_FOUND` 404.
+
+**App `status` values**: `awaiting_payment`, `payment_failed`, `expired`, `confirmed`, `shipped`, `delivered`, `returned`, `cancelled`, `refund_initiated`, `partially_refunded`, `refunded`.
+
+**Flutter flow (Flutter team ko dena)**: checkout tap pe ek UUID key banao → `POST /checkout` → `checkoutPageUrl` WebView mein kholo → WebView navigation mein `/api/shop/checkout/*/return` ya `takehealth://shop/order/...` aaye toh WebView band → `GET /orders/:orderId` har 2–3s poll jab tak `awaiting_payment` (max ~60s, phir "we'll update you"). Same key sirf retry ke liye; naya attempt = naya key.
+
+**Design rules jo code mein enforce hain**
+- Order DB mein **pehle** (`pending`, price snapshot), Fastrr call baad mein. Fastrr fail → order rehta hai, same key se retry same order use karta hai.
+- **Token lease** (`tokenLeaseUntil`, 20s): ek order ke liye ek time pe ek hi request Fastrr token maangti hai → double tap = 1 order, 1 Fastrr session.
+- Naya token = naya Fastrr order id → saare ids `fastrrOrderIds[]` mein, late webhook bhi match hota hai. Do Fastrr orders dono paid → pehla jeetta, doosra `review.reasons: DUPLICATE_PAYMENT:<id>` (refund karna hai).
+- Purane token ka FAILED naye live token wale order ko fail nahi karta.
+- Confirmed (paid/COD) pe: sirf kharide gaye cart lines hatte hain (baad mein add kiye items rehte hain), `shopifySyncStatus → pending` (M3 isse uthayega).
+- Sanity check fail (subtotal ≠ humara amount, items alag, received ≠ payable) → payment record hota hai par `review.needed` + `shopifySyncStatus: needs_attention` → **Shopify order auto nahi banega**.
+- Cron: `pending` > 15 min → Fastrr check; token expiry + 10 min (ya tokenless 30 min) → `expired`. Expire update ke andar hi token/lease dobara check (race-safe). `expired` 6h tak recheck (late payment rescue). 48h se purane chhod deta hai. Confirmed par Shopify sync `not_started` wale repair.
+- Catalog push: Shopify product/collection webhook ke baad Fastrr ko push (3s, 1 attempt, fail → sirf log). Fastrr feed mein ab top-level `options` bhi hai.
+
+**Order model mein naye fields**: `items[].variantTitle/imageUrl`, `pricing.prepaidDiscount`, `payment{gateway,method,txnId,pgTransactionId,amountReceived}`, `placedAt`, `edd`, `review{needed,reasons,flaggedAt}`, `fastrrOrderIds[]` (index), `paidFastrrOrderId`, `tokenLeaseUntil`, `fastrrCheckedAt`. State machine: `shopifySyncStatus not_started → needs_attention` allowed.
+
+**Other changes**: `server.js` CORS `allowedHeaders` mein `Idempotency-Key`; `rateLimit.js` mein `shopCheckoutLimiter`, `shopWebhookLimiter`; `registerShopCatalogSchedule.js` ab dono schedules banata hai (catalog 03:30 IST + reconciliation */10).
+
+**Tests** (`server/tests/`, sab offline):
+- `shopCheckoutLogic.test.js` (17): ids, key, cartHash, payload, signed links, Fastrr status matrix, sanity checks, mapping, order view, HTML escaping, subscribe hiding, Fastrr `options`.
+- `shopFastrrClient.test.js` (13): local mock Fastrr jo HMAC verify karta hai — signing, 511, 5xx/429 retry, 4xx no-retry, token-timeout no-retry, network, not-configured, catalog push.
+- `shopCheckoutFlow.test.js` (39): asli services + asli `routes.js` (sirf `protect` stub), in-memory Mongo fake (`tests/helpers/fakeMongo.js`, unique indexes + Mongoose defaults) + mock Fastrr (`tests/helpers/fastrrMock.js`). Idempotency, double tap, price change, Fastrr down, token refresh, forged webhook, duplicate webhook, COD, mismatch, failed→paid, duplicate payment, stale failure, webhook+poll+cron race, reconcile (7 cases), poll throttle/ownership, list paging, page/return, catalog push, HTTP contract.
+- Mutation check kiya: fetch-back hatao → 13 fail; lease hatao → double-tap fail; cron re-check hatao → 2 fail. Yaani tests asli bugs pakadte hain.
+- Full suite (2026-11-15): sab shop tests pass. Pre-existing, shop se unrelated: `vault.test.js` 4 fail (M2 changes hata ke bhi same), `wearableScoreDedup.staging.test.js` staging DB connect pe hang hota hai (isliye `npm test` poora khatam nahi hota).
+
+**Staging DB E2E (2026-11-15) — `node scripts/shopStagingE2E.js` (server/ se): 33/33 pass.** Asli staging MongoDB (`healthcare-ai-staging`), asli `protect` + JWT, asli routes, asli catalog (Liposomal Berberine HCL); Fastrr mock. Real unique index se triple-tap = 1 order, 6 parallel cart adds cap pe ruke (qty 9), paid/COD/failed→paid, duplicate webhook, cart clear, security. Script sirf `*staging` DB pe chalti hai, catalog read-only, apna throwaway user/cart/orders end mein delete karti hai (`--keep` se rakh sakte ho). Reconciliation cron staging pe nahi chalaya (doosre staging orders scan karta). `ai-healthcare-1-0i51.onrender.com` pe sirf M1 deployed hai (`/api/shop/orders` 404).
+Fastrr keys aane pe: script mein mock hata ke real staging Fastrr se same flow.
+
+**Real E2E checklist (Fastrr staging keys aane ke baad)**
+1. `.env`: `FASTRR_API_KEY/SECRET`, `FASTRR_BASE_URL=https://fastrr-api-dev.pickrr.com`, `SHOP_PUBLIC_BASE_URL` = jo URL Fastrr/phone tak pahunche (local ke liye ngrok/tunnel).
+2. Local server staging DB pe (`USE_STAGING_DB=true`), test user JWT → cart → `POST /checkout` → `checkoutPageUrl` phone browser mein → Fastrr test payment (prepaid + COD dono).
+3. Check: webhook aaya (log `[Shop/fastrrWebhook]`), order `paid`/`cod_pending`, `pricing`/address bhare, cart clear, `shopifySyncStatus: pending`.
+4. Webhook URL Fastrr ko na do → cron/poll se confirm hota hai ya nahi (`GET /orders/:id`).
+5. Token ki asli validity, `fallbackUrl` behaviour, redirect `oid/ost` format note karo §13 mein.
 
 Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own order id, webhook signing/IP) → env/config mein rakhni hain taaki jawab aane pe sirf value badle.
 
@@ -273,7 +337,12 @@ Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi
 | `SHOP_MAX_QTY_PER_ITEM`, `SHOP_MAX_CART_LINES` | optional | 10 / 30 |
 | `FASTRR_BASE_URL`, `FASTRR_API_KEY`, `FASTRR_API_SECRET` | M2 | from Fastrr |
 | `QSTASH_*` | already set | catalog schedule + crons |
-| (M2) `SHOP_APP_DEEP_LINK`, `SHOP_HIDE_SUBSCRIBE_VARIANTS` | M2 | planned |
+| `SHOP_PUBLIC_BASE_URL` | Vercel + Render | `https://www.take.health` — checkout page / Fastrr redirect links |
+| `SHOP_APP_DEEP_LINK` | optional | default `takehealth://shop/order/{orderId}?status={status}` (Flutter team se confirm) |
+| `SHOP_HIDE_SUBSCRIBE_VARIANTS` | optional | default `true` |
+| `SHOP_CHECKOUT_PAGE_SECRET`, `SHOP_CHECKOUT_PAGE_TTL_MIN` | optional | default: JWT_SECRET se derive, 120 min |
+| `SHOP_PLACEHOLDER_IMAGE_URL` | optional | Fastrr `catalog_data.image_url` jab item ki image na ho |
+| `FASTRR_TIMEOUT_MS`, `FASTRR_CHECKOUT_UI_URL`, `FASTRR_FALLBACK_URL`, `FASTRR_CATALOG_PUSH` | optional | 10000 / auto (staging bundle for staging API) / humara return page / true |
 
 ---
 

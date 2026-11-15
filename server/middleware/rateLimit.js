@@ -193,4 +193,28 @@ const shopWriteLimiter = rateLimit({
   message: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter, shopWriteLimiter };
+// Shop checkout start. Each call can create an order and call Fastrr, so it is
+// tighter than cart writes. A real user starts checkout a few times at most.
+const shopCheckoutLimiter = rateLimit({
+  store: buildStore('shop-checkout'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' },
+});
+
+// Fastrr order webhook — unauthenticated, so per IP. Memory-backed (no Redis
+// cost per webhook); generous because Fastrr's senders share a few IPs.
+const shopWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => ipKeyGenerator(req.ip),
+  message: { code: 'RATE_LIMITED', message: 'Too many requests.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter, shopWriteLimiter, shopCheckoutLimiter, shopWebhookLimiter };

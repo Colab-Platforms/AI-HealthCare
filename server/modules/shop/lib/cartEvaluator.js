@@ -7,7 +7,7 @@
 //   INSUFFICIENT_STOCK  fewer left than the quantity in the cart
 // Price change is NOT an issue — just a flag the app shows once.
 
-const { availableQty } = require('./catalogMapper');
+const { availableQty, isHiddenVariant } = require('./catalogMapper');
 const { paiseToRupees } = require('./money');
 
 const money = (paise) => ({ paise, rupees: paiseToRupees(paise) });
@@ -28,7 +28,7 @@ const evaluateCart = (items, variantIndex) => {
 
         let issue = null;
         let stock = 0;
-        if (!product || !variant || product.status !== 'active') {
+        if (!product || !variant || product.status !== 'active' || isHiddenVariant(variant)) {
             issue = 'UNAVAILABLE';
         } else {
             stock = availableQty(product, variant);

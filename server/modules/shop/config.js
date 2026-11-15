@@ -10,6 +10,23 @@ const intEnv = (name, fallback) => {
     return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
+const boolEnv = (name, fallback) => {
+    const v = String(process.env[name] ?? '').trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(v)) return true;
+    if (['false', '0', 'no', 'off'].includes(v)) return false;
+    return fallback;
+};
+
+const trimSlash = (s) => String(s || '').trim().replace(/\/+$/, '');
+
+const FASTRR_STAGING_API = 'https://fastrr-api-dev.pickrr.com';
+const FASTRR_UI = {
+    staging: 'https://customcheckoutfastrr.netlify.app',
+    production: 'https://checkout-ui.shiprocket.com',
+};
+
+const fastrrBaseUrl = () => trimSlash(process.env.FASTRR_BASE_URL) || FASTRR_STAGING_API;
+
 module.exports = {
     // Cart guard rails — stop abuse / accidental huge quantities.
     maxQtyPerItem: () => intEnv('SHOP_MAX_QTY_PER_ITEM', 10),
@@ -21,4 +38,57 @@ module.exports = {
 
     // Fastrr's catalog API contract: page/limit, limit up to 100 in their examples.
     fastrrMaxLimit: 250,
+
+    // "Subscribe" variants are cheaper but our checkout has no recurring billing,
+    // so selling one would be a one-off sale at the subscription price. Hidden by
+    // default (fails safe: no money lost). See docs/shop-headless-plan.md §8.
+    hideSubscribeVariants: () => boolEnv('SHOP_HIDE_SUBSCRIBE_VARIANTS', true),
+
+    // ── Fastrr (Shiprocket Checkout) ────────────────────────────────────────
+    fastrr: {
+        baseUrl: fastrrBaseUrl,
+        apiKey: () => process.env.FASTRR_API_KEY || '',
+        apiSecret: () => process.env.FASTRR_API_SECRET || '',
+        isConfigured: () => Boolean(process.env.FASTRR_API_KEY && process.env.FASTRR_API_SECRET),
+        timeoutMs: () => intEnv('FASTRR_TIMEOUT_MS', 10000),
+        // JS checkout bundle: staging bundle for the staging API, prod otherwise.
+        uiBaseUrl: () => trimSlash(process.env.FASTRR_CHECKOUT_UI_URL)
+            || (fastrrBaseUrl().includes('pickrr.com') ? FASTRR_UI.staging : FASTRR_UI.production),
+        // Push product/collection changes to Fastrr after a Shopify webhook
+        // (Fastrr also pulls our catalog APIs; push just makes it near-real-time).
+        catalogPushEnabled: () => boolEnv('FASTRR_CATALOG_PUSH', true),
+    },
+
+    // ── Checkout ───────────────────────────────────────────────────────────
+    // Public origin of this backend as the WebView / Fastrr see it
+    // (e.g. https://www.take.health). Falls back to the request's host.
+    publicBaseUrl: () => trimSlash(process.env.SHOP_PUBLIC_BASE_URL),
+    // Where the WebView sends the user once checkout is over. {orderId} and
+    // {status} are filled in.
+    appDeepLink: () => process.env.SHOP_APP_DEEP_LINK || 'takehealth://shop/order/{orderId}?status={status}',
+    // Fastrr's JS needs a fallback URL for when its checkout is down. Default is
+    // our own return page (keeps the user out of the Shopify website).
+    fallbackUrl: () => process.env.FASTRR_FALLBACK_URL || '',
+    placeholderImageUrl: () => process.env.SHOP_PLACEHOLDER_IMAGE_URL || '',
+    // Signed checkout-page links are valid this long.
+    checkoutPageTtlMs: () => intEnv('SHOP_CHECKOUT_PAGE_TTL_MIN', 120) * 60 * 1000,
+    // Re-use a Fastrr token only if it is valid for at least this much longer.
+    tokenMinRemainingMs: 2 * 60 * 1000,
+    // While one request is fetching a Fastrr token for an order, others wait.
+    tokenLeaseMs: 20 * 1000,
+    // Min gap between on-demand Fastrr status checks of one order (app polling).
+    onDemandSyncGapMs: 10 * 1000,
+
+    // ── Reconciliation (QStash cron) ───────────────────────────────────────
+    reconcile: {
+        pendingOlderThanMs: 15 * 60 * 1000,   // give the webhook time first
+        lookbackMs: 48 * 60 * 60 * 1000,      // don't chase very old checkouts
+        expireAfterTokenExpiryMs: 10 * 60 * 1000,
+        expireTokenlessAfterMs: 30 * 60 * 1000,
+        recheckExpiredForMs: 6 * 60 * 60 * 1000, // a late payment can still land on an expired order
+        batchSize: 100,
+        timeBudgetMs: 45 * 1000,              // stay under the serverless timeout
+        concurrency: 4,
+        maxFastrrIdsPerOrder: 5,
+    },
 };

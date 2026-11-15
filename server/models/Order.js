@@ -36,6 +36,8 @@ const orderSchema = new mongoose.Schema({
         variantId: { type: String, required: true },
         productId: String,
         title: String,
+        variantTitle: String,
+        imageUrl: String,
         sku: String,
         quantity: { type: Number, required: true, min: 1 },
         priceSnapshot: { type: Number, required: true }, // paise, our price at checkout start
@@ -52,6 +54,7 @@ const orderSchema = new mongoose.Schema({
         discount: Number,
         shipping: Number,
         codCharges: Number,
+        prepaidDiscount: Number,
         total: Number, // what the customer pays (paid now, or on delivery for COD)
         couponCodes: [String],
     },
@@ -73,14 +76,39 @@ const orderSchema = new mongoose.Schema({
     },
     razorpayOrderId: String,
     razorpayPaymentId: String,
+    // Successful payment as reported by Fastrr Order Details (prepaid only).
+    payment: {
+        gateway: String,
+        method: String,          // UPI / CARD / ...
+        txnId: String,
+        pgTransactionId: String,
+        amountReceived: Number,  // paise
+    },
+    placedAt: Date,              // when payment (or COD) was confirmed
     rtoPrediction: String, // Fastrr: low / medium / high
+    edd: String,           // Fastrr expected delivery date (YYYY-MM-DD)
+
+    // Set when a confirmed order fails a sanity check (amount / items differ
+    // from what we sent, or a second payment for an already-paid order). Such
+    // orders are NOT sent to Shopify automatically — a human looks first.
+    review: {
+        needed: { type: Boolean, default: false },
+        reasons: [String],
+        flaggedAt: Date,
+    },
 
     checkoutSource: { type: String, enum: ['fastrr'], default: 'fastrr' },
     fastrrOrderId: { type: String, index: true },        // Fastrr `order_id` (= platform_order_id) — the id webhooks reference
     fastrrNumericOrderId: String,                        // Fastrr `fastrr_order_id` (their internal number)
+    // Every Fastrr order id issued for this order (a new token = a new Fastrr
+    // order). Webhooks / late payments for an older token are matched through it.
+    fastrrOrderIds: { type: [String], index: true },
+    paidFastrrOrderId: String,                           // the Fastrr order that actually confirmed
     fastrrCartId: String,
     fastrrToken: String,
     fastrrTokenExpiresAt: Date,
+    tokenLeaseUntil: Date,   // one request at a time fetches a Fastrr token for this order
+    fastrrCheckedAt: Date,   // last on-demand Fastrr status check (throttles app polling)
 
     shopifySyncStatus: {
         type: String,

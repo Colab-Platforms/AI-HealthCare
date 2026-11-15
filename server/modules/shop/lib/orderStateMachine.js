@@ -23,7 +23,7 @@ const TRANSITIONS = {
     },
     shopifySyncStatus: {
         // initial: not_started
-        not_started: ['pending'],
+        not_started: ['pending', 'needs_attention'], // needs_attention: paid but failed a sanity check (amount / items)
         pending: ['synced', 'failed', 'needs_attention'],
         failed: ['pending', 'synced', 'needs_attention'],
         needs_attention: ['pending', 'synced'], // admin manual retry

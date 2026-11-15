@@ -8,13 +8,13 @@ const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const config = require('../config');
 const { ShopError } = require('../lib/shopError');
-const { availableQty } = require('../lib/catalogMapper');
+const { availableQty, isHiddenVariant } = require('../lib/catalogMapper');
 const { evaluateCart, indexVariants } = require('../lib/cartEvaluator');
 
 const findVariant = async (variantId) => {
     const product = await Product.findOne({ 'variants.shopifyVariantId': variantId }).lean();
     const variant = product?.variants.find((v) => v.shopifyVariantId === variantId);
-    if (!product || !variant || product.status !== 'active') {
+    if (!product || !variant || product.status !== 'active' || isHiddenVariant(variant)) {
         throw new ShopError(404, 'PRODUCT_UNAVAILABLE', 'This product is not available');
     }
     return { product, variant };

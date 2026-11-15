@@ -159,7 +159,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"], // Idempotency-Key: POST /api/shop/checkout
   }),
 );
 // Capture exact raw bytes for webhook signature verification (QStash, etc.) —

@@ -43,7 +43,8 @@ router.post('/webhooks', async (req, res) => {
     if (catalogSyncService.isCatalogTopic(topic)) {
         try {
             const result = await catalogSyncService.handleWebhook({ topic, body: req.body });
-            console.log(`[Shopify webhook] ${topic} ${result.id || '-'} -> ${result.result || `ignored (${result.ignored})`}`);
+            const push = result.fastrrPush && result.fastrrPush !== 'skipped' ? ` (fastrr push: ${result.fastrrPush})` : '';
+            console.log(`[Shopify webhook] ${topic} ${result.id || '-'} -> ${result.result || `ignored (${result.ignored})`}${push}`);
             return res.status(200).json({ received: true });
         } catch (error) {
             console.error(`[Shopify webhook] ${topic} catalog sync failed:`, error.message);

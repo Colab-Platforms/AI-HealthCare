@@ -14,7 +14,9 @@
 const Product = require('../models/Product');
 const Collection = require('../models/Collection');
 const client = require('./shopifyCatalogClient');
-const { mapShopifyProduct, mapShopifyCollection } = require('../lib/catalogMapper');
+const fastrr = require('./fastrrClient');
+const config = require('../config');
+const { mapShopifyProduct, mapShopifyCollection, toFastrrProduct, toFastrrCollection } = require('../lib/catalogMapper');
 const { isConfigured } = require('../../../services/shopifyAdminService');
 
 // Conditional upsert: matches only if our copy is not newer. If our copy IS
@@ -105,14 +107,14 @@ const isCatalogTopic = (topic) => CATALOG_TOPICS.has(topic);
  * to repeat), so no ProcessedWebhook record is needed. Throws on a transient
  * failure so the route answers 500 and Shopify retries.
  */
-const handleWebhook = async ({ topic, body }) => {
+const applyWebhook = async ({ topic, body }) => {
     switch (topic) {
         case 'products/create':
         case 'products/update':
-            return { topic, id: body?.id, result: await refreshProduct(body.id) };
+            return { topic, kind: 'product', id: body?.id, result: await refreshProduct(body.id) };
         case 'products/delete':
             await markProductDeleted(body.id);
-            return { topic, id: body?.id, result: 'deleted' };
+            return { topic, kind: 'product', id: body?.id, result: 'deleted' };
         case 'inventory_levels/update': {
             // Payload has inventory_item_id + one location's level. Re-fetch the
             // product to get the correct total across all locations.
@@ -121,17 +123,50 @@ const handleWebhook = async ({ topic, body }) => {
                 ? await Product.findOne({ 'variants.inventoryItemId': itemId }).select('shopifyProductId').lean()
                 : null;
             if (!product) return { topic, ignored: 'unknown inventory item' };
-            return { topic, id: product.shopifyProductId, result: await refreshProduct(product.shopifyProductId) };
+            return { topic, kind: 'product', id: product.shopifyProductId, result: await refreshProduct(product.shopifyProductId) };
         }
         case 'collections/create':
         case 'collections/update':
-            return { topic, id: body?.id, result: await refreshCollection(body.id) };
+            return { topic, kind: 'collection', id: body?.id, result: await refreshCollection(body.id) };
         case 'collections/delete':
             await markCollectionDeleted(body.id);
-            return { topic, id: body?.id, result: 'deleted' };
+            return { topic, kind: 'collection', id: body?.id, result: 'deleted' };
         default:
             return { topic, ignored: 'not a catalog topic' };
     }
+};
+
+// ── Fastrr catalog push ────────────────────────────────────────────────────
+// Fastrr also pulls /api/shop/fastrr/*; pushing after a change just makes it
+// near-real-time (price / stock). Best effort: a failed push is logged and
+// never fails the Shopify webhook (that would make Shopify retry for nothing).
+const pushToFastrr = async ({ kind, id, result }) => {
+    if (!fastrr.isConfigured() || !config.fastrr.catalogPushEnabled()) return 'skipped';
+    if (result !== 'written' && result !== 'deleted') return 'skipped'; // stale: a newer copy was already pushed
+    try {
+        if (kind === 'product') {
+            const doc = await Product.findOne({ shopifyProductId: String(id) }).lean();
+            if (!doc) return 'skipped';
+            await fastrr.pushProduct(toFastrrProduct(doc)); // deleted/draft go out as status "draft"
+            return 'pushed';
+        }
+        if (kind === 'collection' && result === 'written') { // Fastrr's collection shape has no status
+            const doc = await Collection.findOne({ shopifyCollectionId: String(id) }).lean();
+            if (!doc) return 'skipped';
+            await fastrr.pushCollection(toFastrrCollection(doc));
+            return 'pushed';
+        }
+        return 'skipped';
+    } catch (err) {
+        console.warn(`[ShopCatalog] Fastrr push for ${kind} ${id} failed: ${err.message}`);
+        return 'failed';
+    }
+};
+
+const handleWebhook = async ({ topic, body }) => {
+    const r = await applyWebhook({ topic, body });
+    if (r.ignored) return r;
+    return { ...r, fastrrPush: await pushToFastrr(r) };
 };
 
 // ── Full sync ──────────────────────────────────────────────────────────────
@@ -187,4 +222,4 @@ const fullSync = async ({ log = console.log } = {}) => {
     return stats;
 };
 
-module.exports = { fullSync, handleWebhook, isCatalogTopic, refreshProduct, refreshCollection };
+module.exports = { fullSync, handleWebhook, isCatalogTopic, refreshProduct, refreshCollection, pushToFastrr };
