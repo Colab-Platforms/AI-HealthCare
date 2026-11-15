@@ -95,6 +95,9 @@ const orderSchema = new mongoose.Schema({
         needed: { type: Boolean, default: false },
         reasons: [String],
         flaggedAt: Date,
+        resolvedAt: Date,   // admin checked and accepted it
+        resolvedBy: String,
+        note: String,
     },
 
     checkoutSource: { type: String, enum: ['fastrr'], default: 'fastrr' },

@@ -1,6 +1,7 @@
 const catalogService = require('../services/catalogService');
 const catalogSyncService = require('../services/catalogSyncService');
 const { sendError } = require('../lib/shopError');
+const events = require('../services/eventService');
 
 // ── App ────────────────────────────────────────────────────────────────────
 
@@ -8,7 +9,9 @@ const { sendError } = require('../lib/shopError');
 exports.listProducts = async (req, res) => {
     try {
         const { cursor, limit, q, collection } = req.query;
-        res.json(await catalogService.listProducts({ cursor, limit, q, collection }));
+        const result = await catalogService.listProducts({ cursor, limit, q, collection });
+        res.json(result);
+        if (q && !cursor) events.track('search', { user: req.shopUserId, meta: { q: String(q), results: result.items.length, collection } });
     } catch (err) {
         sendError(res, err, 'Shop/listProducts');
     }
@@ -17,7 +20,9 @@ exports.listProducts = async (req, res) => {
 // GET /api/shop/products/:handle   (handle or Shopify product id)
 exports.getProduct = async (req, res) => {
     try {
-        res.json(await catalogService.getProduct(req.params.handle));
+        const product = await catalogService.getProduct(req.params.handle);
+        res.json(product);
+        events.track('product_view', { user: req.shopUserId, productId: product.id, meta: { handle: product.handle } });
     } catch (err) {
         sendError(res, err, 'Shop/getProduct');
     }

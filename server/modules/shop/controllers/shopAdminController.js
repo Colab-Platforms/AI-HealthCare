@@ -78,3 +78,40 @@ exports.markManualRefund = async (req, res) => {
         sendError(res, err, 'ShopAdmin/manualRefund');
     }
 };
+
+// ── Read side + operations (admin phase) ───────────────────────────────────
+const adminService = require('../services/adminService');
+
+const handle = (tag, fn) => async (req, res) => {
+    try {
+        res.set('Cache-Control', 'no-store');
+        res.json(await fn(req));
+    } catch (err) {
+        sendError(res, err, `ShopAdmin/${tag}`);
+    }
+};
+
+// GET /api/shop/admin/overview?range=today|7d|30d|90d
+exports.overview = handle('overview', (req) => adminService.overview({ range: req.query.range }));
+// GET /api/shop/admin/orders?status=&paymentMethod=&q=&from=&to=&attention=&page=&limit=
+exports.listOrders = handle('listOrders', (req) => adminService.listOrders(req.query));
+// GET /api/shop/admin/orders/:orderId
+exports.getOrder = handle('getOrder', (req) => adminService.getOrder(req.params.orderId));
+// POST /api/shop/admin/orders/:orderId/retry-sync
+exports.retrySync = handle('retrySync', (req) => adminService.retryShopifySync(req.params.orderId, adminId(req)));
+// POST /api/shop/admin/orders/:orderId/review/resolve   { note }
+exports.resolveReview = handle('resolveReview', (req) => adminService.resolveReview(req.params.orderId, { adminId: adminId(req), note: req.body?.note }));
+// GET /api/shop/admin/attention
+exports.attention = handle('attention', () => adminService.attention());
+// GET /api/shop/admin/products
+exports.products = handle('products', async () => ({ items: await adminService.products() }));
+// POST /api/shop/admin/products/sync   (pull the whole catalog from Shopify now)
+exports.syncCatalog = handle('syncCatalog', async () => ({ ok: true, stats: await adminService.syncCatalog() }));
+// GET /api/shop/admin/carts?abandoned=&page=&limit=
+exports.carts = handle('carts', (req) => adminService.carts(req.query));
+// GET /api/shop/admin/customers?q=
+exports.customers = handle('customers', async (req) => ({ items: await adminService.customers({ q: req.query.q }) }));
+// GET /api/shop/admin/customers/:userId
+exports.customerJourney = handle('customerJourney', (req) => adminService.customerJourney(req.params.userId));
+// GET /api/shop/admin/refunds?status=
+exports.refunds = handle('refunds', async (req) => ({ items: await adminService.refunds({ status: req.query.status }) }));

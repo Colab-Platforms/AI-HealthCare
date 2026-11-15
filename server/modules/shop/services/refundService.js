@@ -21,6 +21,7 @@ const config = require('../config');
 const fastrr = require('./fastrrClient');
 const shopifyClient = require('./shopifyOrderClient');
 const notifier = require('./orderNotifier');
+const events = require('./eventService');
 const { transition } = require('../lib/orderStateMachine');
 const { ShopError } = require('../lib/shopError');
 
@@ -124,6 +125,7 @@ const requestRefund = async ({ orderId, source, amountPaise, reason = '', kind =
             current = (await transition(Order, { orderId: order._id, field: 'paymentStatus', to: 'refund_pending', source: 'system', eventId: refund.refundId })) || current;
         }
         console.log(`[Shop/refund] ${order.internalOrderId}: ${refund.refundId} requested (${source}, ${amount} paise, ${kind})`);
+        events.track('refund_requested', { user: order.user, orderId: order.internalOrderId, meta: { refundId: refund.refundId, amountPaise: amount, source, kind } });
 
         if (approve || canAutoSend(source, amount)) {
             return executeRefund({ orderId: order._id, refundId: refund.refundId, approvedBy: approve ? requestedBy : 'auto' });
@@ -198,6 +200,7 @@ const afterCompleted = async (orderId, refundId) => {
         })) || order;
     }
     await notifier.notify(order, 'refunded', { refundId, amountPaise: refund.amount });
+    events.track('refund_completed', { user: order.user, orderId: order.internalOrderId, meta: { refundId, amountPaise: refund.amount } });
 
     if (config.shopifyRecordRefunds() && order.shopifyOrderId && !refund.shopifyRecorded && refund.method === 'fastrr') {
         try {

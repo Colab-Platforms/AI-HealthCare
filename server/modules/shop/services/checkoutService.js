@@ -16,6 +16,7 @@ const config = require('../config');
 const fastrr = require('./fastrrClient');
 const fastrrOrderService = require('./fastrrOrderService');
 const reservations = require('./stockReservationService');
+const events = require('./eventService');
 const { ShopError } = require('../lib/shopError');
 const { evaluateCart, indexVariants } = require('../lib/cartEvaluator');
 const {
@@ -281,6 +282,7 @@ const checkoutPage = async ({ orderId, exp, sig, baseUrl }) => {
         };
     }
 
+    events.track('payment_page_open', { user: ready.user, orderId });
     const html = renderCheckoutPage({
         token: ready.fastrrToken,
         uiBaseUrl: config.fastrr.uiBaseUrl(),

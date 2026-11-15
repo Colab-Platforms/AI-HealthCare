@@ -18,6 +18,7 @@ const client = require('./shopifyOrderClient');
 const reservations = require('./stockReservationService');
 const notifier = require('./orderNotifier');
 const refunds = require('./refundService');
+const events = require('./eventService');
 const { transition, TRANSITIONS } = require('../lib/orderStateMachine');
 const { toOrderCreateVariables, readShopifyOrder, tagFor, legacyId, SHOP_TAG } = require('../lib/shopifyOrderMapper');
 
@@ -250,7 +251,11 @@ const applyShopifyOrder = async (order, node) => {
     if (s.fulfillment) {
         const before = current.fulfillmentStatus;
         current = await moveFulfillment(current, s.fulfillment, s.fulfillment === 'delivered' ? { deliveredAt: s.deliveredAt || new Date() } : {});
-        if (current.fulfillmentStatus !== before) changes.push(`fulfillment:${current.fulfillmentStatus}`);
+        if (current.fulfillmentStatus !== before) {
+            changes.push(`fulfillment:${current.fulfillmentStatus}`);
+            if (before === 'unfulfilled') events.track('order_shipped', { user: order.user, orderId: order.internalOrderId, meta: { courier: current.tracking?.courier } });
+            if (current.fulfillmentStatus === 'delivered') events.track('order_delivered', { user: order.user, orderId: order.internalOrderId });
+        }
         if (['partial', 'fulfilled', 'delivered'].includes(current.fulfillmentStatus)) await notifier.notify(current, 'shipped');
         if (current.fulfillmentStatus === 'delivered') await notifier.notify(current, 'delivered');
     }

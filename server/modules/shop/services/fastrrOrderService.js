@@ -16,6 +16,7 @@ const config = require('../config');
 const fastrr = require('./fastrrClient');
 const reservations = require('./stockReservationService');
 const refunds = require('./refundService');
+const events = require('./eventService');
 const { toPaise } = require('../lib/money');
 const notifier = require('./orderNotifier');
 const shopifyOrderSync = require('./shopifyOrderSyncService');
@@ -51,6 +52,7 @@ const applyDetails = async (order, details, { source, eventId = null }) => {
         // A failed *older* token doesn't fail an order that has a newer live one.
         if (fid !== order.fastrrOrderId) return { result: 'ignored_stale_failure' };
         const updated = await transition(Order, { orderId: order._id, field: 'paymentStatus', to: 'failed', source, eventId });
+        if (updated) events.track('payment_failed', { user: order.user, orderId: order.internalOrderId, meta: { source } });
         return { result: updated ? 'failed' : 'unchanged' };
     }
 
@@ -88,6 +90,7 @@ const applyDetails = async (order, details, { source, eventId = null }) => {
     if (reasons.length) {
         console.error(`[Shop/fastrr] ${order.internalOrderId} confirmed with review flags: ${reasons.join(', ')}`);
     }
+    events.track('payment_success', { user: order.user, orderId: order.internalOrderId, meta: { method, amountPaise: updated.pricing?.total ?? updated.amount, source } });
     await afterConfirmed(updated, { needsReview: reasons.length > 0, source, eventId });
     return { result: outcome, status: updated.paymentStatus };
 };

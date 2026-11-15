@@ -20,6 +20,7 @@ const shopifyOrderSync = require('./shopifyOrderSyncService');
 const refunds = require('./refundService');
 const reservations = require('./stockReservationService');
 const notifier = require('./orderNotifier');
+const events = require('./eventService');
 const { transition } = require('../lib/orderStateMachine');
 const { ShopError } = require('../lib/shopError');
 const { isValidInternalOrderId } = require('../lib/checkoutLogic');
@@ -98,6 +99,7 @@ const cancelOrder = async ({ orderId, userId = null, by, reason = '', adminId = 
     // 5. Stock + push.
     await reservations.release(order._id);
     await notifier.notify(order, 'cancelled');
+    events.track('order_cancelled', { user: order.user, orderId: order.internalOrderId, meta: { by, reason: String(reason || '') } });
     console.log(`[Shop/cancel] ${order.internalOrderId}: cancelled by ${by}`);
     return Order.findById(order._id).lean();
 };

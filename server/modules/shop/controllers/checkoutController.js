@@ -3,6 +3,7 @@ const orderService = require('../services/orderService');
 const fastrrOrderService = require('../services/fastrrOrderService');
 const shopifyOrderSync = require('../services/shopifyOrderSyncService');
 const cancelService = require('../services/cancelService');
+const events = require('../services/eventService');
 const { toAppOrder } = require('../lib/orderView');
 const config = require('../config');
 const { sendError } = require('../lib/shopError');
@@ -33,9 +34,12 @@ const sendPage = (res, { status, html }) => {
 exports.startCheckout = async (req, res) => {
     try {
         const idempotencyKey = req.get('Idempotency-Key') || req.body?.idempotencyKey;
-        res.json(await checkoutService.startCheckout(req.user._id, { idempotencyKey, baseUrl: baseUrlOf(req) }));
+        const result = await checkoutService.startCheckout(req.user._id, { idempotencyKey, baseUrl: baseUrlOf(req) });
+        res.json(result);
+        events.track('checkout_start', { user: req.user._id, orderId: result.orderId, meta: { amountPaise: result.amount.paise, items: result.itemCount } });
     } catch (err) {
         sendError(res, err, 'Shop/startCheckout');
+        if (err.code) events.track('checkout_error', { user: req.user._id, meta: { code: err.code } });
     }
 };
 
