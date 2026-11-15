@@ -3,21 +3,41 @@
 > **Single source of truth for the in-app shop.** Kisi bhi laptop se kaam shuru karo toh pehle ye file padho.
 > Purani files `fastrr-shiprocket-checkout-integration-plan.md` aur `fastrr-integration-reference-and-test-plan.md` OUTDATED hain (wo purane `fastrrRoutes.js` ke liye thi, jo delete ho chuka hai).
 >
-> Last updated: 2026-11-15 (M1–M3 code + tests done & pushed, commit `0aa3ae9`; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
+> Last updated: 2026-11-16 (M1–M4 + shop admin (APIs + web pages) done, tested & pushed; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
+>
+> **Aaj kahan tak (2026-11-16 raat):** code side sab ban gaya — catalog, cart, checkout (Fastrr), orders, Shopify order + stock hold + shipping, cancel + refunds, shop admin. **Baaki = external:** Fastrr keys se real test, Fastrr/management/Shopify dev ke jawab (§13, requirements doc), live store test, prod deploy (§14).
+>
+> | Commit | Kya |
+> |---|---|
+> | `82ebe81` | M1 catalog + cart + order model |
+> | `fa374b3` | M2 Fastrr checkout, webhook, orders, reconciliation |
+> | `0aa3ae9` | M3 Shopify order create, stock holds, shipping updates |
+> | `6271d53` | M4 cancel + refunds |
+> | `95294ef` | Shop admin APIs + `shop_events` log |
+> | `c2b77bf`, `bebdb20` | Shop admin web pages (`/admin/shop`) + full-width fix |
 
 ---
 
 ## 0. Naye laptop pe kaise resume karein
 
-1. `git pull` (Staging branch) — M1–M3 code + ye doc aa jayega.
+1. `git pull` (Staging branch) — M1–M4 + admin code + ye doc aa jayega.
 2. `cd server && npm install`
 3. `server/.env` git mein NAHI hota. Office laptop se ye values copy karo (password manager / secure chat se, public jagah nahi):
    `MONGODB_URI`, `MONGODB_URI_STAGING`, `JWT_SECRET`, `SHOPIFY_ADMIN_STORE_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_API_VERSION`, `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET`, Redis, QStash (`QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`), aur baaki jo office `.env` mein hai.
 4. Check (sab `server/` se):
    - `node scripts/shopCatalogSync.js --preview` (sirf Shopify read, DB nahi chhoota)
-   - `node --test tests/shop*.test.js` — 155 tests (DB / Fastrr / Shopify sab mock; kuch real nahi chhoota). Expected: 154 pass, 1 fail = `shopifyOfferRules` "Rahul" (card-offer, date-dependent, pre-existing, shop se unrelated)
-   - `node scripts/shopStagingE2E.js` — asli **staging** MongoDB pe M1–M3 flow (42 checks), Fastrr + Shopify mock; apna data khud delete karta hai. Sirf `*staging` DB pe chalta hai.
+   - `node --test tests/shop*.test.js` — 189 tests (DB / Fastrr / Shopify sab mock; kuch real nahi chhoota). Expected: 188 pass, 1 fail = `shopifyOfferRules` "Rahul" (card-offer, date-dependent, pre-existing, shop se unrelated)
+   - `node scripts/shopStagingE2E.js` — asli **staging** MongoDB pe M1–M4 flow (48 checks), Fastrr + Shopify mock; apna data (users, carts, orders, holds) khud delete karta hai. Sirf `*staging` DB pe chalta hai.
 5. Claude ko bolo: **"docs/shop-headless-plan.md padho aur wahan se continue karo"**. Claude ki memory laptop-specific hai, isliye saara context isi file mein hai.
+
+### 0a. App local pe chala ke dekhna (server + web admin)
+
+- **Server (staging DB, background jobs OFF):** `server/` se
+  `node -e "require('node-cron').schedule=()=>({start(){},stop(){},destroy(){}}); require('./server.js')"`
+  Kyun: `server.js` Vercel ke bahar start hote hi crons + reminder/notification jobs chala deta hai (notification har minute) → local server staging users ko **asli push** bhej sakta hai. Ye wrapper sirf us run ke liye cron band karta hai, code nahi badalta. `.env` mein `USE_STAGING_DB=true` → staging DB. Port 5001.
+- **Client:** `client/` se `npm ci` (lockfile se exact; is laptop pe `node_modules` adhoora tha — vite missing, esbuild wrong-platform) → `npx vite --host 127.0.0.1` → http://127.0.0.1:5173 (API apne aap `http://localhost:5001/api`). Build check: `npx vite build` (2026-11-16 pass).
+- **Admin login (staging):** staging DB mein abhi sirf ek admin hai — "Amish" (`amish2725@gmail.com`). Password kisi ko pata nahi (bcrypt); apna account ho toh web app ka "Forgot password". Kisi aur ko admin banana ho toh **staging pe direct update karo, `scripts/promoteAdmin.js` NAHI** (§14 F).
+- Login → left menu **Shop** → `/admin/shop`. Staging pe shop data khaali hai (E2E apna data delete karta hai) — sirf Products tab bhara dikhega. Demo data chahiye toh Claude se bolo (`demo` tag ke saath, ek command se hatne wala) — abhi daala nahi.
 
 ---
 
@@ -84,7 +104,7 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 | **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
 | **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). **Flag `SHOP_SHOPIFY_ORDER_SYNC` OFF** until Fastrr confirms it doesn't create Shopify orders. Live-store test baaki (§10a) |
 | **M4** | Cancel (customer + admin), refunds (Fastrr Refund API + report sync), Shopify cancel + refund record, duplicate-payment / store-cancel refunds, admin refund actions | ✅ Code + 20 tests + staging DB E2E (48/48, Fastrr + Shopify mock). Auto-refund **OFF** by default. Real Fastrr refund test baaki (keys). §10 |
-| **Admin** | Shop admin APIs + pages (overview, products, orders + timeline, carts, customer journey + `shop_events`, attention, refunds) in existing web admin (`client/`) | ✅ Backend APIs + 14 tests. ✅ Pages written (`/admin/shop`). ⚠️ Web build abhi verify nahi hua (§10b) |
+| **Admin** | Shop admin APIs + pages (overview, products, orders + timeline, carts, customer journey + `shop_events`, attention, refunds) in existing web admin (`client/`) | ✅ Backend APIs + 14 tests. ✅ Pages (`/admin/shop`) — `vite build` pass, local pe chala ke dekha (§0a, §10b) |
 
 ---
 
@@ -367,7 +387,7 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 
 **Web pages** (`client/src`): `pages/AdminShop.jsx` (tabs: Overview, Orders, Needs attention, Products, Carts, Customers, Refunds — `?tab=`), `pages/AdminShopOrder.jsx` (detail + actions: retry sync, resolve review, cancel, refund, approve/retry/mark-paid, manual refund + timeline), `pages/AdminShopCustomer.jsx` (cart, checkouts, journey timeline), `components/shopAdmin/ShopAdminUI.jsx`, `services/api.js → shopAdminService`, routes in `PrivateApp.jsx`, menu "Shop" in `Layout.jsx`. Revenue chart: single series, `#2563eb` validated (dataviz validator), hover tooltip + "Show as table".
 
-**⚠️ Web build verify baaki:** is laptop ka `client/node_modules` adhoora hai (vite missing, esbuild wrong-platform binary, `@babel/parser` khaali) — isliye `npm run build` yahan nahi chala. Office laptop pe ya `cd client && npm install && npm run build` ke baad check karo; Vercel deploy bhi build chalata hai. Imports manually verified (sab icons/components project mein already use hote hain).
+**Web build:** ✅ `npx vite build` pass (2026-11-16, `npm ci` ke baad — pehle is laptop ka `client/node_modules` adhoora tha). AdminShop / AdminShopOrder / AdminShopCustomer alag lazy chunks. Local pe chala ke dekha; bug mila + fix (`bebdb20`): Layout ka `<main>` flex column hai, root div pe `w-full` nahi tha → Overview chhod ke baaki tabs content jitne narrow dikhte the. Naye admin pages pe hamesha root `w-full` rakhna.
 
 **Tests:** `tests/shopAdmin.test.js` (14) — data real routes se (4 shoppers: delivered, COD, abandoned, cancel+refund): event log, 401/403, overview numbers, list filters/search/paging, detail timeline, attention + retry/resolve, products held/sold, carts abandoned, customers + journey, refunds. Event order tie-break (createdAt + _id) bug isi se mila.
 
@@ -436,7 +456,7 @@ _(empty — Monday 2026-11-17 ke jawab yahan)_
 
 ## 14. Go-live plan (target: Monday 17 Nov prep → Tuesday 18 Nov main pe test + live)
 
-**Status (2026-11-15):** M1–M3 code + 155 tests + staging DB E2E done, pushed. M4 not started. **Fastrr ke saath ek bhi real test abhi tak nahi hua** — sabse bada risk.
+**Status (2026-11-16):** M1–M4 + shop admin code done, 189 tests (188 pass, 1 = purana card-offer test), staging DB E2E 48/48, web build pass, sab pushed. **Fastrr ke saath ek bhi real test abhi tak nahi hua** — sabse bada risk. External list: **`docs/shop-launch-requirements.md`** (Word copy: Desktop `TakeHealth-Shop-Launch-Requirements.docx`) — Fastrr 12, Shopify dev 7, management 8, ops 5, Flutter 5 items; kya, kyu, kaun dega.
 
 ### A. Go-live blockers (inke bina live NAHI)
 | # | Kya | Owner |
@@ -451,7 +471,9 @@ _(empty — Monday 2026-11-17 ke jawab yahan)_
 | 8 | **Render kis DB pe hai** (staging ya prod?) — Render dashboard → Environment (`USE_STAGING_DB`, `MONGODB_URI*`). Flutter dev wahi URL testing ke liye use karega | Aap |
 
 ### B. Monday (code side)
-- ~~M4~~ ✅ done (2026-11-16): cancel + refunds, flags safe defaults. Next: **shop admin** (APIs + pages in `client/`) — stuck orders, retry sync, refunds UI, alerts, overview, products, carts, journey.
+- ~~M4~~ ✅ done (2026-11-16): cancel + refunds, flags safe defaults.
+- ~~Shop admin~~ ✅ done (2026-11-16): APIs + `/admin/shop` pages (§10b). Launch ke din ops yahin se: refund approve, Shopify sync retry, review resolve, stuck orders.
+- Management decisions aate hi sirf env: `SHOP_USER_CANCEL`, `SHOP_AUTO_REFUND`, `SHOP_AUTO_REFUND_MAX_RUPEES`, `SHOP_APP_ORDERS_CARD_OFFER`.
 - Local `server/.env` mein Fastrr placeholder block add hai (`FASTRR_API_KEY=` / `FASTRR_API_SECRET=` khaali) — Monday ko staging keys wahin bharni hain + Render env.
 - Fastrr keys aate hi: `scripts/shopStagingE2E.js` real Fastrr staging ke saath + phone pe UPI test.
 - Launch ke pehle din refunds **manual (Fastrr dashboard)** — orders kam honge, safe.
@@ -478,3 +500,7 @@ Auto-refund + user cancel + returns/RTO (baaki M4), Shopify weights (shipping ac
 - `shopifyOfferRules.test.js` "Rahul" — card-offer, date-dependent (aaj se fail; last commit pe bhi) → card-offer owner
 - `vault.test.js` 4 fail (storage config defaults) — pre-existing
 - `wearableScoreDedup.staging.test.js` staging DB connect pe hang → `npm test` poora khatam nahi hota; shop tests alag se chalao (§0)
+
+### G. Repo risks mile (shop se unrelated, fix nahi kiye)
+- **`server/scripts/promoteAdmin.js` hamesha `MONGODB_URI` (PRODUCTION) se connect karta hai** — `USE_STAGING_DB` ignore. Staging ke liye chalaya toh prod mein admin bana dega. Fix: baaki scripts jaisa `USE_STAGING_DB ? MONGODB_URI_STAGING : MONGODB_URI`.
+- Local server (`node server.js`) Vercel ke bahar saare crons + har-minute notification job chalata hai → local testing pe §0a wala cron-off wrapper use karo.
