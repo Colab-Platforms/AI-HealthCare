@@ -19,7 +19,7 @@
 > | `6271d53` | M4 cancel + refunds |
 > | `95294ef` | Shop admin APIs + `shop_events` log |
 > | `c2b77bf`, `bebdb20` | Shop admin web pages (`/admin/shop`) + full-width fix |
-| _(next commit)_ | Shopify WebView checkout mode + Shopify order price check (§11c) |
+| `6b1232c` | Shopify WebView checkout mode + Shopify order price check (§11c) |
 
 ---
 
