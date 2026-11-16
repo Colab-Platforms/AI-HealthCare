@@ -17,7 +17,7 @@ const V3 = '57199514222899'; // Berberine 3 pack ₹4497, stock 1
 const V9 = '777';            // Magnesium ₹99, untracked
 
 const ENV = {
-    FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000', FASTRR_CATALOG_PUSH: 'false',
+    SHOP_CHECKOUT_MODE: 'custom_api', FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000', FASTRR_CATALOG_PUSH: 'false',
     JWT_SECRET: 'test-jwt-secret', SHOP_PUBLIC_BASE_URL: 'https://shop.test',
     SHOPIFY_ADMIN_STORE_DOMAIN: 'take-test.myshopify.com', SHOPIFY_ADMIN_TOKEN: SHOPIFY_TOKEN, SHOPIFY_API_VERSION: '2026-10',
     SHOPIFY_WEBHOOK_SECRET: 'test-webhook-secret', SHOPIFY_CLIENT_SECRET: undefined,

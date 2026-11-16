@@ -70,6 +70,57 @@ const buildCheckoutTokenPayload = ({ items, internalOrderId, redirectUrl, placeh
     timestamp: now.toISOString(),
 });
 
+// ── Fastrr Shopify WebView checkout URL ────────────────────────────────────
+// Exact server-side copy of Fastrr's mobileApp.js `getOneClickCheckoutUrl`
+// (fastrr-boost-ui.pickrr.com/assets/js/channels/mobileApp.js, read 2026-11-16):
+//   items -> [{ productId: id, quantity, title, variantId: variant_id, variantTitle: "",
+//               price, image, customAttributes? }]
+//   cart  =  btoa(encodeURIComponent(JSON.stringify(items)))
+//   url   =  base + &platform=SHOPIFY &sellerDomain= &domain=<webUrl> &cart= &isBaseEncode=true
+//            &isMobileApp=true [&couponCode=] [&cartAttributes=<b64>] [&encodingRequired=true]
+// cartAttributes need encodingRequired=true — without it the script appends the
+// raw object ("[object Object]"). Their example passes the variant id as `id`
+// (-> productId); we do the same. Prices in paise, as in their example.
+
+const b64uri = (value) => Buffer.from(encodeURIComponent(JSON.stringify(value)), 'utf8').toString('base64');
+
+/**
+ * @param {object} p
+ * @param {Array}  p.items            order items { variantId, quantity, priceSnapshot, title, variantTitle, imageUrl }
+ * @param {string} p.internalOrderId  TH-... (goes to the Shopify order: cart + line-item attributes)
+ * @param {string} p.baseUrl          e.g. https://fastrr-boost-ui.pickrr.com/headless/?
+ * @param {string} p.sellerDomain     e.g. 2jfdfm-vp.myshopify.com
+ * @param {string} [p.webUrl]
+ * @param {string} [p.couponCode]
+ * @param {string} [p.placeholderImageUrl]
+ */
+const buildFastrrWebviewUrl = ({ items, internalOrderId, baseUrl, sellerDomain, webUrl, couponCode, placeholderImageUrl = '' }) => {
+    const cart = items.map((i) => ({
+        productId: Number(i.variantId),
+        quantity: i.quantity,
+        title: i.variantTitle && i.variantTitle !== 'Default Title' ? `${i.title} - ${i.variantTitle}` : i.title,
+        variantId: Number(i.variantId),
+        variantTitle: '',
+        price: i.priceSnapshot,
+        image: i.imageUrl || placeholderImageUrl,
+        customAttributes: { internal_order_id: internalOrderId }, // backup link path (line-item properties)
+    }));
+    let url = baseUrl;
+    url += '&platform=SHOPIFY';
+    url += `&sellerDomain=${sellerDomain}`;
+    url += `&domain=${webUrl}`;
+    url += `&cart=${b64uri(cart)}`;
+    url += '&isBaseEncode=true';
+    url += '&isMobileApp=true';
+    if (couponCode) url += `&couponCode=${couponCode}`;
+    url += `&cartAttributes=${b64uri({ internal_order_id: internalOrderId })}`;
+    url += '&encodingRequired=true';
+    return url;
+};
+
+/** Inverse of the encoding above (tests / debugging). */
+const decodeB64uri = (s) => JSON.parse(decodeURIComponent(Buffer.from(String(s), 'base64').toString('utf8')));
+
 // ── Signed checkout-page links ─────────────────────────────────────────────
 // The WebView opens the page without our Bearer token, so the link itself
 // carries proof that our API issued it for this order.
@@ -101,6 +152,8 @@ module.exports = {
     isValidInternalOrderId,
     isValidFastrrOrderId,
     buildCheckoutTokenPayload,
+    buildFastrrWebviewUrl,
+    decodeB64uri,
     signPageParams,
     verifyPageParams,
     fillTemplate,

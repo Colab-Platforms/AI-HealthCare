@@ -15,6 +15,7 @@ const { startFastrrMock, placedOrder, fastrrOrder, API_KEY, API_SECRET } = requi
 // ── Environment ────────────────────────────────────────────────────────────
 
 const ENV = {
+    SHOP_CHECKOUT_MODE: 'custom_api',
     FASTRR_API_KEY: API_KEY,
     FASTRR_API_SECRET: API_SECRET,
     FASTRR_TIMEOUT_MS: '3000',

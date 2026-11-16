@@ -41,7 +41,7 @@ const check = (label, cond, detail = '') => {
 async function main() {
     // Fastrr mock + local-only settings BEFORE the shop modules load their config.
     const mock = await startFastrrMock();
-    Object.assign(process.env, { FASTRR_BASE_URL: mock.baseUrl, FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_CATALOG_PUSH: 'false' });
+    Object.assign(process.env, { SHOP_CHECKOUT_MODE: 'custom_api', FASTRR_BASE_URL: mock.baseUrl, FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_CATALOG_PUSH: 'false' });
     delete process.env.REDIS_URL; // per-process rate limits; don't touch shared Redis
     // M3: Shopify is a local mock too — NEVER the live store from this script.
     const { startShopifyMock, TOKEN: SHOPIFY_MOCK_TOKEN } = require('../tests/helpers/shopifyMock');

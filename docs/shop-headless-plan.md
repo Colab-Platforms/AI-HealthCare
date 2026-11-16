@@ -5,6 +5,8 @@
 >
 > Last updated: 2026-11-16 (M1–M4 + shop admin (APIs + web pages) done, tested & pushed; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
 >
+> **NEW (2026-11-16 raat): checkout ab Fastrr ka Shopify WebView URL** (`SHOP_CHECKOUT_MODE=shopify_webview`, default) — Part 1 + Part 3 bane, §11c.
+>
 > **NEW (2026-11-16): Fastrr hi Shopify order banayega** → humara `orderCreate` band, "link mode" banana hai — **§11b padho**.
 >
 > **Aaj kahan tak (2026-11-16 raat):** code side sab ban gaya — catalog, cart, checkout (Fastrr), orders, Shopify order + stock hold + shipping, cancel + refunds, shop admin. **Baaki = external:** Fastrr keys se real test, Fastrr/management/Shopify dev ke jawab (§13, requirements doc), live store test, prod deploy (§14).
@@ -17,6 +19,7 @@
 > | `6271d53` | M4 cancel + refunds |
 > | `95294ef` | Shop admin APIs + `shop_events` log |
 > | `c2b77bf`, `bebdb20` | Shop admin web pages (`/admin/shop`) + full-width fix |
+| _(next commit)_ | Shopify WebView checkout mode + Shopify order price check (§11c) |
 
 ---
 
@@ -459,6 +462,35 @@ Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi
 
 ---
 
+## 11c. Shopify WebView checkout — Part 1 + Part 3 bane (2026-11-16 raat)
+
+Fastrr ne bola: **Shopify WebView doc** follow karo (`getOneClickCheckoutUrl`, mobileApp.js). Purana custom API flow code mein hai, `SHOP_CHECKOUT_MODE=custom_api` se wapas on.
+
+**Part 1 — checkout (done):** `POST /api/shop/checkout` ab Fastrr ka URL deta hai (`checkoutPageUrl` field wahi):
+- `lib/checkoutLogic.buildFastrrWebviewUrl` = mobileApp.js ka server copy. Doc ke example URL se byte-match verify kiya.
+- `cart` = `btoa(encodeURIComponent(JSON))`: `productId`/`variantId` = Shopify variant id (unke example jaisa), `price` paise, title, image; har item pe `customAttributes.internal_order_id`.
+- `cartAttributes = {internal_order_id: TH-...}` + `encodingRequired=true` (iske bina script `[object Object]` bhejta hai).
+- **Fastrr ko koi API call nahi, keys nahi chahiye.** Sirf `FASTRR_SELLER_DOMAIN` (ya `SHOPIFY_ADMIN_STORE_DOMAIN`); dono khaali → 503 `CHECKOUT_UNAVAILABLE`.
+- Stock hold `SHOP_WEBVIEW_HOLD_MINUTES` (30). `expiresAt` = hold end. Idempotency, double tap, `PRICE_CHANGED`, `STOCK_UNAVAILABLE` sab same.
+- Pay nahi kiya → cron 30 min baad `expired` (Fastrr call nahi).
+
+**Part 3 — price check (done, abhi wired nahi):** `lib/shopifyOrderVerify.js`
+- `extractInternalOrderId(node)`: cart attributes (`note_attributes`) pehle, line-item properties backup; conflict report.
+- `verifyShopifyOrderAgainstOurs(order, node)`: GraphQL + REST/webhook dono shape. Flags: `ITEMS_MISMATCH`, `PRICE_MISMATCH:<variant>`, `PRICE_MISSING:<variant>`, `SUBTOTAL_MISMATCH`, `CURRENCY_MISMATCH`, `ORDER_ID_MISMATCH`, `ORDER_ID_CONFLICT`. Store coupon = sirf `summary.discountPaise` (flag nahi).
+- `VERIFY_ORDER_FIELDS` = GraphQL fields jo link step fetch karega.
+- **Kyun:** URL phone pe readable hai → koi price/qty badal ke Fastrr ko bhej sakta hai. Mismatch → `review` + `needs_attention` (Part 2 mein jodenge).
+
+**Tests:** `tests/shopWebviewCheckout.test.js` (8), `tests/shopShopifyOrderVerify.test.js` (11). Purane checkout/journey/orders/refunds/admin tests + `scripts/shopStagingE2E.js` ab `SHOP_CHECKOUT_MODE=custom_api` pin karte hain. Shop suite: **164/164 pass**.
+
+**Part 2 — link mode (baaki, Fastrr jawab ke baad, §11b):** Shopify `orders/create` → `internal_order_id` se TH order dhoondo → `verifyShopifyOrderAgainstOurs` → paid/COD set + `shopifyOrderId` save + hold release; mismatch → review. Dhyan:
+- **Late payment:** 30 min baad pay kiya → humara order `expired` ho chuka hoga; link step ko `expired → paid` allow karna hai.
+- Webview mode mein `GET /orders/:id` polling link hone tak `awaiting_payment` hi dikhayega (Fastrr fetch-back nahi hai).
+- Link hone tak customer cancel block; admin "retry sync" = re-check link.
+
+**Fastrr se poochna (v2 doc mein add karo):** price URL se lete ho ya Shopify se? · `cartAttributes` → `note_attributes` aate hain? · payment ke baad WebView ko kaunsa success URL/event milta hai? · order webhook / Order Details API ab bhi milega? · refund kaise? · `productId` = variant id sahi? · price paise mein sahi?
+
+---
+
 ## 12. Env vars (shop)
 | Var | Where | Note |
 |---|---|---|
@@ -467,7 +499,10 @@ Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi
 | `SHOPIFY_API_VERSION` | optional | default `2026-10` |
 | `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET` | same | webhook HMAC |
 | `SHOP_MAX_QTY_PER_ITEM`, `SHOP_MAX_CART_LINES` | optional | 10 / 30 |
-| `FASTRR_BASE_URL`, `FASTRR_API_KEY`, `FASTRR_API_SECRET` | M2 | from Fastrr |
+| `SHOP_CHECKOUT_MODE` | optional | `shopify_webview` (default) / `custom_api` (§11c) |
+| `FASTRR_SELLER_DOMAIN` | webview mode | Fastrr wala Shopify store; default `SHOPIFY_ADMIN_STORE_DOMAIN` |
+| `FASTRR_WEBVIEW_URL`, `FASTRR_WEB_URL`, `SHOP_WEBVIEW_HOLD_MINUTES` | optional | `https://fastrr-boost-ui.pickrr.com/headless/?` / empty / 30 |
+| `FASTRR_BASE_URL`, `FASTRR_API_KEY`, `FASTRR_API_SECRET` | custom_api mode | from Fastrr (webview mode mein checkout ke liye nahi chahiye) |
 | `QSTASH_*` | already set | catalog schedule + crons |
 | `SHOP_PUBLIC_BASE_URL` | Vercel + Render | `https://www.take.health` — checkout page / Fastrr redirect links |
 | `SHOP_APP_DEEP_LINK` | optional | default `takehealth://shop/order/{orderId}?status={status}` (Flutter team se confirm) |
