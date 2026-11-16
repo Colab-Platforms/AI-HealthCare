@@ -425,7 +425,7 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 8. UPI intent links ke exact schemes (Flutter WebView ke liye)
 Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi — inke **jawab yahan section 13 mein paste karo**.
 
-**Latest question list (Word):** Desktop `Fastrr_Questions_v2.docx` — 71 sawaal (47 Must), har ek ke saath "why" + answer column. v1 (`Fastrr_Questions.docx`) purana hai (tab hum order banate the).
+**Latest question list (Word):** `docs/Fastrr_Questions_v2.docx` (copy Desktop pe bhi) — 71 sawaal (47 Must), har ek ke saath "why" + answer column. v1 purana tha (tab hum order banate the) — hata diya.
 
 ---
 
@@ -539,7 +539,7 @@ Auto-refund + user cancel + returns/RTO (baaki M4), Shopify weights (shipping ac
 - Testing base URL: `https://ai-healthcare-1-0i51.onrender.com/api/shop` (Staging auto-deploy; checkout = 503 jab tak Render pe Fastrr keys nahi).
 
 ### F. Known pre-existing test failures (shop se unrelated)
-- `shopifyOfferRules.test.js` "Rahul" — card-offer, date-dependent (aaj se fail; last commit pe bhi) → card-offer owner
+- `shopifyOfferRules.test.js` "Rahul" — card-offer, date-dependent (aaj se fail; last commit pe bhi) → card-offer owner. Scenario + root cause (`isEntitled` asli ghadi use karta hai, test ka `now` nahi) + fix: **`docs/card-offer-rahul-test-failure.md`**
 - `vault.test.js` 4 fail (storage config defaults) — pre-existing
 - `wearableScoreDedup.staging.test.js` staging DB connect pe hang → `npm test` poora khatam nahi hota; shop tests alag se chalao (§0)
 
