@@ -129,7 +129,13 @@ const confirmedOrderFields = (details, method, now = new Date()) => {
     const payment = mapPayment(details);
     if (payment) {
         set.payment = payment;
-        if (upper(payment.gateway) === 'RAZORPAY') set.razorpayPaymentId = payment.pgTransactionId;
+        // Fastrr's pg_transaction_id for Razorpay can be the Razorpay ORDER id
+        // ("order_…", as in their docs) or a payment id ("pay_…"). Store it in
+        // the matching field so support never looks it up in the wrong place.
+        if (upper(payment.gateway) === 'RAZORPAY' && payment.pgTransactionId) {
+            if (payment.pgTransactionId.startsWith('order_')) set.razorpayOrderId = payment.pgTransactionId;
+            else set.razorpayPaymentId = payment.pgTransactionId;
+        }
     }
     // Drop undefined so a sparse Fastrr payload never blanks a stored value.
     for (const k of Object.keys(set)) if (set[k] === undefined) delete set[k];

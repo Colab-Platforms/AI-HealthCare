@@ -106,8 +106,11 @@ exports.fastrrWebhook = async (req, res) => {
         const r = await fastrrOrderService.handleWebhook(req.body);
         const tag = r.ignored ? `ignored (${r.ignored})` : r.duplicate ? 'duplicate' : `${r.result} -> ${r.status}`;
         console.log(`[Shop/fastrrWebhook] ${r.orderId || String(req.body?.order_id || '-').slice(0, 64)}: ${tag}`);
+        // Fastrr's doc: "Response is expected to be with status 200". A payload
+        // with no usable order_id can't get better on retry, so it is logged and
+        // acknowledged with 200 (received:false) instead of a 4xx.
         if (r.httpStatus === 400) {
-            return res.status(400).json({ received: false, code: 'INVALID_ORDER_ID', message: 'order_id is missing or malformed' });
+            return res.status(200).json({ received: false, code: 'INVALID_ORDER_ID', message: 'order_id is missing or malformed' });
         }
         res.status(200).json({ received: true });
     } catch (err) {

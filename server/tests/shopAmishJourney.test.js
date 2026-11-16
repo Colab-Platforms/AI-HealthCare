@@ -356,7 +356,7 @@ test('4. Amish pays by UPI on Fastrr', async () => {
     mock.state.orders.set(o.fastrrOrderId, placedOrder(o.fastrrOrderId, { items: [{ variantId: V1, quantity: 2 }], subtotal: 2998 }));
 
     let r = await act('Attacker posts a fake webhook body', 'POST', '/fastrr/webhook', { user: null, body: { order_id: '<script>', status: 'SUCCESS' } });
-    assert.equal(r.status, 400);
+    assert.equal(r.status, 200); // Fastrr's doc expects 200; nothing is processed
     assert.deepEqual(r.json, { received: false, code: 'INVALID_ORDER_ID', message: 'order_id is missing or malformed' });
 
     r = await act('Fastrr webhook: order placed', 'POST', '/fastrr/webhook', { user: null, body: { order_id: o.fastrrOrderId, status: 'SUCCESS' } });

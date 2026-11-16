@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-    mapShopifyProduct, toFastrrProduct, toAppProductDetail, availableQty, UNLIMITED_QTY_FOR_FASTRR,
+    mapShopifyProduct, toFastrrProduct, toFastrrCollection, toAppProductDetail, availableQty, UNLIMITED_QTY_FOR_FASTRR,
 } = require('../modules/shop/lib/catalogMapper');
 const { toPaise, paiseToDecimalString } = require('../modules/shop/lib/money');
 const { _internal } = require('../modules/shop/services/catalogService');
@@ -99,11 +99,50 @@ test('toFastrrProduct: long ids, decimal prices, no-limit stock not reported as 
     assert.equal(f.variants[0].compare_at_price, '999.00');
     assert.equal(f.variants[0].quantity, 12);
     assert.equal(f.variants[1].quantity, UNLIMITED_QTY_FOR_FASTRR);
-    assert.equal(f.variants[1].compare_at_price, null);
+    // No MRP in Shopify -> price itself (doc always sends a decimal string; no fake discount)
+    assert.equal(f.variants[1].compare_at_price, '1499.50');
     assert.deepEqual(f.variants[0].option_values, { Size: '60 caps' });
     assert.equal(f.tags, 'glucose, metabolic');
     assert.equal(f.status, 'active');
     assert.deepEqual(f.image, { src: 'https://cdn/img1.jpg' });
+    // Variant without its own image falls back to the product image (Fastrr always expects an object)
+    assert.deepEqual(f.variants[0].image, { src: 'https://cdn/img1.jpg' });
+    assert.deepEqual(f.variants[1].image, { src: 'https://cdn/v2.jpg' });
+    // Dates like Fastrr's examples: seconds + store offset (IST). 10:00Z == 15:30 IST.
+    assert.equal(f.created_at, '2026-01-10T15:30:00+05:30');
+    assert.equal(f.variants[0].updated_at, '2026-11-01T15:30:00+05:30');
+    assert.equal(f.variants[1].created_at, null); // unknown stays null, never "Invalid Date"
+});
+
+test('toFastrrProduct: MRP equal to / below price is sent as the price (no fake discount)', () => {
+    const p = mapShopifyProduct(shopifyNode());
+    p.variants[0].compareAtPrice = 50000; // below the 79900 price
+    assert.equal(toFastrrProduct(p).variants[0].compare_at_price, '799.00');
+});
+
+test('toFastrrCollection: doc shape, image falls back to the placeholder', () => {
+    const c = { shopifyCollectionId: '482865238', handle: 'all', title: 'All', descriptionHtml: '', imageUrl: null, shopifyUpdatedAt: new Date('2026-11-01T10:00:00Z'), createdAt: new Date('2026-11-01T10:00:00Z') };
+    const prev = process.env.SHOP_PLACEHOLDER_IMAGE_URL;
+    try {
+        delete process.env.SHOP_PLACEHOLDER_IMAGE_URL;
+        const a = toFastrrCollection(c);
+        assert.deepEqual(Object.keys(a).sort(), ['body_html', 'created_at', 'handle', 'id', 'image', 'title', 'updated_at']);
+        assert.equal(a.id, 482865238);
+        assert.equal(a.image, null);
+        assert.equal(a.updated_at, '2026-11-01T15:30:00+05:30');
+        process.env.SHOP_PLACEHOLDER_IMAGE_URL = 'https://cdn/placeholder.png';
+        assert.deepEqual(toFastrrCollection(c).image, { src: 'https://cdn/placeholder.png' });
+    } finally {
+        if (prev === undefined) delete process.env.SHOP_PLACEHOLDER_IMAGE_URL; else process.env.SHOP_PLACEHOLDER_IMAGE_URL = prev;
+    }
+});
+
+test('toFastrrProduct: no images anywhere -> image null, not a broken object', () => {
+    const p = { ...mapShopifyProduct(shopifyNode()), images: [] };
+    p.variants = p.variants.map((v) => ({ ...v, imageUrl: null }));
+    const f = toFastrrProduct(p);
+    assert.equal(f.image, null);
+    assert.equal(f.variants[0].image, null);
 });
 
 test('toFastrrProduct: archived product goes to Fastrr as draft (stops selling)', () => {

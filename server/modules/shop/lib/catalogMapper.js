@@ -156,7 +156,29 @@ const toAppCollection = (c) => ({
 // Ids must be unique longs. Shopify legacy ids are ~4e13, well inside
 // Number.MAX_SAFE_INTEGER (~9e15), so Number() is lossless.
 
-const iso = (d) => (d ? new Date(d).toISOString() : null);
+// Fastrr's examples use ISO 8601 with the store's UTC offset and seconds
+// precision ("2023-11-07T09:50:12-05:00"), like Shopify's REST API. Our store
+// is in India, so the same instant is written in IST: "2026-08-29T13:41:51+05:30".
+const IST_OFFSET_MS = 330 * 60 * 1000;
+const iso = (d) => {
+    if (!d) return null;
+    const t = new Date(d).getTime();
+    if (Number.isNaN(t)) return null;
+    return `${new Date(t + IST_OFFSET_MS).toISOString().slice(0, 19)}+05:30`;
+};
+
+// Fastrr's examples always carry an image object. Fallback order: own image ->
+// product image -> SHOP_PLACEHOLDER_IMAGE_URL -> null (only if none exists).
+const imageObj = (...urls) => {
+    const src = [...urls, config.placeholderImageUrl()].find((u) => typeof u === 'string' && u);
+    return src ? { src } : null;
+};
+
+// Fastrr's examples always send compare_at_price as a decimal string. When
+// Shopify has no MRP (or one that isn't above the price) we send the price
+// itself: same type as the doc, and no fake "discount" shown.
+const fastrrCompareAt = (v) =>
+    paiseToDecimalString(Number.isFinite(v.compareAtPrice) && v.compareAtPrice > v.price ? v.compareAtPrice : v.price);
 
 // Fastrr wants a per-variant quantity; it has no "untracked" flag, so a
 // no-limit variant is reported with a large number instead of 0 (which would
@@ -195,20 +217,21 @@ const toFastrrProduct = (p) => ({
             id: Number(v.shopifyVariantId),
             title: v.title,
             price: paiseToDecimalString(v.price),
-            compare_at_price: paiseToDecimalString(v.compareAtPrice),
+            compare_at_price: fastrrCompareAt(v),
             sku: v.sku || '',
             created_at: iso(v.shopifyCreatedAt),
             updated_at: iso(v.shopifyUpdatedAt),
             quantity: qty === Infinity ? UNLIMITED_QTY_FOR_FASTRR : qty,
             taxable: v.taxable !== false,
             grams: v.weightGrams || 0,
-            image: v.imageUrl ? { src: v.imageUrl } : null,
+            // Variants often have no image of their own -> product image (same as the app).
+            image: imageObj(v.imageUrl, p.images?.[0]?.url),
             weight: v.weightGrams ? v.weightGrams / 1000 : 0,
             weight_unit: 'kg',
             option_values: Object.fromEntries((v.options || []).map((o) => [o.name, o.value])),
         };
     }),
-    image: p.images?.[0]?.url ? { src: p.images[0].url } : null,
+    image: imageObj(p.images?.[0]?.url),
     options: fastrrOptions(visibleVariants(p)),
 });
 
@@ -217,7 +240,7 @@ const toFastrrCollection = (c) => ({
     updated_at: iso(c.shopifyUpdatedAt),
     body_html: c.descriptionHtml || '',
     handle: c.handle,
-    image: c.imageUrl ? { src: c.imageUrl } : null,
+    image: imageObj(c.imageUrl),
     title: c.title,
     created_at: iso(c.createdAt),
 });

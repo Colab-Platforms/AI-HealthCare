@@ -135,7 +135,14 @@ test('fastrr: confirmed order fields are mapped to paise / our address shape, nu
     assert.equal(set.shippingAddress.landmark, undefined);
     assert.deepEqual(set.payment, { gateway: 'Razorpay', method: 'UPI', txnId: 'Txn1', pgTransactionId: 'pay_ABC', amountReceived: 294650 });
     assert.equal(set.razorpayPaymentId, 'pay_ABC');
+    assert.equal('razorpayOrderId' in set, false);
     assert.equal(set.rtoPrediction, 'low');
+
+    // Fastrr's doc example: pg_transaction_id is a Razorpay ORDER id
+    const withRzpOrder = { ...d, payments: d.payments.map((p) => ({ ...p, pg_transaction_id: 'order_QnJbE6i9UScecJ' })) };
+    const s2 = confirmedOrderFields(withRzpOrder, 'prepaid');
+    assert.equal(s2.razorpayOrderId, 'order_QnJbE6i9UScecJ');
+    assert.equal('razorpayPaymentId' in s2, false);
     assert.equal(set.fastrrNumericOrderId, '113535525');
 
     const sparse = confirmedOrderFields(fastrrOrder('fo2', { status: 'SUCCESS', payment_type: 'CASH_ON_DELIVERY' }), 'cod');

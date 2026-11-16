@@ -775,8 +775,10 @@ test('http: checkout via Idempotency-Key header, then poll, page and webhook thr
     assert.ok(ret.text.includes('status=confirmed'));
 });
 
-test('http: webhook answers 400 for garbage, 200 for unknown orders, 500 when the fetch-back fails', async () => {
-    assert.equal((await call('POST', '/fastrr/webhook', { body: { order_id: '<script>' } })).status, 400);
+test('http: webhook answers 200 (received:false) for garbage, 200 for unknown orders, 500 when the fetch-back fails', async () => {
+    const garbage = await call('POST', '/fastrr/webhook', { body: { order_id: '<script>' } });
+    assert.equal(garbage.status, 200);
+    assert.equal(garbage.json.received, false);
     assert.equal((await call('POST', '/fastrr/webhook', { body: { order_id: 'bbbbbbbbbbbbbbbbbbbbbbbb' } })).status, 200);
     const { order } = await checkedOut();
     for (let i = 0; i < 3; i++) mock.state.next.push({ path: DETAILS, status: 500, body: {} });

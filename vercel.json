@@ -58,7 +58,7 @@
       ]
     },
     {
-      "source": "/((?!r/|api/public/shares/).*)",
+      "source": "/((?!r/|api/public/shares/|api/shop/checkout/).*)",
       "headers": [
         {
           "key": "X-Content-Type-Options",
@@ -87,6 +87,14 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "no-referrer" }
+      ]
+    },
+    {
+      "source": "/api/shop/checkout/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Referrer-Policy", "value": "no-referrer" }
       ]
     }
