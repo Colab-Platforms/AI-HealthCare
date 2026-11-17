@@ -1,6 +1,6 @@
 # Card offer — "Rahul" test failure (scenario A)
 
-> Status: **known failure, not fixed** (2026-11-16). Shop changes se unrelated — card-offer (Shopify store buyers ko 30-day free trial) ka purana test.
+> Status: **known failure, not fixed** (2026-11-16; updated 2026-11-17 — ab 2 tests fail). Shop changes se unrelated — card-offer (Shopify store buyers ko 30-day free trial) ka purana test.
 > File: `server/tests/shopifyOfferRules.test.js` → test `A: on the 14-day trial, bought after joining -> +30 days after the trial ends (Rahul)`
 
 ## Scenario (Rahul)
@@ -19,6 +19,19 @@
 - Test expect karta hai: `kind = applied`, `end = 2026-12-15`, `keepStart = true`.
 - Aaj (16 Nov 2026 se) mil raha hai: **rule C** — "trial khatam" maan ke `end = now + 30` (6 Dec) aur `keepStart = false`.
 - **16 Nov se fail shuru hua** — 15 Nov (trial end) tak pass hota tha.
+
+### 17 Nov update: doosra test bhi fail
+
+Test `B, redeemed a few days after joining: still 30 days counted from joining` — user 2 Nov join, trial end **16 Nov**, order 1 Nov (join se pehle). Expect: rule B → `end = 2 Dec`. **17 Nov se** same wajah se trial "over" dikhta hai → rule C (`now + 30` = 6 Dec) → fail.
+
+**Aage ka timeline (fix nahi kiya toh):**
+| Date | Kaunsa test fail hoga |
+|---|---|
+| 16 Nov 2026 | A (Rahul) |
+| 17 Nov 2026 | B, redeemed a few days after joining |
+| 1 Dec 2026 | D (live paid plan → pending) — `currentPeriodEnd` 1 Dec |
+
+(B "Priya" 20 Nov ke baad bhi pass rahega — wahan rule B aur C dono ka answer 6 Dec hi aata hai, sirf coincidence.)
 
 ## Root cause
 

@@ -21,7 +21,7 @@ const { ShopError } = require('../lib/shopError');
 const { evaluateCart, indexVariants } = require('../lib/cartEvaluator');
 const {
     isValidIdempotencyKey, cartHash, newInternalOrderId, isValidInternalOrderId,
-    buildCheckoutTokenPayload, buildFastrrWebviewUrl, signPageParams, verifyPageParams, fillTemplate,
+    buildCheckoutTokenPayload, signPageParams, verifyPageParams, fillTemplate,
 } = require('../lib/checkoutLogic');
 const { displayStatus, money, PLACED_PAYMENT_STATES } = require('../lib/orderView');
 const { renderCheckoutPage, renderReturnPage, renderMessagePage } = require('../lib/checkoutPage');
@@ -170,34 +170,6 @@ const ensureToken = async (order, baseUrl) => {
 
 // ── Start checkout ─────────────────────────────────────────────────────────
 
-// ── Shopify WebView mode (Fastrr's "one click checkout" URL) ───────────────
-// No Fastrr API call and no token: hold the stock, then hand the app Fastrr's
-// URL (built exactly like their mobileApp.js). Fastrr creates the Shopify order;
-// we link it later by the internal_order_id carried in the cart attributes.
-const webviewCheckout = async (order) => {
-    const holdUntil = new Date(Date.now() + config.webview.holdMs());
-    await reservations.reserve(order, holdUntil); // STOCK_UNAVAILABLE if someone else holds the last units
-    return {
-        orderId: order.internalOrderId,
-        status: displayStatus(order),
-        amount: money(order.amount),
-        itemCount: (order.items || []).reduce((n, i) => n + i.quantity, 0),
-        checkoutPageUrl: buildFastrrWebviewUrl({
-            items: order.items,
-            internalOrderId: order.internalOrderId,
-            baseUrl: config.webview.baseUrl(),
-            sellerDomain: config.webview.sellerDomain(),
-            webUrl: config.webview.webUrl(),
-            placeholderImageUrl: config.placeholderImageUrl(),
-        }),
-        expiresAt: holdUntil, // the stock hold; after it, start checkout again
-    };
-};
-
-const openCheckout = (order, baseUrl) => (config.checkoutMode() === 'shopify_webview'
-    ? webviewCheckout(order)
-    : ensureToken(order, baseUrl).then((o) => checkoutResponse(o, baseUrl)));
-
 const resumeExisting = async (existing, hash, baseUrl) => {
     assertStillPending(existing);
     if (existing.cartHash !== hash) {
@@ -205,7 +177,7 @@ const resumeExisting = async (existing, hash, baseUrl) => {
             orderId: existing.internalOrderId,
         });
     }
-    return openCheckout(existing, baseUrl);
+    return checkoutResponse(await ensureToken(existing, baseUrl), baseUrl);
 };
 
 const createOrder = async ({ userId, idempotencyKey, hash, items, amount }) => {
@@ -241,8 +213,7 @@ const startCheckout = async (userId, { idempotencyKey, baseUrl }) => {
     if (!isValidIdempotencyKey(idempotencyKey)) {
         throw new ShopError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Send an Idempotency-Key header (8-128 characters: letters, digits, . _ : -)');
     }
-    const ready = config.checkoutMode() === 'shopify_webview' ? Boolean(config.webview.sellerDomain()) : fastrr.isConfigured();
-    if (!ready) {
+    if (!fastrr.isConfigured()) {
         throw new ShopError(503, 'CHECKOUT_UNAVAILABLE', 'Checkout is not available right now');
     }
 
@@ -278,7 +249,7 @@ const startCheckout = async (userId, { idempotencyKey, baseUrl }) => {
     if (!created) return resumeExisting(order, hash, baseUrl);
 
     console.log(`[Shop/checkout] ${order.internalOrderId}: created (${summary.itemCount} items, ${amount} paise)`);
-    return openCheckout(order, baseUrl);
+    return checkoutResponse(await ensureToken(order, baseUrl), baseUrl);
 };
 
 // ── WebView pages ──────────────────────────────────────────────────────────

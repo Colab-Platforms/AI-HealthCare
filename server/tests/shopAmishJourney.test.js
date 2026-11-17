@@ -17,7 +17,7 @@ const { FakeCollection } = require('./helpers/fakeMongo');
 const { startFastrrMock, placedOrder, fastrrOrder, API_KEY, API_SECRET } = require('./helpers/fastrrMock');
 
 const ENV = {
-    SHOP_CHECKOUT_MODE: 'custom_api', FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000',
+    FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000',
     JWT_SECRET: 'test-jwt-secret', SHOP_PUBLIC_BASE_URL: 'https://shop.test',
     SHOP_APP_DEEP_LINK: undefined, SHOP_HIDE_SUBSCRIBE_VARIANTS: undefined, SHOP_CHECKOUT_PAGE_SECRET: undefined,
     SHOP_MAX_QTY_PER_ITEM: undefined, SHOP_MAX_CART_LINES: undefined,

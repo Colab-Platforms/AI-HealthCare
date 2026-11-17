@@ -17,7 +17,7 @@ const V2 = '57199514222898'; // Berberine Subscribe (hidden)
 const V9 = '777';            // Magnesium ₹99, untracked
 
 const ENV = {
-    SHOP_CHECKOUT_MODE: 'custom_api', FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000', FASTRR_CATALOG_PUSH: 'false',
+    FASTRR_API_KEY: API_KEY, FASTRR_API_SECRET: API_SECRET, FASTRR_TIMEOUT_MS: '3000', FASTRR_CATALOG_PUSH: 'false',
     JWT_SECRET: 'test-jwt-secret', SHOP_PUBLIC_BASE_URL: 'https://shop.test',
     SHOPIFY_ADMIN_STORE_DOMAIN: '2jfdfm-vp.myshopify.com', SHOPIFY_ADMIN_TOKEN: SHOPIFY_TOKEN, SHOPIFY_API_VERSION: '2026-10',
     SHOP_SHOPIFY_ORDER_SYNC: 'true', SHOP_EVENTS: undefined, SHOP_AUTO_REFUND: undefined, SHOP_USER_CANCEL: undefined,

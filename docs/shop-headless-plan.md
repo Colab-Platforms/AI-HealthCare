@@ -3,11 +3,18 @@
 > **Single source of truth for the in-app shop.** Kisi bhi laptop se kaam shuru karo toh pehle ye file padho.
 > Purani files `fastrr-shiprocket-checkout-integration-plan.md` aur `fastrr-integration-reference-and-test-plan.md` OUTDATED hain (wo purane `fastrrRoutes.js` ke liye thi, jo delete ho chuka hai).
 >
-> Last updated: 2026-11-16 (M1–M4 + shop admin (APIs + web pages) done, tested & pushed; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
+> Last updated: 2026-11-17 (M1–M4 + shop admin (APIs + web pages) done, tested & pushed; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
 >
-> **NEW (2026-11-16 raat): checkout ab Fastrr ka Shopify WebView URL** (`SHOP_CHECKOUT_MODE=shopify_webview`, default) — Part 1 + Part 3 bane, §11c.
+> **2026-11-17 — FINAL: custom integration hi chalega.** 16 Nov ko Fastrr team ko laga tha ki hamara app Shopify se juda hai, isliye unhone "Fastrr Shopify order banayega + Shopify WebView checkout" bola. Is galatfehmi pe kuch kaam ho gaya tha: plan update `cfbe762`, aur ghar pe WebView checkout mode + Shopify order verifier `6b1232c`. 17 Nov ko Fastrr ke saath sab clear ho gaya. Unhone confirm kiya ki Postman ka **"SRC Custom Integration"** doc hi follow karna hai, jo is plan ka original flow hai: token API → `HeadlessCheckout` JS → order webhook + Order Details fetch-back → **Shopify order hum banate hain** (M3 `orderCreate`).
+> - WebView mode ka code (`SHOP_CHECKOUT_MODE`, `shopifyOrderVerify`, uske tests) **hata diya**. Link mode ab nahi banega.
+> - Product/catalog APIs doc se field-by-field dobara check kiye: pehle se match karte hain (§11). Koi change nahi.
+> - Go-live ke liye env (Vercel + Render dono): `FASTRR_API_KEY`, `FASTRR_API_SECRET` (Fastrr se lena hai) aur `SHOP_SHOPIFY_ORDER_SYNC=true` (Shopify token mein `write_orders` chahiye). Fastrr se ek baar likhwa lo ki wo **apni taraf se Shopify order nahi banayenge** (warna order double ban jayega).
 >
-> **NEW (2026-11-16): Fastrr hi Shopify order banayega** → humara `orderCreate` band, "link mode" banana hai — **§11b padho**.
+> | Commit (16–17 Nov) | Kya |
+> |---|---|
+> | `e0ddd2b` | Shop APIs Postman doc ke format pe + checkout CSP fix (§11) |
+> | `cfbe762`, `6b1232c`, `2f4d48d` | Galatfehmi wala "Fastrr Shopify order banayega" plan + WebView code — **17 Nov ko wapas liya** |
+> | `f4eba54` | Rahul card-offer test note (`docs/card-offer-rahul-test-failure.md`) |
 >
 > **Aaj kahan tak (2026-11-16 raat):** code side sab ban gaya — catalog, cart, checkout (Fastrr), orders, Shopify order + stock hold + shipping, cancel + refunds, shop admin. **Baaki = external:** Fastrr keys se real test, Fastrr/management/Shopify dev ke jawab (§13, requirements doc), live store test, prod deploy (§14).
 >
@@ -19,7 +26,6 @@
 > | `6271d53` | M4 cancel + refunds |
 > | `95294ef` | Shop admin APIs + `shop_events` log |
 > | `c2b77bf`, `bebdb20` | Shop admin web pages (`/admin/shop`) + full-width fix |
-| `6b1232c` | Shopify WebView checkout mode + Shopify order price check (§11c) |
 
 ---
 
@@ -31,7 +37,7 @@
    `MONGODB_URI`, `MONGODB_URI_STAGING`, `JWT_SECRET`, `SHOPIFY_ADMIN_STORE_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_API_VERSION`, `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET`, Redis, QStash (`QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`), aur baaki jo office `.env` mein hai.
 4. Check (sab `server/` se):
    - `node scripts/shopCatalogSync.js --preview` (sirf Shopify read, DB nahi chhoota)
-   - `node --test tests/shop*.test.js` — 189 tests (DB / Fastrr / Shopify sab mock; kuch real nahi chhoota). Expected: 188 pass, 1 fail = `shopifyOfferRules` "Rahul" (card-offer, date-dependent, pre-existing, shop se unrelated)
+   - `node --test tests/shop*.test.js` — 192 tests (DB / Fastrr / Shopify sab mock; kuch real nahi chhoota). Expected (17 Nov): 190 pass, 2 fail. Dono `shopifyOfferRules` ke card-offer, date-dependent tests hain (pre-existing, shop se unrelated, §14 F)
    - `node scripts/shopStagingE2E.js` — asli **staging** MongoDB pe M1–M4 flow (48 checks), Fastrr + Shopify mock; apna data (users, carts, orders, holds) khud delete karta hai. Sirf `*staging` DB pe chalta hai.
 5. Claude ko bolo: **"docs/shop-headless-plan.md padho aur wahan se continue karo"**. Claude ki memory laptop-specific hai, isliye saara context isi file mein hai.
 
@@ -54,7 +60,7 @@
 |---|---|
 | Scope | **Sirf backend** (Node). Flutter app alag team bana rahi hai |
 | Store | **Take Limited** `2jfdfm-vp.myshopify.com` → env `SHOPIFY_ADMIN_STORE_DOMAIN` (purana `SHOPIFY_STORE_DOMAIN` = old Fastrr test store, use NAHI karna) |
-| Shopify order kaun banayega | **CHANGED (2026-11-16): Fastrr banayega** (Fastrr ne confirm kiya). Humara M3 `orderCreate` band (`SHOP_SHOPIFY_ORDER_SYNC=false`), hum Fastrr ke Shopify order ko `internal_order_id` se **link** karenge — naya "link mode", §11b. (Pehle: hum `orderCreate` se banate the) |
+| Shopify order kaun banayega | **Hum** — payment confirm hone ke baad Admin API `orderCreate` se (M3) |
 | Payment | **COD + Prepaid** dono |
 | Cart | **Server cart** (DB mein) — multi-device, price/stock server-side check |
 | Code location | `server/modules/shop/` (mounted at `/api/shop`) |
@@ -88,7 +94,7 @@ Flutter app = sirf UI
 4. App WebView mein `GET /api/shop/checkout/:orderId/page` (M2) kholta hai → Fastrr JS checkout load (`HeadlessCheckout.addToCart(event, token, {fallbackUrl, isInitiatedFromApp:true})`).
 5. User address + payment (UPI/card/COD) Fastrr pe karta hai.
 6. Fastrr → `POST /api/shop/fastrr/webhook` (M2). Webhook **unsigned** hai → body pe trust nahi, sirf `order_id` lo aur **Order Details API se fetch-back** karo → `paid` / `cod_pending`.
-7. Cart clear. **Naya (§11b):** Fastrr khud Shopify order banata hai → Shopify `orders/create` webhook → hum `note_attributes.internal_order_id` se apne order se link karte hain. (Purana: QStash job Shopify `orderCreate`, tag `take-app` + internalOrderId — ab band.)
+7. Cart clear, Shopify sync `pending` → QStash job Shopify `orderCreate` (M3, tag `take-app` + internalOrderId).
 8. Shopify fulfilment/refund webhooks → order status update → FCM push (M3).
 9. App WebView band hone pe `GET /api/shop/orders/:id` poll karta hai.
 10. Backup: reconciliation cron pending orders ka status Fastrr se poochta hai (M2).
@@ -107,7 +113,7 @@ Same server Vercel + Render dono pe, **same prod DB**. Env vars **dono jagah** s
 |---|---|---|
 | **M1** | Catalog sync + catalog APIs + Fastrr catalog pull + server cart + Order model/state machine | ✅ Code done, staging pe test pass. **Prod deploy/scripts baaki**, M1 gaps §7 |
 | **M2** | Fastrr checkout: client, checkout start, WebView page, webhook + fetch-back, order status API, reconciliation cron, catalog push | ✅ Code + 52 naye tests done (mock Fastrr + in-memory DB). **Baaki: Fastrr staging keys se real E2E** (§9a) |
-| **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). **Fastrr ne bola woh khud Shopify order banayega → `SHOP_SHOPIFY_ORDER_SYNC` hamesha OFF.** Naya kaam: link mode (§11b) — **baaki, Fastrr ke 2.2/2.3 jawab ke baad**. Shipping/cancel/COD-paid webhooks link ke baad waise hi chalenge (§10a) |
+| **M3** | Shopify order create (QStash, idempotent via tag lookup), stock reservation, fulfilment/cancel/COD-paid webhooks, FCM notifications | ✅ Code + 35 tests + staging DB E2E (Shopify mock). Flag `SHOP_SHOPIFY_ORDER_SYNC` code mein default OFF hai. **Go-live pe `true` karna hai**, kyunki 17 Nov ko confirm hua ki Shopify order hum banayenge. Live-store test baaki (§10a) |
 | **M4** | Cancel (customer + admin), refunds (Fastrr Refund API + report sync), Shopify cancel + refund record, duplicate-payment / store-cancel refunds, admin refund actions | ✅ Code + 20 tests + staging DB E2E (48/48, Fastrr + Shopify mock). Auto-refund **OFF** by default. Real Fastrr refund test baaki (keys). §10 |
 | **Admin** | Shop admin APIs + pages (overview, products, orders + timeline, carts, customer journey + `shop_events`, attention, refunds) in existing web admin (`client/`) | ✅ Backend APIs + 14 tests. ✅ Pages (`/admin/shop`) — `vite build` pass, local pe chala ke dekha (§0a, §10b) |
 
@@ -406,11 +412,19 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 - Order Details / Order List / Refund Initiate / Refund Report APIs
 - Pricing public nahi (~2%/order third-party claim, unverified; fixed plan ₹699 se mention)
 
-**Doc conformance check (2026-11-16):** saare APIs Postman doc se field-by-field match kiye (staging data pe). Doc ke format pe laaye: (1) image hamesha object — own → product image → `SHOP_PLACEHOLDER_IMAGE_URL` (**ye env set karna hai**, warna collection image null jaayegi); (2) `compare_at_price` hamesha string — MRP nahi/price se kam ho toh price hi; (3) dates doc jaisi offset ke saath, seconds tak: `2026-08-29T13:41:51+05:30` (IST); (4) Razorpay `pg_transaction_id` `order_…` → `razorpayOrderId`; (5) order webhook bad `order_id` pe 200 (`received:false`). `weight_unit` "kg" + `grams` rakha (Shopify ki valid unit; doc ka "lb" sirf example). Fastrr se confirm: Refund Report `from`/`to` (doc text `start_date`/`end_date` bolta hai, example `from`/`to` — hum example follow karte hain), `fallbackUrl`. Order List API hum use nahi karte (backup cron Order Details se chalta hai).
+**Doc conformance check (2026-11-16, catalog re-check 2026-11-17):** Saare APIs Postman doc se field-by-field match kiye (staging data pe).
+- Catalog response doc jaisa hai: `{ data: { total, products[] } }` / `{ data: { total, collections[] } }`. Product aur variant ki `id` number (long) hai, `options[{name, values[]}]` aur `option_values{}` dono hain.
+- Image hamesha object jaati hai. Order: apni image → product image → `SHOP_PLACEHOLDER_IMAGE_URL` (**ye env set karna hai**, warna collection image `null` jaayegi).
+- `compare_at_price` hamesha string. MRP nahi ho, ya price se kam ho, toh price hi bhejte hain.
+- Dates offset ke saath, seconds tak: `2026-08-29T13:41:51+05:30` (IST).
+- Shopify collection ka `created_at` nahi deta, isliye wahan hamare DB ki date jaati hai.
+- Razorpay `pg_transaction_id` `order_…` → `razorpayOrderId`. Order webhook pe galat `order_id` aaye toh bhi 200 (`received:false`).
+- `weight_unit` "kg" + `grams` rakha (Shopify ki valid unit; doc ka "lb" sirf example hai).
+- Fastrr se confirm: Refund Report `from`/`to` (doc text `start_date`/`end_date` bolta hai, example `from`/`to`; hum example follow karte hain), aur `fallbackUrl`.
 
-**Staging backend (Fastrr ko pehle yahi dena):** `https://ai-healthcare-1-0i51.onrender.com` — is pe `USE_STAGING_DB=true`, `FASTRR_BASE_URL=https://fastrr-api-dev.pickrr.com` + staging key/secret hone chahiye.
+**Staging backend (Fastrr ko pehle yahi dena):** `https://ai-healthcare-1-0i51.onrender.com`. Is pe `USE_STAGING_DB=true`, `FASTRR_BASE_URL=https://fastrr-api-dev.pickrr.com` aur staging key/secret hone chahiye.
 
-**CSP fix (2026-11-16):** `vercel.json` ki site-wide Content-Security-Policy `/api/shop/checkout/*` pe bhi lag rahi thi aur Fastrr ki script (checkout-ui.shiprocket.com) block karti — www.take.health pe checkout page khaali aata. Ab ye path site CSP se bahar hai; wahan sirf `nosniff`, `X-Frame-Options: DENY`, `no-referrer`. (Render pe ye CSP kabhi lagti hi nahi thi.)
+**CSP fix (2026-11-16):** `vercel.json` ki site-wide CSP `/api/shop/checkout/*` pe bhi lag rahi thi aur Fastrr ki script (checkout-ui.shiprocket.com) block kar rahi thi. Ab ye path site CSP se bahar hai; wahan sirf `nosniff`, `X-Frame-Options: DENY`, `no-referrer` lagte hain.
 
 **Hum unhe denge:**
 - Catalog: `https://www.take.health/api/shop/fastrr/products`, `/fastrr/collections`, `/fastrr/collection-products?collection_id={id}`
@@ -420,74 +434,13 @@ Jo cheezein Fastrr ke jawab pe depend hain (token validity, `fallbackUrl`, own o
 **Unse lena (Monday 2026-11-17, top priority):**
 1. Staging + prod API key/secret
 2. Staging test UPI / card details (refund test ke liye bhi)
-3. ~~Fastrr khud Shopify order banata hai ya nahi~~ → **Haan, Fastrr banayega** (2026-11-16). Ab §11b ke sawaal poochne hain
+3. ~~Fastrr khud Shopify order banata hai ya nahi~~ → **Nahi, hum banayenge** (17 Nov clear hua) → `SHOP_SHOPIFY_ORDER_SYNC=true`. Bas likhit mein confirm le lo ki wo apni taraf se Shopify order nahi banayenge.
 4. Refund: partial chalta hai? `order_id` = platform ya fastrr id? kitne din?
 5. Webhook URL + catalog URLs + domain whitelist unke system mein
 6. Phone se saved address auto-fill hota hai?
 7. `fallbackUrl` off ho sakta hai?, paisa kiske account + settlement, auto Shiprocket shipment (double shipment risk)
 8. UPI intent links ke exact schemes (Flutter WebView ke liye)
 Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi — inke **jawab yahan section 13 mein paste karo**.
-
-**Latest question list (Word):** `docs/Fastrr_Questions_v2.docx` (copy Desktop pe bhi) — 71 sawaal (47 Must), har ek ke saath "why" + answer column. v1 purana tha (tab hum order banate the) — hata diya.
-
----
-
-## 11b. NEW: Fastrr Shopify order banayega — "link mode" (2026-11-16)
-
-**Kya badla:** Fastrr ne confirm kiya ki payment ke baad **Fastrr hi Shopify order banayega**. Agar hum bhi `orderCreate` karein → har payment ke 2 Shopify order, stock 2 baar kam, 2 parcel. Isliye humara order creation band, aur Fastrr ke order ko apne order se **jodna** hai.
-
-**Amish ki journey (naya flow):**
-1. **Products:** Shopify (master) → humara DB (sync) → app list. Fastrr humare catalog APIs se padhta hai. *(same)*
-2. **Cart:** server cart, stock + price check. *(same)*
-3. **Checkout:** backend Order `TH-...` banata hai (payment pending), stock hold, Fastrr token (`catalog_data` price + `custom_attributes.internal_order_id = TH-...`). App WebView mein Fastrr page. *(same)*
-4. **Payment:** Fastrr pe address + UPI/card/COD. *(same)*
-5. **Payment ke baad — NAYA:**
-   - Fastrr → humara webhook → hum Order Details API se fetch-back → `paid` / `cod_pending`. *(same)*
-   - **Fastrr Shopify mein order banata hai** (`note_attributes` mein `internal_order_id` hona chahiye — confirm pending).
-   - Shopify → `orders/create` webhook → **backend `TH-...` se match karke link** (`shopifyOrderId` save, `shopifySyncStatus = synced`), stock hold release.
-   - **Hum `orderCreate` NAHI karte.**
-6. **Shopify order nahi aaya (X min):** cron → `needs_attention` + admin alert. Khud order **nahi** banayenge (duplicate risk).
-7. **Shipping / delivered / COD paid:** Shopify webhooks → app update + push. *(same — link ke baad)*
-8. **Cancel:** hum Shopify order cancel + Fastrr Refund API. **Confirm pending:** Fastrr khud bhi refund / Shopify mein refund record toh nahi karta (double refund / double record risk → zaroorat ho toh `SHOP_SHOPIFY_RECORD_REFUNDS=false`).
-
-**Code plan (baaki, ~½–1 din, Fastrr ke jawab + ek sample Shopify order JSON ke baad):**
-1. Env `SHOP_SHOPIFY_ORDER_SOURCE=fastrr` (link mode) — `syncOrder` create skip karega.
-2. `findAppOrder` (shopifyOrderSyncService.js): abhi sirf humara tag `TH-...` + `take-app` se match karta hai → add: `note_attributes.internal_order_id` (primary), Fastrr order id (fallback; jahan bhi Fastrr rakhe). Match → `markSynced` ("linked").
-3. Cron: paid/cod_pending order, link nahi hua X min tak → `needs_attention` + alert (create kabhi nahi).
-4. Card-offer check: Shopify store-buyer card-offer webhook Fastrr ke app orders ko store order na samjhe (double trial) — code dekh ke confirm/skip.
-5. Tests: link, duplicate webhook, no-match, link ke baad cancel/refund/fulfilment.
-6. Admin: "Shopify sync retry" button link mode mein "re-check link" kare, create nahi.
-
-**Fastrr se sabse pehle (v2 doc section 2):** 2.1 prepaid + COD dono pe order? fail pe nahi? · **2.2 `internal_order_id` → `note_attributes`?** · **2.3 staging test order ka Shopify JSON** · 2.4 Fastrr order id kahan + `take-app` tag · Shiprocket shipment off? · Shopify/Fastrr ke customer messages · refund Shopify mein record karte hain? · staging test orders live store mein toh nahi jaate.
-
----
-
-## 11c. Shopify WebView checkout — Part 1 + Part 3 bane (2026-11-16 raat)
-
-Fastrr ne bola: **Shopify WebView doc** follow karo (`getOneClickCheckoutUrl`, mobileApp.js). Purana custom API flow code mein hai, `SHOP_CHECKOUT_MODE=custom_api` se wapas on.
-
-**Part 1 — checkout (done):** `POST /api/shop/checkout` ab Fastrr ka URL deta hai (`checkoutPageUrl` field wahi):
-- `lib/checkoutLogic.buildFastrrWebviewUrl` = mobileApp.js ka server copy. Doc ke example URL se byte-match verify kiya.
-- `cart` = `btoa(encodeURIComponent(JSON))`: `productId`/`variantId` = Shopify variant id (unke example jaisa), `price` paise, title, image; har item pe `customAttributes.internal_order_id`.
-- `cartAttributes = {internal_order_id: TH-...}` + `encodingRequired=true` (iske bina script `[object Object]` bhejta hai).
-- **Fastrr ko koi API call nahi, keys nahi chahiye.** Sirf `FASTRR_SELLER_DOMAIN` (ya `SHOPIFY_ADMIN_STORE_DOMAIN`); dono khaali → 503 `CHECKOUT_UNAVAILABLE`.
-- Stock hold `SHOP_WEBVIEW_HOLD_MINUTES` (30). `expiresAt` = hold end. Idempotency, double tap, `PRICE_CHANGED`, `STOCK_UNAVAILABLE` sab same.
-- Pay nahi kiya → cron 30 min baad `expired` (Fastrr call nahi).
-
-**Part 3 — price check (done, abhi wired nahi):** `lib/shopifyOrderVerify.js`
-- `extractInternalOrderId(node)`: cart attributes (`note_attributes`) pehle, line-item properties backup; conflict report.
-- `verifyShopifyOrderAgainstOurs(order, node)`: GraphQL + REST/webhook dono shape. Flags: `ITEMS_MISMATCH`, `PRICE_MISMATCH:<variant>`, `PRICE_MISSING:<variant>`, `SUBTOTAL_MISMATCH`, `CURRENCY_MISMATCH`, `ORDER_ID_MISMATCH`, `ORDER_ID_CONFLICT`. Store coupon = sirf `summary.discountPaise` (flag nahi).
-- `VERIFY_ORDER_FIELDS` = GraphQL fields jo link step fetch karega.
-- **Kyun:** URL phone pe readable hai → koi price/qty badal ke Fastrr ko bhej sakta hai. Mismatch → `review` + `needs_attention` (Part 2 mein jodenge).
-
-**Tests:** `tests/shopWebviewCheckout.test.js` (8), `tests/shopShopifyOrderVerify.test.js` (11). Purane checkout/journey/orders/refunds/admin tests + `scripts/shopStagingE2E.js` ab `SHOP_CHECKOUT_MODE=custom_api` pin karte hain. Shop suite: **164/164 pass**.
-
-**Part 2 — link mode (baaki, Fastrr jawab ke baad, §11b):** Shopify `orders/create` → `internal_order_id` se TH order dhoondo → `verifyShopifyOrderAgainstOurs` → paid/COD set + `shopifyOrderId` save + hold release; mismatch → review. Dhyan:
-- **Late payment:** 30 min baad pay kiya → humara order `expired` ho chuka hoga; link step ko `expired → paid` allow karna hai.
-- Webview mode mein `GET /orders/:id` polling link hone tak `awaiting_payment` hi dikhayega (Fastrr fetch-back nahi hai).
-- Link hone tak customer cancel block; admin "retry sync" = re-check link.
-
-**Fastrr se poochna (v2 doc mein add karo):** price URL se lete ho ya Shopify se? · `cartAttributes` → `note_attributes` aate hain? · payment ke baad WebView ko kaunsa success URL/event milta hai? · order webhook / Order Details API ab bhi milega? · refund kaise? · `productId` = variant id sahi? · price paise mein sahi?
 
 ---
 
@@ -499,10 +452,7 @@ Fastrr ne bola: **Shopify WebView doc** follow karo (`getOneClickCheckoutUrl`, m
 | `SHOPIFY_API_VERSION` | optional | default `2026-10` |
 | `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET` | same | webhook HMAC |
 | `SHOP_MAX_QTY_PER_ITEM`, `SHOP_MAX_CART_LINES` | optional | 10 / 30 |
-| `SHOP_CHECKOUT_MODE` | optional | `shopify_webview` (default) / `custom_api` (§11c) |
-| `FASTRR_SELLER_DOMAIN` | webview mode | Fastrr wala Shopify store; default `SHOPIFY_ADMIN_STORE_DOMAIN` |
-| `FASTRR_WEBVIEW_URL`, `FASTRR_WEB_URL`, `SHOP_WEBVIEW_HOLD_MINUTES` | optional | `https://fastrr-boost-ui.pickrr.com/headless/?` / empty / 30 |
-| `FASTRR_BASE_URL`, `FASTRR_API_KEY`, `FASTRR_API_SECRET` | custom_api mode | from Fastrr (webview mode mein checkout ke liye nahi chahiye) |
+| `FASTRR_BASE_URL`, `FASTRR_API_KEY`, `FASTRR_API_SECRET` | M2 | from Fastrr |
 | `QSTASH_*` | already set | catalog schedule + crons |
 | `SHOP_PUBLIC_BASE_URL` | Vercel + Render | `https://www.take.health` — checkout page / Fastrr redirect links |
 | `SHOP_APP_DEEP_LINK` | optional | default `takehealth://shop/order/{orderId}?status={status}` (Flutter team se confirm) |
@@ -510,7 +460,7 @@ Fastrr ne bola: **Shopify WebView doc** follow karo (`getOneClickCheckoutUrl`, m
 | `SHOP_CHECKOUT_PAGE_SECRET`, `SHOP_CHECKOUT_PAGE_TTL_MIN` | optional | default: JWT_SECRET se derive, 120 min |
 | `SHOP_PLACEHOLDER_IMAGE_URL` | optional | Fastrr `catalog_data.image_url` jab item ki image na ho |
 | `FASTRR_TIMEOUT_MS`, `FASTRR_CHECKOUT_UI_URL`, `FASTRR_FALLBACK_URL`, `FASTRR_CATALOG_PUSH` | optional | 10000 / auto (staging bundle for staging API) / humara return page / true |
-| `SHOP_SHOPIFY_ORDER_SYNC` | Vercel + Render | **`false` rakho** — Fastrr khud Shopify order banata hai (§11b); `true` = duplicate orders |
+| `SHOP_SHOPIFY_ORDER_SYNC` | Vercel + Render | default `false` (code) → **go-live pe `true` set karo** (custom flow mein Shopify order hum banate hain, 17 Nov confirm). `write_orders` scope chahiye |
 | `SHOP_SHOPIFY_TEST_ORDERS`, `SHOP_SHOPIFY_SEND_RECEIPT` | optional | `false` / `false` — test orders sirf live-store testing ke waqt `true` |
 | `SHOP_SHOPIFY_SYNC_MAX_ATTEMPTS` | optional | 5 |
 | `SHOP_APP_ORDERS_CARD_OFFER` | optional | `true` (management decision) |
@@ -525,9 +475,7 @@ Fastrr ne bola: **Shopify WebView doc** follow karo (`getOneClickCheckoutUrl`, m
 
 ## 13. Fastrr / Shopify dev ke jawab (yahan paste karo)
 
-- **2026-11-16 — Fastrr:** "We create the order" → **Fastrr hi Shopify order banayega.** Impact + plan: §11b.
-
-_(baaki jawab Monday 2026-11-17 ko yahan)_
+- **2026-11-17 (Fastrr call):** Postman "SRC Custom Integration" doc hi follow karna hai. Product/catalog response usi format mein chahiye. Hamare APIs pehle se match karte hain. 16 Nov wala "Fastrr Shopify order banayega / Shopify WebView checkout" galatfehmi thi.
 
 ---
 
@@ -539,7 +487,7 @@ _(baaki jawab Monday 2026-11-17 ko yahan)_
 | # | Kya | Owner |
 |---|---|---|
 | 1 | Fastrr staging + prod keys; **real payment test** (UPI + COD) | Fastrr / aap |
-| 2 | ~~Fastrr confirm: khud Shopify order nahi banata~~ → **Fastrr banata hai.** Ab chahiye: `internal_order_id` Shopify order mein (v2 Q2.2) + sample JSON (Q2.3) → link mode code (§11b) + test | Fastrr / Code |
+| 2 | Fastrr confirm: khud Shopify order nahi banata | Fastrr |
 | 3 | Fastrr ko webhook URL, catalog URLs, domain whitelist | Aap |
 | 4 | **Flutter app ready** (6 screens + WebView container, UPI intents, deep link) + store review time | Flutter team |
 | 5 | Shopify token: `write_orders` + protected customer data + `read_inventory` | Shopify dev |
@@ -557,12 +505,12 @@ _(baaki jawab Monday 2026-11-17 ko yahan)_
 
 ### C. Tuesday deploy order
 1. `Staging` → `main` merge + push
-2. Env vars **Vercel + Render dono**: Fastrr keys, `SHOP_PUBLIC_BASE_URL=https://www.take.health`, `SHOP_SHOPIFY_ORDER_SYNC=false` (**Fastrr order banata hai — true kabhi nahi**), link mode env (§11b, jab ban jaye)
+2. Env vars **Vercel + Render dono**: Fastrr keys, `SHOP_PUBLIC_BASE_URL=https://www.take.health`, `SHOP_SHOPIFY_ORDER_SYNC=true` (sirf agar Fastrr ne #2 confirm kiya), `SHOP_SHOPIFY_TEST_ORDERS=true` (sirf test ke liye)
 3. Deploy → prod pe `node scripts/shopCatalogSync.js` (indexes **including stock-hold TTL/unique** + catalog; prod `autoIndex` off hai, isliye zaroori)
 4. `node scripts/registerShopifyWebhooks.js --url=https://www.take.health --dry-run` → apply (**sirf ek URL**)
 5. `node scripts/registerShopCatalogSchedule.js https://www.take.health` (catalog 03:30 IST + reconciliation */10)
-6. Live test: ops ko pehle batao → 1 prepaid + 1 COD → Shopify admin mein **sirf EK order** (Fastrr ka) check (price, address/MH, phone, stock, `internal_order_id`) + app mein linked dikhe → cancel + restock
-7. Sab theek → launch
+6. Live test: ops ko pehle batao → 1 prepaid + 1 COD → Shopify admin check (price, address/MH, phone, stock) → cancel + restock
+7. Sab theek → `SHOP_SHOPIFY_TEST_ORDERS=false` → launch
 
 **Rollback:** `SHOP_SHOPIFY_ORDER_SYNC=false` (Shopify order banna band). Checkout band karna ho → Fastrr keys hatao → `POST /checkout` = 503 `CHECKOUT_UNAVAILABLE`; catalog + cart chalte rahenge.
 
@@ -574,7 +522,7 @@ Auto-refund + user cancel + returns/RTO (baaki M4), Shopify weights (shipping ac
 - Testing base URL: `https://ai-healthcare-1-0i51.onrender.com/api/shop` (Staging auto-deploy; checkout = 503 jab tak Render pe Fastrr keys nahi).
 
 ### F. Known pre-existing test failures (shop se unrelated)
-- `shopifyOfferRules.test.js` "Rahul" — card-offer, date-dependent (aaj se fail; last commit pe bhi) → card-offer owner. Scenario + root cause (`isEntitled` asli ghadi use karta hai, test ka `now` nahi) + fix: **`docs/card-offer-rahul-test-failure.md`**
+- `shopifyOfferRules.test.js` — card-offer, date-dependent. Ab 2 tests fail hote hain: "Rahul" (16 Nov se) aur "B, redeemed a few days after joining" (17 Nov se). 1 Dec se rule D wala bhi fail hoga. Ye card-offer owner ka kaam hai. Scenario, root cause (`isEntitled` asli ghadi use karta hai, test ka `now` nahi) aur fix: **`docs/card-offer-rahul-test-failure.md`**
 - `vault.test.js` 4 fail (storage config defaults) — pre-existing
 - `wearableScoreDedup.staging.test.js` staging DB connect pe hang → `npm test` poora khatam nahi hota; shop tests alag se chalao (§0)
 

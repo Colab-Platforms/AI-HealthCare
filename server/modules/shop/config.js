@@ -59,24 +59,6 @@ module.exports = {
         catalogPushEnabled: () => boolEnv('FASTRR_CATALOG_PUSH', true),
     },
 
-    // ── Checkout mode ──────────────────────────────────────────────────────
-    // shopify_webview (default, what Fastrr set up for us, 2026-11-16): we build
-    //   Fastrr's Shopify "one click checkout" URL (their mobileApp.js format) and
-    //   Fastrr itself creates the Shopify order; we link it by internal_order_id.
-    // custom_api: the original "SRC Custom Integration" flow (access-token API,
-    //   our signed page, Fastrr order webhook). Kept, switchable.
-    checkoutMode: () => (process.env.SHOP_CHECKOUT_MODE === 'custom_api' ? 'custom_api' : 'shopify_webview'),
-    webview: {
-        // mobileApp.js builds https://fastrr-boost-ui.pickrr.com/headless/?...
-        baseUrl: () => process.env.FASTRR_WEBVIEW_URL || 'https://fastrr-boost-ui.pickrr.com/headless/?',
-        // The Shopify store Fastrr is installed on ("domain" in their doc).
-        sellerDomain: () => process.env.FASTRR_SELLER_DOMAIN || process.env.SHOPIFY_ADMIN_STORE_DOMAIN || '',
-        // "webUrl" in their script; their own example leaves it undefined.
-        webUrl: () => process.env.FASTRR_WEB_URL || undefined,
-        // No token expiry in this flow: hold stock for this long per checkout start.
-        holdMs: () => intEnv('SHOP_WEBVIEW_HOLD_MINUTES', 30) * 60 * 1000,
-    },
-
     // ── Checkout ───────────────────────────────────────────────────────────
     // Public origin of this backend as the WebView / Fastrr see it
     // (e.g. https://www.take.health). Falls back to the request's host.

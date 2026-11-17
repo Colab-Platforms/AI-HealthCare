@@ -329,14 +329,12 @@ Response `200`:
   "status": "awaiting_payment",
   "amount": { "paise": 299800, "rupees": 2998 },
   "itemCount": 2,
-  "checkoutPageUrl": "https://fastrr-boost-ui.pickrr.com/headless/?&platform=SHOPIFY&sellerDomain=2jfdfm-vp.myshopify.com&domain=undefined&cart=JTVCJTdC...&isBaseEncode=true&isMobileApp=true&cartAttributes=JTdC...&encodingRequired=true",
+  "checkoutPageUrl": "https://www.take.health/api/shop/checkout/TH-261115-WBTZGRVY/page?exp=1794756075&sig=cN_frQ3jyHxk4LMyH3i0BwbVbu6Z6HXSo3KFDASyV8Q",
   "expiresAt": "2026-11-15T13:51:15.541Z"
 }
 ```
 
-- **Update (2026-11-16):** `checkoutPageUrl` is now **Fastrr's Shopify checkout URL**, built by our backend the same way Fastrr's `getOneClickCheckoutUrl` script builds it. **Do not** load Fastrr's `mobileApp.js` in the app and do not build this URL yourself — the backend puts our prices and the order id in it. The response shape is unchanged.
-- Open `checkoutPageUrl` **as-is** in the WebView (§6). Don't modify it.
-- `expiresAt` = how long the stock is held for this checkout (30 min). After it, start checkout again from the cart.
+- Open `checkoutPageUrl` **as-is** in the WebView (§6). Don't modify it — it is signed.
 - `orderId` — keep it; you need it after payment.
 - `amount` is the subtotal. The final total (shipping, COD charge, coupons) is decided on Fastrr's page and comes back in the order (§4.7).
 
@@ -574,9 +572,7 @@ Future<CheckoutResult> startCheckout() async {
 
 ## 6. Payment WebView
 
-`checkoutPageUrl` opens **Fastrr's checkout page** directly. The user enters phone (OTP), address, coupon and pays (UPI / card / COD) — all on Fastrr's page.
-
-> **Pending from Fastrr (2026-11-16):** which URL / event the WebView gets when payment finishes in this Shopify WebView flow. Until confirmed, the "payment finished" detection below may change; keep the ✕ → Order result path (polling) working, it covers every case. After payment the order may show `awaiting_payment` for a short while until the Shopify order is linked on our side.
+`checkoutPageUrl` is a page on **our** backend that loads Fastrr's checkout. The user enters phone (OTP), address, coupon and pays (UPI / card / COD) — all on Fastrr's page.
 
 ### WebView setup
 
