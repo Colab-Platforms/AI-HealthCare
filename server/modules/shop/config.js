@@ -80,8 +80,9 @@ module.exports = {
     onDemandSyncGapMs: 10 * 1000,
 
     // ── Shopify order sync (M3) ────────────────────────────────────────────
-    // OFF until confirmed that Fastrr does not also create Shopify orders
-    // (otherwise every order would exist twice). See docs/shop-headless-plan.md.
+    // We create the Shopify order (custom integration, confirmed 2026-11-17).
+    // Code default stays OFF (safe); set true in Vercel + Render at go-live.
+    // Never true if Fastrr also creates Shopify orders (every order twice).
     shopifyOrderSync: () => boolEnv('SHOP_SHOPIFY_ORDER_SYNC', false),
     // Mark created orders as Shopify test orders (live-store testing only).
     shopifyTestOrders: () => boolEnv('SHOP_SHOPIFY_TEST_ORDERS', false),

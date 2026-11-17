@@ -209,7 +209,8 @@ async function main() {
 
         console.log('\n6. Security');
         r = await call('POST', '/fastrr/webhook', { auth: false, body: { order_id: '<script>' } });
-        check('garbage webhook -> 400 INVALID_ORDER_ID', r.status === 400 && r.json.code === 'INVALID_ORDER_ID');
+        // Fastrr doc: always acknowledge with 200 (a 4xx makes Fastrr retry forever).
+        check('garbage webhook -> 200 received:false INVALID_ORDER_ID', r.status === 200 && r.json.received === false && r.json.code === 'INVALID_ORDER_ID');
         const other = jwt.sign({ id: new mongoose.Types.ObjectId().toString() }, process.env.JWT_SECRET, { expiresIn: '5m' });
         const res = await fetch(`${api}/orders/${orderId}`, { headers: { Authorization: `Bearer ${other}` } });
         check('token for a non-existent user -> 401', res.status === 401);
