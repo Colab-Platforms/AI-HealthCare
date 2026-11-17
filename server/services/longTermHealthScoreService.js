@@ -301,7 +301,10 @@ function calculateTrendScore(rows, config) {
   const since = daysAgoStr(29);
   const days = rows
     .filter((d) => d.date >= since)
-    .filter(isLoggedDay); // unlogged days would drag both window averages toward 0
+    .filter(isLoggedDay) // unlogged days would drag both window averages toward 0
+    // Only rows from the current formula version: comparing v1 daily scores
+    // against v2 ones would read a formula change as the user's trend.
+    .filter((d) => d.configVersion === config.version);
   if (days.length < config.minHistoryDays.trend) return null;
 
   const recentWindow = days.slice(-7);

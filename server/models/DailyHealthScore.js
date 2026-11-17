@@ -21,6 +21,18 @@ const dailyHealthScoreSchema = new mongoose.Schema({
     hydration: Number,
     recovery: Number, // HRV+RHR+RR physiology sub-score only — see dailyHealthScoreService.js
   },
+  // Since config v2 only sleep/nutrition/activity/recovery are weighted.
+  // hydration (now part of nutrition), smoking and alcohol stay in
+  // `components` as display-only 0-100 sub-scores for the breakdown UI.
+
+  // v2 scoring trace — how finalScore was produced.
+  baseScore: Number, // 4-pillar weighted score before penalties
+  penalties: {
+    smoking: Number, // points subtracted (0-25)
+    alcohol: Number,
+  },
+  missingComponents: [String], // applicable pillars not logged — scored as 0
+  notApplicableComponents: [String], // pillars excluded for this user (weights renormalised)
 
   configVersion: { type: Number, required: true }, // traces this score to the weights that produced it
 }, { timestamps: true });

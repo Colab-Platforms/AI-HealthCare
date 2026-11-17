@@ -71,6 +71,81 @@ function scoreAlcohol(drinks, gender) {
   return Math.max(0, 85 - 25 * (drinks - limit));
 }
 
+// ---------------------------------------------------------------------------
+// Lifestyle PENALTIES (Daily Score v2+)
+//
+// Smoking and alcohol are no longer weighted components of the Daily Score.
+// As components they had two problems: a non-user either got a standing free
+// 100 or was excluded, and a user could offset a heavy smoking day by logging
+// lots of other things. They are now points SUBTRACTED from the 4-pillar base
+// score, and only for people who actually logged a cigarette/drink that day.
+//
+// Where the numbers come from — and where they don't:
+// - Max penalty = one full pillar (25 of 100). AHA Life's Essential 8 scores
+//   nicotine as one of its equal-weight components and gives a current
+//   smoker 0 on it, i.e. a smoker loses exactly one component's worth.
+// - Smoking curve anchors: Hackshaw et al., BMJ 2018 (141 cohorts) — ONE
+//   cigarette a day carries ~31–46% of the excess CHD/stroke risk of TWENTY
+//   (avg of the four reported figures ≈ 38%, rounded to 40%). 20+/day = full.
+//   The shape between 1 and 20 is log-interpolated: the study shows strong
+//   non-linearity but does not publish the exact curve in between.
+// - Alcohol thresholds: US Dietary Guidelines daily limit (men 2 / women 1
+//   US standard drinks, 14 g each — the unit utils/alcoholLog.js produces),
+//   NIAAA binge (men 5+ / women 4+) and NIAAA high-intensity drinking (2x the
+//   binge threshold: men 10+ / women 8+). WHO (2023) states no level is safe,
+//   so even within-limit drinking carries a small penalty.
+// - The POINT values at the alcohol thresholds (5 / 20 / 25) are a design
+//   choice anchored to the one-pillar maximum above. No study converts drinks
+//   into score points, so these are tunable via HealthScoreConfig.
+// ---------------------------------------------------------------------------
+const DEFAULT_LIFESTYLE_PENALTIES = {
+  maxPenalty: 25,
+  smoking: { oneCigaretteShare: 0.4, fullPenaltyAtCigarettes: 20 },
+  alcohol: {
+    withinLimitMaxPenalty: 5,
+    bingePenalty: 20,
+    dailyLimit: { male: 2, female: 1 },
+    bingeThreshold: { male: 5, female: 4 },
+    highIntensityThreshold: { male: 10, female: 8 },
+  },
+};
+
+function smokingPenalty(cigarettes, cfg = DEFAULT_LIFESTYLE_PENALTIES) {
+  const c = Number(cigarettes) || 0;
+  if (c <= 0) return 0;
+  const max = cfg.maxPenalty ?? 25;
+  const s = cfg.smoking || DEFAULT_LIFESTYLE_PENALTIES.smoking;
+  const full = s.fullPenaltyAtCigarettes || 20;
+  if (c >= full) return max;
+  // c < 1 (e.g. half a cigarette) still counts as the first-cigarette share —
+  // the BMJ finding is precisely that the first one carries most of the harm.
+  const share = s.oneCigaretteShare + (1 - s.oneCigaretteShare) * (Math.log(Math.max(1, c)) / Math.log(full));
+  return Math.min(max, max * share);
+}
+
+// `units` are US standard drinks (14 g). Unknown gender falls back to the
+// male thresholds, matching scoreAlcohol above.
+function alcoholPenalty(units, gender, cfg = DEFAULT_LIFESTYLE_PENALTIES) {
+  const u = Number(units) || 0;
+  if (u <= 0) return 0;
+  const max = cfg.maxPenalty ?? 25;
+  const a = cfg.alcohol || DEFAULT_LIFESTYLE_PENALTIES.alcohol;
+  const sex = gender === 'female' ? 'female' : 'male';
+  const limit = a.dailyLimit[sex];
+  const binge = a.bingeThreshold[sex];
+  const high = a.highIntensityThreshold[sex];
+
+  // 0 → limit: small linear penalty (no safe level, but lowest-risk band)
+  if (u <= limit) return a.withinLimitMaxPenalty * (u / limit);
+  // limit → binge: steep rise
+  if (u <= binge) {
+    return a.withinLimitMaxPenalty + (a.bingePenalty - a.withinLimitMaxPenalty) * ((u - limit) / (binge - limit));
+  }
+  // binge → high-intensity: up to the one-pillar maximum
+  if (u < high) return a.bingePenalty + (max - a.bingePenalty) * ((u - binge) / (high - binge));
+  return max;
+}
+
 // Blood pressure: AHA clinical categories, not an invented Gaussian width —
 // systolic and diastolic are scored independently against the category table,
 // and the WORSE (lower-scoring) of the two wins. A high reading on either
@@ -120,6 +195,9 @@ module.exports = {
   saturatingToGoal,
   scoreSmoking,
   scoreAlcohol,
+  smokingPenalty,
+  alcoholPenalty,
+  DEFAULT_LIFESTYLE_PENALTIES,
   scoreBloodPressure,
   updateRunningBaseline,
   stdDev,

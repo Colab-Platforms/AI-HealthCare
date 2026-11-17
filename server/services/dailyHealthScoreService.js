@@ -7,7 +7,10 @@ const ExerciseLog = require('../models/ExerciseLog');
 const RecoveryDailySummary = require('../models/RecoveryDailySummary');
 const User = require('../models/User');
 const HealthGoal = require('../models/HealthGoal');
-const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
+const {
+  gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline,
+  smokingPenalty, alcoholPenalty, DEFAULT_LIFESTYLE_PENALTIES,
+} = require('./healthScoreFormulas');
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
@@ -34,6 +37,11 @@ const { getStepGoal } = require('../utils/stepGoal');
 // "don't reward a bad habit" concern above doesn't apply to it.
 const POPULATION_NORMS = { sleepHours: 7.5 };
 const FIXED_GOALS = { waterGlasses: 8 };
+
+// The four weighted pillars of the Daily Score (config v2+). Everything else
+// in `components` (hydration, smoking, alcohol) is display-only.
+const PILLARS = ['sleep', 'nutrition', 'activity', 'recovery'];
+const DEFAULT_NUTRITION_WEIGHTS = { logging: 0.25, quality: 0.41, calories: 0.17, hydration: 0.17 };
 
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
 ``
@@ -83,12 +91,28 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // gets reactivated degrades to the previous behaviour instead of throwing
   // or producing NaN part-way through the score.
   const sleepBounds = config.sleepTargetBounds || { min: 0, max: Infinity };
-  const nw = config.nutritionWeights || { logging: 0.6, quality: 0.4, calories: 0 };
+  // Hydration weight is new in v2 — an older config without it still gets the
+  // same ~17% share inside nutrition rather than none at all.
+  const nw = {
+    ...DEFAULT_NUTRITION_WEIGHTS,
+    ...(config.nutritionWeights || {}),
+  };
+  if (typeof config.nutritionWeights?.hydration !== 'number') nw.hydration = DEFAULT_NUTRITION_WEIGHTS.hydration;
+  const penaltyCfg = config.lifestylePenalties?.alcohol?.dailyLimit
+    ? config.lifestylePenalties
+    : DEFAULT_LIFESTYLE_PENALTIES;
 
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-  const [nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthSessionsLast7Days] = await Promise.all([
+  const recoveryWindowStart = new Date(dayStart);
+  recoveryWindowStart.setUTCDate(recoveryWindowStart.getUTCDate() - ((config.recoveryApplicableWindowDays || 14) - 1));
+  const recoveryWindowStartStr = recoveryWindowStart.toISOString().split('T')[0];
+
+  const [
+    nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthSessionsLast7Days,
+    recoveryDoc, recentRecoveryDoc,
+  ] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     // DailyActivityMetric, not the legacy WearableData.dailyMetrics[] array —
     // that array is no longer reliably kept in sync (WHOOP and some other
@@ -132,6 +156,21 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
       category: 'strength',
       timestamp: { $gte: new Date(dayEnd.getTime() - 7 * 86400000), $lt: dayEnd },
     }),
+    // Recovery: ONLY the physiology sub-score (HRV+RHR+RR) — see the Recovery
+    // section below for why never the full recoveryScore.
+    RecoveryDailySummary.findOne({ user: userId, date: dateStr })
+      .select('metricDetails.physiology.score')
+      .lean(),
+    // Is recovery applicable to this user at all? Yes if their device produced
+    // a physiology score at least once in the trailing window — see
+    // HealthScoreConfig.recoveryApplicableWindowDays.
+    RecoveryDailySummary.findOne({
+      user: userId,
+      date: { $gte: recoveryWindowStartStr, $lte: dateStr },
+      'metricDetails.physiology.score': { $ne: null },
+    })
+      .select('_id')
+      .lean(),
   ]);
 
   const components = {};
@@ -362,10 +401,15 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     (config.fluidRestrictedConditions || []).some((f) => c.includes(f)),
   );
 
+  // v2: hydration is a sub-part of nutrition, not its own weighted pillar.
+  // `components.hydration` is still written as a display-only 0-100 value so
+  // existing app versions (and the breakdown screen) keep showing it.
+  let hydrationScore = null;
   if (!fluidRestricted && nutritionSummary && nutritionSummary.waterIntake > 0) {
     raw.waterGlasses = nutritionSummary.waterIntake;
     raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
-    components.hydration = saturatingToGoal(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses);
+    hydrationScore = saturatingToGoal(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses);
+    components.hydration = hydrationScore;
   }
 
   // --- Nutrition ---
@@ -377,61 +421,80 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // ignored quantity entirely, so 5,000 kcal of "healthy" food scored 100.
   // Both under- and over-eating count against it, hence the bell curve, with
   // a width of 20% of the user's goal.
-  if (nutritionSummary && nutritionSummary.totalFoodsCount > 0) {
-    const mealsLogged = ['breakfast', 'lunch', 'dinner'].filter((m) => nutritionSummary.mealsLogged?.[m]).length;
-    const loggingCompleteness = mealsLogged / 3;
-    // Quality comes from the Nutrition Score (dietQualityScoreService) — a
-    // published-methodology (MAR + AMDR + HEI-2020 moderation) rating of the
-    // day's actual nutrient intake, computed fresh here rather than read from
-    // NutritionSummary's write-through snapshot (which only exists once the
-    // user has opened the Nutrition Score screen, and would be stale/absent
-    // otherwise).
-    //
-    // Before this, quality came from `averageHealthScore` — the calorie-
-    // weighted average of the food-analyser AI's own subjective 0-100 rating
-    // per meal. Before THAT, it was healthyFoodsCount / totalFoodsCount, which
-    // was wrong twice over: those counters increment once per MEAL, not per
-    // food item, and healthyFoodsCount only counts meals scoring 7/10+, so it
-    // collapsed a continuous rating into a pass/fail. Falls back to
-    // averageHealthScore, then the old ratio, if the formula can't produce a
-    // score (e.g. no age/gender on the profile yet).
-    let mealQuality;
-    try {
-      const dietScoreResult = calculateDietQualityScore(nutritionSummary, {
-        age: user?.profile?.age,
-        gender: user?.profile?.gender,
-        calorieGoal: user?.nutritionGoal?.calorieGoal,
-        goalType: healthGoal?.goalType,
-        weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
-      });
-      mealQuality = Math.min(1, dietScoreResult.score / 100);
-    } catch (e) {
-      mealQuality = typeof nutritionSummary.averageHealthScore === 'number' && nutritionSummary.averageHealthScore > 0
-        ? Math.min(1, nutritionSummary.averageHealthScore / 100)
-        : Math.min(1, (nutritionSummary.healthyFoodsCount || 0) / nutritionSummary.totalFoodsCount);
+  //
+  // v2: computed when EITHER food or water was logged (water alone used to
+  // be its own component; dropping a water-only day entirely would lose it).
+  // Inside nutrition the same rule as the pillars applies: a sub-part that
+  // applies but wasn't logged counts 0; one that can't apply (no calorie goal
+  // set, fluid-restricted user) is removed and the rest renormalised.
+  const hasFood = !!(nutritionSummary && nutritionSummary.totalFoodsCount > 0);
+  if (hasFood || hydrationScore != null) {
+    let loggingCompleteness = 0;
+    let mealQuality = 0;
+    if (hasFood) {
+      const mealsLogged = ['breakfast', 'lunch', 'dinner'].filter((m) => nutritionSummary.mealsLogged?.[m]).length;
+      loggingCompleteness = mealsLogged / 3;
+      // Quality comes from the Nutrition Score (dietQualityScoreService) — a
+      // published-methodology (MAR + AMDR + HEI-2020 moderation) rating of the
+      // day's actual nutrient intake, computed fresh here rather than read from
+      // NutritionSummary's write-through snapshot (which only exists once the
+      // user has opened the Nutrition Score screen, and would be stale/absent
+      // otherwise).
+      //
+      // Before this, quality came from `averageHealthScore` — the calorie-
+      // weighted average of the food-analyser AI's own subjective 0-100 rating
+      // per meal. Before THAT, it was healthyFoodsCount / totalFoodsCount, which
+      // was wrong twice over: those counters increment once per MEAL, not per
+      // food item, and healthyFoodsCount only counts meals scoring 7/10+, so it
+      // collapsed a continuous rating into a pass/fail. Falls back to
+      // averageHealthScore, then the old ratio, if the formula can't produce a
+      // score (e.g. no age/gender on the profile yet).
+      try {
+        const dietScoreResult = calculateDietQualityScore(nutritionSummary, {
+          age: user?.profile?.age,
+          gender: user?.profile?.gender,
+          calorieGoal: user?.nutritionGoal?.calorieGoal,
+          goalType: healthGoal?.goalType,
+          weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
+        });
+        mealQuality = Math.min(1, dietScoreResult.score / 100);
+      } catch (e) {
+        mealQuality = typeof nutritionSummary.averageHealthScore === 'number' && nutritionSummary.averageHealthScore > 0
+          ? Math.min(1, nutritionSummary.averageHealthScore / 100)
+          : Math.min(1, (nutritionSummary.healthyFoodsCount || 0) / nutritionSummary.totalFoodsCount);
+      }
+
+      raw.mealsLogged = mealsLogged;
+      raw.mealsGoal = 3;
+      raw.dietQuality = Math.round(mealQuality * 100); // average quality rating of today's meals, 0-100
+      raw.mealsRated = nutritionSummary.totalFoodsCount; // meals that carried a rating
+      raw.calories = nutritionSummary.totalCalories;
     }
 
-    raw.mealsLogged = mealsLogged;
-    raw.mealsGoal = 3;
-    raw.dietQuality = Math.round(mealQuality * 100); // average quality rating of today's meals, 0-100
-    raw.mealsRated = nutritionSummary.totalFoodsCount; // meals that carried a rating
-    raw.calories = nutritionSummary.totalCalories;
+    const parts = [
+      { w: nw.logging, v: loggingCompleteness },
+      { w: nw.quality, v: mealQuality },
+    ];
 
+    // Calories: applicable only when the user has a calorie goal.
     const calorieGoal = user?.nutritionGoal?.calorieGoal;
-    if (calorieGoal > 0 && nutritionSummary.totalCalories > 0) {
+    if (calorieGoal > 0) {
       raw.calorieGoal = calorieGoal;
-      const calorieAdherence = gaussian(nutritionSummary.totalCalories, calorieGoal, calorieGoal * 0.2) / 100;
-      components.nutrition = 100 * (
-        nw.logging * loggingCompleteness + nw.quality * mealQuality + nw.calories * calorieAdherence
-      );
-    } else {
-      // No calorie goal set (or nothing with calories logged) — rescale the
-      // remaining two the same way missing components are handled elsewhere.
-      const available = nw.logging + nw.quality;
-      components.nutrition = 100 * (
-        (nw.logging / available) * loggingCompleteness + (nw.quality / available) * mealQuality
-      );
+      const totalCalories = nutritionSummary?.totalCalories || 0;
+      parts.push({
+        w: nw.calories,
+        v: totalCalories > 0 ? gaussian(totalCalories, calorieGoal, calorieGoal * 0.2) / 100 : 0,
+      });
     }
+
+    // Hydration: applicable unless fluid-restricted; not logged → 0.
+    if (!fluidRestricted) {
+      if (raw.waterGoalGlasses == null) raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
+      parts.push({ w: nw.hydration, v: hydrationScore != null ? hydrationScore / 100 : 0 });
+    }
+
+    const totalW = parts.reduce((s, p) => s + p.w, 0);
+    components.nutrition = totalW > 0 ? 100 * parts.reduce((s, p) => s + p.w * p.v, 0) / totalW : 0;
   }
 
   // --- Smoking and Alcohol (scored separately) ---
@@ -479,6 +542,16 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // logging a genuine zero still earns the 100; that's a real daily win.
   const lifestyle = user?.profile?.lifestyle || {};
 
+  // v2: `components.smoking` / `components.alcohol` are display-only now. What
+  // actually moves the score is the penalty below, applied to anyone who
+  // logged a non-zero amount — regardless of the declared-lifestyle flag,
+  // since a logged cigarette is a smoked cigarette.
+  const penalties = { smoking: 0, alcohol: 0 };
+
+  if (smokeEntry && Number(smokeEntry.count) > 0) {
+    penalties.smoking = smokingPenalty(Number(smokeEntry.count), penaltyCfg);
+  }
+
   if (smokeEntry && lifestyle.smoker !== false) {
     const cigarettes = Number(smokeEntry.count) || 0;
     raw.cigarettes = cigarettes;
@@ -497,6 +570,11 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     components.alcohol = scoreAlcohol(units, user?.profile?.gender);
   }
 
+  if (alcoholEntry) {
+    const units = Number(alcoholEntry.units) || Number(alcoholEntry.count) || 0;
+    if (units > 0) penalties.alcohol = alcoholPenalty(units, user?.profile?.gender, penaltyCfg);
+  }
+
   // Recovery: ONLY the physiology sub-score (HRV+RHR+RR) from
   // recoveryScoreService.js, never the full recoveryScore. That engine's own
   // Sleep (30%) and Activity-load modifier would double-count against the
@@ -504,10 +582,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // data — this reads the pre-computed, already-persisted number instead of
   // recomputing it, since calculateDailyScore can fire many times a day (see
   // updateAndBlend's header) and Recovery already runs its own event-driven
-  // recompute on its own summary document.
-  const recoveryDoc = await RecoveryDailySummary.findOne({ user: userId, date: dateStr })
-    .select('metricDetails.physiology.score')
-    .lean();
+  // recompute on its own summary document. (Fetched in the Promise.all above.)
   const physiologyScore = recoveryDoc?.metricDetails?.physiology?.score;
   if (physiologyScore != null) {
     components.recovery = physiologyScore;
@@ -522,23 +597,30 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // of the score. The Daily Score should reflect only what was actually done
   // today; regularity is scored once, in the Overall Score.
 
-  // --- Weighted combine, rescaling for any missing components ---
-  // Only components the active config actually assigns a weight to are
-  // combined. Weights get renamed across config versions (substanceFree →
-  // cleanHabits → smoking + alcohol), and a component with no matching weight
-  // would otherwise contribute `undefined` and turn the whole score into NaN.
-  const availableKeys = Object.keys(components).filter(
-    (k) => typeof config.dailyWeights[k] === 'number',
-  );
-  const totalAvailableWeight = availableKeys.reduce((sum, k) => sum + config.dailyWeights[k], 0);
+  // --- Combine (v2): 4 pillars, missing = 0, N/A removed, minus penalties ---
+  //
+  // Previously a missing component was dropped and its weight handed to the
+  // ones that were logged, so a day with ONLY a 90 sleep scored 90 — logging
+  // less could score higher than logging everything honestly. Now:
+  //   - applicable but not logged → contributes 0 (the user can still log it
+  //     later in the day; the score climbs as they do)
+  //   - not applicable to this user → removed, weights renormalised over the
+  //     rest, so e.g. a phone-only user (no HRV) can still reach 100
+  const weightOf = (k) => (typeof config.dailyWeights?.[k] === 'number' ? config.dailyWeights[k] : 0);
 
-  let finalScore = 0;
-  if (totalAvailableWeight > 0) {
-    finalScore = availableKeys.reduce(
-      (sum, k) => sum + components[k] * (config.dailyWeights[k] / totalAvailableWeight),
-      0,
-    );
-  }
+  const recoveryApplicable = physiologyScore != null || !!recentRecoveryDoc;
+  const notApplicableComponents = recoveryApplicable ? [] : ['recovery'];
+  const applicableKeys = PILLARS.filter((k) => !notApplicableComponents.includes(k) && weightOf(k) > 0);
+  const missingComponents = applicableKeys.filter((k) => typeof components[k] !== 'number');
+  const totalApplicableWeight = applicableKeys.reduce((sum, k) => sum + weightOf(k), 0);
+
+  const baseScore = totalApplicableWeight > 0
+    ? applicableKeys.reduce((sum, k) => sum + (components[k] ?? 0) * weightOf(k), 0) / totalApplicableWeight
+    : 0;
+
+  const totalPenalty = penalties.smoking + penalties.alcohol;
+  const finalScore = Math.max(0, Math.min(100, baseScore - totalPenalty));
+  const round1 = (n) => Math.round(n * 10) / 10;
 
   // A day with nothing logged is not persisted. The engine runs whenever the
   // user merely opens the app, and storing a finalScore-0 row for those days
@@ -554,14 +636,23 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     dayProgressPercent: Math.round(dayProgress * 100),
   };
 
-  if (availableKeys.length === 0) {
+  // "Nothing logged" = no component of any kind (pillar or display-only).
+  if (Object.keys(components).length === 0) {
     await DailyHealthScore.deleteOne({ userId, date: dateStr }); // clears rows written before this rule
     return { userId, date: dateStr, finalScore: 0, components: {}, raw: {}, configVersion: config.version, ...progressMeta };
   }
 
   const saved = await DailyHealthScore.findOneAndUpdate(
     { userId, date: dateStr },
-    { finalScore: Math.round(finalScore * 10) / 10, components, configVersion: config.version },
+    {
+      finalScore: round1(finalScore),
+      components,
+      configVersion: config.version,
+      baseScore: round1(baseScore),
+      penalties: { smoking: round1(penalties.smoking), alcohol: round1(penalties.alcohol) },
+      missingComponents,
+      notApplicableComponents,
+    },
     { upsert: true, new: true },
   );
 

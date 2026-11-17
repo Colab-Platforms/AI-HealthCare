@@ -34,14 +34,48 @@ const healthScoreConfigSchema = new mongoose.Schema({
   //
   // Consistency is intentionally absent here — it describes the user's
   // history, not their day, and is scored once in longTermWeights instead.
+  //
+  // ---- Daily Score v2 (supersedes the 7-weight split described above) ----
+  // Four equal pillars, 25% each. Equal weighting follows the AHA's own
+  // composite (Life's Essential 8 is an unweighted average of its components)
+  // — no medical body or wearable vendor publishes a basis for any unequal
+  // split between these four, so equal is the defensible choice.
+  //   - Hydration is scored INSIDE nutrition (see nutritionWeights.hydration).
+  //   - Smoking and alcohol are PENALTIES subtracted from the base score
+  //     (see lifestylePenalties), not weighted components.
+  //   - A pillar that applies to the user but wasn't logged scores 0 (it can
+  //     still be logged later in the day). A pillar that cannot apply (e.g.
+  //     recovery with no HRV-capable wearable) is removed and the remaining
+  //     weights are renormalised.
+  // Older config documents still carrying smoking/alcohol/hydration weights
+  // are harmless: the engine only reads the four pillar keys below.
   dailyWeights: {
-    sleep: { type: Number, default: 0.15 },
-    nutrition: { type: Number, default: 0.19 },
-    activity: { type: Number, default: 0.19 },
-    smoking: { type: Number, default: 0.22 },
-    alcohol: { type: Number, default: 0.09 },
-    hydration: { type: Number, default: 0.04 },
-    recovery: { type: Number, default: 0.12 },
+    sleep: { type: Number, default: 0.25 },
+    nutrition: { type: Number, default: 0.25 },
+    activity: { type: Number, default: 0.25 },
+    recovery: { type: Number, default: 0.25 },
+  },
+
+  // Recovery (HRV/RHR/RR) only applies to a user whose device actually
+  // produces it. "Applicable" = at least one physiology score in this many
+  // trailing days. Phone-only users (no HRV) never become applicable; a WHOOP
+  // user who skipped wearing it last night stays applicable and scores 0.
+  recoveryApplicableWindowDays: { type: Number, default: 14 },
+
+  // See healthScoreFormulas.js DEFAULT_LIFESTYLE_PENALTIES for the sources.
+  lifestylePenalties: {
+    maxPenalty: { type: Number, default: 25 },
+    smoking: {
+      oneCigaretteShare: { type: Number, default: 0.4 },
+      fullPenaltyAtCigarettes: { type: Number, default: 20 },
+    },
+    alcohol: {
+      withinLimitMaxPenalty: { type: Number, default: 5 },
+      bingePenalty: { type: Number, default: 20 },
+      dailyLimit: { male: { type: Number, default: 2 }, female: { type: Number, default: 1 } },
+      bingeThreshold: { male: { type: Number, default: 5 }, female: { type: Number, default: 4 } },
+      highIntensityThreshold: { male: { type: Number, default: 10 }, female: { type: Number, default: 8 } },
+    },
   },
 
   longTermWeights: {
@@ -123,10 +157,16 @@ const healthScoreConfigSchema = new mongoose.Schema({
     max: { type: Number, default: 9 },
   },
 
+  // v2 adds hydration. Hydration used to be its own 4% daily component next
+  // to nutrition's 19%, i.e. ~17% of the combined (0.04 / 0.23). That
+  // relative share is preserved here, and the previous 30/50/20 split of the
+  // other three is scaled into the remaining 83%. This keeps the prior
+  // balance — it is not an independently researched split.
   nutritionWeights: {
-    logging: { type: Number, default: 0.30 }, // credit for recording meals at all
-    quality: { type: Number, default: 0.50 }, // share of logged foods rated healthy
-    calories: { type: Number, default: 0.20 }, // closeness to the user's calorie goal
+    logging: { type: Number, default: 0.25 }, // credit for recording meals at all
+    quality: { type: Number, default: 0.41 }, // diet quality (dietQualityScoreService)
+    calories: { type: Number, default: 0.17 }, // closeness to the user's calorie goal
+    hydration: { type: Number, default: 0.17 }, // glasses vs the fixed 8-glass goal
   },
 
   // Conditions where clinicians commonly prescribe fluid RESTRICTION. Pushing

@@ -110,6 +110,10 @@ exports.getHealthScore = async (req, res) => {
     // comparing against one would report a catastrophic drop every morning
     // before the user's first log of the day.
     const hasComponents = (s) => s && Object.keys(s.components || {}).length > 0;
+    // Score deltas only compare rows produced by the SAME formula version.
+    // Across a formula change (e.g. v1 → v2 daily scoring) the numbers aren't
+    // comparable, and a mixed comparison would report a fake jump or drop.
+    const sameFormula = (s) => s && s.configVersion === config?.version;
 
     // All "N days before" comparisons below are anchored to the DAY BEING
     // VIEWED, not to today — so navigating to a past date shows that day's
@@ -131,7 +135,7 @@ exports.getHealthScore = async (req, res) => {
     const priorWeek = dailyRows.filter((d) => d.date >= priorStart && d.date < weekStart);
     const yesterdayScore = dailyRows.find((d) => d.date === offsetFrom(targetDateStr, 1)) || null;
     const avg = (arr) => {
-      const logged = arr.filter(hasComponents);
+      const logged = arr.filter(hasComponents).filter(sameFormula);
       return logged.length ? logged.reduce((s, d) => s + d.finalScore, 0) / logged.length : null;
     };
     const recentAvg = avg(recentWeek);
@@ -143,6 +147,7 @@ exports.getHealthScore = async (req, res) => {
     // user still wants same-day feedback on what they did yesterday vs today,
     // so it's surfaced here as a plain delta rather than folded into any score.
     const dailyChange = hasComponents(todayScore) && hasComponents(yesterdayScore)
+      && sameFormula(todayScore) && sameFormula(yesterdayScore)
       ? Math.round((todayScore.finalScore - yesterdayScore.finalScore) * 10) / 10
       : null;
 
@@ -214,6 +219,13 @@ exports.getHealthScore = async (req, res) => {
         // than presenting it as the day's verdict.
         isFinalScoreForToday: todayScore.isFinalScoreForToday,
         dayProgressPercent: todayScore.dayProgressPercent,
+        // v2 scoring trace. `value` = baseScore − penalties (floored at 0).
+        // Weighted pillars: sleep, nutrition (incl. water), activity, recovery.
+        // components.hydration / smoking / alcohol are display-only now.
+        baseScore: todayScore.baseScore ?? null,
+        penalties: todayScore.penalties ?? null,
+        missingComponents: todayScore.missingComponents ?? [],
+        notApplicableComponents: todayScore.notApplicableComponents ?? [],
       } : null,
       weeklyChange,
       dailyChange,
