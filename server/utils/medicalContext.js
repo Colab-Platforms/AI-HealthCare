@@ -10,10 +10,26 @@ function buildMedicalContextForAI(user) {
   const profile = user?.profile || {};
   const medical = profile.medicalHistory || {};
 
+  // Onboarding multi-select ("Diabetes", "Hypertension", ... plus free-text "Other") —
+  // previously ignored, so conditions picked there never reached the AI.
+  const onboardingConditions = (profile.healthConditions || [])
+    .filter(c => c && c !== 'None of these' && c !== 'Other');
+  if (profile.healthConditionOther && String(profile.healthConditionOther).trim()) {
+    onboardingConditions.push(String(profile.healthConditionOther).trim());
+  }
+
+  // De-duplicate case-insensitively across all sources
+  const seen = new Set();
   const allConditions = [
     ...(medical.conditions || []),
-    ...(profile.chronicConditions || [])
-  ].filter((v, i, a) => v && a.indexOf(v) === i);
+    ...(profile.chronicConditions || []),
+    ...onboardingConditions
+  ].map(c => String(c || '').trim()).filter(c => {
+    const k = c.toLowerCase();
+    if (!c || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 
   const isDiabetic = profile.isDiabetic === 'yes' ||
     allConditions.some(c => c.toLowerCase().includes('diabet'));
@@ -23,9 +39,16 @@ function buildMedicalContextForAI(user) {
   // sometimes garbled, e.g. "HighDibetics") warnings for the same thing.
   const otherConditions = allConditions.filter(c => !c.toLowerCase().includes('diabet'));
 
-  const allergies = profile.allergies || [];
+  const prefs = user?.foodPreferences || {};
+  const dedupe = (arr) => [...new Set((arr || []).map(v => String(v || '').trim()).filter(Boolean))];
+  const allergies = dedupe(profile.allergies);
+  // Intolerances / restrictions the user listed (kept separate from allergies — lower severity)
+  const allergyKeys = new Set(allergies.map(a => a.toLowerCase()));
+  const restrictions = dedupe(prefs.dietaryRestrictions).filter(r => !allergyKeys.has(r.toLowerCase()));
+  const medications = dedupe(medical.currentMedications);
 
-  if (!isDiabetic && otherConditions.length === 0 && allergies.length === 0) {
+  if (!isDiabetic && otherConditions.length === 0 && allergies.length === 0 &&
+      restrictions.length === 0 && medications.length === 0) {
     return '';
   }
 
@@ -40,12 +63,20 @@ function buildMedicalContextForAI(user) {
     lines.push(`- Allergies: ${allergies.join(', ')} — if any dish or ingredient contains or plausibly contains one of these, add a CRITICAL allergy warning as the FIRST item in "warnings". This is the one case where you should always warn, regardless of severity.`);
   }
 
+  if (restrictions.length > 0) {
+    lines.push(`- Food Intolerances / Dietary Restrictions: ${restrictions.join(', ')} — if a dish clearly contains one of these, add a warning naming it.`);
+  }
+  if (medications.length > 0) {
+    lines.push(`- Current Medications: ${medications.join(', ')} — ONLY warn about a well-known food-drug interaction with this specific meal (e.g. grapefruit with statins, high vitamin K with warfarin, high-potassium foods with certain BP drugs). Never invent interactions.`);
+  }
+
   return `\n\nUSER MEDICAL CONTEXT:
 ${lines.join('\n')}
 
 MEDICAL WARNING RULES (STRICT):
 - Do NOT add a medical warning for every meal by default. Most ordinary meals should get ZERO medical warnings even when the user has a condition on file — only flag genuinely significant, above-average risk for THAT SPECIFIC meal.
-- Maximum 1 warning per condition/allergy, and at most 2 medical warnings total in the whole "warnings" array (allergy warnings take priority, then diabetes, then other conditions).
+- Check the meal against EVERY item listed above (allergies, diabetes, each other condition, restrictions, medications) and warn for each one that is genuinely affected.
+- Maximum 1 warning per condition/allergy, and at most 4 medical warnings total in the whole "warnings" array (priority: allergies, then diabetes, then other conditions, then restrictions/medications). If several conditions share the same cause (e.g. high sodium affecting both hypertension and a heart condition), merge them into ONE warning that names both.
 - Never fabricate or combine condition names. If unsure a condition applies, do not mention it.
 - Each medical warning must name the specific condition and the specific reason (e.g. "You have diabetes — this dessert has ~35g of sugar in one serving").`;
 }
