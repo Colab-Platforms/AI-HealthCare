@@ -4,10 +4,20 @@ import { adminService } from "../services/api";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
 
-const emptyForm = { version: "", latestBuild: "", message: "", storeUrl: "" };
+const emptyForm = { version: "", minBuild: "", latestBuild: "", message: "", storeUrl: "" };
+
+const toForm = (cfg) => ({
+  version: cfg.version || "",
+  minBuild: cfg.minBuild ?? "",
+  latestBuild: cfg.latestBuild ?? "",
+  message: cfg.message || "",
+  storeUrl: cfg.storeUrl || "",
+});
 
 function PlatformCard({ label, Icon, form, setForm, onPush, pushing }) {
   const update = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+  const minTooHigh = form.minBuild !== "" && form.latestBuild !== ""
+    && Number(form.minBuild) > Number(form.latestBuild);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
@@ -16,19 +26,32 @@ function PlatformCard({ label, Icon, form, setForm, onPush, pushing }) {
         <h3 className="font-semibold text-slate-900">{label}</h3>
       </div>
 
+      <div>
+        <label className="text-xs font-medium text-slate-500">Version (display)</label>
+        <input
+          type="text"
+          value={form.version}
+          onChange={(e) => update("version", e.target.value)}
+          placeholder="2.5.2"
+          className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-slate-500">Version (display)</label>
+          <label className="text-xs font-medium text-slate-500">Min Build (force update)</label>
           <input
-            type="text"
-            value={form.version}
-            onChange={(e) => update("version", e.target.value)}
-            placeholder="2.5.2"
+            type="number"
+            min="1"
+            value={form.minBuild}
+            onChange={(e) => update("minBuild", e.target.value)}
+            placeholder="1"
             className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <p className="mt-1 text-[11px] text-slate-400">Builds below this must update</p>
         </div>
         <div>
-          <label className="text-xs font-medium text-slate-500">Latest Build (number)</label>
+          <label className="text-xs font-medium text-slate-500">Latest Build (optional update)</label>
           <input
             type="number"
             value={form.latestBuild}
@@ -36,8 +59,12 @@ function PlatformCard({ label, Icon, form, setForm, onPush, pushing }) {
             placeholder="21"
             className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <p className="mt-1 text-[11px] text-slate-400">Builds below this see a skippable popup</p>
         </div>
       </div>
+      {minTooHigh && (
+        <p className="text-xs text-red-600">Min Build cannot be higher than Latest Build.</p>
+      )}
 
       <div>
         <label className="text-xs font-medium text-slate-500">Message (optional)</label>
@@ -63,7 +90,7 @@ function PlatformCard({ label, Icon, form, setForm, onPush, pushing }) {
 
       <button
         onClick={onPush}
-        disabled={pushing || !form.version || !form.latestBuild}
+        disabled={pushing || !form.version || !form.latestBuild || minTooHigh}
         className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg py-2.5 transition-colors"
       >
         <Send className="w-4 h-4" />
@@ -84,22 +111,8 @@ export default function AdminAppVersion() {
     setLoading(true);
     try {
       const { data } = await adminService.getAppVersionConfig();
-      if (data.android) {
-        setAndroidForm({
-          version: data.android.version || "",
-          latestBuild: data.android.latestBuild ?? "",
-          message: data.android.message || "",
-          storeUrl: data.android.storeUrl || "",
-        });
-      }
-      if (data.ios) {
-        setIosForm({
-          version: data.ios.version || "",
-          latestBuild: data.ios.latestBuild ?? "",
-          message: data.ios.message || "",
-          storeUrl: data.ios.storeUrl || "",
-        });
-      }
+      if (data.android) setAndroidForm(toForm(data.android));
+      if (data.ios) setIosForm(toForm(data.ios));
     } catch (err) {
       toast.error("Failed to load current version config");
     } finally {
@@ -118,6 +131,7 @@ export default function AdminAppVersion() {
         [platform]: {
           version: form.version,
           latestBuild: Number(form.latestBuild),
+          minBuild: form.minBuild === "" ? undefined : Number(form.minBuild),
           message: form.message || undefined,
           storeUrl: form.storeUrl || undefined,
         },
@@ -139,8 +153,9 @@ export default function AdminAppVersion() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">App Version Push</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Sets the latest build each platform's app compares against on launch.
-            No notification is sent — the app shows its own update dialog.
+            Sets the builds each platform's app compares against on launch: Min Build
+            forces an update, Latest Build shows a skippable one. No notification is
+            sent — the app shows its own update dialog.
           </p>
         </div>
         <button
