@@ -13,17 +13,18 @@
 > - Prod catalog sync (`shopCatalogSync.js`) chal gaya. **PRODUCTION** DB `healthcare-ai` mein 2 products aur 2 collections hain. Order ke purane indexes (`idempotencyKey_1`, `paymentStatus_1`) drop hue, ye ek baar ki migration thi.
 > - QStash crons register ho gaye: `shop-catalog-daily-sync` (03:30 IST) aur `shop-order-reconciliation` (har 10 min) → `www.take.health`.
 > - Prod catalog check `node scripts/shopFastrrCatalogCheck.js https://www.take.health` → **PASS** (0 errors). Staging (Render) pe bhi PASS. Ab collection image bhi aati hai (placeholder set).
-> - Shopify webhooks: **15 mein se 7** register hue → `orders/create`, `orders/paid`, `orders/cancelled`, `refunds/create`, `products/create|update|delete`.
->
-> **Abhi atka hai ❌: Shopify token ke 3 scopes missing**
-> - `inventory_levels/update` pe Shopify ne 422 diya ("missing access scope"). Purani script pehli failure pe ruk jaati thi, isliye baaki topics try hi nahi hue. **8 topics bacche hain:**
->   - `inventory_levels/update`
+> - Shopify webhooks: **15 mein se 12** register ho gaye (18 Nov, fixed script ke second run ke baad):
+>   - `orders/create`, `orders/paid`, `orders/cancelled`, `refunds/create`
+>   - `products/create|update|delete`
 >   - `collections/create|update|delete`
 >   - `orders/fulfilled`, `orders/partially_fulfilled`
->   - `fulfillments/create|update`
+>
+> **Abhi atka hai ❌: 3 webhooks, Shopify token ke 3 scopes missing**
+> - Ye 3 fail hue (Shopify 422, "missing access scope"): `inventory_levels/update`, `fulfillments/create`, `fulfillments/update`.
 > - Token scope check (18 Nov) mein ye **teen nahi mile:** `read_inventory`, `read_locations`, `read_fulfillments`.
+> - **Testing inke bina ho sakti hai** (checkout, COD/prepaid, cancel/refund, shipped status via `orders/fulfilled`). **Go-live se pehle chahiye.**
 > - **Asar:**
->   - Shipped/delivered aur tracking updates app tak nahi aayenge.
+>   - Tracking number ke updates (`fulfillments/*`) app tak nahi aayenge. Shipped/delivered status `orders/fulfilled` se aana chahiye; test mein confirm karna hai.
 >   - Shopify mein stock badle toh hamara DB subah 03:30 ke sync tak purana rahega (oversell ka risk).
 >   - Shayad sab variants ka `grams = 0` bhi isi wajah se hai (weight inventory item pe hota hai). Scope add karke sync dobara chala ke dekhna.
 > - **Fix:**
@@ -47,7 +48,7 @@
 > - Shop: `SHOP_SHOPIFY_ORDER_SYNC=true`, `SHOP_PLACEHOLDER_IMAGE_URL=<logo URL>`, aur `SHOP_SHOPIFY_TEST_ORDERS=true` **sirf testing ke dauraan** (go-live pe `false`, warna asli orders "test" bante hain aur ship nahi hote).
 >
 > **Aage ka order (baaki kaam)**
-> 1. 🔴 Upar wale 3 scopes → webhooks re-register → catalog sync.
+> 1. 🔴 (go-live se pehle) Upar wale 3 scopes → webhooks re-register (baaki 3) → catalog sync. Testing iske bina shuru kar sakte ho.
 > 2. 🔴 Vercel Production env confirm karo + redeploy.
 > 3. 🔴 Fastrr dashboard mein URLs daalo, fir dashboard mein products dikhne chahiye:
 >    - `https://www.take.health/api/shop/fastrr/products`
@@ -247,7 +248,7 @@ models/ mein hi hai kyunki privacyController ka 8-year retention isse use karta 
 |---|---|---|
 | `shopCatalogSync.js --preview` | Shopify se read karke print, DB nahi | Kabhi bhi (safe) |
 | `shopCatalogSync.js` (+ `USE_STAGING_DB=true` for staging) | Full sync DB mein + indexes + `Order.syncIndexes()` (purana global `idempotencyKey_1` drop) | Staging ✅ done; **prod: deploy ke baad** |
-| `registerShopifyWebhooks.js --url=https://www.take.health [--dry-run]` | Shopify webhooks register (order + catalog topics) | Prod: 18 Nov ko 7/15 hue, baaki scopes ke baad (upar status). Sirf ek URL |
+| `registerShopifyWebhooks.js --url=https://www.take.health [--dry-run]` | Shopify webhooks register (order + catalog topics) | Prod: 18 Nov ko 12/15 ho gaye; `inventory_levels/update` + `fulfillments/*` scopes ke baad (upar status). Sirf ek URL |
 | `registerShopCatalogSchedule.js https://www.take.health` | QStash daily 03:30 IST full sync + order reconciliation (10 min) | ✅ Prod done 18 Nov |
 | `shopFastrrCatalogCheck.js <base-url>` | Fastrr catalog APIs (products, collections, products-by-collection) ko Postman doc se field-by-field check karta hai, sirf GET. PASS/FAIL deta hai | Fastrr ko URL dene se pehle / catalog change ke baad. Prod + staging PASS 18 Nov |
 
