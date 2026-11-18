@@ -111,7 +111,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   const recoveryWindowStartStr = recoveryWindowStart.toISOString().split('T')[0];
 
   const [
-    nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthSessionsLast7Days,
+    nutritionSummary, activityMetrics, sleepRows, user, exerciseLogs, healthGoal, strengthLogsLast7Days,
     recoveryDoc, recentRecoveryDoc,
   ] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
@@ -157,7 +157,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
       userId,
       category: 'strength',
       timestamp: { $gte: new Date(dayEnd.getTime() - 7 * 86400000), $lt: dayEnd },
-    }),
+    }).select('duration').lean(),
     // Recovery: ONLY the physiology sub-score (HRV+RHR+RR) — see the Recovery
     // section below for why never the full recoveryScore.
     RecoveryDailySummary.findOne({ user: userId, date: dateStr })
