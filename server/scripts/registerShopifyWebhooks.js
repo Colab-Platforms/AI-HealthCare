@@ -19,10 +19,10 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const TOPICS = [
   // card offer
   'orders/create', 'orders/paid', 'orders/cancelled', 'refunds/create',
-  // shop catalog sync (modules/shop) — needs read_products + read_inventory
+  // shop catalog sync (modules/shop) — needs read_products; inventory_levels/* needs read_inventory + read_locations
   'products/create', 'products/update', 'products/delete', 'inventory_levels/update',
   'collections/create', 'collections/update', 'collections/delete',
-  // shop orders (M3): shipped / delivered / tracking — needs read_orders (+ read_fulfillments)
+  // shop orders (M3): shipped / delivered / tracking — needs read_orders; fulfillments/* needs read_fulfillments
   'orders/fulfilled', 'orders/partially_fulfilled', 'fulfillments/create', 'fulfillments/update',
 ];
 
@@ -69,6 +69,8 @@ const TOPICS = [
   if (!webhooks.length) console.log('  (none)');
   console.log('');
 
+  // One failed topic (e.g. a missing access scope) must not stop the others.
+  const failed = [];
   for (const topic of TOPICS) {
     const exists = webhooks.some((w) => w.topic === topic && w.address === address);
     if (exists) {
@@ -79,8 +81,20 @@ const TOPICS = [
       console.log(`  ➕ ${topic.padEnd(18)} would register`);
       continue;
     }
-    await api('POST', 'webhooks.json', { webhook: { topic, address, format: 'json' } });
-    console.log(`  ✅ ${topic.padEnd(18)} registered`);
+    try {
+      await api('POST', 'webhooks.json', { webhook: { topic, address, format: 'json' } });
+      console.log(`  ✅ ${topic.padEnd(18)} registered`);
+    } catch (err) {
+      failed.push(topic);
+      // Shopify's 422 body lists every allowed topic — keep only the first sentence.
+      const reason = err.message.match(/Invalid topic specified[^.]*\.[^?]*\?[^?]*\?/)?.[0] || err.message.slice(0, 200);
+      console.log(`  ❌ ${topic.padEnd(18)} FAILED: ${reason}`);
+    }
+  }
+  if (failed.length) {
+    console.log(`\n${failed.length} topic(s) failed: ${failed.join(', ')}`);
+    console.log('Usually a missing Admin API scope on SHOPIFY_ADMIN_TOKEN (see comments at the top of TOPICS). Add it, reinstall the app, re-run.');
+    process.exit(1);
   }
   console.log('\nDone.');
 })().catch((err) => {

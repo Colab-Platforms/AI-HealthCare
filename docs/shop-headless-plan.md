@@ -3,7 +3,74 @@
 > **Single source of truth for the in-app shop.** Kisi bhi laptop se kaam shuru karo toh pehle ye file padho.
 > Purani files `fastrr-shiprocket-checkout-integration-plan.md` aur `fastrr-integration-reference-and-test-plan.md` OUTDATED hain (wo purane `fastrrRoutes.js` ke liye thi, jo delete ho chuka hai).
 >
-> Last updated: 2026-11-17 (M1–M4 + shop admin (APIs + web pages) done, tested & pushed; go-live plan §14; Flutter guide `docs/shop-flutter-api-guide.md`) · Branch: `Staging`
+> Last updated: 2026-11-18 (shop code **main pe merge + prod setup shuru**; neeche "PROD SETUP STATUS" padho) · Branch: `Staging`
+>
+> ## ▶ PROD SETUP STATUS (2026-11-18) — yahin se continue karo
+>
+> **Ho chuka ✅**
+> - Shop ka saara code **main pe merge** ho gaya. `www.take.health/api/shop/*` live hai (Staging = main = `e05474b`, 18 Nov).
+> - Fastrr dashboard mil gaya, aur `www.take.health` ki keys bhi. Render main service pe env daal diye.
+> - Prod catalog sync (`shopCatalogSync.js`) chal gaya. **PRODUCTION** DB `healthcare-ai` mein 2 products aur 2 collections hain. Order ke purane indexes (`idempotencyKey_1`, `paymentStatus_1`) drop hue, ye ek baar ki migration thi.
+> - QStash crons register ho gaye: `shop-catalog-daily-sync` (03:30 IST) aur `shop-order-reconciliation` (har 10 min) → `www.take.health`.
+> - Prod catalog check `node scripts/shopFastrrCatalogCheck.js https://www.take.health` → **PASS** (0 errors). Staging (Render) pe bhi PASS. Ab collection image bhi aati hai (placeholder set).
+> - Shopify webhooks: **15 mein se 7** register hue → `orders/create`, `orders/paid`, `orders/cancelled`, `refunds/create`, `products/create|update|delete`.
+>
+> **Abhi atka hai ❌: Shopify token ke 3 scopes missing**
+> - `inventory_levels/update` pe Shopify ne 422 diya ("missing access scope"). Purani script pehli failure pe ruk jaati thi, isliye baaki topics try hi nahi hue. **8 topics bacche hain:**
+>   - `inventory_levels/update`
+>   - `collections/create|update|delete`
+>   - `orders/fulfilled`, `orders/partially_fulfilled`
+>   - `fulfillments/create|update`
+> - Token scope check (18 Nov) mein ye **teen nahi mile:** `read_inventory`, `read_locations`, `read_fulfillments`.
+> - **Asar:**
+>   - Shipped/delivered aur tracking updates app tak nahi aayenge.
+>   - Shopify mein stock badle toh hamara DB subah 03:30 ke sync tak purana rahega (oversell ka risk).
+>   - Shayad sab variants ka `grams = 0` bhi isi wajah se hai (weight inventory item pe hota hai). Scope add karke sync dobara chala ke dekhna.
+> - **Fix:**
+>   1. Shopify admin → Settings → Apps → Develop apps → app → Configuration → Admin API scopes mein teeno tick karo → Save → Install/Update app.
+>   2. Naya `shpat_` mile toh `.env`, Vercel aur Render teeno jagah update karo.
+>   3. Scopes dobara check karo (command neeche hai).
+>   4. Webhooks dobara register karo: `node scripts/registerShopifyWebhooks.js --url=https://www.take.health`. Ab script fail hone pe rukti nahi, end mein fail topics ki list deti hai.
+>   5. `node scripts/shopCatalogSync.js` dobara chalao.
+> - Scope check (sirf padhta hai, `server/` se):
+>   `node -e "require('dotenv').config();fetch('https://'+process.env.SHOPIFY_ADMIN_STORE_DOMAIN+'/admin/oauth/access_scopes.json',{headers:{'X-Shopify-Access-Token':process.env.SHOPIFY_ADMIN_TOKEN}}).then(r=>r.json()).then(j=>console.log(j.access_scopes.map(s=>s.handle).join(', ')))"`
+> - Hamare code ko sirf ye scopes chahiye: `read_products`, `read_inventory`, `read_locations`, `read_orders`, `read_all_orders`, `write_orders`, `read_fulfillments`. Token ke paas abhi bahut zyada scopes hain (`write_products`, `write_customers`, `write_script_tags`, customer erasure…). **Baad mein extra scopes hata dena** (least privilege).
+>
+> **Env (Vercel Production + Render dono pe; Vercel pe abhi confirm karna hai ⚠️)**
+> - `www.take.health` **Vercel** se serve hota hai, aur QStash crons bhi Vercel pe jaate hain. Env sirf Render pe hua toh prod checkout 503 dega. Env daalne ke baad Vercel redeploy karna.
+> - Fastrr: `FASTRR_API_KEY`, `FASTRR_API_SECRET`, aur `FASTRR_BASE_URL=https://checkout-api.shiprocket.com` (prod keys ke liye; nahi set kiya toh code staging API pe jaata hai aur 511 aata hai).
+> - Shopify:
+>   - `SHOPIFY_ADMIN_STORE_DOMAIN=2jfdfm-vp.myshopify.com`
+>   - `SHOPIFY_ADMIN_TOKEN=shpat_…` (Admin API token)
+>   - `SHOPIFY_CLIENT_SECRET=shpss_…` (app ka client secret; isi se webhook HMAC check hota hai)
+> - `SHOPIFY_WEBHOOK_SECRET` **mat daalo / khaali rakho.** Ye sirf tab chahiye jab webhooks Shopify admin ke Notifications page se manually banaye hon. Hamare webhooks script (app) se bane hain, toh Shopify unhe `shpss_` se sign karta hai. Code pehle `WEBHOOK_SECRET` dekhta hai ([shopifyWebhookRoutes.js:28](../server/routes/shopifyWebhookRoutes.js)), aur galat value hui toh har webhook 401 dega. Kuch din fail hone ke baad Shopify webhook delete kar deta hai.
+> - Shop: `SHOP_SHOPIFY_ORDER_SYNC=true`, `SHOP_PLACEHOLDER_IMAGE_URL=<logo URL>`, aur `SHOP_SHOPIFY_TEST_ORDERS=true` **sirf testing ke dauraan** (go-live pe `false`, warna asli orders "test" bante hain aur ship nahi hote).
+>
+> **Aage ka order (baaki kaam)**
+> 1. 🔴 Upar wale 3 scopes → webhooks re-register → catalog sync.
+> 2. 🔴 Vercel Production env confirm karo + redeploy.
+> 3. 🔴 Fastrr dashboard mein URLs daalo, fir dashboard mein products dikhne chahiye:
+>    - `https://www.take.health/api/shop/fastrr/products`
+>    - `https://www.take.health/api/shop/fastrr/collections`
+>    - `https://www.take.health/api/shop/fastrr/collection-products`
+>    - webhook: `https://www.take.health/api/shop/fastrr/webhook`
+> 4. 🔴 Fastrr se **likhit mein** lo ki wo apni taraf se Shopify order nahi banayenge (warna order double banega).
+> 5. 🟡 Real tests (`SHOP_SHOPIFY_TEST_ORDERS=true`):
+>    - **COD:** app mein `cod_pending`, Shopify mein "Test order" (`take-app` tag), Fastrr mein bhi order.
+>    - **Prepaid:** order `paid`, Shopify order, settlement sahi account mein.
+>    - **Cancel + refund:** Fastrr refund, Shopify cancel.
+>    - **Shopify mein fulfil karo:** app mein shipped + push notification.
+>    - Har test ke baad Shopify order cancel karo (stock wapas).
+> 6. 🟢 Go-live se pehle:
+>    - `SHOP_SHOPIFY_TEST_ORDERS=false` (dono jagah).
+>    - Shopify mein har variant ka **weight** daalo (abhi `grams = 0` → shipping charge galat).
+>    - Test product **"second-product"** (bina SKU) ko draft karo.
+>    - Flutter team ko handoff do (`docs/shop-flutter-api-guide.md`).
+> 7. ⚪ Management se poochna (end mein): app orders pe card-offer trial? COD max limit + fee? Refund/return policy? App orders kaun ship karega? GST invoice kaun dega?
+> 8. ⚠️ Webhooks register hote hi **card offer live** ho jaata hai (store buyers ko 30-day trial, rules A–D). Management se ek baar confirm kar lena.
+> 9. Card-offer ke 2 tests date ki wajah se fail hote hain (prod pe asar nahi): `docs/card-offer-rahul-test-failure.md`. Ye card-offer owner ka kaam hai.
+>
+> **Checkout WebView (confusion clear):** custom flow mein bhi checkout app ke andar **WebView** mein hi khulta hai. `POST /api/shop/checkout` → `checkoutUrl` (`/api/shop/checkout/:orderId/page`) → us page pe Fastrr ka `HeadlessCheckout` JS. 17 Nov ko sirf Fastrr ka "Shopify one-click URL" mode hataya tha, jo Shopify se jude stores ke liye hota hai. Flutter ko kuch nahi badalna.
 >
 > **2026-11-17 — FINAL: custom integration hi chalega.** 16 Nov ko Fastrr team ko laga tha ki hamara app Shopify se juda hai, isliye unhone "Fastrr Shopify order banayega + Shopify WebView checkout" bola. Is galatfehmi pe kuch kaam ho gaya tha: plan update `cfbe762`, aur ghar pe WebView checkout mode + Shopify order verifier `6b1232c`. 17 Nov ko Fastrr ke saath sab clear ho gaya. Unhone confirm kiya ki Postman ka **"SRC Custom Integration"** doc hi follow karna hai, jo is plan ka original flow hai: token API → `HeadlessCheckout` JS → order webhook + Order Details fetch-back → **Shopify order hum banate hain** (M3 `orderCreate`).
 > - WebView mode ka code (`SHOP_CHECKOUT_MODE`, `shopifyOrderVerify`, uske tests) **hata diya**. Link mode ab nahi banega.
@@ -180,8 +247,9 @@ models/ mein hi hai kyunki privacyController ka 8-year retention isse use karta 
 |---|---|---|
 | `shopCatalogSync.js --preview` | Shopify se read karke print, DB nahi | Kabhi bhi (safe) |
 | `shopCatalogSync.js` (+ `USE_STAGING_DB=true` for staging) | Full sync DB mein + indexes + `Order.syncIndexes()` (purana global `idempotencyKey_1` drop) | Staging ✅ done; **prod: deploy ke baad** |
-| `registerShopifyWebhooks.js --url=https://www.take.health [--dry-run]` | Shopify webhooks register (order + catalog topics) | **Prod deploy ke baad**, sirf ek URL |
-| `registerShopCatalogSchedule.js https://www.take.health` | QStash daily 03:30 IST full sync | **Prod deploy ke baad** |
+| `registerShopifyWebhooks.js --url=https://www.take.health [--dry-run]` | Shopify webhooks register (order + catalog topics) | Prod: 18 Nov ko 7/15 hue, baaki scopes ke baad (upar status). Sirf ek URL |
+| `registerShopCatalogSchedule.js https://www.take.health` | QStash daily 03:30 IST full sync + order reconciliation (10 min) | ✅ Prod done 18 Nov |
+| `shopFastrrCatalogCheck.js <base-url>` | Fastrr catalog APIs (products, collections, products-by-collection) ko Postman doc se field-by-field check karta hai, sirf GET. PASS/FAIL deta hai | Fastrr ko URL dene se pehle / catalog change ke baad. Prod + staging PASS 18 Nov |
 
 ### Existing files jo badle
 - `server/server.js` — `/` pe `fastrrRoutes` hataya, `/api/shop` mount kiya
@@ -448,9 +516,10 @@ Poori WhatsApp list (29 Qs with "Why") + call list (17 Qs) chat mein di gayi thi
 | Var | Where | Note |
 |---|---|---|
 | `SHOPIFY_ADMIN_STORE_DOMAIN` | Vercel + Render + local | `2jfdfm-vp.myshopify.com` |
-| `SHOPIFY_ADMIN_TOKEN` | same | scopes: `read_products`, `read_inventory`, `read_orders` (+ M3: `write_orders`) |
+| `SHOPIFY_ADMIN_TOKEN` | same | `shpat_…`. Scopes: `read_products`, `read_inventory`, `read_locations`, `read_orders`, `read_all_orders`, `write_orders`, `read_fulfillments` |
 | `SHOPIFY_API_VERSION` | optional | default `2026-10` |
-| `SHOPIFY_CLIENT_SECRET` / `SHOPIFY_WEBHOOK_SECRET` | same | webhook HMAC |
+| `SHOPIFY_CLIENT_SECRET` | same | `shpss_…` → webhook HMAC (webhooks script/app se bane hain) |
+| `SHOPIFY_WEBHOOK_SECRET` | **mat set karo** | Sirf admin "Notifications" page se bane webhooks ke liye. Set hua toh `CLIENT_SECRET` se pehle use hota hai → galat value = har webhook 401 |
 | `SHOP_MAX_QTY_PER_ITEM`, `SHOP_MAX_CART_LINES` | optional | 10 / 30 |
 | `FASTRR_BASE_URL`, `FASTRR_API_KEY`, `FASTRR_API_SECRET` | M2 | from Fastrr |
 | `QSTASH_*` | already set | catalog schedule + crons |
