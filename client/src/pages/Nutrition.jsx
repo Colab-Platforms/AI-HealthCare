@@ -768,6 +768,16 @@ function Nutrition() {
       // Hand off to the review/edit screen — nothing is logged yet, user must confirm
       setReviewMeal({
         ...result,
+        // The free response stays compact; synthesize the single editable dish
+        // client-side so it can use the same confirmation/logging flow.
+        ...(result.analysisTier === 'basic' && !Array.isArray(result.dishes) ? {
+          dishes: [{
+            name: result.foodItem?.name || name,
+            quantity: result.foodItem?.quantity || '1 serving',
+            ingredients: [],
+            nutrition: result.foodItem?.nutrition || {},
+          }],
+        } : {}),
         _userInput: foodInput,
         _isImageAnalysis: images.length > 0,
       });

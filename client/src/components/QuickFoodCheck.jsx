@@ -347,6 +347,7 @@ export default function QuickFoodCheck() {
 
   const handleHistoryItemClick = (check) => {
     setResult({
+      analysisTier: check.analysisTier || 'full',
       foodItem: {
         name: check.foodName,
         quantity: check.quantity || '',
@@ -630,6 +631,45 @@ export default function QuickFoodCheck() {
       {/* Result Display - Premium Medical UI */}
       {result && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {result.analysisTier === 'basic' ? (
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-lg space-y-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Quick meal estimate</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-900">{result.foodItem?.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{result.description || result.analysis}</p>
+                <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {result.foodItem?.quantity || '1 serving'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {[
+                  ['Calories', result.foodItem?.nutrition?.calories, 'kcal'],
+                  ['Protein', result.foodItem?.nutrition?.protein, 'g'],
+                  ['Carbs', result.foodItem?.nutrition?.carbs, 'g'],
+                  ['Fiber', result.foodItem?.nutrition?.fiber, 'g'],
+                  ['Fats', result.foodItem?.nutrition?.fats, 'g']
+                ].map(([label, value, unit]) => (
+                  <div key={label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                    <p className="mt-1 text-xl font-black text-slate-900">{value || 0}<span className="ml-1 text-xs text-slate-400">{unit}</span></p>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  setResult(null);
+                  setPrepMethod(null);
+                  setFoodInput('');
+                  setImage(null);
+                  setImagePreview(null);
+                }}
+                className="w-full rounded-2xl bg-black py-4 text-xs font-black uppercase tracking-widest text-white"
+              >
+                Analyze Another Food
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden group">
             {/* Animated Background Gradient - Neutral */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:scale-110 transition-transform duration-700" />
@@ -906,6 +946,8 @@ export default function QuickFoodCheck() {
               Analyze Another Food
             </button>
           </div>
+          </>
+          )}
         </div>
       )}
 

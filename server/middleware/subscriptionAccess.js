@@ -78,6 +78,27 @@ exports.requireFeature = (featureKey) => {
   };
 };
 
+// Food scanning is available on every plan, but the analysis detail follows
+// the effective plan's aiFoodAnalysis entitlement. Keep the plan decision on
+// the server so clients cannot request the paid response shape themselves.
+exports.setNutritionAnalysisTier = async (req, res, next) => {
+  try {
+    const sub = req.user.subscription || { plan: FREE_PLAN_KEY, billingCycle: 'monthly' };
+    const entitled = sub.plan === FREE_PLAN_KEY || isEntitled(sub);
+    const effectivePlanKey = entitled ? sub.plan : FREE_PLAN_KEY;
+    const plan = await getCachedPlan(effectivePlanKey, sub.billingCycle || 'monthly');
+
+    if (!plan) {
+      return res.status(403).json({ success: false, message: 'No active plan found for this account.' });
+    }
+
+    req.nutritionAnalysisTier = plan.features?.aiFoodAnalysis === true ? 'full' : 'basic';
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Shared with services that need the same "is this subscription live?" rule
 // (e.g. shopifyOfferService, which must never turn a paying user into a trial).
 exports.isEntitled = isEntitled;
