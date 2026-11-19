@@ -50,11 +50,16 @@
 > **Aage ka order (baaki kaam)**
 > 1. 🔴 (go-live se pehle) Upar wale 3 scopes → webhooks re-register (baaki 3) → catalog sync. Testing iske bina shuru kar sakte ho.
 > 2. 🔴 Vercel Production env confirm karo + redeploy.
-> 3. 🔴 Fastrr dashboard mein URLs daalo, fir dashboard mein products dikhne chahiye:
->    - `https://www.take.health/api/shop/fastrr/products`
->    - `https://www.take.health/api/shop/fastrr/collections`
->    - `https://www.take.health/api/shop/fastrr/collection-products`
->    - webhook: `https://www.take.health/api/shop/fastrr/webhook`
+> 3. ✅ (19 Nov) Fastrr dashboard → **Settings → Custom Endpoints** mein chaaron prod URLs set:
+>    - PRODUCT FETCH (GET) → `https://www.take.health/api/shop/fastrr/products`
+>    - COLLECTION FETCH (GET) → `https://www.take.health/api/shop/fastrr/collections`
+>    - COLLECTION PRODUCT FETCH (GET) → `https://www.take.health/api/shop/fastrr/collection-products`
+>    - ORDER WEBHOOK (POST, no headers) → `https://www.take.health/api/shop/fastrr/webhook`
+>    - Pehle wahan Render staging ke URLs the; badal diye.
+>    - Settings → Webhooks page (Fastrr Engage / payment webhooks) mein kuch nahi daala. Fastrr Engage OFF hai.
+>    - **Baaki:**
+>      - Settings → **Platform** check karo: "Custom" hona chahiye, Shopify nahi.
+>      - Fastrr dashboard mein products dikh rahe hain ya nahi, check karo.
 > 4. 🔴 Fastrr se **likhit mein** lo ki wo apni taraf se Shopify order nahi banayenge (warna order double banega).
 > 5. 🟡 Real tests (`SHOP_SHOPIFY_TEST_ORDERS=true`):
 >    - **COD:** app mein `cod_pending`, Shopify mein "Test order" (`take-app` tag), Fastrr mein bhi order.
