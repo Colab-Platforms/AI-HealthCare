@@ -9,7 +9,21 @@ const navLinks = [
   { label: "HOW IT WORKS", to: "/how-it-works" },
   { label: "CREATOR CLUB", to: "/creator" },
   { label: "FAQ", to: "/", hash: "faqs-section" },
+  { label: "SHOP", href: "https://shop.take.health" },
 ];
+
+// `href` marks an external site: React Router's <Link> only handles in-app
+// routes, so these render as a plain <a> opening in a new tab.
+const NavItem = ({ link, className, onClick }) =>
+  link.href ? (
+    <a href={link.href} target="_blank" rel="noopener noreferrer" className={className} onClick={onClick}>
+      {link.label}
+    </a>
+  ) : (
+    <Link to={link.to} className={className} onClick={onClick}>
+      {link.label}
+    </Link>
+  );
 
 // The target may not be mounted yet — arriving from another page means waiting
 // on the route chunk, and the landing page's sections render lazily on scroll.
@@ -100,18 +114,16 @@ const UpdatedNavbar = () => {
         {/* Desktop Navigation Links */}
         <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
           {navLinks.map((link, idx) => (
-            <Link
+            <NavItem
               key={idx}
-              to={link.to}
+              link={link}
               onClick={(e) => handleNavClick(e, link)}
               className={`text-xs xl:text-sm font-semibold tracking-wider uppercase transition-colors ${
                 isLight
                   ? "text-white/90 hover:text-white"
                   : "text-slate-700 hover:text-[#1B47B9]"
               }`}
-            >
-              {link.label}
-            </Link>
+            />
           ))}
         </nav>
 
@@ -155,9 +167,9 @@ const UpdatedNavbar = () => {
           }`}
         >
           {navLinks.map((link, idx) => (
-            <Link
+            <NavItem
               key={idx}
-              to={link.to}
+              link={link}
               onClick={(e) => {
                 setMobileMenuOpen(false);
                 handleNavClick(e, link);
@@ -167,9 +179,7 @@ const UpdatedNavbar = () => {
                   ? "text-white/90 hover:text-white"
                   : "text-slate-700 hover:text-[#1B47B9]"
               }`}
-            >
-              {link.label}
-            </Link>
+            />
           ))}
         </div>
       )}
