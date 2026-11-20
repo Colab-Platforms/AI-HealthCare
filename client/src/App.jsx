@@ -17,6 +17,7 @@ import WaitlistPage from "./pages/Waitlist";
 import WaitlistThankYou from "./pages/WaitlistThankYou";
 import WaitlistJoin from "./pages/WaitlistJoin";
 import HelpWidget from "./components/HelpWidget";
+import { isPublicPath } from "./utils/publicPaths";
 import DiabetesLanding from "./pages/DiabetesLanding";
 import WeightLossLanding from "./pages/WeightLossLanding";
 
@@ -158,29 +159,7 @@ export default function App() {
       </Suspense>
 
       {/* Help Widget - Only show for authenticated users on internal pages */}
-      {(() => {
-        const publicPaths = [
-          "/",
-          "/diabetes-landing",
-          "/old-landing",
-          "/about",
-          "/login",
-          "/register",
-          "/waitlist",
-          "/how-it-works",
-          "/terms-and-conditions",
-          "/privacy-policy",
-          "/pages/manufacturers-details",
-          "/forgot-password",
-          "/demo",
-          "/creator",
-        ];
-        const isPublicPage = publicPaths.some(
-          (p) =>
-            location.pathname === p || location.pathname.startsWith(p + "/"),
-        );
-        return user && !isPublicPage ? <HelpWidget /> : null;
-      })()}
+      {user && !isPublicPath(location.pathname) ? <HelpWidget /> : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import axios from 'axios';
 import cache from '../utils/cache';
 import { affectsHealthScore, invalidateHealthScore } from '../utils/scoreCache';
 import { getToken, getRefreshToken, setToken, clearAuthData } from '../utils/authStorage';
+import { isPublicPath } from '../utils/publicPaths';
 
 // Determine API URL based on environment
 // Determine API URL based on environment
@@ -94,6 +95,15 @@ api.interceptors.request.use((config) => {
 
 let _refreshing = null; // singleton promise — prevents parallel refresh storms
 
+// A stale token can 401 on a public page too (background calls like FCM
+// register fire on every load). Clear the session either way, but only send
+// people to /login from pages that actually need it — never from the landing page.
+const redirectToLoginIfPrivate = () => {
+  if (!isPublicPath(window.location.pathname)) {
+    window.location.href = '/login';
+  }
+};
+
 api.interceptors.response.use(
   (response) => {
     // Anything that successfully changed data feeding the Health Score drops
@@ -131,7 +141,7 @@ api.interceptors.response.use(
         // Refresh failed — force logout
         clearAuthData();
         cache.clear();
-        window.location.href = '/login';
+        redirectToLoginIfPrivate();
         return Promise.reject(error);
       }
     }
@@ -142,7 +152,7 @@ api.interceptors.response.use(
       if (!skipAutoLogout) {
         clearAuthData();
         cache.clear();
-        window.location.href = '/login';
+        redirectToLoginIfPrivate();
       }
     } else if (!error.response) {
       console.error('Network Error:', {
