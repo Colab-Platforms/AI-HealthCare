@@ -2,7 +2,7 @@ import React from "react";
 import { useInViewport } from "../hooks/useInViewport";
 import SEO from "../hooks/useSEO";
 import UpdatedHero from "../components/landing/landing-components/UpdatedHero";
-import UpdatedPromoBanners from "../components/landing/landing-components/UpdatedPromoBanners";
+import PromoPopup from "../components/landing/landing-components/PromoPopup";
 import UpdatedWellnessIntelligence from "../components/landing/landing-components/UpdatedWellnessIntelligence";
 import UpdatedHowItWorks from "../components/landing/landing-components/UpdatedHowItWorks";
 import UpdatedBetterWellness from "../components/landing/landing-components/UpdatedBetterWellness";
@@ -41,12 +41,6 @@ const UpdatedLandingPage = () => {
         {/* SECTION 1: HERO SECTION & STATS BAR */}
         <section id="hero-section" className="w-full">
           <UpdatedHero />
-        </section>
-
-        {/* SECTION 2: PROMO BANNERS (BERBERINE / DIET / HEALTH DATA) */}
-        {/* Not lazy: sits right under the hero, the <img> tags lazy-load themselves */}
-        <section id="promo-banners-section" className="w-full">
-          <UpdatedPromoBanners />
         </section>
 
         {/* SECTION 2: WELLNESS INTELLIGENCE & VIDEO HOOK */}
@@ -96,6 +90,9 @@ const UpdatedLandingPage = () => {
 
       {/* Footer */}
       <UpdatedFooter />
+
+      {/* Promotional ads popup — opens after a delay/scroll, on every page load */}
+      <PromoPopup />
     </section>
   );
 };

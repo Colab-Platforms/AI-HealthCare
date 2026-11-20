@@ -40,7 +40,8 @@ const scrollToSection = (id, deadline = Date.now() + 3000) => {
   setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
 };
 
-const UpdatedNavbar = () => {
+// `announcement` adds the promo strip above the nav — landing page only, via UpdatedHero.
+const UpdatedNavbar = ({ announcement = false }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -101,6 +102,20 @@ const UpdatedNavbar = () => {
             : "bg-white/95 border-b border-slate-200 shadow-sm backdrop-blur-md"
         }`}
       >
+      {/* Promo strip: inside the header so it hides/shows together with the nav */}
+      {announcement && (
+        <a
+          href="https://shop.take.health"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full bg-[#0B0B0F] hover:bg-black text-white text-center text-[11px] sm:text-xs font-semibold tracking-wider whitespace-nowrap overflow-hidden text-ellipsis py-2 px-4 transition-colors"
+        >
+          <span className="text-[#E8475F]">NEW</span>
+          <span className="mx-2 text-white/40">·</span>
+          TAKE Liposomal Berberine 1000mg
+          <span className="ml-2 underline underline-offset-2">Shop Now →</span>
+        </a>
+      )}
       <div className="max-w-[1920px] mx-auto px-4 sm:px-8 lg:px-20 h-16 sm:h-20 flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2">
