@@ -3,16 +3,16 @@ const router = express.Router();
 const nutritionController = require('../controllers/nutritionController');
 const { protect } = require('../middleware/auth');
 const { aiLimiter, apiLimiter, heavyReadLimiter } = require('../middleware/rateLimit');
-const { requireFeature } = require('../middleware/subscriptionAccess');
+const { requireFeature, setNutritionAnalysisTier } = require('../middleware/subscriptionAccess');
 
 // All routes require authentication
 router.use(protect);
 
 // Food Analysis
 const upload = require('../middleware/upload');
-router.post('/analyze-food', aiLimiter, requireFeature('aiFoodAnalysis'), nutritionController.analyzeFood);
+router.post('/analyze-food', aiLimiter, setNutritionAnalysisTier, nutritionController.analyzeFood);
 // 'image' kept for backward-compat single-photo clients; 'images' is the new multi-photo field (up to 5)
-router.post('/quick-check', aiLimiter, requireFeature('aiFoodAnalysis'), upload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 5 }]), nutritionController.quickFoodCheck);
+router.post('/quick-check', aiLimiter, setNutritionAnalysisTier, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 5 }]), nutritionController.quickFoodCheck);
 router.post('/quick-check/save', nutritionController.saveQuickCheck);
 router.post('/get-alternatives', aiLimiter, requireFeature('aiFoodAnalysis'), nutritionController.getHealthyAlternatives);
 
@@ -41,7 +41,7 @@ router.get('/recommendations', apiLimiter, nutritionController.getRecommendation
 router.get('/food-image', apiLimiter, nutritionController.getFoodImage);
 
 // Food Logging
-router.post('/log-meal', nutritionController.logMeal);
+router.post('/log-meal', setNutritionAnalysisTier, nutritionController.logMeal);
 router.get('/logs', heavyReadLimiter, nutritionController.getFoodLogs);
 router.get('/logs/today', apiLimiter, nutritionController.getTodayLogs);
 router.put('/logs/:id', nutritionController.updateFoodLog);

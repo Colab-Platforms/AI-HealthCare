@@ -304,6 +304,7 @@ const extractQuantity = (str) => {
 exports.analyzeFood = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
+    const analysisTier = req.nutritionAnalysisTier || 'full';
 
     if (!foodDescription && !imageBase64) {
       return res.status(400).json({
@@ -314,12 +315,12 @@ exports.analyzeFood = async (req, res) => {
 
     let imageUrl = null;
     let analysis = null;
-    const medicalContext = buildMedicalContextForAI(req.user);
+    const medicalContext = analysisTier === 'full' ? buildMedicalContextForAI(req.user) : '';
 
     if (imageBase64) {
       // Analyze from image and upload to Cloudinary in PARALLEL to save time
       const [analysisResult, uploadedUrl] = await Promise.all([
-        nutritionAI.analyzeFromImage(imageBase64, additionalContext, req.user._id, medicalContext),
+        nutritionAI.analyzeFromImage(imageBase64, additionalContext, req.user._id, medicalContext, analysisTier),
         uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals').catch(e => {
           console.error('Cloudinary upload in analyzeFood failed:', e.message);
           return null;
@@ -344,12 +345,18 @@ exports.analyzeFood = async (req, res) => {
         : foodDescription;
         
       // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
-      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext);
+      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext, analysisTier);
       
       // Save for historical reference but do not use for retrieval next time
       if (analysis?.success && analysis?.data?.foodItem) {
           const aiData = analysis.data;
-          const nutrition = {
+          const nutrition = analysisTier === 'basic' ? {
+            calories: getNum(aiData.nutrition?.calories),
+            protein: getNum(aiData.nutrition?.protein),
+            carbs: getNum(aiData.nutrition?.carbs),
+            fats: getNum(aiData.nutrition?.fats),
+            fiber: getNum(aiData.nutrition?.fiber)
+          } : {
             calories: getNum(aiData.foodItem?.nutrition?.calories || aiData.totalNutrition?.calories || aiData.calories),
             protein: getNum(aiData.foodItem?.nutrition?.protein || aiData.totalNutrition?.protein || aiData.protein),
             carbs: getNum(aiData.foodItem?.nutrition?.carbs || aiData.totalNutrition?.carbs || aiData.carbs),
@@ -361,6 +368,7 @@ exports.analyzeFood = async (req, res) => {
           
           const cacheEntry = new QuickFoodCheck({
             userId: req.user._id,
+            analysisTier,
             foodName: (aiData.foodItem.name || foodDescription).trim(),
             searchDescription: searchKey.trim().toLowerCase(),
             quantity: searchKey.trim().toLowerCase(),
@@ -369,20 +377,33 @@ exports.analyzeFood = async (req, res) => {
             carbs: nutrition.carbs,
             fats: nutrition.fats,
             nutrition: nutrition,
-            healthScore: getNum(aiData.healthScore),
-            healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
-            analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
-            micronutrients: sanitizeMicronutrients(aiData.micronutrients),
-            enhancementTips: sanitizeTips(aiData.enhancementTips),
-            warnings: sanitizeWarnings(aiData.warnings),
-            benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
-            healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
-            alternatives: sanitizeAlternatives(aiData.alternatives),
+            ...(analysisTier === 'full' ? {
+              healthScore: getNum(aiData.healthScore),
+              healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
+              micronutrients: sanitizeMicronutrients(aiData.micronutrients),
+              enhancementTips: sanitizeTips(aiData.enhancementTips),
+              warnings: sanitizeWarnings(aiData.warnings),
+              benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
+              healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
+              alternatives: sanitizeAlternatives(aiData.alternatives)
+            } : {}),
+            analysis: aiData.description || aiData.analysis || '',
             scanType: 'text',
             timestamp: new Date()
           });
           await cacheEntry.save().catch(e => console.error('Cache save error in analyzeFood:', e.message));
       }
+    }
+
+    if (analysisTier === 'basic') {
+      const data = analysis.data;
+      return res.json({
+        success: true,
+        analysisTier,
+        analysis: data.description || data.analysis,
+        foodItem: data.foodItem,
+        message: 'Food analyzed successfully'
+      });
     }
 
     res.json({
@@ -406,6 +427,7 @@ exports.analyzeFood = async (req, res) => {
 // Log a meal
 exports.logMeal = async (req, res) => {
   try {
+    const analysisTier = req.nutritionAnalysisTier || 'full';
     const {
       mealType,
       imageUrl,
@@ -434,7 +456,7 @@ exports.logMeal = async (req, res) => {
     if (Array.isArray(dishes) && dishes.length > 0) {
       let finalDishes = dishes;
 
-      if (isEdited === true) {
+      if (isEdited === true && analysisTier === 'full') {
         const recalculated = await nutritionAI.recalculateNutrition(dishes, req.user._id, buildMedicalContextForAI(req.user));
         recalculatedData = recalculated.data;
         finalDishes = recalculated.data.dishes;
@@ -2339,10 +2361,11 @@ async function createDailySummary(userId, date) {
 exports.quickFoodCheck = async (req, res) => {
   try {
     let { foodDescription, imageBase64, additionalContext, quantity, prepMethod } = req.body;
+    const analysisTier = req.nutritionAnalysisTier || 'full';
 
     let analysis = null;
     let cloudinaryUrls = [];
-    const medicalContext = buildMedicalContextForAI(req.user);
+    const medicalContext = analysisTier === 'full' ? buildMedicalContextForAI(req.user) : '';
 
 
     // BUILD QUANTITY-AWARE SEARCH KEY (defined early so save logic can use it)
@@ -2419,7 +2442,7 @@ exports.quickFoodCheck = async (req, res) => {
             })
           )),
           // Task 2: Single AI Analysis call covering ALL images together
-          nutritionAI.analyzeFromImage(imageInputs, combinedContext, req.user._id, medicalContext)
+          nutritionAI.analyzeFromImage(imageInputs, combinedContext, req.user._id, medicalContext, analysisTier)
         ]);
 
         cloudinaryUrls = uploadResults.filter(Boolean);
@@ -2440,11 +2463,11 @@ exports.quickFoodCheck = async (req, res) => {
         const fallbackContext = [foodDescription, additionalContext]
           .filter(c => c && c !== 'Food from image')
           .join('. ') || 'Food from image';
-        analysis = await nutritionAI.quickFoodCheck(fallbackContext, '', req.user._id, medicalContext);
+        analysis = await nutritionAI.quickFoodCheck(fallbackContext, '', req.user._id, medicalContext, analysisTier);
       }
     } else {
       // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
-      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext);
+      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext, analysisTier);
     }
 
     if (!analysis?.success || !analysis?.data) {
@@ -2466,7 +2489,13 @@ exports.quickFoodCheck = async (req, res) => {
 
     // ─── STEP 5: Save to MongoDB (Optimized with structured data) ───
     const aiData = analysis.data;
-    const nutrition = {
+    const nutrition = analysisTier === 'basic' ? {
+      calories: getNum(aiData.nutrition?.calories),
+      protein: getNum(aiData.nutrition?.protein),
+      carbs: getNum(aiData.nutrition?.carbs),
+      fats: getNum(aiData.nutrition?.fats),
+      fiber: getNum(aiData.nutrition?.fiber)
+    } : {
       calories: getNum(aiData.foodItem?.nutrition?.calories || aiData.totalNutrition?.calories || aiData.calories),
       protein: getNum(aiData.foodItem?.nutrition?.protein || aiData.totalNutrition?.protein || aiData.protein),
       carbs: getNum(aiData.foodItem?.nutrition?.carbs || aiData.totalNutrition?.carbs || aiData.carbs),
@@ -2476,10 +2505,24 @@ exports.quickFoodCheck = async (req, res) => {
       sodium: getNum(aiData.foodItem?.nutrition?.sodium || aiData.totalNutrition?.sodium || aiData.sodium)
     };
 
-    const dishesForSave = mapDishesForSave(aiData.dishes);
+    const dishesForSave = analysisTier === 'basic'
+      ? aiData.dishes.map(d => ({
+        name: d.name || 'Food Item',
+        quantity: d.quantity || '1 serving',
+        ingredients: [],
+        nutrition: {
+          calories: getNum(d.nutrition?.calories),
+          protein: getNum(d.nutrition?.protein),
+          carbs: getNum(d.nutrition?.carbs),
+          fiber: getNum(d.nutrition?.fiber),
+          fats: getNum(d.nutrition?.fats)
+        }
+      }))
+      : mapDishesForSave(aiData.dishes);
 
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
+      analysisTier,
       foodName: aiData.foodItem?.name || foodDescription || 'Analyzed Food',
       // CRITICAL FIX: Store the FULL quantity-aware search key, not just the food name
       searchDescription: searchKey.trim().toLowerCase(),
@@ -2489,16 +2532,18 @@ exports.quickFoodCheck = async (req, res) => {
       carbs: nutrition.carbs,
       fats: nutrition.fats,
       nutrition: nutrition,
-      healthScore: getNum(aiData.healthScore),
-      healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
-      isHealthy: aiData.isHealthy || false,
-      analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
-      micronutrients: sanitizeMicronutrients(aiData.micronutrients),
-      enhancementTips: sanitizeTips(aiData.enhancementTips),
-      warnings: sanitizeWarnings(aiData.warnings),
-      benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
-      healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
-      alternatives: alternativesArray,
+      ...(analysisTier === 'full' ? {
+        healthScore: getNum(aiData.healthScore),
+        healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
+        isHealthy: aiData.isHealthy || false,
+        micronutrients: sanitizeMicronutrients(aiData.micronutrients),
+        enhancementTips: sanitizeTips(aiData.enhancementTips),
+        warnings: sanitizeWarnings(aiData.warnings),
+        benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
+        healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
+        alternatives: alternativesArray
+      } : {}),
+      analysis: aiData.description || aiData.analysis || '',
       imageUrl: finalImageUrl,
       imageUrls: finalImageUrls,
       dishes: dishesForSave,
@@ -2526,6 +2571,27 @@ exports.quickFoodCheck = async (req, res) => {
         }))
       }));
       await foodCheck.save();
+    }
+
+    if (analysisTier === 'basic') {
+      return res.json({
+        success: true,
+        analysisTier,
+        data: {
+          _id: foodCheck._id,
+          analysisTier,
+          foodItem: {
+            name: foodCheck.foodName,
+            quantity: quantity || aiData.quantity || '1 serving',
+            nutrition
+          },
+          analysis: foodCheck.analysis,
+          imageUrl: foodCheck.imageUrl,
+          imageUrls: foodCheck.imageUrls
+        },
+        isCached: false,
+        message: 'Analysis complete'
+      });
     }
 
     res.json({

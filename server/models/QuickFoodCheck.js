@@ -69,6 +69,11 @@ const quickFoodCheckSchema = new mongoose.Schema({
     satietyScore: Number,
     prepTime: String
   }],
+  analysisTier: {
+    type: String,
+    enum: ['basic', 'full'],
+    default: 'full'
+  },
   imageUrl: String, // primary/first image — kept for backward-compat with existing UI
   imageUrls: [String], // full set of uploaded photos when multi-photo scan is used
   dishes: [{

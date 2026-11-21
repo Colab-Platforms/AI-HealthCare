@@ -88,7 +88,23 @@ class NutritionAI {
 
   // imageCount > 0 tailors the instructions for image input (single or multi-photo); 0 = text-only input.
   // medicalContext (from utils/medicalContext.js) is '' when the user has no relevant conditions/allergies on file.
-  _getUnifiedPrompt(context = '', imageCount = 0, medicalContext = '') {
+  _getUnifiedPrompt(context = '', imageCount = 0, medicalContext = '', detail = 'full') {
+    if (detail === 'basic') {
+      return `Analyze the food in the image(s) and/or text. Context: "${context}"
+
+Return ONLY this compact JSON shape:
+{
+  "isFood": true,
+  "errorMessage": "",
+  "foodName": "Concise name of the meal",
+  "description": "One or two short sentences describing the food",
+  "quantity": "Estimated serving",
+  "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fiber": 0, "fats": 0 }
+}
+
+If no food is present, set isFood to false and provide a brief errorMessage. Estimate nutrition for the whole visible/provided meal and honor the quantity in context. Return no other fields.`;
+    }
+
     const multiImageNote = imageCount > 1
       ? `\n    MULTI-IMAGE INPUT: You have been given ${imageCount} separate photos that together make up ONE meal. In most cases each photo shows a DIFFERENT dish — treat each photo as contributing one or more entries to the "dishes" array. Do NOT merge two visibly different photos into a single dish unless they are clearly duplicate angles of the exact same plate. If any single photo itself shows multiple distinct food items side by side (e.g. a thali or a tray), split THAT photo into multiple dish entries as well.`
       : '';
@@ -185,8 +201,27 @@ class NutritionAI {
     return data;
   }
 
+  _ensureBasicAnalysis(data) {
+    if (!data) return data;
+    const nutrition = Object.fromEntries(
+      ['calories', 'protein', 'carbs', 'fiber', 'fats'].map((key) => [key, Number(data.nutrition?.[key]) || 0])
+    );
+    const foodName = data.foodName || 'Analyzed Food';
+    const description = data.description || 'Food analysis completed.';
+    data.foodName = foodName;
+    data.analysis = description;
+    data.description = description;
+    data.nutrition = nutrition;
+    data.totalNutrition = nutrition;
+    data.foodItem = { name: foodName, quantity: data.quantity || '1 serving', nutrition };
+    // The meal review/log flow consumes dishes; keep one compact dish and no
+    // ingredient/health detail for free-tier scans.
+    data.dishes = [{ name: foodName, quantity: data.quantity || '1 serving', ingredients: [], nutrition }];
+    return data;
+  }
+
   // `images` accepts a single base64/data-URI string (legacy) OR an array of those / {data, mediaType} objects (multi-photo)
-  async analyzeFromImage(images, additionalContext = '', userId = null, medicalContext = '') {
+  async analyzeFromImage(images, additionalContext = '', userId = null, medicalContext = '', detail = 'full') {
     const imageList = (Array.isArray(images) ? images : [images]).filter(Boolean);
     const normalized = imageList.map((img) => this._normalizeImageInput(img));
 
@@ -196,7 +231,7 @@ class NutritionAI {
 
     console.log(`🖼️ [NutritionAI] Preparing ${normalized.length} image(s) for Gemini | Context:`, additionalContext.substring(0, 50));
 
-    const prompt = this._getUnifiedPrompt(additionalContext, normalized.length, medicalContext);
+    const prompt = this._getUnifiedPrompt(additionalContext, normalized.length, medicalContext, detail);
 
     try {
       const data = await this._withRetry(async () => {
@@ -210,11 +245,12 @@ class NutritionAI {
               ...normalized.map((n) => openrouterAI.buildImagePart(n.data, n.mediaType))
             ]
           }],
-          maxTokens: Math.min(6000, 2500 + normalized.length * 1200),
+          maxTokens: detail === 'basic' ? 550 : Math.min(6000, 2500 + normalized.length * 1200),
           feature: 'nutrition_analysis',
           userId
         });
-        return this._ensureDishesArray(openrouterAI.parseJsonResponse(response));
+        const parsed = openrouterAI.parseJsonResponse(response);
+        return detail === 'basic' ? this._ensureBasicAnalysis(parsed) : this._ensureDishesArray(parsed);
       });
       return { success: true, data };
     } catch (error) {
@@ -223,22 +259,23 @@ class NutritionAI {
     }
   }
 
-  async quickFoodCheck(foodDescription, additionalContext = '', userId = null, medicalContext = '') {
+  async quickFoodCheck(foodDescription, additionalContext = '', userId = null, medicalContext = '', detail = 'full') {
     const combined = additionalContext
       ? `Food: ${foodDescription}. Context: ${additionalContext}`
       : foodDescription;
-    const prompt = this._getUnifiedPrompt(combined, 0, medicalContext);
+    const prompt = this._getUnifiedPrompt(combined, 0, medicalContext, detail);
 
     const data = await this._withRetry(async () => {
       const response = await openrouterAI.chatCompletion({
         model: openrouterAI.MODELS.GEMINI_FLASH,
         system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON. Be extremely concise. CRITICAL: You must calculate nutrition based on the EXACT quantity provided in the context (e.g., if user says "3 eggs", calculate for 3, NOT 1).',
         messages: [{ role: 'user', content: prompt }],
-        maxTokens: 2500,
+        maxTokens: detail === 'basic' ? 500 : 2500,
         feature: 'nutrition_analysis',
         userId
       });
-      return this._ensureDishesArray(openrouterAI.parseJsonResponse(response));
+      const parsed = openrouterAI.parseJsonResponse(response);
+      return detail === 'basic' ? this._ensureBasicAnalysis(parsed) : this._ensureDishesArray(parsed);
     });
     return { success: true, data };
   }
