@@ -3,7 +3,36 @@ const assert = require('node:assert/strict');
 
 const { _internal } = require('../services/shopifyOfferService');
 
-const { decideOffer, offerFields, hasActivePaidPlan } = _internal;
+const { decideOffer, offerFields, hasActivePaidPlan, onOfferGrant } = _internal;
+const { offerUnits } = require('../utils/shopifyOrder');
+
+const ALL = { productIds: new Set(), qualifyingSkus: new Set() }; // no filter = every product
+const ONLY_BER = { productIds: new Set(['111']), qualifyingSkus: new Set() };
+
+test('units: every item of every product counts when no product filter is set', () => {
+    const lines = [{ productId: '111', sku: 'BER', quantity: 2 }, { productId: '222', sku: 'COQ', quantity: 1 }];
+    assert.equal(offerUnits(lines, [], ALL), 3);
+    assert.equal(offerUnits(lines, [], ONLY_BER), 2, 'with a filter only the offer product counts');
+});
+
+test('units: refunded items are taken off, never below zero', () => {
+    const lines = [{ productId: '111', sku: 'BER', quantity: 2 }, { productId: '222', sku: 'COQ', quantity: 1 }];
+    assert.equal(offerUnits(lines, [{ productId: '111', sku: 'BER', quantity: 1 }], ALL), 2);
+    assert.equal(offerUnits(lines, [{ productId: '111', quantity: 2 }, { productId: '222', quantity: 1 }], ALL), 0);
+    assert.equal(offerUnits(lines, [{ productId: '111', quantity: 9 }], ALL), 1, 'over-refund of one product cannot eat another');
+});
+
+test('a running offer grant is detected; an ended or paid one is not', () => {
+    assert.equal(onOfferGrant({ grantSource: 'shopify_offer', currentPeriodEnd: at('2026-12-01T00:00:00Z') }, NOW), true);
+    assert.equal(onOfferGrant({ grantSource: 'shopify_offer', currentPeriodEnd: at('2026-11-01T00:00:00Z') }, NOW), false);
+    assert.equal(onOfferGrant({ plan: 'take_plus', currentPeriodEnd: at('2026-12-01T00:00:00Z') }, NOW), false);
+});
+
+test('rule A with 3 items: 90 days after the trial ends', () => {
+    const user = trialUser('2026-11-01T12:00:00Z', '2026-11-15T12:00:00Z');
+    const d = decideOffer(user, { orderCreatedAt: at('2026-11-04T12:00:00Z') }, NOW, 90);
+    assert.equal(d.end.toISOString(), '2027-02-13T12:00:00.000Z');
+});
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-11-06T12:00:00Z');

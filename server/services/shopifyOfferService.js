@@ -1,4 +1,9 @@
-// "Buy from the Shopify store, get 30 days of Take+ in the app."
+// "Buy from the Shopify store, get 30 days of Take+ per item."
+//
+// Days for an order = offer units (items bought minus items refunded, see
+// utils/shopifyOrder.offerUnits) x SHOPIFY_OFFER_DAYS (30). 1 order with 3 items
+// = 90 days, given at once. Every order can be claimed once; a user can claim
+// many orders and the days add up.
 //
 // The buyer is moved to the real paid plan, 'take_plus', with autoRenew off and
 // subscription.grantSource = 'shopify_offer' so it is never mistaken for a paid
@@ -8,31 +13,31 @@
 //   - subscriptionLifecycleService cron     -> downgrade to 'free' when it passes
 //   - trial-ending reminder cron            -> "your free Take+ ends soon" email
 // If the user subscribes while the offer runs, the Razorpay subscription starts
-// when the offer ends (subscriptionController.subscribe), so the 30 days are
+// when the offer ends (subscriptionController.subscribe), so the free days are
 // used up first and the paid period follows.
 //
-// What a buyer gets (offer days = SHOPIFY_OFFER_DAYS, 30):
-//   A. on the 14-day trial, bought after joining -> +30 days after the trial ends
-//   B. bought first, joined the app later        -> 30 days from joining (replaces the 14)
-//   C. trial / plan already over                 -> 30 days from today
-//   D. on a live paid plan                       -> 30 days after the paid plan ends
+// What a buyer gets for an order worth N days:
+//   + already on the offer (free Take+ running) -> N more days after the current end
+//   A. on the 14-day trial, bought after joining -> N days after the trial ends
+//   B. bought first, joined the app later        -> N days from joining (replaces the 14)
+//   C. trial / plan already over                 -> N days from today
+//   D. on a live paid plan                       -> N days after the paid plan ends
 //      (kept 'pending' and applied by the lifecycle cron, so a Razorpay renewal
 //       webhook can't overwrite it)
 //
-// If the offer product is returned/refunded or the order cancelled AFTER the
-// offer was given, the offer is revoked: the account goes back to what it had
-// before (previousSubscription), and the person still can't claim again.
-// Rule A's "+30 after the trial" is given as take_plus right away, ending on
-// the same date (trial end + 30), so the user never loses a day.
+// Refunds take back exactly the refunded items' days (1 of 3 returned -> -30).
+// When no offer days are left, the account goes back to what it had before the
+// offer started (previousSubscription): the 14-day trial if it is still running,
+// otherwise 'free'. A plan the user paid for is never touched.
 //
 // Safety:
 //   - An order number alone proves nothing (they're sequential): the order's
 //     email must match the account (or the checkout email the user enters).
-//   - Once per account (unique redeemedBy) and once per person (no other
-//     redeemed order may share this order's email) — revoked ones included.
+//   - Each order is claimed once (conditional update on redeemedBy: null).
 //   - Phone is NOT used for matching for now (no OTP verification yet); phone
 //     hashes are still stored so it can be switched back on later.
-//   - Only eligible orders: paid, not cancelled/refunded, offer product.
+//   - Only eligible orders: paid, not cancelled/refunded, offer product
+//     (SHOPIFY_OFFER_PRODUCT_IDS / SHOPIFY_OFFER_SKUS; both empty = every product).
 
 const crypto = require('crypto');
 const User = require('../models/User');
@@ -43,7 +48,7 @@ const { isEntitled, FREE_PLAN_KEY } = require('../middleware/subscriptionAccess'
 const {
     getOfferConfig, parseOrderNumberInput, normalizeOrderName, normalizeEmail,
     hashIdentifier, identityHashes, normalizeWebhookOrder, normalizeGraphqlOrder, normalizeRefund,
-    finalEligibility,
+    finalEligibility, offerUnits,
 } = require('../utils/shopifyOrder');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -85,37 +90,58 @@ const snapshotOf = (sub = {}) => ({
     currentPeriodEnd: sub.currentPeriodEnd,
 });
 
-// ---------------------------------------------------------------------------
-// revoking (offer product returned / refunded, or order cancelled)
-// ---------------------------------------------------------------------------
+// Is the account on free Take+ from this offer right now?
+const onOfferGrant = (sub, now = new Date()) => Boolean(
+    sub && sub.grantSource === GRANT_SOURCE && sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) > now
+);
+
+// Orders claimed before per-item days existed have no units/grantedDays: each
+// was worth exactly one unit then.
+const unitsOf = (p) => (p.units != null ? p.units : 1);
+const grantedDaysOf = (p) => (p.grantedDays != null ? p.grantedDays : (p.grantStatus === 'applied' ? getOfferConfig().days : 0));
+
+const CAS_TRIES = 3;
 
 /**
- * Take the offer back. The purchase is flipped to 'revoked' with a conditional
- * update first, so this runs once even if several refund webhooks race.
- *   pending -> nothing on the account yet; the lifecycle cron will now skip it.
- *   applied -> the account goes back to previousSubscription: the 14-day trial
- *              it had before if that trial is still running (A, B), otherwise
- *              'free' (C, D).
- * The account is only touched if it is still on exactly the grant this offer
- * gave — if a payment has since gone through, that plan is left alone.
+ * Add `days` to a running offer grant: end = max(now, current end) + days.
+ * Compare-and-set on the current end, so two orders applied at the same moment
+ * both count. Returns the new end, or null if the user is not on the offer.
  */
-const revokeOffer = async (purchase, reason, now = new Date()) => {
-    const before = await ShopifyPurchase.findOneAndUpdate(
-        { _id: purchase._id, redeemedBy: { $ne: null }, grantStatus: { $in: ['applied', 'pending'] } },
-        { $set: { grantStatus: 'revoked', revokedAt: now, revokeReason: reason } },
-        { new: false }
-    ).lean();
-    if (!before) return false;
-
-    if (before.grantStatus === 'pending') {
-        console.log(`↩️  [ShopifyOffer] ${before.orderName} revoked (${reason}) before it started — user ${before.redeemedBy}`);
-        return true;
+const extendOfferGrant = async (userId, days, now = new Date()) => {
+    for (let i = 0; i < CAS_TRIES; i += 1) {
+        const user = await User.findById(userId).select('subscription').lean();
+        const sub = user?.subscription;
+        if (!onOfferGrant(sub, now)) return null;
+        const end = new Date(Math.max(now.getTime(), new Date(sub.currentPeriodEnd).getTime()) + days * DAY_MS);
+        const res = await User.updateOne(
+            { _id: userId, 'subscription.grantSource': GRANT_SOURCE, 'subscription.currentPeriodEnd': sub.currentPeriodEnd },
+            { $set: {
+                'subscription.currentPeriodEnd': end,
+                'subscription.endDate': end,
+                'subscription.statusUpdatedAt': now,
+                'subscription.renewalReminderSentAt': null, // new end -> "ending soon" email due again
+            } }
+        );
+        if (res.modifiedCount === 1) return end;
     }
+    throw new Error(`offer end of user ${userId} kept changing, try again`);
+};
 
-    const prev = before.previousSubscription || {};
-    const restoreTrial = prev.plan === TRIAL_PLAN_KEY && prev.currentPeriodEnd && new Date(prev.currentPeriodEnd) > now;
-    const set = restoreTrial
-        ? {
+// Days still credited to the user from claimed orders (applied ones only).
+const remainingOfferDays = async (userId) => {
+    const orders = await ShopifyPurchase.find({ redeemedBy: userId, grantStatus: 'applied' })
+        .select('grantStatus grantedDays').lean();
+    return orders.reduce((sum, p) => sum + grantedDaysOf(p), 0);
+};
+
+// What the account goes back to when no offer days are left: the trial it had
+// before the offer started if that trial is still running, otherwise 'free'.
+const restoreFields = async (userId, now) => {
+    const starter = await ShopifyPurchase.findOne({ redeemedBy: userId, 'previousSubscription.plan': { $ne: null } })
+        .sort({ redeemedAt: -1 }).select('previousSubscription').lean();
+    const prev = starter?.previousSubscription || {};
+    if (prev.plan === TRIAL_PLAN_KEY && prev.currentPeriodEnd && new Date(prev.currentPeriodEnd) > now) {
+        return { label: `back to trial ending ${new Date(prev.currentPeriodEnd).toISOString()}`, set: {
             'subscription.plan': TRIAL_PLAN_KEY,
             'subscription.status': 'active',
             'subscription.currentPeriodEnd': prev.currentPeriodEnd,
@@ -123,37 +149,94 @@ const revokeOffer = async (purchase, reason, now = new Date()) => {
             ...(prev.startDate ? { 'subscription.startDate': prev.startDate } : {}),
             'subscription.statusUpdatedAt': now,
             'subscription.renewalReminderSentAt': null,
-        }
-        : {
-            // Same downgrade the lifecycle cron applies when a plan ends.
-            'subscription.plan': FREE_PLAN_KEY,
-            'subscription.status': 'expired',
-            'subscription.autoRenew': false,
-            'subscription.currentPeriodEnd': now,
-            'subscription.endDate': now,
-            'subscription.statusUpdatedAt': now,
-        };
+        } };
+    }
+    // Same downgrade the lifecycle cron applies when a plan ends.
+    return { label: 'back to free', set: {
+        'subscription.plan': FREE_PLAN_KEY,
+        'subscription.status': 'expired',
+        'subscription.autoRenew': false,
+        'subscription.currentPeriodEnd': now,
+        'subscription.endDate': now,
+        'subscription.statusUpdatedAt': now,
+    } };
+};
 
-    // Still on exactly this grant: take_plus marked as the offer, or a
-    // free_trial grant given before the offer moved to take_plus.
-    const res = await User.updateOne(
-        {
-            _id: before.redeemedBy,
-            'subscription.currentPeriodEnd': before.grantedUntil,
-            $or: [
-                { 'subscription.plan': OFFER_PLAN_KEY, 'subscription.grantSource': GRANT_SOURCE },
-                { 'subscription.plan': TRIAL_PLAN_KEY },
-            ],
-        },
-        { $set: set, $unset: { 'subscription.grantSource': '' } }
+/**
+ * Take `days` off the user's free Take+. If no offer days are left afterwards,
+ * or the new end is already past (the days were used up), the account goes back
+ * to restoreFields. Only touches an account still on the offer: once the user
+ * has paid (grantSource cleared) or the offer has been downgraded, nothing changes.
+ */
+const shortenOfferGrant = async (userId, days, now = new Date()) => {
+    for (let i = 0; i < CAS_TRIES; i += 1) {
+        const user = await User.findById(userId).select('subscription').lean();
+        const sub = user?.subscription;
+        // Paid since (marker cleared), or the free days already ran out (the
+        // nightly downgrade may not have run yet): nothing left to take back.
+        if (!onOfferGrant(sub, now)) return 'left as is (paid or already ended)';
+
+        const newEnd = new Date(new Date(sub.currentPeriodEnd).getTime() - days * DAY_MS);
+        const restore = newEnd <= now || (await remainingOfferDays(userId)) <= 0;
+        const { set, label } = restore
+            ? await restoreFields(userId, now)
+            : { set: { 'subscription.currentPeriodEnd': newEnd, 'subscription.endDate': newEnd, 'subscription.statusUpdatedAt': now },
+                label: `offer now ends ${newEnd.toISOString()}` };
+
+        const res = await User.updateOne(
+            { _id: userId, 'subscription.grantSource': GRANT_SOURCE, 'subscription.currentPeriodEnd': sub.currentPeriodEnd },
+            restore ? { $set: set, $unset: { 'subscription.grantSource': '' } } : { $set: set }
+        );
+        if (res.modifiedCount === 1) return label;
+    }
+    throw new Error(`offer end of user ${userId} kept changing, try again`);
+};
+
+// ---------------------------------------------------------------------------
+// refunds / cancellations: take back the days of what was returned
+// ---------------------------------------------------------------------------
+
+/**
+ * The order now counts for `newUnits` instead of its stored units (items were
+ * refunded, or the whole order cancelled/refunded -> 0). Takes back exactly the
+ * difference. The order row is updated first with a compare-and-set on its
+ * units, so a refund webhook delivered twice takes the days back once.
+ *   pending -> only the waiting days shrink (0 -> revoked).
+ *   applied -> the user's offer end moves back by the difference (0 -> revoked).
+ */
+const takeBackDays = async (purchase, newUnits, reason, now = new Date()) => {
+    const days = getOfferConfig().days;
+    const oldUnits = unitsOf(purchase);
+    if (newUnits >= oldUnits || !['applied', 'pending'].includes(purchase.grantStatus)) return false;
+    const revoke = newUnits === 0;
+    const revokeSet = revoke ? { grantStatus: 'revoked', revokedAt: now, revokeReason: reason } : {};
+    const unitsFilter = purchase.units != null ? purchase.units : null;
+
+    if (purchase.grantStatus === 'pending') {
+        const res = await ShopifyPurchase.updateOne(
+            { _id: purchase._id, grantStatus: 'pending', units: unitsFilter },
+            { $set: { units: newUnits, pendingDays: newUnits * days, ...revokeSet } }
+        );
+        if (res.modifiedCount === 1) {
+            console.log(`↩️  [ShopifyOffer] ${purchase.orderName} (${reason}) pending ${oldUnits} -> ${newUnits} items — user ${purchase.redeemedBy}`);
+        }
+        return res.modifiedCount === 1;
+    }
+
+    const removeDays = grantedDaysOf(purchase) - newUnits * days;
+    const res = await ShopifyPurchase.updateOne(
+        { _id: purchase._id, grantStatus: 'applied', units: unitsFilter },
+        { $set: { units: newUnits, grantedDays: newUnits * days, ...revokeSet } }
     );
-    console.log(`↩️  [ShopifyOffer] ${before.orderName} revoked (${reason}) — user ${before.redeemedBy} `
-        + (res.modifiedCount ? (restoreTrial ? `back to trial ending ${new Date(prev.currentPeriodEnd).toISOString()}` : 'back to free') : 'changed plan since, left as is'));
+    if (res.modifiedCount !== 1) return false;
+
+    const outcome = removeDays > 0 ? await shortenOfferGrant(purchase.redeemedBy, removeDays, now) : 'no days to take back';
+    console.log(`↩️  [ShopifyOffer] ${purchase.orderName} (${reason}) ${oldUnits} -> ${newUnits} items, -${Math.max(0, removeDays)} days — user ${purchase.redeemedBy}: ${outcome}`);
     return true;
 };
 
 // Re-check an order after it or its refunds changed: fix `eligible`, and if the
-// offer was already given on an order that is no longer eligible, revoke it.
+// order was already claimed, take back the days of whatever is no longer bought.
 const reconcile = async (doc) => {
     if (!doc) return doc;
     const verdict = finalEligibility(doc);
@@ -165,9 +248,12 @@ const reconcile = async (doc) => {
             { new: true }
         );
     }
-    if (current.redeemedBy && !current.eligible && current.grantStatus !== 'revoked') {
-        await revokeOffer(current, current.ineligibleReason || 'not_eligible');
-        current = await ShopifyPurchase.findById(current._id);
+    if (current.redeemedBy && ['applied', 'pending'].includes(current.grantStatus)) {
+        const units = current.eligible ? offerUnits(current.lineItems, current.refundLines) : 0;
+        if (units < unitsOf(current)) {
+            const reason = current.eligible ? 'partial_refund' : (current.ineligibleReason || 'not_eligible');
+            if (await takeBackDays(current, units, reason)) current = await ShopifyPurchase.findById(current._id);
+        }
     }
     return current;
 };
@@ -275,7 +361,9 @@ const decideOffer = (user, purchase, now, days) => {
     const sub = user.subscription || {};
     if (hasActivePaidPlan(sub)) return { kind: 'pending' };
 
-    const trialRunning = sub.plan === TRIAL_PLAN_KEY && isEntitled(sub) && Boolean(sub.currentPeriodEnd);
+    // Judged at `now` (not the wall clock) so the rules are one consistent moment.
+    const trialRunning = sub.plan === TRIAL_PLAN_KEY && sub.status === 'active'
+        && Boolean(sub.currentPeriodEnd) && new Date(sub.currentPeriodEnd) > now;
     const joinedAt = user.createdAt ? new Date(user.createdAt) : null;
     const boughtBeforeJoining = Boolean(joinedAt && purchase.orderCreatedAt && new Date(purchase.orderCreatedAt) < joinedAt);
 
@@ -307,28 +395,30 @@ const offerFields = (end, now, keepStart) => ({
     'subscription.renewalReminderSentAt': null,
 });
 
-// Once per person: has any other order sharing this order's email already
-// been redeemed (by any account, revoked included)? Phone is ignored for now.
-const personAlreadyRedeemed = async (purchase) => {
-    if (!purchase.emailHashes?.length) return false;
-    return Boolean(await ShopifyPurchase.exists({
-        _id: { $ne: purchase._id }, redeemedBy: { $ne: null }, emailHashes: { $in: purchase.emailHashes },
-    }));
-};
+const CLAIM_FIELDS = ['redeemedAt', 'redeemedVia', 'grantStatus', 'previousSubscription', 'units', 'grantedDays', 'pendingDays', 'grantedUntil'];
+
+// Undo a claim whose account update failed, so the order can be claimed again.
+const releaseClaim = (purchaseId, userId) => ShopifyPurchase.updateOne(
+    { _id: purchaseId, redeemedBy: userId },
+    { $set: { redeemedBy: null }, $unset: Object.fromEntries(CLAIM_FIELDS.map((f) => [f, ''])) }
+).catch((e) => console.error(`[ShopifyOffer] could not release claim on ${purchaseId}:`, e.message));
 
 /**
- * Claim `purchase` for `user`, then apply the offer. The claim is a conditional
- * update (redeemedBy must still be null), so two people redeeming one order at
- * the same moment can't both win; the unique index on redeemedBy stops one
- * account claiming twice. If the trial update fails, the claim is released.
+ * Claim `purchase` for `user`, then give its days (units x SHOPIFY_OFFER_DAYS).
+ * The claim is a conditional update (redeemedBy must still be null), so two
+ * people redeeming one order at the same moment can't both win. One user may
+ * claim many orders: if their free Take+ is already running the days are added
+ * after its current end, otherwise rules A-D decide. If the account update
+ * fails, the claim is released.
  */
 const claimAndGrant = async (purchase, user, via, now = new Date()) => {
-    if (await personAlreadyRedeemed(purchase)) {
-        throw new OfferError(409, 'OFFER_ALREADY_USED', 'This offer has already been used. It can be claimed only once per customer.');
-    }
+    const units = offerUnits(purchase.lineItems, purchase.refundLines);
+    const days = units * getOfferConfig().days;
+    if (!days) throw new OfferError(422, 'NOT_ELIGIBLE', INELIGIBLE_MESSAGES.product_not_in_offer);
 
-    const days = getOfferConfig().days;
-    const decision = decideOffer(user, purchase, now, days);
+    const stack = onOfferGrant(user.subscription, now);
+    const decision = stack ? { kind: 'applied' } : decideOffer(user, purchase, now, days);
+    const pending = decision.kind === 'pending';
 
     let claimed;
     try {
@@ -340,15 +430,18 @@ const claimAndGrant = async (purchase, user, via, now = new Date()) => {
                     redeemedAt: now,
                     redeemedVia: via,
                     grantStatus: decision.kind,
-                    ...(decision.kind === 'pending'
-                        ? { pendingDays: days }
-                        : { previousSubscription: snapshotOf(user.subscription) }),
+                    units,
+                    ...(pending ? { pendingDays: days, grantedDays: 0 } : { grantedDays: days }),
+                    // Only the order that starts the offer remembers what to go back to.
+                    ...(!pending && !stack ? { previousSubscription: snapshotOf(user.subscription) } : {}),
                 },
             },
             { new: true }
         );
     } catch (err) {
-        if (err && err.code === 11000) throw new OfferError(409, 'OFFER_ALREADY_USED', 'This offer has already been used. It can be claimed only once per customer.');
+        // Until scripts/migrateShopifyRedeemIndex.js has run, the old unique
+        // index refuses a user's second order.
+        if (err && err.code === 11000) throw new OfferError(503, 'TRY_LATER', 'We couldn’t add this order right now. Please try again later.');
         throw err;
     }
     if (!claimed) {
@@ -358,26 +451,31 @@ const claimAndGrant = async (purchase, user, via, now = new Date()) => {
     }
 
     // D: nothing to change on the account yet — the lifecycle cron applies it.
-    if (decision.kind === 'pending') {
-        console.log(`🎁 [ShopifyOffer] ${claimed.orderName} -> user ${user._id} (${via}), ${days} days pending until the paid plan ends`);
+    if (pending) {
+        console.log(`🎁 [ShopifyOffer] ${claimed.orderName} -> user ${user._id} (${via}), ${units} items = ${days} days pending until the paid plan ends`);
         return statusOf(claimed, false);
     }
 
-    const set = offerFields(decision.end, now, decision.keepStart);
+    let end;
+    let set = null;
     try {
-        // updateOne by _id also drops the cached copy `protect` uses (User model hook).
-        await User.updateOne({ _id: user._id }, { $set: set });
+        if (stack) {
+            end = await extendOfferGrant(user._id, days, now);
+            if (!end) throw new Error('the free Take+ ended while this order was being added');
+        } else {
+            end = decision.end;
+            set = offerFields(end, now, decision.keepStart);
+            // updateOne by _id also drops the cached copy `protect` uses (User model hook).
+            await User.updateOne({ _id: user._id }, { $set: set });
+        }
     } catch (err) {
-        await ShopifyPurchase.updateOne(
-            { _id: claimed._id, redeemedBy: user._id },
-            { $set: { redeemedBy: null }, $unset: { redeemedAt: '', redeemedVia: '', grantStatus: '', previousSubscription: '' } }
-        ).catch((e) => console.error(`[ShopifyOffer] could not release claim on ${claimed._id}:`, e.message));
+        await releaseClaim(claimed._id, user._id);
         throw err;
     }
 
-    await ShopifyPurchase.updateOne({ _id: claimed._id }, { $set: { grantedUntil: decision.end } });
-    console.log(`🎁 [ShopifyOffer] ${claimed.orderName} -> user ${user._id} (${via}), take_plus until ${decision.end.toISOString()}`);
-    return { ...statusOf({ ...claimed.toObject(), grantedUntil: decision.end }, false), subscriptionSet: set };
+    await ShopifyPurchase.updateOne({ _id: claimed._id }, { $set: { grantedUntil: end } });
+    console.log(`🎁 [ShopifyOffer] ${claimed.orderName} -> user ${user._id} (${via}), ${units} items = ${days} days, take_plus until ${end.toISOString()}${stack ? ' (added to running offer)' : ''}`);
+    return { ...statusOf({ ...claimed.toObject(), grantedUntil: end }, false), subscriptionSet: set };
 };
 
 function statusOf(purchase, alreadyRedeemed) {
@@ -385,6 +483,8 @@ function statusOf(purchase, alreadyRedeemed) {
         alreadyRedeemed,
         orderName: purchase.orderName,
         grantStatus: purchase.grantStatus,
+        units: unitsOf(purchase),
+        days: purchase.grantStatus === 'pending' ? purchase.pendingDays : grantedDaysOf(purchase),
         grantedUntil: purchase.grantStatus === 'applied' ? purchase.grantedUntil || null : null,
         pendingDays: purchase.grantStatus === 'pending' ? purchase.pendingDays : null,
         revokeReason: purchase.grantStatus === 'revoked' ? purchase.revokeReason || null : null,
@@ -395,11 +495,13 @@ function statusOf(purchase, alreadyRedeemed) {
  * Rule D, second half: give the waiting days to users whose paid plan has ended.
  * Called by the subscription lifecycle cron BEFORE its downgrade, so the user
  * moves straight from the paid plan to the offer instead of to 'free'. Also
- * catches users a Razorpay webhook already set to 'free'.
+ * catches users a Razorpay webhook already set to 'free'. A user with several
+ * waiting orders gets them one after another (the 2nd adds to the 1st).
  */
 const applyPendingCredits = async (now = new Date()) => {
     const pending = await ShopifyPurchase.find({ grantStatus: 'pending' })
-        .select('redeemedBy pendingDays orderName').limit(PENDING_BATCH).lean();
+        .sort({ redeemedAt: 1 })
+        .select('redeemedBy pendingDays units orderName').limit(PENDING_BATCH).lean();
 
     let applied = 0;
     for (const p of pending) {
@@ -407,19 +509,33 @@ const applyPendingCredits = async (now = new Date()) => {
             const user = await User.findById(p.redeemedBy).select('subscription').lean();
             if (!user || hasActivePaidPlan(user.subscription)) continue; // still paying — keep waiting
 
-            const end = new Date(now.getTime() + (p.pendingDays || getOfferConfig().days) * DAY_MS);
+            const days = p.pendingDays != null ? p.pendingDays : getOfferConfig().days;
+            const stack = onOfferGrant(user.subscription, now);
             // Flip pending -> applied first so a second cron run can't apply it twice.
             const flipped = await ShopifyPurchase.updateOne(
                 { _id: p._id, grantStatus: 'pending' },
-                { $set: { grantStatus: 'applied', grantedUntil: end, previousSubscription: snapshotOf(user.subscription) } }
+                { $set: {
+                    grantStatus: 'applied',
+                    grantedDays: days,
+                    units: unitsOf(p),
+                    ...(stack ? {} : { previousSubscription: snapshotOf(user.subscription) }),
+                } }
             );
             if (flipped.modifiedCount !== 1) continue;
             try {
-                await User.updateOne({ _id: user._id }, { $set: offerFields(end, now, false) });
+                let end;
+                if (stack) {
+                    end = await extendOfferGrant(user._id, days, now);
+                    if (!end) throw new Error('the free Take+ ended while applying');
+                } else {
+                    end = new Date(now.getTime() + days * DAY_MS);
+                    await User.updateOne({ _id: user._id }, { $set: offerFields(end, now, false) });
+                }
+                await ShopifyPurchase.updateOne({ _id: p._id }, { $set: { grantedUntil: end } });
                 applied += 1;
-                console.log(`🎁 [ShopifyOffer] pending ${p.orderName} applied to user ${user._id}, take_plus until ${end.toISOString()}`);
+                console.log(`🎁 [ShopifyOffer] pending ${p.orderName} applied to user ${user._id}, ${days} days, take_plus until ${end.toISOString()}`);
             } catch (err) {
-                await ShopifyPurchase.updateOne({ _id: p._id }, { $set: { grantStatus: 'pending' }, $unset: { grantedUntil: '', previousSubscription: '' } });
+                await ShopifyPurchase.updateOne({ _id: p._id }, { $set: { grantStatus: 'pending', grantedDays: 0 }, $unset: { grantedUntil: '', previousSubscription: '' } });
                 throw err;
             }
         } catch (err) {
@@ -500,10 +616,29 @@ const redeemForUser = async (userId, input, checkoutEmailInput) => {
     return result;
 };
 
+/**
+ * Everything the app shows about the user's store orders. The top-level order
+ * fields describe the latest claimed order (kept for older app builds);
+ * `orders` lists all of them, `totalDays` adds up the days still credited
+ * (given + waiting) and `offerEndsAt` is when the free Take+ ends, if running.
+ * Users can keep adding orders, so the Redeem screen should stay available.
+ */
 const getStatusForUser = async (userId) => {
-    const purchase = await ShopifyPurchase.findOne({ redeemedBy: userId })
-        .select('orderName redeemedAt grantStatus grantedUntil pendingDays revokeReason').lean();
-    return purchase ? { redeemed: true, redeemedAt: purchase.redeemedAt, ...statusOf(purchase, true) } : { redeemed: false };
+    const orders = await ShopifyPurchase.find({ redeemedBy: userId })
+        .sort({ redeemedAt: -1 })
+        .select('orderName redeemedAt grantStatus grantedUntil pendingDays revokeReason units grantedDays').lean();
+    if (!orders.length) return { redeemed: false, orders: [], totalDays: 0, offerEndsAt: null };
+
+    const user = await User.findById(userId).select('subscription').lean();
+    const live = orders.filter((o) => o.grantStatus === 'applied' || o.grantStatus === 'pending');
+    return {
+        redeemed: true,
+        redeemedAt: orders[0].redeemedAt,
+        ...statusOf(orders[0], true),
+        totalDays: live.reduce((sum, o) => sum + (statusOf(o, true).days || 0), 0),
+        offerEndsAt: onOfferGrant(user?.subscription) ? user.subscription.currentPeriodEnd : null,
+        orders: orders.map((o) => ({ redeemedAt: o.redeemedAt, ...statusOf(o, true) })),
+    };
 };
 
 // ---------------------------------------------------------------------------
@@ -513,8 +648,10 @@ const getStatusForUser = async (userId) => {
 /**
  * Called right after a new account is created (all three signup paths). Never
  * throws — a problem here must not break signup; the Redeem screen still works
- * later. Updates the passed user document in memory so the signup response
- * already shows the 30 days of Take+.
+ * later. Claims EVERY unclaimed order on the signup email (oldest first, so
+ * rule B dates from the first one and the rest add their days). Updates the
+ * passed user document in memory so the signup response already shows it.
+ * Returns the latest claim's status, or null if nothing matched.
  */
 const applyOnSignup = async (user) => {
     try {
@@ -523,18 +660,28 @@ const applyOnSignup = async (user) => {
         const email = normalizeEmail(user.email);
         if (!email) return null;
 
-        const purchase = await ShopifyPurchase.findOne({
+        const purchases = await ShopifyPurchase.find({
             emailHashes: hashIdentifier('email', email, cfg.matchSecret),
             eligible: true,
             redeemedBy: null,
-        }).sort({ orderCreatedAt: -1 });
-        if (!purchase) return null;
+        }).sort({ orderCreatedAt: 1 }).limit(50);
+        if (!purchases.length) return null;
 
-        const result = await claimAndGrant(purchase, user, 'signup');
-        if (result.subscriptionSet && typeof user.set === 'function') {
-            for (const [path, value] of Object.entries(result.subscriptionSet)) user.set(path, value);
+        let result = null;
+        for (const purchase of purchases) {
+            try {
+                // Fresh subscription each time: the previous order may have started the offer.
+                const current = await User.findById(user._id).select(USER_FIELDS).lean();
+                result = await claimAndGrant(purchase, current || user, 'signup');
+            } catch (err) {
+                console.error(`[ShopifyOffer] signup claim of ${purchase.orderName} failed for user ${user._id}:`, err.message);
+            }
         }
-        delete result.subscriptionSet;
+        if (result && typeof user.set === 'function') {
+            const fresh = await User.findById(user._id).select('subscription').lean();
+            if (fresh?.subscription) user.set('subscription', fresh.subscription);
+        }
+        if (result) delete result.subscriptionSet;
         return result;
     } catch (err) {
         console.error(`[ShopifyOffer] signup auto-match failed for user ${user?._id}:`, err.message);
@@ -602,12 +749,12 @@ module.exports = {
     upsertPurchase,
     claimAndGrant,
     applyPendingCredits,
-    revokeOffer,
+    takeBackDays,
     redeemForUser,
     getStatusForUser,
     applyOnSignup,
     handleWebhook,
     // exposed for tests
-    _internal: { hasActivePaidPlan, identityMatches, decideOffer, offerFields },
+    _internal: { hasActivePaidPlan, identityMatches, decideOffer, offerFields, onOfferGrant },
     GRANT_SOURCE,
 };

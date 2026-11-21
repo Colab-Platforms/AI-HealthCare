@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // One Shopify store order, kept only so a buyer can be recognised in the app and
-// given the extended trial ("buy a product, get 30 days"). Filled by the Shopify
+// given free Take+ ("30 days per item bought"). Filled by the Shopify
 // order webhooks, by the Redeem screen's Admin API fallback, and by the backfill
 // script — all through services/shopifyOfferService.upsertPurchase.
 //
@@ -45,8 +45,15 @@ const shopifyPurchaseSchema = new mongoose.Schema({
     //             redeemedBy stays set, so the same person can't claim again.
     grantStatus: { type: String, enum: ['applied', 'pending', 'revoked'] },
     pendingDays: Number,
-    grantedUntil: Date,
-    // The user's subscription just before the offer was applied — what a revoke restores.
+    // Offer units this order counts for (items bought minus refunded) and the
+    // days currently credited to the user from it (units x SHOPIFY_OFFER_DAYS).
+    // A refund lowers both and takes exactly the difference back.
+    units: Number,
+    grantedDays: Number,
+    grantedUntil: Date, // the user's offer end right after this order's days were added
+    // The user's subscription just before the offer streak started (set only on
+    // the order that started it, not on orders that added days) — what a revoke
+    // restores once no offer days are left.
     previousSubscription: {
         plan: String,
         status: String,
@@ -63,19 +70,20 @@ const shopifyPurchaseSchema = new mongoose.Schema({
 shopifyPurchaseSchema.index({ orderName: 1 }, { unique: true });
 shopifyPurchaseSchema.index({ orderNumber: 1 });
 
-// Auto-match at signup (by email), and the "one offer per person" check, which
-// looks for any already-redeemed order sharing this email or phone. Not partial:
-// that check must also see redeemed orders that were later refunded.
+// Auto-match at signup (by email).
 shopifyPurchaseSchema.index({ emailHashes: 1 });
 shopifyPurchaseSchema.index({ phoneHashes: 1 });
 
 // Lifecycle cron: offers waiting for a paid plan to end.
 shopifyPurchaseSchema.index({ grantStatus: 1 }, { partialFilterExpression: { grantStatus: 'pending' } });
 
-// One offer per user, ever. Partial so the many unredeemed (null) rows don't collide.
+// A user's claimed orders (status screen, refund maths). NOT unique: every order
+// can be claimed once (the conditional claim on redeemedBy: null), and one user
+// may claim many orders. Prod had a unique index here — run
+// scripts/migrateShopifyRedeemIndex.js once to replace it.
 shopifyPurchaseSchema.index(
     { redeemedBy: 1 },
-    { unique: true, partialFilterExpression: { redeemedBy: { $type: 'objectId' } } }
+    { name: 'redeemedBy_multi', partialFilterExpression: { redeemedBy: { $type: 'objectId' } } }
 );
 
 module.exports = mongoose.model('ShopifyPurchase', shopifyPurchaseSchema);

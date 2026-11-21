@@ -215,11 +215,28 @@ const offerProductFullyRefunded = (lineItems = [], refundLines = [], cfg = getOf
     const offerLines = lineItems.filter((li) => isOfferLine(li, cfg));
     const bought = offerLines.reduce((sum, li) => sum + (li.quantity || 0), 0);
     if (!bought) return false;
-    const refunded = refundLines
-        .filter((r) => offerLines.some((li) => sameProduct(li, r)))
-        .reduce((sum, r) => sum + (r.quantity || 0), 0);
-    return refunded >= bought;
+    return offerUnits(lineItems, refundLines, cfg) === 0;
 };
+
+/**
+ * How many offer units this order still counts for: units of offer products
+ * bought, minus units of them refunded. Each unit is worth SHOPIFY_OFFER_DAYS.
+ * Example: 2 Berberine + 1 CoQ10 = 3; after returning one Berberine = 2.
+ */
+function offerUnits(lineItems = [], refundLines = [], cfg = getOfferConfig()) {
+    // Per product: an exchange adds a second line of the same product, and
+    // refunding more of one product must never eat another product's units.
+    const groups = [];
+    for (const li of (lineItems || []).filter((l) => isOfferLine(l, cfg))) {
+        const g = groups.find((x) => x.lines.some((l) => sameProduct(l, li)));
+        if (g) { g.lines.push(li); g.bought += li.quantity || 0; } else groups.push({ lines: [li], bought: li.quantity || 0, refunded: 0 });
+    }
+    for (const r of refundLines || []) {
+        const g = groups.find((x) => x.lines.some((l) => sameProduct(l, r)));
+        if (g) g.refunded += r.quantity || 0;
+    }
+    return groups.reduce((sum, g) => sum + Math.max(0, g.bought - g.refunded), 0);
+}
 
 /**
  * Final verdict for a stored order: its own status (evaluateEligibility) plus
@@ -260,6 +277,7 @@ module.exports = {
     isOfferLine,
     normalizeRefund,
     offerProductFullyRefunded,
+    offerUnits,
     finalEligibility,
     verifyShopifyHmac,
 };
