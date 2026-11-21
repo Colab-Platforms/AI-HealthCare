@@ -42,9 +42,10 @@ const PAID_FEATURES = {
     waterLogging: true, healthScore: true, activityStepLogging: true, alcoholTracking: true,
     sleepTracking: true, weightTracking: true, healthTimelineInsights: true, medicalVault: true,
     darkModeSettings: true, healthStreaks: true, badgesAchievements: true, healthChallenges: true,
+    goalPlanner: true,
     // Paid-only features:
     aiHealthCoach: true, mealRecommendations: true, aiFoodAnalysis: true, aiMedicalReportAnalysis: true,
-    smartHealthAlerts: true, goalPlanner: true, detailedNutritionLogging: true, diabetesGlucoseLog: true,
+    smartHealthAlerts: true, detailedNutritionLogging: true, diabetesGlucoseLog: true,
     nutritionDeficiencyDetection: true, advancedDataExport: true,
 };
 
@@ -54,10 +55,9 @@ const FREE_FEATURES = {
     darkModeSettings: true, healthStreaks: true, badgesAchievements: true, healthChallenges: true,
     // Not AI-usage-cost features, so free tier gets them too:
     smartHealthAlerts: true, detailedNutritionLogging: true, diabetesGlucoseLog: true,
-    nutritionDeficiencyDetection: true, advancedDataExport: true,
+    nutritionDeficiencyDetection: true, advancedDataExport: true, goalPlanner: true,
     // True differentiators — AI/compute cost, paid-only:
     aiHealthCoach: false, mealRecommendations: false, aiFoodAnalysis: false, aiMedicalReportAnalysis: false,
-    goalPlanner: false,
 };
 
 // Source of truth for pricing/features — edit here, then re-run this script.

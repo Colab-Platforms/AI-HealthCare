@@ -16,6 +16,7 @@ const plans = [
       "Medical vault (secure document storage)",
       "Streaks, badges & health challenges",
       "Detailed nutrition logging & smart alerts",
+      "Goal planner",
     ],
   },
   {
@@ -33,7 +34,6 @@ const plans = [
       "AI food analysis",
       "AI medical report analysis",
       "Personalized meal recommendations",
-      "Goal planner",
     ],
   },
 ];
