@@ -603,6 +603,17 @@ if (!process.env.VERCEL) {
     await runSubscriptionLifecycleCron();
   });
 
+  // Invoice safety net — issues invoices the payment webhook missed and retries
+  // PDF archive / email delivery the QStash job couldn't finish. Every 15 min.
+  const { sweepInvoices } = require('./services/invoiceDeliveryService');
+  cron.schedule('*/15 * * * *', async () => {
+    try {
+      await sweepInvoices();
+    } catch (error) {
+      console.error('[Invoice] sweep failed:', error.message);
+    }
+  });
+
   // Manual-renewal reminder — one-time-payment flow has no auto-renew, so remind users
   // a few days before currentPeriodEnd. Runs at 9 AM daily.
   // Pinned to IST: the host runs on UTC, where an unpinned "9 AM" is 2:30 PM IST.

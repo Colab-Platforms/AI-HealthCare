@@ -208,7 +208,7 @@ function PaymentHistory({ payments }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${payment.invoiceNumber || "invoice"}.pdf`;
+      link.download = `${(payment.invoiceNumber || "invoice").replace(/[^A-Za-z0-9-]+/g, "-")}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();

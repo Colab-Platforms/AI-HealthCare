@@ -5,7 +5,9 @@ const Payment = require('../models/Payment');
 const WebhookLog = require('../models/WebhookLog');
 const User = require('../models/User');
 const { getClient } = require('../services/razorpayService');
-const { generateInvoiceNumber, streamInvoicePDF } = require('../services/invoiceService');
+const {
+    issueInvoice, enqueueInvoice, processInvoice, sendInvoiceForPayment, MAX_ATTEMPTS: INVOICE_MAX_ATTEMPTS,
+} = require('../services/invoiceDeliveryService');
 const emailService = require('../services/emailService');
 const { PAST_DUE_GRACE_DAYS } = require('../services/subscriptionLifecycleService');
 const { safeGrantForPayment } = require('../services/vaultStorageGrants');
@@ -155,18 +157,46 @@ exports.getInvoice = async (req, res) => {
         if (!payment || payment.user.toString() !== req.user._id.toString()) {
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
-        if (payment.status !== 'paid' || !payment.invoiceNumber) {
-            return res.status(400).json({ success: false, message: 'No invoice available for this payment' });
-        }
-        if (!payment.plan) {
-            return res.status(410).json({ success: false, message: 'The plan for this invoice no longer exists' });
-        }
 
-        streamInvoicePDF(res, { payment, user: req.user, plan: payment.plan });
+        const result = await sendInvoiceForPayment(res, { payment, user: req.user });
+        if (!result.ok) {
+            return res.status(result.status).json({ success: false, message: result.message });
+        }
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (!res.headersSent) res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// POST /api/subscription/internal/invoice-job { invoiceId } — QStash only (signature-verified).
+// Non-2xx makes QStash retry; after MAX_ATTEMPTS we answer 200 and leave it to a manual look.
+exports.runInvoiceJob = async (req, res) => {
+    const { invoiceId } = req.body || {};
+    if (!invoiceId || !mongoose.Types.ObjectId.isValid(invoiceId)) {
+        return res.status(400).json({ ok: false, message: 'invoiceId is required' }); // malformed — never retry
+    }
+    try {
+        const result = await processInvoice(invoiceId);
+        if (result.status === 'failed' && result.attempts < INVOICE_MAX_ATTEMPTS) {
+            return res.status(500).json({ ok: false, ...result });
+        }
+        res.json({ ok: true, ...result });
+    } catch (error) {
+        console.error('[Invoice] job:error', { invoiceId, message: error.message });
+        res.status(500).json({ ok: false });
+    }
+};
+
+// Issue + queue the invoice for a Payment the webhook just recorded. Never throws:
+// the plan is already granted and the sweep re-issues anything that failed here.
+async function issueAndQueueInvoice(req, { payment, user, plan }) {
+    try {
+        const invoice = await issueInvoice({ payment, user, plan });
+        const queued = await enqueueInvoice(invoice, `${req.protocol}://${req.get('host')}`);
+        logPayment('webhook:invoice_issued', { userId: user._id.toString(), invoiceNumber: invoice?.invoiceNumber, queued });
+    } catch (err) {
+        console.error('[Payment] webhook:invoice_error', { userId: user._id.toString(), paymentId: payment._id.toString(), message: err.message });
+    }
+}
 
 // POST /api/subscription/cancel
 // Must cancel the actual Razorpay Subscription (cancel_at_cycle_end) — if we only
@@ -292,8 +322,7 @@ exports.handleWebhook = async (req, res) => {
                     amount: (paymentEntity.amount || 0) / 100,
                     status: 'paid',
                 });
-                payment.invoiceNumber = generateInvoiceNumber(payment);
-                await payment.save();
+                await issueAndQueueInvoice(req, { payment, user, plan });
                 // Medical Vault: +storage for this paid month (idempotent per payment id; never throws).
                 await safeGrantForPayment({ userId: user._id, payment, planKey, periodEnd });
                 logPayment('webhook:plan_applied', { userId: user._id.toString(), planKey, billingCycle, via: 'payment.captured' });
@@ -331,8 +360,7 @@ exports.handleWebhook = async (req, res) => {
                     amount: (paymentEntity?.amount || 0) / 100,
                     status: 'paid',
                 });
-                payment.invoiceNumber = generateInvoiceNumber(payment);
-                await payment.save();
+                await issueAndQueueInvoice(req, { payment, user, plan });
                 // Medical Vault: +storage for this paid month (idempotent per payment id; never throws).
                 await safeGrantForPayment({ userId: user._id, payment, planKey, periodEnd });
                 logPayment('webhook:plan_applied', { userId: user._id.toString(), planKey, billingCycle, via: 'subscription.charged' });

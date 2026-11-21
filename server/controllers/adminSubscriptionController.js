@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
 const Plan = require('../models/Plan');
-const { streamInvoicePDF } = require('../services/invoiceService');
+const { sendInvoiceForPayment } = require('../services/invoiceDeliveryService');
 
 // GET /api/admin/subscriptions/payments/:paymentId/invoice — support use case, any admin can pull any user's invoice
 exports.getPaymentInvoice = async (req, res) => {
@@ -15,16 +15,13 @@ exports.getPaymentInvoice = async (req, res) => {
         if (!payment) {
             return res.status(404).json({ success: false, message: 'Payment not found' });
         }
-        if (payment.status !== 'paid' || !payment.invoiceNumber) {
-            return res.status(400).json({ success: false, message: 'No invoice available for this payment' });
+        // Invoices issued from the snapshot still download after the user/plan is deleted.
+        const result = await sendInvoiceForPayment(res, { payment, user: payment.user });
+        if (!result.ok) {
+            return res.status(result.status).json({ success: false, message: result.message });
         }
-        if (!payment.plan || !payment.user) {
-            return res.status(410).json({ success: false, message: 'The plan or user for this invoice no longer exists' });
-        }
-
-        streamInvoicePDF(res, { payment, user: payment.user, plan: payment.plan });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (!res.headersSent) res.status(500).json({ success: false, message: error.message });
     }
 };
 

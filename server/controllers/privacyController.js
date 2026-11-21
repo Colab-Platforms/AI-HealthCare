@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const SupportTicket = require('../models/SupportTicket');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
+const { purgeInvoicesBefore } = require('../services/invoiceDeliveryService');
 
 const CONSENT_VERSION = '1.0';
 
@@ -521,12 +522,13 @@ exports.runSupportTicketRetentionCron = async () => {
 exports.runTransactionRetentionCron = async () => {
     try {
         const cutoff = new Date(Date.now() - TRANSACTION_RETENTION_YEARS * 365 * 24 * 60 * 60 * 1000);
-        const [payments, orders] = await Promise.all([
+        const [payments, orders, invoices] = await Promise.all([
             Payment.deleteMany({ createdAt: { $lte: cutoff } }),
             Order.deleteMany({ createdAt: { $lte: cutoff } }),
+            purgeInvoicesBefore(cutoff), // also removes the archived PDF on Cloudinary
         ]);
-        if (payments.deletedCount || orders.deletedCount) {
-            console.log(`[Retention] Transaction records purged (8yr): ${payments.deletedCount} payments, ${orders.deletedCount} orders`);
+        if (payments.deletedCount || orders.deletedCount || invoices) {
+            console.log(`[Retention] Transaction records purged (8yr): ${payments.deletedCount} payments, ${orders.deletedCount} orders, ${invoices} invoices`);
         }
     } catch (err) {
         console.error('[Retention] Transaction cron error:', err.message);

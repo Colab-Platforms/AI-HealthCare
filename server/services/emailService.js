@@ -27,7 +27,8 @@ class EmailService {
     }
   }
 
-  async sendEmail({ to, subject, html }) {
+  // attachments: optional nodemailer attachments, e.g. [{ filename, content: Buffer, contentType }]
+  async sendEmail({ to, subject, html, attachments }) {
     if (!this.transporter) {
       console.error('❌ Email Service: No SMTP credentials found');
       return { success: false, error: 'SMTP credentials missing' };
@@ -40,6 +41,7 @@ class EmailService {
         to,
         subject,
         html,
+        ...(attachments?.length ? { attachments } : {}),
       });
 
       console.log('✅ Email sent successfully:', info.messageId);
