@@ -1,9 +1,47 @@
 # AI Health Coach + Health Profile: Technical Spec
 
-> **Status:** Approved for build. Nothing is built yet.
+> **Status:** In progress. Day 1 steps 1–4 done (see section 0).
 > **Timeline:** 23–24 Nov build, 25–26 Nov testing. Deadline 26 Nov 2026.
 > **PM plan:** [ai-coach-backend-plan.docx](ai-coach-backend-plan.docx)
 > **Earlier plan:** [health-profile-plan.md](health-profile-plan.md). Where it differs, this doc wins (see section 1).
+
+## 0. Progress (start here)
+
+### Done (22 Nov)
+
+| Step | Files | Tests |
+| --- | --- | --- |
+| 1. Confirm write points | section 6 (updated line numbers) | n/a |
+| 2. Models | `server/modules/health-profile/models/HealthProfile.js`, `ProfileHistory.js` | validated offline |
+| 3. Mapper | `server/modules/health-profile/services/profileMapper.js` | `tests/healthProfileMapper.test.js` (12) |
+| 4. Write service | `services/profileWriteService.js`, `services/profileRepo.js` | `tests/healthProfileWriteService.test.js` (15), uses `tests/helpers/memoryProfileRepo.js` |
+
+Run: `cd server && node --test tests/healthProfileMapper.test.js tests/healthProfileWriteService.test.js` (27 pass, no DB needed).
+
+### Next
+
+1. **4b. Staging smoke test** for `profileRepo.js` (real Mongo transaction): create a temp user, run every operation, delete user + profile + history. Run with `USE_STAGING_DB=true`.
+2. **5. Move write points** (section 6) to `ProfileWriteService`. Signup: wrap `User.create` + `createFromOnboarding` in one session.
+3. **6. Migration script** `server/scripts/migrateHealthProfile.js` using `ensureProfile` per user (idempotent). Refuse to run unless `USE_STAGING_DB=true` or `--prod` is passed.
+4. **7. APIs + ProfileContextService** (section 8).
+
+### Decisions made while coding
+
+- **Write service design:** all DB access sits in `profileRepo.js` (`mongoRepo`). The service takes a `repo` so tests use an in-memory repo that behaves like MongoDB transactions (buffered writes, write-conflict retry, rollback).
+- **Lazy creation:** any write on a user with no HealthProfile first builds it from `User.profile` (source `migration`). The migration script is a backfill, not a prerequisite.
+- **Mirror** touches only the legacy paths of the sections that changed, never app settings. Conditions layout: onboarding-enum names → `healthConditions`, others → `chronicConditions`, `medicalHistory.conditions` cleared, `isDiabetic` derived. Readers union these fields, so no fact is lost.
+- **Not mirrored in v1** (own write flows, read in place): `diabetesProfile`, `dietPreferences`, `fitnessProfile`, `foodPreferences` (incl. city/state/region, likes/dislikes).
+- `addItem` with an existing key (case-insensitive) updates instead of duplicating.
+- `markNone` is refused while items exist. Removing the last item sets state `missing`, not `none`.
+- `undo` only works on the latest active change of a field.
+- `createFromOnboarding` refuses if a profile exists (409). Inside a caller's session, cache invalidation is the caller's job (new users have no cache).
+- Nutrition goal recalculation stays in the existing controllers for now (no behaviour change). The chat path (Day 2) must recalc after body/goals changes.
+- Validation uses the Mongoose schema (`validateSync`). `zod` arrives with LangGraph on Day 2.
+
+### Known issues (not caused by this work)
+
+- `npm test` hangs: `tests/wearableScoreDedup.staging.test.js` runs against real staging when `.env` has `USE_STAGING_DB=true`. Use `USE_STAGING_DB=false npm test` for normal runs.
+- `tests/vault.test.js`: 4 tests expect a 10MB free vault base, config now gives 50MB. Owner of the vault change should update the test.
 
 ## 1. Decisions
 
@@ -113,22 +151,28 @@ Not in the profile: wearable data, food logs, workouts, lab values, symptoms, ch
 | goals, goalOther, nutritionGoal.targetWeight | goals |
 
 - Empty array `[]` = `missing` (app sends `[]` for both "none" and "not asked"). App team to send `"none"` later.
-- Mirror is rebuilt fully from HealthProfile on every write (never patched), so it cannot drift.
+- Mirror rebuilds the **health keys** of `User.profile` from HealthProfile on every write, so they cannot drift. It must **not** overwrite the whole `User.profile`: app settings live there too (`lifestyle.waterGoalMl`, `waterGlassSizeMl`, `stepGoal`, `sleepGoalHours`, `avatar`).
+- Field names in code: user ref is `user` (repo convention), diet type is `diet.preference` (a nested key named `type` confuses Mongoose), lists are `{ state, items[] }`.
 - Mirror example: `medications[{name:'Metformin', dose:'500mg', active:true}]` → `medicalHistory.currentMedications: ['Metformin 500mg']` (active only).
 
 ## 6. Write points to move to ProfileWriteService (Day 1)
 
 | File | Line | What |
 | --- | --- | --- |
-| `controllers/authController.js` | 630 (`register`, `User.create({ profile })`) | Onboarding |
-| `controllers/authController.js` | 1600 (`updateProfile`) | Profile edit |
-| `controllers/nutritionController.js` | 950–952, 1101–1103 | age/height/weight from health goal |
-| `controllers/nutritionController.js` | 1285–1286 | weight update |
-| `services/wearableIngestService.js` | 274 | weight from smart scale (already uses a session) |
+Confirmed with a wider grep on 22 Nov (line numbers after pulling Staging):
 
-- `nutritionController.js:1529` (`waterGlassSizeMl`) is an app setting, stays on User.
+| File | Line | What |
+| --- | --- | --- |
+| `controllers/authController.js` | 748 (`register`, `User.create({ profile })`) | Onboarding |
+| `controllers/authController.js` | 1600 (`updateProfile`) | Profile edit |
+| `controllers/nutritionController.js` | 972–974, 1123–1125 | age/height/weight from health goal |
+| `controllers/nutritionController.js` | 1307–1308 | weight update |
+| `services/wearableIngestService.js` | 274 | weight from smart scale (already uses a session) |
+| `scripts/migrateJainDiet.js` | 81 | one-off script, ignore |
+
+- `nutritionController.js:1551` (`waterGlassSizeMl`) is an app setting, stays on User.
 - `activityController.js` and `privacyController.js` matches are read queries, not writes.
-- Day 1: re-run a wider grep (`$set` with a `profile` object, `findByIdAndUpdate(..., { profile })`, `scripts/`) before closing this list.
+- Legacy readers of condition fields (`utils/medicalContext.js`, `routes/chatRoutes.js`, `services/dietTargets.js`, `controllers/dietRecommendationController.js`) union `healthConditions`, `healthConditionOther`, `chronicConditions`, `medicalHistory.conditions` and `isDiabetic`.
 - Add a test that fails on any direct write to `User.profile` health fields outside `ProfileWriteService`.
 
 ### ProfileWriteService API
@@ -231,10 +275,11 @@ All tools take `userId` from `req.user`, never from the LLM.
 ## 10. Day plan checklist
 
 **Day 1 (23 Nov): Health Profile**
-- [ ] Wider grep to confirm all write points (section 6)
-- [ ] `HealthProfile`, `ProfileHistory` models + indexes
-- [ ] `profileMapper` (both directions) + unit tests
-- [ ] `ProfileWriteService` with transaction + mirror + history + tests
+- [x] Wider grep to confirm all write points (section 6)
+- [x] `HealthProfile`, `ProfileHistory` models + indexes
+- [x] `profileMapper` (both directions) + unit tests
+- [x] `ProfileWriteService` with transaction + mirror + history + tests
+- [ ] Staging smoke test for the Mongo repo
 - [ ] Move write points in section 6 to the service
 - [ ] Direct-write guard test
 - [ ] `migrateHealthProfile.js` (idempotent), run on staging, spot-check 10 users
