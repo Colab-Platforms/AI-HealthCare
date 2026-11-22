@@ -1,6 +1,7 @@
 # Health Profile: Plan
 
 > **Status:** Planning only. Nothing in this doc is built yet.
+> **Superseded in parts by [ai-coach-technical-spec.md](ai-coach-technical-spec.md)** (Nov 2026): `User.profile` stays as a permanent mirror, symptoms go to `SymptomLog`, and there is no `derived` block in the profile.
 > **Scope:** `server/` (existing backend).
 > **Management version:** [Take.Health: Health Profile Proposal](https://claude.ai/artifact/Xr4pj1EBLSp9aD2iuDwifz)
 
