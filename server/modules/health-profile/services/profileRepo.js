@@ -84,6 +84,21 @@ const mongoRepo = {
     async markUndone(historyId, session) {
         await ProfileHistory.updateOne({ _id: historyId }, { $set: { undoneAt: new Date() } }, { session });
     },
+
+    // ── reads outside a transaction (API / AI context) ────────────────────
+
+    async findProfile(userId) {
+        return HealthProfile.findOne({ user: userId }).lean();
+    },
+
+    // Newest first. `before` is a history id: returns entries older than it
+    // (ObjectIds grow with time), for "load more".
+    async listHistory(userId, { field, before, limit }) {
+        const filter = { user: userId };
+        if (field) filter.field = field;
+        if (before) filter._id = { $lt: before };
+        return ProfileHistory.find(filter).sort({ _id: -1 }).limit(limit).lean();
+    },
 };
 
 module.exports = { mongoRepo, VersionConflictError };

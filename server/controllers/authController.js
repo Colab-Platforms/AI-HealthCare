@@ -18,6 +18,7 @@ const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const NotificationPreference = require('../models/NotificationPreference');
 const { normalizeDietaryPreference } = require('../utils/dietaryPreference');
 const { reconcileFoodPreferences } = require('../utils/dietConstraints');
+const profileSync = require('../modules/health-profile/services/profileSync');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -772,6 +773,12 @@ exports.register = async (req, res) => {
         isWaitlistedUser,
         subscription: trialSubscription,
       });
+
+      // HealthProfile from the onboarding answers. Never throws: on failure
+      // the first later profile write builds it from the same data.
+      if (profile && Object.keys(profile).length) {
+        await profileSync.onSignup(user._id, user.toObject());
+      }
 
       markWaitlistConverted(waitlistEntry);
       // Bought from the Shopify store with this email? 30-day trial instead of 14.
@@ -1764,6 +1771,12 @@ exports.updateProfile = async (req, res) => {
       if (bmiChanged) user.markModified('healthMetrics');
 
       const updatedUser = await user.save();
+
+      // Old app versions still edit the profile here: bring the change into
+      // HealthProfile (master copy). Never fails the request.
+      if (req.body.profile || req.body.nutritionGoal) {
+        await profileSync.syncLegacyEdit(updatedUser._id);
+      }
 
       // Diet type changed -> any already-generated plan was built for the OLD
       // preference and its 21 stored meals can include dishes that now break

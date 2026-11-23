@@ -60,6 +60,38 @@ test('unknown section, unknown field and bad source are rejected with 400', asyn
     await assert.rejects(svc.updateSection(USER, 'body', { weightKg: 70 }, { source: 'hacker' }), { status: 400 });
 });
 
+test('updateSections: several sections, one version, mirror only for changed sections', async () => {
+    const { svc, profile, user, repo, committed } = setup();
+    await svc.updateSection(USER, 'body', { weightKg: 76 }, { source: 'manual' });
+    await svc.updateSections(USER, { basic: { age: 33 }, body: { weightKg: 76 }, goals: { targetWeightKg: 68 } }, { source: 'manual' });
+
+    assert.equal(profile().version, 2);
+    assert.equal(profile().basic.age, 33);
+    assert.equal(user().profile.age, 33);
+    assert.equal(user().nutritionGoal.targetWeight, 68);
+    // body was unchanged: no history entry, and only changed sections mirrored
+    assert.deepEqual(repo.state.history.filter((h) => h.profileVersion === 2).map((h) => h.field).sort(), ['basic.age', 'goals.targetWeightKg']);
+    assert.deepEqual(committed.at(-1).sort(), ['basic', 'goals']);
+});
+
+test('updateSections: bad input rejected with 400 before anything is written', async () => {
+    const { svc, profile } = setup();
+    await assert.rejects(svc.updateSections(USER, {}, { source: 'manual' }), { status: 400 });
+    await assert.rejects(svc.updateSections(USER, null, { source: 'manual' }), { status: 400 });
+    await assert.rejects(svc.updateSections(USER, { body: { weightKg: 70 }, wallet: { x: 1 } }, { source: 'manual' }), { status: 400 });
+    await assert.rejects(svc.updateSections(USER, { body: { weightKg: 70 }, basic: { shoe: 9 } }, { source: 'manual' }), { status: 400 });
+    await assert.rejects(svc.updateSections(USER, { body: [70] }, { source: 'manual' }), { status: 400 });
+    await assert.rejects(svc.updateSections(USER, { allergies: { x: 1 } }, { source: 'manual' }), { status: 400 });
+    assert.equal(profile(), undefined);
+});
+
+test('updateSections: one invalid value rolls back the other sections too', async () => {
+    const { svc, profile, user } = setup();
+    await assert.rejects(svc.updateSections(USER, { basic: { age: 33 }, body: { weightKg: 900 } }, { source: 'manual' }), { status: 400 });
+    assert.equal(profile(), undefined);
+    assert.equal(user().profile.age, 32);
+});
+
 test('schema violation rolls back everything', async () => {
     const { svc, profile, user, repo, committed } = setup();
     await assert.rejects(svc.updateSection(USER, 'basic', { gender: 'robot' }, { source: 'chat' }), { status: 400 });
@@ -86,7 +118,8 @@ test('addItem saves, mirrors, and a case-insensitive duplicate updates instead o
 
     await svc.addItem(USER, 'medications', { name: 'metformin', dose: '1000mg' }, { source: 'chat' });
     assert.equal(profile().medications.items.length, 1);
-    assert.deepEqual(user().profile.medicalHistory.currentMedications, ['metformin 1000mg']);
+    // Stored spelling kept ("Metformin"), only the dose changed.
+    assert.deepEqual(user().profile.medicalHistory.currentMedications, ['Metformin 1000mg']);
 });
 
 test('addItem requires the key field', async () => {

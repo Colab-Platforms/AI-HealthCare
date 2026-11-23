@@ -234,6 +234,56 @@ const LEGACY_WRITERS = {
     },
 };
 
+// Scalar HealthProfile key -> the legacy path the mirror writes it to. Keys
+// not listed (basic.city, body.waistCm, lifestyle.workShift, diet.region,
+// goals.timeline, ...) have no legacy copy and are never touched by a legacy sync.
+const SCALAR_LEGACY_PATHS = {
+    basic: { age: 'profile.age', dateOfBirth: 'profile.dateOfBirth', gender: 'profile.gender', bloodGroup: 'profile.bloodGroup' },
+    body: { heightCm: 'profile.height', weightKg: 'profile.weight' },
+    lifestyle: {
+        smoking: 'profile.lifestyle.smoker',
+        smokingFrequency: 'profile.lifestyle.smokingFrequency',
+        alcohol: 'profile.lifestyle.alcohol',
+        alcoholFrequency: 'profile.lifestyle.alcoholFrequency',
+        sleepHours: 'profile.lifestyle.sleepHours',
+        stressLevel: 'profile.lifestyle.stressLevel',
+        profession: 'profile.profession',
+        activityLevel: 'profile.activityLevel',
+    },
+    diet: { preference: 'profile.dietaryPreference' },
+    goals: { primary: 'profile.goals', other: 'profile.goalOther', targetWeightKg: 'nutritionGoal.targetWeight' },
+};
+
+// The legacy values the mirror would write for one section: { path: value },
+// undefined meaning "unset".
+function mirrorValues(healthProfile, section) {
+    const writer = LEGACY_WRITERS[section];
+    return writer ? writer(healthProfile || {}) : {};
+}
+
+// Is this list item visible in the legacy mirror? Resolved conditions and
+// inactive medicines are not, so a legacy client can never have removed them.
+function isMirrored(section, item) {
+    if (section === 'conditions') return item.status !== 'resolved';
+    if (section === 'medications') return item.active !== false;
+    return true;
+}
+
+// The item as the legacy mirror shows it, lowercased: how an item round-tripped
+// through an old client is recognised ("Metformin 500mg" = {Metformin, 500mg},
+// "Diabetes" = "Type 2 Diabetes").
+function mirrorKey(section, item) {
+    const s = (v) => String(v || '').trim().toLowerCase();
+    switch (section) {
+        case 'conditions': return s(canonicalOnboardingCondition(String(item.name || '').trim()) || item.name);
+        case 'medications': return s(item.dose ? `${item.name} ${item.dose}` : item.name);
+        case 'allergies': return s(item.allergen);
+        case 'surgeries': return s(item.name);
+        case 'familyHistory': return s(item.relation ? `${item.relation}: ${item.condition}` : item.condition);
+        default: return '';
+    }
+}
+
 // Sections with no legacy counterpart (fitness, coachPreferences) are ignored.
 function toLegacyPatch(healthProfile, sections) {
     const $set = {};
@@ -255,6 +305,11 @@ function toLegacyPatch(healthProfile, sections) {
 module.exports = {
     fromLegacyUser,
     toLegacyPatch,
+    mirrorValues,
+    mirrorKey,
+    isMirrored,
     MIRRORED_SECTIONS: Object.keys(LEGACY_WRITERS),
+    SCALAR_LEGACY_PATHS,
     ONBOARDING_CONDITIONS,
+    ONBOARDING_GOALS,
 };

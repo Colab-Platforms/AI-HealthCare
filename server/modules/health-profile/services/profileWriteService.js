@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const HealthProfile = require('../models/HealthProfile');
-const { fromLegacyUser, toLegacyPatch } = require('./profileMapper');
+const {
+    fromLegacyUser, toLegacyPatch, mirrorValues, mirrorKey, isMirrored,
+    MIRRORED_SECTIONS, SCALAR_LEGACY_PATHS, ONBOARDING_GOALS,
+} = require('./profileMapper');
 const { mongoRepo, VersionConflictError } = require('./profileRepo');
 
 // The ONLY write path for health profile data (onboarding, profile edit, chat,
@@ -46,6 +49,23 @@ const SCALAR_KEYS = Object.fromEntries(SCALAR_SECTIONS.map((section) => {
         .map((p) => p.slice(section.length + 1));
     return [section, keys];
 }));
+
+const getPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+
+// Legacy value equality: blank == blank, dates by instant, arrays ignore order and case.
+function legacyEqual(a, b) {
+    const n = (v) => {
+        if (v === undefined || v === null || v === '') return null;
+        if (v instanceof Date) return v.toISOString();
+        if (Array.isArray(v)) {
+            const arr = v.filter((x) => x !== null && x !== undefined && x !== '').map((x) => String(x).trim().toLowerCase()).sort();
+            return arr.length ? arr : null;
+        }
+        if (typeof v === 'string' && !Number.isNaN(Date.parse(v)) && /^\d{4}-\d{2}-\d{2}T/.test(v)) return new Date(v).toISOString();
+        return v;
+    };
+    return JSON.stringify(n(a)) === JSON.stringify(n(b));
+}
 
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -148,26 +168,47 @@ function createProfileWriteService({ repo = mongoRepo, afterCommit = defaultAfte
         });
     }
 
-    async function updateSection(userId, section, data, { source, verified = true, session, expectedVersion } = {}) {
+    async function updateSection(userId, section, data, opts = {}) {
         assertScalar(section);
-        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new ProfileInputError('data must be an object');
-        const unknown = Object.keys(data).filter((k) => !SCALAR_KEYS[section].includes(k));
-        if (unknown.length) throw new ProfileInputError(`Unknown fields for ${section}: ${unknown.join(', ')}`);
+        return updateSections(userId, { [section]: data }, opts);
+    }
+
+    // Several scalar sections in one transaction, one version bump
+    // (e.g. a health goal sets basic.age + body.heightCm/weightKg together).
+    // A value of null or '' unsets the field.
+    async function updateSections(userId, sectionsData, { source, verified = true, session, expectedVersion } = {}) {
+        if (!sectionsData || typeof sectionsData !== 'object' || Array.isArray(sectionsData)) {
+            throw new ProfileInputError('sections must be an object');
+        }
+        const entries = Object.entries(sectionsData);
+        if (!entries.length) throw new ProfileInputError('Nothing to update');
+        for (const [section, data] of entries) {
+            assertScalar(section);
+            if (!data || typeof data !== 'object' || Array.isArray(data)) throw new ProfileInputError('data must be an object');
+            const unknown = Object.keys(data).filter((k) => !SCALAR_KEYS[section].includes(k));
+            if (unknown.length) throw new ProfileInputError(`Unknown fields for ${section}: ${unknown.join(', ')}`);
+        }
 
         return write(userId, { source, session, expectedVersion }, async (profile, ctx) => {
-            const current = profile[section] || {};
+            const sections = [];
             const changes = [];
-            for (const [key, value] of Object.entries(data)) {
-                const next = value === null || value === '' ? undefined : value;
-                if (same(current[key], next)) continue;
-                changes.push({ field: `${section}.${key}`, action: 'set', oldValue: clone(current[key]), newValue: clone(next) });
-                if (next === undefined) delete current[key];
-                else current[key] = next;
+            for (const [section, data] of entries) {
+                const current = profile[section] || {};
+                let touched = false;
+                for (const [key, value] of Object.entries(data)) {
+                    const next = value === null || value === '' ? undefined : value;
+                    if (same(current[key], next)) continue;
+                    changes.push({ field: `${section}.${key}`, action: 'set', oldValue: clone(current[key]), newValue: clone(next) });
+                    if (next === undefined) delete current[key];
+                    else current[key] = next;
+                    touched = true;
+                }
+                if (!touched) continue;
+                current.meta = { source, verified, updatedAt: ctx.now };
+                profile[section] = current;
+                sections.push(section);
             }
-            if (!changes.length) return { changes };
-            current.meta = { source, verified, updatedAt: ctx.now };
-            profile[section] = current;
-            return { sections: [section], changes };
+            return { sections, changes };
         });
     }
 
@@ -186,6 +227,9 @@ function createProfileWriteService({ repo = mongoRepo, afterCommit = defaultAfte
 
             if (existing) {
                 const before = clone(existing);
+                // Same item said in another case ("peanut" vs "Peanut"): keep the
+                // stored spelling, so a repeat mention is not a change.
+                delete fields[keyField];
                 Object.assign(existing, fields, { source, verified, updatedAt: ctx.now });
                 if (same({ ...before, updatedAt: null }, { ...existing, updatedAt: null })) return { changes: [], value: existing._id };
                 profile[section] = listObj;
@@ -318,7 +362,105 @@ function createProfileWriteService({ repo = mongoRepo, afterCommit = defaultAfte
         });
     }
 
-    return { createFromOnboarding, ensureProfile, updateSection, addItem, updateItem, removeItem, markNone, undo };
+    // Old clients (profile edit API used by app versions before the
+    // /api/health-profile move) write User.profile directly. This brings those
+    // edits into HealthProfile, field by field, AFTER the legacy save:
+    //   - a section is touched only if its legacy values differ from what the
+    //     mirror of the current profile would write (so nothing changes when
+    //     the old app just re-sends what it was shown),
+    //   - list items are matched by their mirrored form, so details the legacy
+    //     copy can't hold (severity, dose split, diagnosedYear) survive,
+    //   - items the mirror never shows (resolved conditions, stopped medicines)
+    //     and fields with no legacy copy are kept,
+    //   - lossy values keep their detail when unchanged (smoking "never" stays
+    //     "never" while the legacy boolean is still false).
+    // Idempotent and self-healing: any earlier drift is fixed by the next call.
+    async function syncFromLegacy(userId, { source = 'manual', session } = {}) {
+        assertSource(source);
+        return write(userId, { source, session }, async (profile, ctx) => {
+            const legacy = await repo.loadLegacyUser(userId, ctx.session);
+            if (!legacy) throw new ProfileNotFoundError('User not found');
+            const candidate = fromLegacyUser(legacy, source, ctx.now);
+            const sections = [];
+            const changes = [];
+
+            for (const section of MIRRORED_SECTIONS) {
+                const mirror = mirrorValues(profile, section);
+                const changedPaths = Object.keys(mirror).filter((p) => !legacyEqual(mirror[p], getPath(legacy, p)));
+                if (!changedPaths.length) continue;
+
+                if (SCALAR_SECTIONS.includes(section)) {
+                    const current = profile[section] || {};
+                    let touched = false;
+                    for (const [key, legacyPath] of Object.entries(SCALAR_LEGACY_PATHS[section])) {
+                        if (!changedPaths.includes(legacyPath)) continue;
+                        let next = candidate[section]?.[key];
+                        // Goals the onboarding list can't hold (from chat) are kept.
+                        if (section === 'goals' && key === 'primary') {
+                            const custom = (current.primary || []).filter((g) => !ONBOARDING_GOALS.includes(g));
+                            next = [...(next || []), ...custom];
+                            if (!next.length) next = undefined;
+                        }
+                        if (same(current[key], next)) continue;
+                        changes.push({ field: `${section}.${key}`, action: 'set', oldValue: clone(current[key]), newValue: clone(next) });
+                        if (next === undefined) delete current[key];
+                        else current[key] = next;
+                        touched = true;
+                    }
+                    if (touched) {
+                        current.meta = { source, verified: true, updatedAt: ctx.now };
+                        profile[section] = current;
+                        sections.push(section);
+                    }
+                    // Not touched = legacy differs only in its own layout (e.g. a
+                    // condition repeated in another legacy field). Readers union
+                    // those fields, so it is left as is.
+                    continue;
+                }
+                const changesBefore = changes.length;
+
+                // List section: merge by mirrored form.
+                const cur = profile[section] || { state: 'missing', items: [] };
+                const cand = candidate[section] || { state: 'missing', items: [] };
+                const hidden = cur.items.filter((i) => !isMirrored(section, i));
+                const shown = cur.items.filter((i) => isMirrored(section, i));
+                const byKey = new Map(shown.map((i) => [mirrorKey(section, i), i]));
+                const used = new Set();
+                const next = [...hidden];
+                const prevState = cur.state;
+                for (const c of cand.items) {
+                    const k = mirrorKey(section, c);
+                    if (!k || used.has(k)) continue;
+                    used.add(k);
+                    const existing = byKey.get(k);
+                    if (existing) {
+                        next.push(existing);
+                    } else {
+                        const item = { _id: new mongoose.Types.ObjectId(), ...c };
+                        next.push(item);
+                        changes.push({ field: section, action: 'add_item', itemId: item._id, oldValue: { state: prevState }, newValue: clone(item) });
+                    }
+                }
+                for (const old of shown) {
+                    if (used.has(mirrorKey(section, old))) continue;
+                    changes.push({ field: section, action: 'remove_item', itemId: old._id, oldValue: { ...clone(old), _prevState: prevState }, newValue: null });
+                }
+                const state = next.length
+                    ? 'has_items'
+                    : (cand.state === 'none' || prevState === 'none') ? 'none' : 'missing';
+                if (state === 'none' && prevState !== 'none' && !next.length) {
+                    changes.push({ field: section, action: 'mark_none', oldValue: { state: prevState }, newValue: { state: 'none' } });
+                }
+                if (changes.length === changesBefore && state === prevState) continue;
+                profile[section] = { ...cur, state, items: next };
+                sections.push(section);
+            }
+
+            return { sections, changes };
+        });
+    }
+
+    return { createFromOnboarding, ensureProfile, updateSection, updateSections, addItem, updateItem, removeItem, markNone, undo, syncFromLegacy };
 }
 
 // Clears what was derived from the old profile. Never throws: the write has
@@ -340,6 +482,8 @@ async function defaultAfterCommit(userId) {
 module.exports = {
     ...createProfileWriteService(),
     createProfileWriteService,
+    // For callers that pass their own session: run this after THEIR commit.
+    invalidateProfileCaches: defaultAfterCommit,
     ProfileInputError,
     ProfileNotFoundError,
     VersionConflictError,

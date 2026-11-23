@@ -7,6 +7,7 @@
 // callback is retried (as session.withTransaction does). An error discards the
 // buffer, so a failed transaction never touches other transactions' data.
 
+const mongoose = require('mongoose');
 const { VersionConflictError } = require('../../modules/health-profile/services/profileRepo');
 
 const copy = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
@@ -99,7 +100,8 @@ function createMemoryProfileRepo({ users = {} } = {}) {
                 type: 'history',
                 apply: () => {
                     for (const e of list) {
-                        state.history.push({ _id: `h${state.history.length + 1}`, undoneAt: null, ...e });
+                        // Real ObjectId strings: they grow with time like Mongo's, and the API validates ids.
+                        state.history.push({ _id: new mongoose.Types.ObjectId().toString(), undoneAt: null, createdAt: new Date().toISOString(), ...e });
                     }
                 },
             });
@@ -122,6 +124,18 @@ function createMemoryProfileRepo({ users = {} } = {}) {
                     if (h) h.undoneAt = new Date().toISOString();
                 },
             });
+        },
+
+        async findProfile(userId) {
+            await tick();
+            return copy(state.profiles[String(userId)]) || null;
+        },
+
+        async listHistory(userId, { field, before, limit }) {
+            return copy(state.history
+                .filter((h) => h.user === String(userId) && (!field || h.field === field) && (!before || h._id < String(before)))
+                .sort((a, b) => (a._id < b._id ? 1 : -1))
+                .slice(0, limit));
         },
     };
     return repo;
