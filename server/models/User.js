@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, sparse: true }, // Google 'sub' claim, only set for Google sign-ins
   appleId: { type: String, unique: true, sparse: true }, // Apple 'sub' claim, only set for Apple sign-ins
   authProvider: { type: String, enum: ['local', 'google', 'apple'], default: 'local' },
-  role: { type: String, enum: ['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
+  role: { type: String, enum: ['user', 'admin', 'takeadmin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
   isActive: { type: Boolean, default: true },
   // Set once at registration by matching against WaitlistUserEmail — determines the
   // free-trial length (30 days vs 14 for a brand-new signup). Purely a historical/

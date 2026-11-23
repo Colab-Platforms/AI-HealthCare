@@ -202,30 +202,6 @@ export default function AdminFoodCache() {
     }
   };
 
-  const handleClearAll = async () => {
-    if (
-      !window.confirm(
-        "⚠️ WARNING: This will permanently delete EVERY food model in the Global Database. This action cannot be undone. Are you absolutely sure?",
-      )
-    )
-      return;
-
-    // Final verification for such a destructive action
-    const confirmText = window.prompt('Type "DELETE ALL" to confirm:');
-    if (confirmText !== "DELETE ALL") {
-      toast.error("Clear action cancelled");
-      return;
-    }
-
-    try {
-      const response = await adminService.clearFoodCache();
-      toast.success(response.data.message || "Database cleared");
-      fetchFoods();
-    } catch (err) {
-      toast.error("Failed to clear database");
-    }
-  };
-
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -291,12 +267,6 @@ export default function AdminFoodCache() {
           </p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={handleClearAll}
-            className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all border border-red-100"
-          >
-            <Trash2 className="w-4 h-4" /> Clear All
-          </button>
           <button
             onClick={() => setShowBulkModal(true)}
             className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all"

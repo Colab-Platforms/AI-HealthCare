@@ -352,6 +352,11 @@ app.use("/api/admin", (req, res, next) => {
 try {
   // 🛡️ ADMIN ROUTER
   try {
+    // Three-level admin API (approvals, audit, permissions). Mounted before the
+    // legacy admin router so takeadmin requests are not rejected by its gate.
+    const adminV1Router = require("./routes/adminV1Routes");
+    app.use("/api/admin/v1", adminV1Router);
+
     const adminRouter = require("./routes/adminRoutes");
     app.use("/api/admin", adminRouter);
     console.log("[Server] ✅ Admin Router mounted at /api/admin");

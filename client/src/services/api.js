@@ -339,7 +339,6 @@ export const adminService = {
   bulkCreateFoodCache: (data) => api.post('admin/food-cache/bulk', data),
   updateFoodCache: (id, data) => api.put(`admin/food-cache/${id}`, data),
   deleteFoodCache: (id) => api.delete(`admin/food-cache/${id}`),
-  clearFoodCache: () => api.delete('admin/food-cache/clear-all'),
 
   // AI Usage Tracking
   getUsageSummary:     (params) => api.get('admin/usage/summary',        { params }),

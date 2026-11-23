@@ -8,7 +8,7 @@ const {
   getSupplementMappings, createSupplementMapping, updateSupplementMapping, deleteSupplementMapping,
   getDietPlanTemplates, createDietPlanTemplate, updateDietPlanTemplate, approveDietPlanTemplate, deleteDietPlanTemplate,
   getAllDoctors, approveDoctor, rejectDoctor, createDoctor, updateDoctor, deleteDoctor, toggleDoctorVisibility,
-  getAllCachedFoods, createCachedFood, updateCachedFood, deleteCachedFood, bulkCreateCachedFood, clearAllCachedFoods,
+  getAllCachedFoods, createCachedFood, updateCachedFood, deleteCachedFood, bulkCreateCachedFood,
   deleteUser, getFilteredUsers
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
@@ -90,7 +90,7 @@ router.get('/food-cache', getAllCachedFoods);
 router.post('/food-cache/bulk', bulkCreateCachedFood);
 router.post('/food-cache', createCachedFood);
 router.put('/food-cache/:id', updateCachedFood);
-router.delete('/food-cache/clear-all', clearAllCachedFoods);
+// 'Clear All' removed: bulk food deletion must go through an approval request.
 router.delete('/food-cache/:id', deleteCachedFood);
 
 // Claude AI Usage & Cost Tracking
