@@ -104,7 +104,8 @@ export default function Login() {
   // own dedicated landing page regardless of what link brought them here.
   const getLoginRedirect = (role) => {
     const from = location.state?.from;
-    if (from && role !== "admin" && role !== "superadmin" && role !== "doctor") return from;
+    if (from && role !== "admin" && role !== "takeadmin" && role !== "superadmin" && role !== "doctor") return from;
+    if (role === "takeadmin") return "/take-admin";
     return role === "admin" || role === "superadmin"
       ? "/admin"
       : role === "doctor"

@@ -6,16 +6,68 @@ import {
   ChevronRight,
   RefreshCcw,
   Clock,
-  CheckCircle,
+  CheckCircle2,
   AlertCircle,
+  XCircle,
   X,
   Send,
+  User,
+  Mail,
+  CalendarDays,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
+import { Skeleton, EmptyState } from "../components/admin/AdminUI";
+import { EASE, container, riseIn } from "../components/admin/adminTheme";
+
+const STATUS_TABS = [
+  { value: "", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In progress" },
+  { value: "resolved", label: "Resolved" },
+  { value: "closed", label: "Closed" },
+];
+
+const STATUS_STYLE = {
+  open: { chip: "bg-tk-blue/10 text-tk-blue", Icon: AlertCircle, label: "Open" },
+  in_progress: { chip: "bg-tk-warn/20 text-amber-700", Icon: Clock, label: "In progress" },
+  resolved: { chip: "bg-tk-teal-soft text-tk-teal", Icon: CheckCircle2, label: "Resolved" },
+  closed: { chip: "bg-slate-100 text-slate-600", Icon: XCircle, label: "Closed" },
+};
+
+const CATEGORY_STYLE = {
+  bug: "bg-tk-error/10 text-tk-error",
+  feature_request: "bg-tk-info/15 text-sky-700",
+  general_help: "bg-tk-blue/10 text-tk-blue",
+  account_issue: "bg-tk-warn/20 text-amber-700",
+  other: "bg-slate-100 text-slate-600",
+};
+
+const fieldCls =
+  "w-full px-3.5 py-2.5 bg-white border border-tk-line rounded-xl text-sm font-medium text-tk-ink " +
+  "focus:outline-none focus:border-tk-blue focus:ring-4 focus:ring-tk-blue/10 transition-all";
+
+function StatusPill({ status }) {
+  const s = STATUS_STYLE[status] || STATUS_STYLE.open;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${s.chip}`}>
+      <s.Icon className="w-3.5 h-3.5" />
+      {s.label}
+    </span>
+  );
+}
+
+function CategoryPill({ category }) {
+  return (
+    <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold capitalize ${CATEGORY_STYLE[category] || CATEGORY_STYLE.other}`}>
+      {String(category || "other").replace(/_/g, " ")}
+    </span>
+  );
+}
 
 export default function AdminSupport() {
+  const reduce = useReducedMotion();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -23,10 +75,7 @@ export default function AdminSupport() {
   const [totalCount, setTotalCount] = useState(0);
   const [limit] = useState(15);
 
-  const [filters, setFilters] = useState({
-    status: "",
-    category: "",
-  });
+  const [filters, setFilters] = useState({ status: "", category: "" });
 
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [responseText, setResponseText] = useState("");
@@ -44,30 +93,27 @@ export default function AdminSupport() {
     }
   }, [selectedTicket]);
 
+  // Esc closes the details panel.
+  useEffect(() => {
+    if (!selectedTicket) return;
+    const onKey = (e) => e.key === "Escape" && setSelectedTicket(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedTicket]);
+
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const params = {
-        page,
-        limit,
-        status: filters.status,
-        category: filters.category,
-      };
-
-      console.log('Fetching tickets with params:', params);
+      const params = { page, limit, status: filters.status, category: filters.category };
       const res = await supportService.getAllTickets(params);
-      console.log('Tickets response:', res);
-      
       if (res.data?.success) {
         setTickets(res.data.tickets || []);
         setTotalPages(res.data.pages || 1);
         setTotalCount(res.data.total || 0);
       } else {
-        console.error('API response not successful:', res.data);
         toast.error(res.data?.message || "Failed to fetch tickets");
       }
     } catch (error) {
-      console.error('Error fetching tickets:', error);
       toast.error(error.response?.data?.message || "Failed to fetch tickets");
     } finally {
       setLoading(false);
@@ -79,14 +125,12 @@ export default function AdminSupport() {
       toast.error("Please enter a response");
       return;
     }
-
     setResponding(true);
     try {
       const res = await supportService.respondToTicket(selectedTicket._id, {
         response: responseText,
         status: newStatus,
       });
-
       if (res.data?.success) {
         toast.success("Ticket updated successfully");
         setResponseText("");
@@ -100,358 +144,289 @@ export default function AdminSupport() {
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      open: "bg-blue-50 text-blue-700 border-blue-200",
-      in_progress: "bg-yellow-50 text-yellow-700 border-yellow-200",
-      resolved: "bg-green-50 text-green-700 border-green-200",
-      closed: "bg-gray-50 text-gray-700 border-gray-200",
-    };
-    return colors[status] || colors.open;
-  };
-
-  const getStatusIcon = (status) => {
-    const icons = {
-      open: <AlertCircle className="w-4 h-4" />,
-      in_progress: <Clock className="w-4 h-4" />,
-      resolved: <CheckCircle className="w-4 h-4" />,
-      closed: <X className="w-4 h-4" />,
-    };
-    return icons[status] || icons.open;
-  };
-
-  const getCategoryColor = (category) => {
-    const colors = {
-      bug: "bg-red-100 text-red-700",
-      feature_request: "bg-purple-100 text-purple-700",
-      general_help: "bg-blue-100 text-blue-700",
-      account_issue: "bg-orange-100 text-orange-700",
-      other: "bg-gray-100 text-gray-700",
-    };
-    return colors[category] || colors.other;
-  };
-
   return (
-    <div className="min-h-screen bg-[#d7dbd7] text-[#0F172A] font-sans pb-8 antialiased">
+    <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
       <SEO pageName="adminSupport" />
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 space-y-5">
+
+      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 bg-slate-100 backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.5)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 shadow-[0_8px_20px_-6px_rgba(79,70,229,0.5)] flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-white" />
+        <motion.div variants={riseIn} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-tk-blue grid place-items-center shadow-[0_10px_24px_-8px_rgba(32,90,226,0.55)]">
+              <MessageSquare className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-black tracking-tight text-slate-800">
-                Support Tickets
-              </h2>
-              <p className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">
-                {`${totalCount} Tickets`}
-              </p>
+              <h1 className="text-[26px] font-extrabold tracking-tight text-tk-ink leading-tight">Support Tickets</h1>
+              <p className="text-sm text-tk-muted">{totalCount.toLocaleString()} ticket{totalCount === 1 ? "" : "s"}</p>
             </div>
           </div>
 
-          {/* Controls */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={fetchTickets}
-              disabled={loading}
-              className="p-2.5 bg-slate-100 rounded-xl border border-white/5 hover:border-indigo-600/40 hover:text-indigo-600 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-              title="Refresh"
-            >
-              <RefreshCcw
-                className={`w-4 h-4 text-slate-500 transition-all ${loading ? "animate-spin text-indigo-500" : ""}`}
-              />
-            </button>
-
-            <select
-              value={filters.status}
-              onChange={(e) => {
-                setFilters({ ...filters, status: e.target.value });
-                setPage(1);
-              }}
-              className="px-3 py-2 bg-white/80 border border-white/80 rounded-xl text-[8px] font-black text-slate-600 focus:outline-none cursor-pointer uppercase tracking-wider"
-            >
-              <option value="">All Status</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
-
             <select
               value={filters.category}
               onChange={(e) => {
                 setFilters({ ...filters, category: e.target.value });
                 setPage(1);
               }}
-              className="px-3 py-2 bg-white/80 border border-white/80 rounded-xl text-[8px] font-black text-slate-600 focus:outline-none cursor-pointer uppercase tracking-wider"
+              aria-label="Filter by category"
+              className={fieldCls + " !w-auto cursor-pointer"}
             >
-              <option value="">All Categories</option>
-              <option value="bug">Bug Report</option>
-              <option value="feature_request">Feature Request</option>
-              <option value="general_help">General Help</option>
-              <option value="account_issue">Account Issue</option>
+              <option value="">All categories</option>
+              <option value="bug">Bug report</option>
+              <option value="feature_request">Feature request</option>
+              <option value="general_help">General help</option>
+              <option value="account_issue">Account issue</option>
             </select>
+            <motion.button
+              whileTap={reduce ? undefined : { scale: 0.93 }}
+              onClick={fetchTickets}
+              disabled={loading}
+              title="Refresh"
+              aria-label="Refresh tickets"
+              className="w-11 h-11 grid place-items-center rounded-xl bg-white border border-tk-line text-tk-muted hover:text-tk-blue hover:border-tk-action transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-tk-blue/20"
+            >
+              <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin text-tk-blue" : ""}`} />
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Tickets List */}
-        <div className="space-y-2.5">
+        {/* Status tabs */}
+        <motion.div variants={riseIn} role="tablist" aria-label="Filter by status" className="flex flex-wrap gap-1.5 p-1.5 bg-white border border-tk-line rounded-2xl w-fit">
+          {STATUS_TABS.map((t) => {
+            const active = filters.status === t.value;
+            return (
+              <button
+                key={t.value || "all"}
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setFilters({ ...filters, status: t.value });
+                  setPage(1);
+                }}
+                className={`relative px-4 h-9 rounded-xl text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-tk-blue/20 ${
+                  active ? "text-white" : "text-tk-muted hover:text-tk-ink"
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="support-tab"
+                    transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
+                    className="absolute inset-0 rounded-xl bg-tk-blue"
+                  />
+                )}
+                <span className="relative">{t.label}</span>
+              </button>
+            );
+          })}
+        </motion.div>
+
+        {/* Ticket list */}
+        <div className="space-y-3">
           {loading ? (
-            <div className="text-center py-12 bg-white rounded-[1.5rem] border border-slate-100">
-              <div className="w-10 h-10 border-[4px] border-slate-100 border-t-indigo-600 rounded-full animate-spin mx-auto shadow-sm" />
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2.5">
-                Loading Tickets...
-              </p>
-            </div>
+            [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[104px] rounded-2xl" />)
           ) : tickets.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-[1.5rem] border border-slate-100">
-              <MessageSquare className="w-10 h-10 text-slate-200 mx-auto mb-2.5" />
-              <p className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">
-                No Tickets Found
-              </p>
+            <div className="bg-white rounded-3xl border border-tk-line py-14">
+              <EmptyState title="No tickets found" hint="Try a different status or category." />
             </div>
           ) : (
-            tickets.map((ticket, i) => (
-              <motion.div
-                key={ticket._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                onClick={() => setSelectedTicket(ticket)}
-                className="bg-white p-4 rounded-[1.5rem] border border-white shadow-[0_10px_30px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-15px_rgba(79,70,229,0.15)] transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <div
-                        className={`px-2 py-0.5 rounded-lg border text-[7px] font-black uppercase tracking-widest flex items-center gap-1 ${getStatusColor(ticket.status)}`}
-                      >
-                        {getStatusIcon(ticket.status)}
-                        {ticket.status}
+            <motion.ul variants={container} initial="hidden" animate="show" className="space-y-3">
+              {tickets.map((ticket) => (
+                <motion.li key={ticket._id} variants={riseIn}>
+                  <button
+                    onClick={() => setSelectedTicket(ticket)}
+                    className="group w-full text-left bg-white p-5 rounded-2xl border border-tk-line
+                      hover:border-tk-action hover:shadow-[0_12px_28px_-14px_rgba(32,90,226,0.35)] hover:-translate-y-0.5
+                      transition-all duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-tk-blue/20"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <StatusPill status={ticket.status} />
+                          <CategoryPill category={ticket.category} />
+                        </div>
+                        <h3 className="text-[15px] font-bold text-tk-ink truncate group-hover:text-tk-blue transition-colors">
+                          {ticket.subject}
+                        </h3>
+                        <p className="text-sm text-tk-muted line-clamp-1 mt-0.5">{ticket.message}</p>
+                        <p className="mt-2.5 text-xs text-tk-muted flex items-center gap-2">
+                          <span className="font-semibold text-slate-600">{ticket.user?.name || "Unknown"}</span>
+                          <span aria-hidden>•</span>
+                          <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                        </p>
                       </div>
-                      <div
-                        className={`px-2 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-widest ${getCategoryColor(ticket.category)}`}
+                      <span
+                        className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold ${
+                          ticket.adminResponse ? "bg-tk-teal-soft text-tk-teal" : "bg-tk-error/10 text-tk-error"
+                        }`}
                       >
-                        {ticket.category.replace(/_/g, " ")}
-                      </div>
-                    </div>
-
-                    <h3 className="text-sm font-black text-slate-900 mb-0.5 truncate group-hover:text-indigo-600 transition-colors">
-                      {ticket.subject}
-                    </h3>
-
-                    <p className="text-xs text-slate-600 mb-1.5 line-clamp-1">
-                      {ticket.message}
-                    </p>
-
-                    <div className="flex items-center gap-3 text-[7px] font-black text-slate-400 uppercase tracking-widest">
-                      <span>{ticket.user?.name || "Unknown"}</span>
-                      <span>•</span>
-                      <span>
-                        {new Date(ticket.createdAt).toLocaleDateString()}
+                        {ticket.adminResponse ? "Replied" : "Pending"}
                       </span>
                     </div>
-                  </div>
-
-                  <div className="flex-shrink-0">
-                    {ticket.adminResponse ? (
-                      <div className="px-2.5 py-1 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-[7px] font-black text-green-600 uppercase tracking-widest">
-                          Replied
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="px-2.5 py-1 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-[7px] font-black text-red-600 uppercase tracking-widest">
-                          Pending
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))
+                  </button>
+                </motion.li>
+              ))}
+            </motion.ul>
           )}
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between p-3.5 bg-white rounded-[1.5rem] border border-slate-100 shadow-sm">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+          <motion.div variants={riseIn} className="flex items-center justify-between p-3.5 bg-white rounded-2xl border border-tk-line">
+            <span className="text-sm font-semibold text-tk-muted">
               Page {page} of {totalPages}
             </span>
-
             <div className="flex items-center gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-400 disabled:opacity-30 hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-95"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-400 disabled:opacity-30 hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-95"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              {[
+                { Icon: ChevronLeft, disabled: page === 1, onClick: () => setPage((p) => p - 1), label: "Previous page" },
+                { Icon: ChevronRight, disabled: page === totalPages, onClick: () => setPage((p) => p + 1), label: "Next page" },
+              ].map(({ Icon, disabled, onClick, label }) => (
+                <button
+                  key={label}
+                  disabled={disabled}
+                  onClick={onClick}
+                  aria-label={label}
+                  className="w-9 h-9 rounded-xl border border-tk-line grid place-items-center text-tk-muted disabled:opacity-30
+                    hover:bg-tk-blue hover:border-tk-blue hover:text-white transition-colors active:scale-95"
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
             </div>
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
-      {/* Detail Modal */}
-      {selectedTicket && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
-          >
-            {/* Modal Header */}
-            <div className="bg-indigo-600 text-white p-5 flex items-center justify-between border-b border-indigo-700 flex-shrink-0">
-              <div>
-                <h3 className="text-lg font-black">Ticket Details</h3>
-                <p className="text-indigo-100 text-[8px] mt-0.5 uppercase tracking-wider">
-                  ID: {selectedTicket._id.slice(-8)}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedTicket(null)}
-                className="p-2 hover:bg-indigo-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="overflow-y-auto flex-1 p-5 space-y-4">
-              {/* Ticket Info */}
-              <div className="space-y-3">
+      {/* Details drawer */}
+      <AnimatePresence>
+        {selectedTicket && (
+          <>
+            <motion.div
+              key="scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedTicket(null)}
+              className="fixed inset-0 z-[60] bg-tk-ink/40 backdrop-blur-[2px]"
+            />
+            <motion.aside
+              key="drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Ticket details"
+              initial={reduce ? { opacity: 0 } : { x: "100%" }}
+              animate={reduce ? { opacity: 1 } : { x: 0 }}
+              exit={reduce ? { opacity: 0 } : { x: "100%" }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className="fixed inset-y-0 right-0 z-[70] w-full max-w-[520px] bg-white shadow-2xl flex flex-col"
+            >
+              <div className="shrink-0 px-6 py-5 bg-tk-blue text-white flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Subject
-                      </p>
-                      <p className="text-base font-black text-slate-900">
-                        {selectedTicket.subject}
-                      </p>
-                    </div>
+                  <h3 className="text-lg font-extrabold">Ticket details</h3>
+                  <p className="text-xs text-white/75 mt-0.5 font-medium">ID {selectedTicket._id.slice(-8)}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedTicket(null)}
+                  aria-label="Close"
+                  className="w-9 h-9 grid place-items-center rounded-xl hover:bg-white/15 transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                        Message
-                      </p>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                          {selectedTicket.message}
-                        </p>
-                      </div>
-                    </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <StatusPill status={selectedTicket.status} />
+                  <CategoryPill category={selectedTicket.category} />
+                </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          Category
-                        </p>
-                        <p
-                          className={`inline-block px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${getCategoryColor(selectedTicket.category)}`}
-                        >
-                          {selectedTicket.category.replace(/_/g, " ")}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          From
-                        </p>
-                        <p className="text-sm font-bold text-slate-900">
-                          {selectedTicket.user?.name}
-                        </p>
-                      </div>
-                    </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-tk-muted mb-1">Subject</p>
+                  <p className="text-lg font-bold text-tk-ink">{selectedTicket.subject}</p>
+                </div>
 
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                        Email
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        {selectedTicket.user?.email}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                        Created
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        {new Date(selectedTicket.createdAt).toLocaleString()}
-                      </p>
-                    </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-tk-muted mb-1.5">Message</p>
+                  <div className="bg-tk-bg p-4 rounded-2xl border border-tk-line">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{selectedTicket.message}</p>
                   </div>
+                </div>
 
-                  {/* Status Update Section */}
-                  <div className="border-t border-slate-200 pt-4">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                      Update Status
-                    </p>
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
-                    >
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {[
+                    { Icon: User, term: "From", desc: selectedTicket.user?.name },
+                    { Icon: Mail, term: "Email", desc: selectedTicket.user?.email },
+                    { Icon: CalendarDays, term: "Created", desc: new Date(selectedTicket.createdAt).toLocaleString() },
+                  ].map(({ Icon, term, desc }) => (
+                    <div key={term} className="flex items-start gap-2.5 min-w-0">
+                      <span className="w-8 h-8 shrink-0 rounded-lg bg-tk-blue/10 text-tk-blue grid place-items-center">
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-tk-muted">{term}</dt>
+                        <dd className="font-semibold text-tk-ink break-words">{desc || "—"}</dd>
+                      </div>
+                    </div>
+                  ))}
+                </dl>
+
+                {selectedTicket.adminResponse && (
+                  <div className="bg-tk-teal-soft border border-tk-teal/20 rounded-2xl p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-tk-teal mb-1.5">Previous response</p>
+                    <p className="text-sm text-slate-800 whitespace-pre-wrap">{selectedTicket.adminResponse}</p>
+                    {selectedTicket.respondedAt && (
+                      <p className="text-xs text-tk-teal mt-2 font-medium">
+                        Responded {new Date(selectedTicket.respondedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-4 pt-5 border-t border-tk-line">
+                  <div>
+                    <label htmlFor="ticket-status" className="text-[11px] font-bold uppercase tracking-[0.12em] text-tk-muted mb-1.5 block">
+                      Status
+                    </label>
+                    <select id="ticket-status" value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className={fieldCls}>
                       <option value="open">Open</option>
-                      <option value="in_progress">In Progress</option>
+                      <option value="in_progress">In progress</option>
                       <option value="resolved">Resolved</option>
                       <option value="closed">Closed</option>
                     </select>
                   </div>
 
-                  {/* Admin Response */}
-                  {selectedTicket.adminResponse && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-3.5">
-                      <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-1.5">
-                        Previous Response
-                      </p>
-                      <p className="text-sm text-green-900 whitespace-pre-wrap mb-1.5">
-                        {selectedTicket.adminResponse}
-                      </p>
-                      <p className="text-[7px] text-green-600">
-                        Responded:{" "}
-                        {new Date(selectedTicket.respondedAt).toLocaleString()}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Response Form */}
-                  <div className="space-y-2.5 border-t border-slate-200 pt-4">
-                    <div>
-                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block">
-                        Your Response
-                      </label>
-                      <textarea
-                        value={responseText}
-                        onChange={(e) => setResponseText(e.target.value)}
-                        placeholder="Type your response here..."
-                        rows="4"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-sm resize-none"
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleRespond}
-                      disabled={responding || !responseText.trim()}
-                      className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      {responding ? "Updating..." : "Update Ticket"}
-                    </button>
+                  <div>
+                    <label htmlFor="ticket-response" className="text-[11px] font-bold uppercase tracking-[0.12em] text-tk-muted mb-1.5 block">
+                      Your response
+                    </label>
+                    <textarea
+                      id="ticket-response"
+                      value={responseText}
+                      onChange={(e) => setResponseText(e.target.value)}
+                      placeholder="Type your response here…"
+                      rows={5}
+                      className={fieldCls + " resize-none"}
+                    />
                   </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+                </div>
+              </div>
+
+              <div className="shrink-0 p-5 border-t border-tk-line bg-white">
+                <motion.button
+                  whileTap={reduce ? undefined : { scale: 0.98 }}
+                  onClick={handleRespond}
+                  disabled={responding || !responseText.trim()}
+                  className="w-full h-12 rounded-xl bg-tk-blue text-white font-bold text-sm flex items-center justify-center gap-2
+                    hover:bg-tk-action transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                    focus:outline-none focus-visible:ring-4 focus-visible:ring-tk-blue/30"
+                >
+                  <Send className="w-4 h-4" />
+                  {responding ? "Updating…" : "Update ticket"}
+                </motion.button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

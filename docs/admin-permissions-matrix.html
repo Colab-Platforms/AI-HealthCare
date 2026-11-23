@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Permissions Matrix</title>
+<style>
+  :root{--bg:#F5F8F6;--card:#fff;--ink:#0B1B3A;--muted:#5b6785;--line:#e3eaf0;--blue:#205AE2;--teal:#1E8E76;--mint:#E7F4F0;--warn:#F5C24C;--err:#D9544D}
+  @media (prefers-color-scheme:dark){:root{--bg:#0B0D10;--card:#121B33;--ink:#F3F5FA;--muted:#8C97B8;--line:#24304f;--mint:#10302b}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "DM Sans",system-ui,Segoe UI,sans-serif;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 16px 80px}
+  h1{font-size:28px;margin:8px 0 4px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:36px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--teal)}
+  p.sub{color:var(--muted);margin:0 0 16px}
+  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:18px 0}
+  .role{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .role h3{margin:0 0 4px;font-size:17px}
+  .role p{margin:0;color:var(--muted);font-size:14px}
+  .role .badge{display:inline-block;margin-top:10px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .r-admin{border-top:4px solid var(--blue)}.r-take{border-top:4px solid var(--teal)}.r-super{border-top:4px solid var(--ink)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:7px;font-size:11.5px;font-weight:800;letter-spacing:.02em;margin:2px 3px 2px 0;white-space:nowrap}
+  .VIEW{background:#e8ecf5;color:#33415f}
+  .CREATE{background:#dbeafe;color:#1d4ed8}
+  .EDIT{background:#fff0c2;color:#8a5a00}
+  .REQUEST{background:#E7F4F0;color:#1E8E76}
+  .APPROVE{background:#d7f5e6;color:#0a7a45}
+  .DELETE{background:#fde0de;color:#b3322c}
+  .NO{background:transparent;color:#9aa4bf;border:1px dashed #c2cadf}
+  @media (prefers-color-scheme:dark){.VIEW{background:#232c45;color:#c9d2ee}.CREATE{background:#1b2c5c;color:#9dbcff}.EDIT{background:#3a2f12;color:#f5c24c}.REQUEST{background:#10302b;color:#5DD9A0}.APPROVE{background:#0f3a28;color:#5DD9A0}.DELETE{background:#3a1b1a;color:#ff9a94}.NO{color:#6f7a99;border-color:#34406a}}
+  .tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:16px}
+  table{width:100%;border-collapse:collapse;min-width:860px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:14px}
+  thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  thead th.a{background:var(--blue)}thead th.t{background:var(--teal)}thead th.s{background:#0B1B3A}
+  tbody tr:last-child td{border-bottom:0}
+  tbody th{font-weight:700;width:190px;background:transparent}
+  td small{display:block;color:var(--muted);margin-top:3px;font-size:12px}
+  .note{background:var(--mint);border-left:4px solid var(--teal);padding:12px 16px;border-radius:10px;margin:14px 0;font-size:14px}
+  .warn{background:#fff7e0;border-left:4px solid var(--warn);padding:12px 16px;border-radius:10px;margin:14px 0;font-size:14px;color:#5a4300}
+  @media (prefers-color-scheme:dark){.warn{background:#2f2711;color:#f5d98a}}
+  .quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .qcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .qcard h3{margin:0 0 8px;font-size:16px}
+  .qcard ul{margin:0;padding-left:18px;color:var(--ink)}
+  .qcard li{margin:5px 0;font-size:14px}
+  .yes{color:var(--teal);font-weight:800}.no{color:var(--err);font-weight:800}
+  code{background:var(--line);padding:1px 6px;border-radius:5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Who can do what: Admin, Take Admin, Super Admin</h1>
+  <p class="sub">From the three Take Health admin documents (section 9.3 permission table). Version 1.0, 20 Nov 2026.</p>
+
+  <div class="roles">
+    <div class="role r-admin"><h3>Admin</h3><p>Runs daily work: users, support tickets, report status.</p><span class="badge" style="background:#e5edff;color:#205AE2">Cannot approve anything</span></div>
+    <div class="role r-take"><h3>Take Admin</h3><p>Runs growth: analytics, campaigns, food drafts, management reports.</p><span class="badge" style="background:var(--mint);color:#1E8E76">Cannot approve anything</span></div>
+    <div class="role r-super"><h3>Super Admin</h3><p>Controls the platform: approvals, admins, roles, security, AI settings.</p><span class="badge" style="background:#0B1B3A;color:#fff">Only role that approves</span></div>
+  </div>
+
+  <div class="legend">
+    <span><span class="chip VIEW">VIEW</span> can see it</span>
+    <span><span class="chip CREATE">CREATE</span> can make a draft or new record</span>
+    <span><span class="chip EDIT">EDIT</span> can change it directly (low-risk only)</span>
+    <span><span class="chip REQUEST">REQUEST</span> can ask; nothing changes until a Super Admin approves</span>
+    <span><span class="chip APPROVE">APPROVE</span> can accept or reject requests</span>
+    <span><span class="chip DELETE">DELETE</span> can remove (after approval rules)</span>
+    <span><span class="chip NO">NO ACCESS</span> hidden and blocked</span>
+  </div>
+
+  <h2>1. Quick answer: who can edit or delete</h2>
+  <div class="quick">
+    <div class="qcard">
+      <h3>Edit directly (no approval)</h3>
+      <ul>
+        <li><b>Admin:</b> only support tickets assigned to them (status, reply).</li>
+        <li><b>Take Admin:</b> all permitted support tickets.</li>
+        <li><b>Super Admin:</b> users, regional settings, food database, AI settings, support tickets, system settings. Their own high-risk edits still need a second Super Admin.</li>
+      </ul>
+    </div>
+    <div class="qcard">
+      <h3>Delete</h3>
+      <ul>
+        <li><span class="no">Admin: never directly.</span> Can only <b>request</b> a user or food deletion.</li>
+        <li><span class="no">Take Admin: never directly.</span> Can only <b>request</b> a food or user deletion.</li>
+        <li><span class="yes">Super Admin:</span> can delete after the approval rules. Permanent deletion needs extra confirmation, and a second Super Admin for high-risk items.</li>
+      </ul>
+    </div>
+    <div class="qcard">
+      <h3>Must go through approval</h3>
+      <ul>
+        <li>Correcting a health profile (height, weight, allergies, goals)</li>
+        <li>Blocking or deleting a user</li>
+        <li>Adding, editing or removing a food item</li>
+        <li>Re-processing or correcting a medical report record</li>
+        <li>Sending a notification or campaign to users</li>
+        <li>Changing AI settings, exporting private data</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>2. Full permission table</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Feature</th><th class="a">Admin</th><th class="t">Take Admin</th><th class="s">Super Admin</th></tr></thead>
+    <tbody>
+      <tr><th>Dashboard</th>
+        <td><span class="chip VIEW">VIEW</span><small>own area only</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>business-wide</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>everything</small></td></tr>
+      <tr><th>User list</th>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span><small>request block or delete</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><span class="chip DELETE">DELETE</span></td></tr>
+      <tr><th>Basic user details</th>
+        <td><span class="chip VIEW">VIEW</span><small>email and phone masked</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>email and phone masked</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>all; every reveal is logged</small></td></tr>
+      <tr><th>Health profiles</th>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span><small>goals, diet, allergies, height, weight only; request corrections</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>group totals only</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip APPROVE">APPROVE</span><small>full, with a reason; approves corrections</small></td></tr>
+      <tr><th>Medical records</th>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span><small>status only; no files or lab values; can request re-run</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>metadata only</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip APPROVE">APPROVE</span><small>full only when authorised and logged</small></td></tr>
+      <tr><th>User analytics</th>
+        <td><span class="chip VIEW">VIEW</span><small>limited</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>full, aggregated (groups under 10 hidden)</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>full</small></td></tr>
+      <tr><th>Marketing analytics</th>
+        <td><span class="chip NO">NO ACCESS</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip CREATE">CREATE</span><span class="chip REQUEST">REQUEST</span><small>full</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip APPROVE">APPROVE</span></td></tr>
+      <tr><th>Regional analytics</th>
+        <td><span class="chip VIEW">VIEW</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip CREATE">CREATE</span><small>drafts</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><span class="chip APPROVE">APPROVE</span></td></tr>
+      <tr><th>Food database</th>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span><small>ask to add, fix or remove</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip CREATE">CREATE</span><span class="chip REQUEST">REQUEST</span><small>drafts and requests</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><span class="chip DELETE">DELETE</span><span class="chip APPROVE">APPROVE</span><small>no "Clear All"; bulk delete is high-risk</small></td></tr>
+      <tr><th>Diet plans</th>
+        <td><span class="chip VIEW">VIEW</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span><small>request changes</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip APPROVE">APPROVE</span></td></tr>
+      <tr><th>Notifications and campaigns</th>
+        <td><span class="chip CREATE">CREATE</span><span class="chip REQUEST">REQUEST</span><small>drafts only</small></td>
+        <td><span class="chip CREATE">CREATE</span><span class="chip REQUEST">REQUEST</span><small>full campaigns; sent only after approval</small></td>
+        <td><span class="chip CREATE">CREATE</span><span class="chip APPROVE">APPROVE</span><small>approve and publish</small></td></tr>
+      <tr><th>Support tickets</th>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><small>assigned tickets; can escalate</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><small>all permitted tickets</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><small>full</small></td></tr>
+      <tr><th>Admin management</th>
+        <td><span class="chip NO">NO ACCESS</span></td><td><span class="chip NO">NO ACCESS</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip CREATE">CREATE</span><span class="chip EDIT">EDIT</span><span class="chip DELETE">DELETE</span><small>creating a Super Admin needs a second Super Admin</small></td></tr>
+      <tr><th>Role management</th>
+        <td><span class="chip NO">NO ACCESS</span></td><td><span class="chip NO">NO ACCESS</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip CREATE">CREATE</span><span class="chip EDIT">EDIT</span><span class="chip DELETE">DELETE</span></td></tr>
+      <tr><th>Sensitive edits</th>
+        <td><span class="chip REQUEST">REQUEST</span></td><td><span class="chip REQUEST">REQUEST</span></td>
+        <td><span class="chip APPROVE">APPROVE</span><small>and executes</small></td></tr>
+      <tr><th>Permanent deletion</th>
+        <td><span class="chip REQUEST">REQUEST</span></td><td><span class="chip REQUEST">REQUEST</span></td>
+        <td><span class="chip APPROVE">APPROVE</span><small>executes with extra confirmation</small></td></tr>
+      <tr><th>AI configuration</th>
+        <td><span class="chip VIEW">VIEW</span><small>permitted metrics only</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip REQUEST">REQUEST</span><small>request changes</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><span class="chip APPROVE">APPROVE</span><small>full</small></td></tr>
+      <tr><th>Data export</th>
+        <td><span class="chip REQUEST">REQUEST</span><small>approved, limited, masked</small></td>
+        <td><span class="chip REQUEST">REQUEST</span><small>approved, aggregated only</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip APPROVE">APPROVE</span><small>every export logged</small></td></tr>
+      <tr><th>Audit logs</th>
+        <td><span class="chip VIEW">VIEW</span><small>own activity</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>own and permitted</small></td>
+        <td><span class="chip VIEW">VIEW</span><small>all, with filters</small></td></tr>
+      <tr><th>Approval requests</th>
+        <td><span class="chip CREATE">CREATE</span><span class="chip VIEW">VIEW</span><small>own only</small></td>
+        <td><span class="chip CREATE">CREATE</span><span class="chip VIEW">VIEW</span><small>own only</small></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip APPROVE">APPROVE</span><small>approve, reject or ask for changes</small></td></tr>
+      <tr><th>System configuration</th>
+        <td><span class="chip NO">NO ACCESS</span></td><td><span class="chip NO">NO ACCESS</span></td>
+        <td><span class="chip VIEW">VIEW</span><span class="chip EDIT">EDIT</span><small>security, APIs, retention</small></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>3. Rules that apply to everyone</h2>
+  <div class="note">
+    <b>1.</b> Nobody can approve their own request. &nbsp;
+    <b>2.</b> High-risk actions (deleting users, permissions, security, AI settings, deleting foods) need a <b>second, different Super Admin</b> to confirm. &nbsp;
+    <b>3.</b> If the record changes before approval, the request goes back for a fresh review. &nbsp;
+    <b>4.</b> A failed execution is shown as <i>Execution failed</i>, never as done. &nbsp;
+    <b>5.</b> Every view, request, decision and export is saved in the audit log, which cannot be edited or deleted.
+  </div>
+
+  <h2>4. Where the code is today</h2>
+  <div class="warn">
+    <b>The permission table above is the target.</b> In the code, the new approval and analytics APIs (<code>/api/admin/v1/*</code>) follow it and are enforced on the server.
+    The <b>older admin APIs</b> (<code>/api/admin/*</code>) still let any <code>admin</code> or <code>superadmin</code> edit and delete foods, doctors, diet plans, supplements and deficiency rules
+    directly, with no approval. They are not yet moved onto the approval flow, so an Admin today can do more than the table allows. That migration is still to do.
+  </div>
+</div>
+</body>
+</html>

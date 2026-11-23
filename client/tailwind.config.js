@@ -10,6 +10,25 @@ export default {
         "landing-accent-bg": "#D5E6DF",
         "landing-light-bg": "#FAF9F8",
         "landing-text": "#2C2A28",
+        // Take Health app brand (matches the Flutter theme) used by the admin panels
+        tk: {
+          blue: "#205AE2",
+          action: "#4B81FF",
+          teal: "#1E8E76",
+          "teal-soft": "#E7F4F0",
+          mint: "#5DD9A0",
+          warn: "#F5C24C",
+          error: "#D9544D",
+          info: "#57B4E8",
+          bg: "#F5F8F6",
+          ink: "#0B1B3A",
+          muted: "#6B7794",
+          line: "#E3EAF0",
+          "dark-bg": "#0B0D10",
+          "dark-card": "#121B33",
+          "dark-text": "#F3F5FA",
+          "dark-muted": "#8C97B8",
+        },
         primary: {
           50: "#ecfdf5",
           100: "#d1fae5",
@@ -91,6 +110,7 @@ export default {
         "slide-down": "slideDown 0.3s ease-out",
       },
       keyframes: {
+        tkshimmer: { "100%": { transform: "translateX(100%)" } },
         fadeIn: {
           "0%": {
             opacity: "0",

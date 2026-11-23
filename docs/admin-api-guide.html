@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Take Health Admin API Guide</title>
+<style>
+  :root{--bg:#F5F8F6;--card:#fff;--text:#14213d;--muted:#5b6785;--line:#e3e9ee;--blue:#205AE2;--teal:#1E8E76;--mint:#E7F4F0;--warn:#b7791f;--err:#D9544D;--code:#0f172a;--codetext:#e2e8f0}
+  @media (prefers-color-scheme:dark){:root{--bg:#0B0D10;--card:#121B33;--text:#F3F5FA;--muted:#8C97B8;--line:#24304f;--mint:#10302b}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:24px 16px 80px}
+  h1{font-size:26px;margin:8px 0}
+  h2{font-size:20px;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--teal)}
+  p.sub{color:var(--muted);margin:0 0 16px}
+  nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+  nav a{padding:6px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--blue);text-decoration:none;font-weight:600;font-size:14px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 0;font-size:13px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700}
+  .BUILT{background:var(--mint);color:var(--teal)}
+  .LEGACY{background:#fff4d6;color:var(--warn)}
+  .PLANNED{background:#e8ecf5;color:#4a5578}
+  @media (prefers-color-scheme:dark){.LEGACY{background:#3a2f12;color:#f5c24c}.PLANNED{background:#232c45;color:#aab4d4}}
+  .flow{display:flex;flex-direction:column;gap:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+  .step{display:flex;gap:12px;align-items:flex-start;padding:8px 0}
+  .step b.n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:13px}
+  .step small{display:block;color:var(--muted)}
+  .who{font-size:12px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.04em}
+  details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 0;overflow:hidden}
+  summary{cursor:pointer;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  .m{font-weight:800;font-size:12px;padding:3px 8px;border-radius:6px;color:#fff}
+  .GET{background:#1E8E76}.POST{background:#205AE2}.PATCH{background:#b7791f}.PUT{background:#b7791f}.DELETE{background:#D9544D}
+  .path{font-family:ui-monospace,Consolas,monospace;font-weight:600;word-break:break-all}
+  .desc{color:var(--muted);flex-basis:100%;font-size:14px}
+  .body{padding:0 16px 16px;border-top:1px solid var(--line)}
+  .body h4{margin:14px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  pre{background:var(--code);color:var(--codetext);padding:12px 14px;border-radius:10px;overflow:auto;font-size:13px;line-height:1.5;margin:0}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--teal);color:#fff;font-size:13px}
+  td code{font-family:ui-monospace,Consolas,monospace;font-size:13px;word-break:break-all}
+  .note{background:var(--mint);border-left:4px solid var(--teal);padding:10px 14px;border-radius:8px;margin:12px 0}
+  .scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Take Health: Admin API Guide</h1>
+  <p class="sub">Click any endpoint to see what it does, the request, the response and the flow. Base URL: <code>/api/admin/v1</code>. Every call needs the header <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+  <div class="legend">
+    <span><span class="tag BUILT">BUILT</span> works in code now</span>
+    <span><span class="tag LEGACY">LEGACY</span> old API, applies changes immediately</span>
+    <span><span class="tag PLANNED">PLANNED</span> not built yet</span>
+  </div>
+  <nav>
+    <a href="#flow">Approval flow</a>
+    <a href="#admin">Admin panel</a>
+    <a href="#take">Take Admin panel</a>
+    <a href="#super">Super Admin panel</a>
+    <a href="#errors">Errors</a>
+  </nav>
+
+  <h2 id="flow">1. How the approval flow works (the core idea)</h2>
+  <div class="note">An Admin or Take Admin never changes sensitive data directly. They send a <b>request</b>. Only the Super Admin can approve it. The real record changes only after approval.</div>
+  <div class="flow">
+    <div class="step"><b class="n">1</b><div><span class="who">Admin / Take Admin</span>Sends <code>POST /requests</code> with module, record id, new value and a reason.<small>Server saves the old value and sets status <b>pending_approval</b>. The real data is unchanged.</small></div></div>
+    <div class="step"><b class="n">2</b><div><span class="who">Super Admin</span>Opens <code>GET /requests?status=pending_approval</code> then <code>GET /requests/:id</code>.<small>Sees old value and new value side by side, who asked, and why.</small></div></div>
+    <div class="step"><b class="n">3</b><div><span class="who">Super Admin</span>Chooses one: <b>Approve</b>, <b>Reject</b> (reason required) or <b>Request changes</b>.</div></div>
+    <div class="step"><b class="n">4</b><div><span class="who">Server checks</span>Approver is not the requester. Record has not changed since the request. High-risk actions need a second, different Super Admin.</div></div>
+    <div class="step"><b class="n">5</b><div><span class="who">Server executes</span>Updates the real record and sets status <b>executed</b>. If the update fails the status is <b>execution_failed</b>, never "done".</div></div>
+    <div class="step"><b class="n">6</b><div><span class="who">Everyone</span>Every step is saved in the audit log (<code>GET /audit-logs</code>). The requester sees the final status in "My Requests".</div></div>
+  </div>
+  <p><b>Statuses:</b> pending_approval, under_review, changes_requested, approved, rejected, executed, execution_failed, cancelled.</p>
+  <p><b>Example:</b> a user's height is saved as 15 cm. Admin A requests 150 cm with the reason "user confirmed, ticket #1042". Super Admin approves. The profile now shows 150 cm and the audit log has the whole history.</p>
+
+  <h2 id="admin">2. Admin panel (<code>/admin</code>, role <code>admin</code>)</h2>
+  <p class="sub">Daily work: users, support, report status. Can view what the job needs, and send requests for sensitive changes.</p>
+
+  <details>
+    <summary><span class="m GET">GET</span><span class="path">/me/permissions</span><span class="tag BUILT">BUILT</span><span class="desc">What this role is allowed to do. Used to build the left menu.</span></summary>
+    <div class="body"><h4>Response</h4><pre>{
+  "role": "admin",
+  "permissions": {
+    "users": ["VIEW", "REQUEST"],
+    "health_profiles": ["VIEW", "REQUEST"],
+    "food_database": ["VIEW", "REQUEST"],
+    "support_tickets": ["VIEW", "EDIT"],
+    "approvals": ["CREATE", "VIEW"],
+    "audit_logs": ["VIEW"]
+  }
+}</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m POST">POST</span><span class="path">/requests</span><span class="tag BUILT">BUILT</span><span class="desc">Create a change request: fix a health profile, block a user, add/fix/remove a food item.</span></summary>
+    <div class="body">
+      <h4>Request body</h4><pre>{
+  "module": "health_profiles",
+  "recordId": "665f1c2e9b1d4a0012ab34cd",
+  "action": "edit",
+  "newValue": { "height": 150 },
+  "reason": "User confirmed by chat, ticket #1042",
+  "priority": "normal"
+}</pre>
+      <h4>Response</h4><pre>{
+  "_id": "6660aa11bb22cc33dd44ee55",
+  "requesterRole": "admin",
+  "module": "health_profiles",
+  "action": "edit",
+  "oldValue": { "height": 15, "weight": 72 },
+  "newValue": { "height": 150 },
+  "reason": "User confirmed by chat, ticket #1042",
+  "priority": "normal",
+  "highRisk": false,
+  "status": "pending_approval",
+  "executionStatus": "not_run",
+  "submittedAt": "2026-11-23T10:30:00.000Z"
+}</pre>
+      <h4>Possible errors</h4><pre>400 Reason must be at least 10 characters
+400 Module not approvable: &lt;module&gt;
+403 Role cannot raise requests for &lt;module&gt;
+404 Record not found</pre>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="m GET">GET</span><span class="path">/requests</span><span class="tag BUILT">BUILT</span><span class="desc">"My Requests": list of the requests you sent. Filters: status, module, page, limit.</span></summary>
+    <div class="body"><h4>Response</h4><pre>{
+  "items": [
+    {
+      "_id": "6660aa11bb22cc33dd44ee55",
+      "requesterId": { "name": "Admin A", "role": "admin" },
+      "module": "health_profiles",
+      "action": "edit",
+      "status": "pending_approval",
+      "submittedAt": "2026-11-23T10:30:00.000Z"
+    }
+  ],
+  "total": 1, "page": 1, "limit": 20
+}</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m GET">GET</span><span class="path">/requests/:id</span><span class="tag BUILT">BUILT</span><span class="desc">One request with old value, new value and the full history.</span></summary>
+    <div class="body"><h4>Response</h4><pre>{
+  "_id": "6660aa11...", "status": "executed",
+  "oldValue": { "height": 15 }, "newValue": { "height": 150 },
+  "history": [
+    { "toStatus": "pending_approval", "byRole": "admin",      "comment": "Submitted" },
+    { "toStatus": "approved",         "byRole": "superadmin", "comment": "Verified with user" },
+    { "toStatus": "executed",         "byRole": "system",     "comment": "Executed" }
+  ]
+}</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m POST">POST</span><span class="path">/requests/:id/cancel</span><span class="tag BUILT">BUILT</span><span class="desc">Cancel your own request while it is still pending.</span></summary>
+    <div class="body"><h4>Response</h4><pre>{ "_id": "6660aa11...", "status": "cancelled" }</pre>
+    <h4>Errors</h4><pre>403 Only the requester can cancel
+409 Request can no longer be cancelled</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m GET">GET</span><span class="path">/audit-logs</span><span class="tag BUILT">BUILT</span><span class="desc">"My Activity": your own history. Filters: module, action, result, from, to.</span></summary>
+    <div class="body"><h4>Response</h4><pre>{
+  "items": [
+    { "actorRole": "admin", "action": "request:edit", "module": "health_profiles",
+      "oldValue": { "height": 15 }, "newValue": { "height": 150 },
+      "reason": "User confirmed by chat, ticket #1042",
+      "result": "pending", "at": "2026-11-23T10:30:00.000Z" }
+  ],
+  "total": 1, "page": 1, "limit": 50
+}</pre></div>
+  </details>
+
+  <h4 style="margin-top:24px">Other APIs this panel uses (old APIs, base <code>/api/admin</code>)</h4>
+  <div class="scroll"><table>
+    <tr><th>Screen</th><th>Endpoint</th><th>Status</th><th>Note</th></tr>
+    <tr><td>Dashboard</td><td><code>GET /stats</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Totals</td></tr>
+    <tr><td>Engagement (DAU, WAU, MAU)</td><td><code>activityRoutes</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Feature usage, returning users</td></tr>
+    <tr><td>Users list</td><td><code>GET /users</code>, <code>/users/filter/advanced</code>, <code>/users/:id</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Email and phone must be masked</td></tr>
+    <tr><td>Medical records (status)</td><td><code>GET /reports</code>, <code>/reports/users/unique</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Must hide report file and lab values</td></tr>
+    <tr><td>Food (view)</td><td><code>GET /food-cache</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Edits go through requests</td></tr>
+    <tr><td>Diet plans (view)</td><td><code>GET /diet-plans</code></td><td><span class="tag LEGACY">LEGACY</span></td><td></td></tr>
+    <tr><td>Support tickets</td><td><code>supportRoutes</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Admin edits assigned tickets directly</td></tr>
+    <tr><td>Export request</td><td><code>POST /v1/exports</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Masked export only</td></tr>
+  </table></div>
+
+  <h2 id="take">3. Take Admin panel (<code>/take-admin</code>, role <code>takeadmin</code>)</h2>
+  <p class="sub">Business growth: analytics, campaigns and food drafts. Sees group totals only, never one patient's clinical data. Groups smaller than 10 users are hidden.</p>
+  <div class="note">Take Admin uses the same request APIs as Admin: <code>POST /requests</code>, <code>GET /requests</code>, <code>GET /requests/:id</code>, <code>POST /requests/:id/cancel</code>, <code>GET /audit-logs</code> and <code>GET /me/permissions</code>. See section 2 for request and response. The difference is what they send:</div>
+
+  <details>
+    <summary><span class="m POST">POST</span><span class="path">/requests</span> (food draft)<span class="tag BUILT">BUILT</span><span class="desc">Add, fix or delete a food item. Super Admin approves before it is published.</span></summary>
+    <div class="body"><h4>Request body: add a food</h4><pre>{
+  "module": "food_database",
+  "action": "create",
+  "newValue": { "name": "Bajra Rotla", "state": "Gujarat", "calories": 120 },
+  "reason": "Missing Gujarati food, source: IFCT 2017"
+}</pre>
+    <h4>Response</h4><pre>{ "module": "food_database", "action": "create", "status": "pending_approval", "highRisk": false }</pre>
+    <h4>Delete a food</h4><pre>{ "module": "food_database", "action": "delete", "recordId": "&lt;food id&gt;", "reason": "Duplicate item" }
+-> response has "highRisk": true, "priority": "high" (needs two Super Admins)</pre></div>
+  </details>
+
+  <h4 style="margin-top:24px">Analytics and campaign APIs (to be built)</h4>
+  <div class="scroll"><table>
+    <tr><th>Screen</th><th>Endpoint</th><th>Status</th><th>What it will return</th></tr>
+    <tr><td>Platform analytics</td><td><code>GET /v1/analytics/platform</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Total users, new users, DAU/WAU/MAU, retention, churn</td></tr>
+    <tr><td>Marketing</td><td><code>GET /v1/analytics/marketing</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Sign-up sources, funnel (needs source tracking first)</td></tr>
+    <tr><td>User behaviour</td><td><code>GET /v1/analytics/behaviour</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Groups: new, at risk, used once, inactive</td></tr>
+    <tr><td>Feature usage</td><td><code>GET /v1/analytics/features</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Users per feature</td></tr>
+    <tr><td>Regional</td><td><code>GET /v1/analytics/regional</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>By state/city/cuisine (state is not stored on the profile yet)</td></tr>
+    <tr><td>Campaigns</td><td><code>GET/POST /v1/campaigns</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Draft, submit for approval, results</td></tr>
+    <tr><td>Reports / Power BI</td><td><code>GET /v1/reports/*</code></td><td><span class="tag PLANNED">PLANNED</span></td><td>Read-only analytics views</td></tr>
+    <tr><td>Food view</td><td><code>GET /food-cache</code></td><td><span class="tag LEGACY">LEGACY</span></td><td>Currently blocked for this role; access must be widened</td></tr>
+  </table></div>
+
+  <h2 id="super">4. Super Admin panel (<code>/super-admin</code>, role <code>superadmin</code>)</h2>
+  <p class="sub">Controls everything: approves or rejects requests, manages admins, sees all audit logs.</p>
+
+  <details>
+    <summary><span class="m GET">GET</span><span class="path">/requests?status=pending_approval</span><span class="tag BUILT">BUILT</span><span class="desc">Approval Center list: every request from every admin (oldest first by your sort).</span></summary>
+    <div class="body"><h4>Response</h4><pre>{
+  "items": [
+    { "_id": "6660aa11...", "requesterId": { "name": "Admin A", "role": "admin" },
+      "module": "health_profiles", "action": "edit", "priority": "normal",
+      "status": "pending_approval", "submittedAt": "2026-11-23T10:30:00.000Z" },
+    { "_id": "6660bb22...", "requesterId": { "name": "Take Admin B", "role": "takeadmin" },
+      "module": "food_database", "action": "delete", "priority": "high",
+      "highRisk": true, "status": "pending_approval" }
+  ],
+  "total": 2, "page": 1, "limit": 20
+}</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m POST">POST</span><span class="path">/requests/:id/approve</span><span class="tag BUILT">BUILT</span><span class="desc">Approve and run the change.</span></summary>
+    <div class="body">
+      <h4>Request body</h4><pre>{ "comment": "Verified with user" }</pre>
+      <h4>Response (normal request)</h4><pre>{
+  "status": "executed",
+  "decision": "approved",
+  "decidedAt": "2026-11-23T11:15:00.000Z",
+  "executionStatus": "success",
+  "executedAt": "2026-11-23T11:15:01.000Z"
+}</pre>
+      <h4>Response (high-risk, first approval)</h4><pre>{ "status": "under_review", "highRisk": true }
+A different Super Admin must call approve again to confirm.</pre>
+      <h4>Errors</h4><pre>403 Cannot approve your own request
+403 A different Super Admin must confirm high-risk actions
+409 Request is not awaiting a decision
+409 Record changed since the request was made; sent back for fresh review
+500 Approved but execution failed: &lt;reason&gt;   (status = execution_failed)</pre>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="m POST">POST</span><span class="path">/requests/:id/reject</span><span class="tag BUILT">BUILT</span><span class="desc">Reject. A reason is required. Data stays unchanged.</span></summary>
+    <div class="body"><h4>Request body</h4><pre>{ "comment": "No document supports this height" }</pre>
+    <h4>Response</h4><pre>{ "status": "rejected", "decision": "rejected", "decisionReason": "No document supports this height" }</pre>
+    <h4>Errors</h4><pre>400 Rejection requires a reason
+403 Cannot decide your own request</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m POST">POST</span><span class="path">/requests/:id/request-changes</span><span class="tag BUILT">BUILT</span><span class="desc">Ask the requester for more information.</span></summary>
+    <div class="body"><h4>Request body</h4><pre>{ "comment": "Attach the ticket screenshot" }</pre>
+    <h4>Response</h4><pre>{ "status": "changes_requested", "decisionReason": "Attach the ticket screenshot" }</pre></div>
+  </details>
+
+  <details>
+    <summary><span class="m GET">GET</span><span class="path">/audit-logs</span><span class="tag BUILT">BUILT</span><span class="desc">Permanent history of everything, all admins. Filters: module, action, actorRole, result, from, to. Cannot be edited or deleted.</span></summary>
+    <div class="body"><h4>Response</h4><pre>{
+  "items": [
+    { "actorRole": "superadmin", "action": "execute", "module": "health_profiles",
+      "oldValue": { "height": 15 }, "newValue": { "height": 150 },
+      "requestId": "6660aa11...", "approverId": "665e...s001",
+      "result": "success", "at": "2026-11-23T11:15:01.000Z" },
+    { "actorRole": "admin", "action": "blocked:EDIT", "module": "users",
+      "result": "blocked", "at": "2026-11-23T09:02:10.000Z" }
+  ],
+  "total": 2, "page": 1, "limit": 50
+}</pre></div>
+  </details>
+
+  <h4 style="margin-top:24px">Other APIs this panel uses</h4>
+  <div class="scroll"><table>
+    <tr><th>Screen</th><th>Endpoint (base <code>/api/admin</code>)</th><th>Status</th></tr>
+    <tr><td>Executive dashboard</td><td><code>GET /stats</code>, <code>/usage/summary</code>, <code>/usage/budget</code></td><td><span class="tag LEGACY">LEGACY</span></td></tr>
+    <tr><td>AI usage and cost</td><td><code>GET /usage/cost-over-time</code>, <code>/usage/by-feature</code>, <code>/usage/by-model</code>, <code>/usage/by-user</code>, <code>/usage/logs</code>, <code>/usage/cache-stats</code></td><td><span class="tag LEGACY">LEGACY</span></td></tr>
+    <tr><td>Users</td><td><code>PATCH /users/:id/status</code>, <code>/users/:id/role</code>, <code>DELETE /users/:id</code>, <code>POST /users/:id/impersonate</code></td><td><span class="tag LEGACY">LEGACY</span> (delete should use approval; impersonate should be restricted)</td></tr>
+    <tr><td>Subscriptions</td><td><code>GET /subscriptions</code>, <code>/subscriptions/payments</code>, <code>/subscriptions/revenue</code>, <code>PATCH /subscriptions/:userId/override</code></td><td><span class="tag LEGACY">LEGACY</span></td></tr>
+    <tr><td>Food, diet plans, doctors, supplements, deficiency rules</td><td><code>/food-cache</code>, <code>/diet-plans</code>, <code>/doctors</code>, <code>/supplements</code>, <code>/deficiency-rules</code></td><td><span class="tag LEGACY">LEGACY</span></td></tr>
+    <tr><td>App version</td><td><code>GET /app-version</code>, <code>POST /app-version/push</code></td><td><span class="tag LEGACY">LEGACY</span></td></tr>
+    <tr><td>Admin management</td><td><code>/v1/admins</code></td><td><span class="tag PLANNED">PLANNED</span></td></tr>
+    <tr><td>Roles and permissions</td><td><code>/v1/roles</code></td><td><span class="tag PLANNED">PLANNED</span></td></tr>
+    <tr><td>Health and medical governance</td><td><code>/v1/governance/*</code></td><td><span class="tag PLANNED">PLANNED</span></td></tr>
+    <tr><td>Data and consent, exports</td><td><code>/v1/consent</code>, <code>/v1/exports</code></td><td><span class="tag PLANNED">PLANNED</span></td></tr>
+    <tr><td>Security center</td><td><code>/v1/security/*</code></td><td><span class="tag PLANNED">PLANNED</span></td></tr>
+    <tr><td>Monitoring alerts</td><td><code>/v1/monitoring/alerts</code></td><td><span class="tag PLANNED">PLANNED</span></td></tr>
+  </table></div>
+
+  <h2 id="errors">5. Common errors (all APIs)</h2>
+  <table>
+    <tr><th>Code</th><th>Meaning</th></tr>
+    <tr><td>401</td><td>Not logged in, or the token is invalid or expired</td></tr>
+    <tr><td>403</td><td>Your role is not allowed to do this (also saved in the audit log as <code>blocked</code>)</td></tr>
+    <tr><td>400</td><td>Missing or invalid input</td></tr>
+    <tr><td>404</td><td>Record or request not found</td></tr>
+    <tr><td>409</td><td>Wrong state, for example approving a request that was already decided</td></tr>
+    <tr><td>500</td><td>Server error, or approved but the update failed</td></tr>
+  </table>
+  <p class="sub" style="margin-top:16px">Example responses are written from the code, not from live calls, so real IDs and timestamps will differ.</p>
+</div>
+</body>
+</html>

@@ -7,6 +7,7 @@ const ApprovalRequest = require('../models/ApprovalRequest');
 const AdminAuditLog = require('../models/AdminAuditLog');
 const engine = require('../services/approvalEngine');
 const { MATRIX } = require('../config/permissions');
+const analytics = require('../controllers/adminAnalyticsController');
 
 // Shared by Admin, Take Admin and Super Admin panels. Role checks run here, on the server.
 router.use(protect, authorize('admin', 'takeadmin', 'superadmin'));
@@ -64,6 +65,13 @@ router.post('/requests/:id/cancel', enforce('approvals', 'CREATE'), wrap((req) =
 router.post('/requests/:id/approve', enforce('approvals', 'APPROVE'), wrap((req) => engine.approve(req.user, req.params.id, req.body.comment, req)));
 router.post('/requests/:id/reject', enforce('approvals', 'APPROVE'), wrap((req) => engine.reject(req.user, req.params.id, req.body.comment, req)));
 router.post('/requests/:id/request-changes', enforce('approvals', 'APPROVE'), wrap((req) => engine.requestChanges(req.user, req.params.id, req.body.comment, req)));
+
+// ---- Analytics (group totals only; groups under 10 users are hidden) -----
+router.get('/analytics/platform', enforce('user_analytics', 'VIEW'), analytics.platform);
+router.get('/analytics/retention', enforce('user_analytics', 'VIEW'), analytics.retention);
+router.get('/analytics/features', enforce('user_analytics', 'VIEW'), analytics.features);
+router.get('/analytics/regional', enforce('regional', 'VIEW'), analytics.regional);
+router.get('/analytics/behaviour', enforce('user_analytics', 'VIEW'), analytics.behaviour);
 
 // ---- Audit log (read-only; there is deliberately no write/delete route) --
 router.get('/audit-logs', enforce('audit_logs', 'VIEW'), wrap(async (req) => {

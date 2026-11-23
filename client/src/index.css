@@ -1083,3 +1083,36 @@ textarea {
 .animate-waitlist-toast-in {
   animation: waitlist-toast-in 0.35s ease-out;
 }
+/* ---------------------------------------------------------------------------
+   Admin panels (Admin / Take Admin / Super Admin)
+   DM Sans with even-width ("tabular") lining digits so numbers in KPI cards,
+   tables and counters line up and don't jitter while they count up.
+   Scoped to .tk-admin so the patient app keeps its own typography.
+   ------------------------------------------------------------------------- */
+.tk-admin,
+.tk-admin button,
+.tk-admin input,
+.tk-admin select,
+.tk-admin textarea {
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.tk-admin {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.tk-admin h1,
+.tk-admin h2,
+.tk-admin h3 {
+  letter-spacing: -0.015em;
+}
+.tk-admin table {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+/* Recharts axis labels and tooltips are SVG/HTML outside normal inheritance in places */
+.tk-admin .recharts-text,
+.tk-admin .recharts-tooltip-wrapper {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+}

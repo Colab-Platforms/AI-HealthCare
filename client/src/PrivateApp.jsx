@@ -14,6 +14,15 @@ import NotFound from "./pages/NotFound";
 import ConsentModal from "./components/ConsentModal";
 
 const Layout = lazy(() => import("./components/Layout"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const TakeAdminLayout = lazy(() => import("./components/admin/TakeAdminLayout"));
+const TakeAdminDashboard = lazy(() => import("./pages/takeadmin/TakeAdminDashboard"));
+const TakeAdminRegional = lazy(() => import("./pages/takeadmin/TakeAdminRegional"));
+const TakeAdminBehaviour = lazy(() => import("./pages/takeadmin/TakeAdminBehaviour"));
+const TakeAdminFeatures = lazy(() => import("./pages/takeadmin/TakeAdminFeatures"));
+const TakeAdminMarketing = lazy(() => import("./pages/takeadmin/TakeAdminMarketing"));
+const MyRequests = lazy(() => import("./pages/adminshared/MyRequests"));
+const MyActivity = lazy(() => import("./pages/adminshared/MyActivity"));
 const DashboardEnhanced = lazy(() => import("./pages/DashboardEnhanced"));
 const UploadReport = lazy(() => import("./pages/UploadReport"));
 const ReportAnalysisMobile = lazy(() => import("./pages/ReportAnalysisMobile"));
@@ -110,6 +119,18 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
+  return children;
+};
+
+// Role-based gate for the three-level admin panels. The server enforces permissions too;
+// this only keeps people out of screens that are not theirs.
+const RoleRoute = ({ roles, children }) => {
+  const { user, loading, hasRole } = useAuth();
+  if (loading) return <GenericSkeleton />;
+  if (!user) return <Navigate to="/waitlist" replace />;
+  if (!hasRole(...roles)) {
+    return <Navigate to={user.role === "admin" ? "/admin" : "/dashboard"} replace />;
+  }
   return children;
 };
 
@@ -638,14 +659,86 @@ export default function PrivateApp() {
                 }
               />
 
+              {/* Take Admin Routes */}
+              <Route
+                path="/take-admin"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <TakeAdminDashboard />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/take-admin/regional"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <TakeAdminRegional />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/take-admin/behaviour"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <TakeAdminBehaviour />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/take-admin/features"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <TakeAdminFeatures />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/take-admin/marketing"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <TakeAdminMarketing />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/take-admin/requests"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <MyRequests />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/take-admin/activity"
+                element={
+                  <RoleRoute roles={["takeadmin", "superadmin"]}>
+                    <TakeAdminLayout>
+                      <MyActivity />
+                    </TakeAdminLayout>
+                  </RoleRoute>
+                }
+              />
+
               {/* Admin Routes */}
               <Route
                 path="/admin"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminDashboard />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -653,9 +746,9 @@ export default function PrivateApp() {
                 path="/admin/users"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminUsers />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -663,9 +756,9 @@ export default function PrivateApp() {
                 path="/admin/reports"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminReports />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -673,9 +766,9 @@ export default function PrivateApp() {
                 path="/admin/food-cache"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminFoodCache />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -683,9 +776,9 @@ export default function PrivateApp() {
                 path="/admin/activity"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminActivity />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -693,9 +786,9 @@ export default function PrivateApp() {
                 path="/admin/support"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminSupport />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -703,9 +796,9 @@ export default function PrivateApp() {
                 path="/admin/app-version"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminAppVersion />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -713,9 +806,9 @@ export default function PrivateApp() {
                 path="/admin/shop"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminShop />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -723,9 +816,9 @@ export default function PrivateApp() {
                 path="/admin/shop/orders/:orderId"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminShopOrder />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -733,9 +826,9 @@ export default function PrivateApp() {
                 path="/admin/shop/customers/:userId"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminShopCustomer />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -743,9 +836,9 @@ export default function PrivateApp() {
                 path="/admin/ai-usage"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminAIUsage />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -753,9 +846,9 @@ export default function PrivateApp() {
                 path="/admin/creator-applications"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminCreatorApplications />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               />
@@ -763,9 +856,9 @@ export default function PrivateApp() {
                 path="/admin/subscriptions"
                 element={
                   <AdminRoute>
-                    <Layout isAdmin>
+                    <AdminLayout>
                       <AdminSubscriptions />
-                    </Layout>
+                    </AdminLayout>
                   </AdminRoute>
                 }
               /> */}

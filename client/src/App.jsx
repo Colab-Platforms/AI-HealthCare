@@ -37,12 +37,13 @@ const CreatorApply = lazy(() => import("./pages/CreatorApply"));
 const PrivateApp = lazy(() => import("./PrivateApp"));
 
 export default function App() {
-  const { user, isAdmin, isDoctor } = useAuth();
+  const { user, isAdmin, isTakeAdmin, isDoctor } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const getLoginRedirect = () => {
     if (!user) return <Navigate to="/waitlist" replace />;
+    if (isTakeAdmin()) return <Navigate to="/take-admin" />;
     if (isAdmin()) return <Navigate to="/admin" />;
     return <Navigate to="/dashboard" />;
   };

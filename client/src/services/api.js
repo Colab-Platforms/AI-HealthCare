@@ -549,3 +549,28 @@ export const shopAdminService = {
   customer: (userId) => api.get(`shop/admin/customers/${userId}`),
   refunds: (status) => api.get('shop/admin/refunds', { params: { status } }),
 };
+
+
+// Three-level admin API (Admin / Take Admin / Super Admin): analytics, approval requests, audit log.
+export const adminV1Service = {
+  permissions: () => api.get('admin/v1/me/permissions'),
+
+  // Analytics (group totals only; groups under 10 users are hidden by the server)
+  platform: (params) => api.get('admin/v1/analytics/platform', { params }),
+  retention: () => api.get('admin/v1/analytics/retention'),
+  features: (params) => api.get('admin/v1/analytics/features', { params }),
+  regional: (params) => api.get('admin/v1/analytics/regional', { params }),
+  behaviour: () => api.get('admin/v1/analytics/behaviour'),
+
+  // Approval requests
+  createRequest: (body) => api.post('admin/v1/requests', body),
+  listRequests: (params) => api.get('admin/v1/requests', { params }),
+  getRequest: (id) => api.get(`admin/v1/requests/${id}`),
+  cancelRequest: (id) => api.post(`admin/v1/requests/${id}/cancel`),
+  approveRequest: (id, comment) => api.post(`admin/v1/requests/${id}/approve`, { comment }),
+  rejectRequest: (id, comment) => api.post(`admin/v1/requests/${id}/reject`, { comment }),
+  requestChanges: (id, comment) => api.post(`admin/v1/requests/${id}/request-changes`, { comment }),
+
+  // Audit log
+  auditLogs: (params) => api.get('admin/v1/audit-logs', { params }),
+};

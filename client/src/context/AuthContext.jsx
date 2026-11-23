@@ -293,6 +293,8 @@ export const AuthProvider = ({ children }) => {
   // Role checks
   const isAdmin = () => user?.role === 'admin' || user?.role === 'superadmin';
   const isSuperAdmin = () => user?.role === 'superadmin';
+  const isTakeAdmin = () => user?.role === 'takeadmin';
+  const hasRole = (...roles) => roles.includes(user?.role);
   const isDoctor = () => user?.role === 'doctor';
   const isPatient = () => user?.role === 'patient' || user?.role === 'client';
   const isDoctorApproved = () => user?.doctorProfile?.approvalStatus === 'approved';
@@ -312,6 +314,8 @@ export const AuthProvider = ({ children }) => {
       loading,
       isAdmin,
       isSuperAdmin,
+      isTakeAdmin,
+      hasRole,
       isDoctor,
       isPatient,
       isDoctorApproved,
