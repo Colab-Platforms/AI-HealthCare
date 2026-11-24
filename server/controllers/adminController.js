@@ -217,9 +217,12 @@ exports.deleteUser = async (req, res) => {
       HealthReport.deleteMany({ user: id }),
       WearableData.deleteMany({ user: id }),
       Doctor.findOneAndDelete({ user: id }),
-      ChatHistory.deleteMany({ user: id }),
+      ChatHistory.deleteMany({ userId: id }), // ChatHistory's field is `userId` (was `user`: matched nothing)
       Appointment.deleteMany({ patient: id }),
-      Otp.deleteMany({ email: user?.email })
+      Otp.deleteMany({ email: user?.email }),
+      require('../modules/health-profile/models/HealthProfile').deleteMany({ user: id }),
+      require('../modules/health-profile/models/ProfileHistory').deleteMany({ user: id }),
+      require('../modules/ai-coach/models/CoachState').deleteMany({ user: id }),
     ]);
 
     res.json({ message: 'User and all related data deleted successfully' });

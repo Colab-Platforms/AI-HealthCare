@@ -65,9 +65,21 @@ mongoose.set('autoCreate', false);
   console.log(dryRun ? 'MODE: DRY RUN (nothing is created or dropped)\n' : 'MODE: APPLY (creates missing indexes, DROPS ones not in the schema)\n');
 
   // Register every model so mongoose.models is fully populated.
-  const modelsDir = path.join(__dirname, '..', 'models');
-  for (const file of fs.readdirSync(modelsDir).filter(f => f.endsWith('.js'))) {
-    require(path.join(modelsDir, file));
+  // Also modules/*/models (shop, health-profile): their indexes (e.g. the unique
+  // HealthProfile.user that stops duplicate profiles) were never synced, and
+  // with autoIndex off in production nothing else creates them.
+  const modelsDirs = [path.join(__dirname, '..', 'models')];
+  const modulesDir = path.join(__dirname, '..', 'modules');
+  if (fs.existsSync(modulesDir)) {
+    for (const mod of fs.readdirSync(modulesDir)) {
+      const dir = path.join(modulesDir, mod, 'models');
+      if (fs.existsSync(dir)) modelsDirs.push(dir);
+    }
+  }
+  for (const dir of modelsDirs) {
+    for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) {
+      require(path.join(dir, file));
+    }
   }
 
   let failed = 0;

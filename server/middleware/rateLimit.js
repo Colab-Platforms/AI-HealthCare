@@ -139,6 +139,20 @@ const supplementWriteLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please slow down.' },
 });
 
+// Health profile writes (/api/health-profile). Every accepted write adds
+// ProfileHistory rows, so a runaway client loop would bloat the audit log.
+// 30/min per user is far above real editing.
+const profileWriteLimiter = rateLimit({
+  store: buildStore('profile-write'),
+  ...REDIS_STORE_OPTIONS,
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+});
+
 // Vault upload signing / finalizing / share creation. Per-user, Redis-backed:
 // each sign call mints Cloudinary upload credentials and each finalize makes a
 // Cloudinary Admin API call, so a runaway client retry loop costs real quota.
@@ -217,4 +231,4 @@ const shopWebhookLimiter = rateLimit({
   message: { code: 'RATE_LIMITED', message: 'Too many requests.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter, shopWriteLimiter, shopCheckoutLimiter, shopWebhookLimiter };
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, wearableSyncLimiter, sensitiveActionLimiter, supplementWriteLimiter, profileWriteLimiter, vaultWriteLimiter, publicShareLimiter, offerRedeemLimiter, shopWriteLimiter, shopCheckoutLimiter, shopWebhookLimiter };

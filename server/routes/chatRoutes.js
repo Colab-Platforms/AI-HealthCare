@@ -21,6 +21,7 @@ const { getSleepGoal } = require('../utils/sleepGoal');
 const { getStepGoal } = require('../utils/stepGoal');
 const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
 const UsageLog = require('../models/UsageLog');
+const { handleCoachV2 } = require('../modules/ai-coach/chatHandler');
 
 // Caps so a heavy user's history can't silently balloon the prompt.
 const MAX_LISTED_ITEMS = 8;
@@ -69,6 +70,16 @@ router.post('/chat', protect, requireHealthConsent, aiLimiter, requireFeature('a
       });
       finishStream();
     };
+
+    // AI Coach V2 (AI_COACH_V2=true). Same SSE format; returns false when off
+    // or when it fails before sending anything, and the chat below runs as before.
+    const sendEvent = (event) => {
+      if (!res.writableEnded) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        if (res.flush) res.flush();
+      }
+    };
+    if (await handleCoachV2({ req, sendToken, sendEvent, finishStream })) return;
 
     // Static role/formatting instructions — identical for every user and every
     // request, so this is marked as its own cache_control block below. That

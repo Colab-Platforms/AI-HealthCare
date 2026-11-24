@@ -36,6 +36,8 @@ const ORPHAN_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 const CLOUDINARY_FOLDER = 'takehealth/invoices';
 const DELIVERY_TYPE = 'authenticated';    // private: only reachable through a signed URL
 
+const EMAIL_DONE = ['sent', 'skipped'];  // nothing left to send
+
 const log = (stage, data = {}) => console.log(`[Invoice] ${stage}`, JSON.stringify(data));
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -163,7 +165,7 @@ async function processInvoice(invoiceId) {
         {
             _id: invoiceId,
             $and: [
-                { $or: [{ pdfStatus: { $ne: 'uploaded' } }, { emailStatus: { $ne: 'sent' } }] },
+                { $or: [{ pdfStatus: { $ne: 'uploaded' } }, { emailStatus: { $nin: EMAIL_DONE } }] },
                 { $or: [{ lockedUntil: null }, { lockedUntil: { $lt: now } }] },
             ],
         },
@@ -188,7 +190,7 @@ async function processInvoice(invoiceId) {
         }
 
         // Email goes out even if the upload failed — the user needs it more than the archive does.
-        if (invoice.emailStatus !== 'sent') {
+        if (!EMAIL_DONE.includes(invoice.emailStatus)) {
             const result = await emailService.sendEmail({
                 to: invoice.billedTo.email,
                 subject: `Your ${COMPANY_INFO.brand} invoice ${invoice.invoiceNumber}`,
@@ -257,7 +259,7 @@ async function sweepInvoices({ limit = 20 } = {}) {
     const now = Date.now();
     const due = await Invoice.find({
         $and: [
-            { $or: [{ pdfStatus: { $ne: 'uploaded' } }, { emailStatus: { $ne: 'sent' } }] },
+            { $or: [{ pdfStatus: { $ne: 'uploaded' } }, { emailStatus: { $nin: EMAIL_DONE } }] },
             { $or: [{ lockedUntil: null }, { lockedUntil: { $lt: new Date(now) } }] },
         ],
         attempts: { $lt: MAX_ATTEMPTS },
