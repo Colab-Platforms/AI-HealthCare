@@ -55,6 +55,10 @@ const usageLogSchema = new mongoose.Schema({
         'range_insight_nutrition', 'range_insight_fitness',
         'range_insight_recovery', 'range_insight_smoking',
         'range_insight_alcohol', 'range_insight_hydration',
+        // Food DB meal scan: small "name + grams" call (services/foodDb/foodIdentifier.js)
+        'food_identification',
+        // Food DB meal scan: per-item estimate for foods not in the DB (services/foodDb/aiFoodFallback.js)
+        'food_ai_fallback',
         // Retained for historical usage records
         'daily_insight_activity', 'daily_insight_medical', 'other'
     ]},

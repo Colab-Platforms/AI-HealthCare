@@ -10,6 +10,8 @@
     "test": "node --test \"tests/**/*.test.js\"",
     "sync-indexes": "node scripts/syncIndexes.js",
     "migrate:heart-rate": "node scripts/migrateHeartRateSamples.js",
+    "food:build-seed": "node scripts/foodDb/buildFoodSeed.js",
+    "food:import": "node scripts/foodDb/importFoodSeed.js",
     "test:alcohol": "node tests/alcoholLog.test.js"
   },
   "dependencies": {
