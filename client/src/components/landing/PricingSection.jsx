@@ -6,7 +6,7 @@ const plans = [
   {
     id: "free",
     name: "Free",
-    tagline: "Ideal for getting started with your health journey — free for life.",
+    tagline: "Ideal for getting started with your health journey  free for life.",
     price: 0,
     billingCycle: "monthly", // matches the Free Plan doc's stored billingCycle; irrelevant since price is 0
     icon: Star,

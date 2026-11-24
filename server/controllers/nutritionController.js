@@ -19,6 +19,7 @@ const { calculateDietQualityScore } = require('../services/dietQualityScoreServi
 const { buildNutritionInsight, buildNotLoggedInsight } = require('../services/nutritionInsightService');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getNutritionTrends: getNutritionTrendsData, NutritionTrendInputError } = require('../services/nutritionTrendService');
+const foodController = require('./foodController');
 const profileSync = require('../modules/health-profile/services/profileSync');
 
 // HealthGoal -> HealthProfile facts. A missing/zero/invalid value is left out
@@ -2443,6 +2444,14 @@ exports.quickFoodCheck = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Please provide a food description or image'
+      });
+    }
+
+    // ─── Food DB scan (docs/FOOD_DB_FLOW.md): small identify call → DB nutrition → rule warnings ───
+    // Off unless FOOD_DB_SCAN_ENABLED=true; the AI-only flow below stays unchanged until then.
+    if (foodController.isFoodDbScanEnabled()) {
+      return foodController.handleDbQuickCheck(req, res, {
+        imageInputs, foodDescription, additionalContext, quantity, analysisTier, searchKey,
       });
     }
 
