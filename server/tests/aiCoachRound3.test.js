@@ -160,6 +160,9 @@ test('paused request: a NEW request of its own wins (no resume), goes fast, paus
     assert.equal(r.timings.droppedPausedRequest, true);
     assert.equal(r.timings.path, 'fast');
     assert.ok(!(await t.memory.load(USER2)).pendingRequest);
+    // Issue #5: it is still in the app's chat history, so the model is told it was dropped.
+    assert.match(r.dataBlock, /earlier request \("aaj dinner mein kya khaun\?"\) was put on hold[\s\S]*answer ONLY the latest message/);
+    assert.doesNotMatch(r.dataBlock, /Earlier the user asked/); // not resumed
 });
 
 test('paused request: a short answer ("thoda better hai ab") resumes it', async () => {
@@ -167,6 +170,7 @@ test('paused request: a short answer ("thoda better hai ab") resumes it', async 
     await t.memory.save(USER2, { pendingRequest: { message: 'aaj dinner mein kya khaun?', topics: ['nutrition'], specialists: ['nutrition'], askedAt: ago(0.01) } });
     const r = await t.send('thoda better hai ab');
     assert.equal(r.classification.resumeRequest, 'aaj dinner mein kya khaun?');
+    assert.doesNotMatch(r.dataBlock, /was put on hold/); // resumed, not dropped
 });
 
 test('a pending request dated days in the future (time-shifted test run) is ignored; 1 min ahead (clock skew) is kept', async () => {

@@ -63,9 +63,26 @@ test('slow path when the classifier must decide first: no topic matched, a meal 
 
 test('reconcile: a red flag only the classifier caught is appended to the same reply', async () => {
     const t = setup({ classification: C({ redFlag: true }) });
-    const r = await t.send('gym today? my left arm feels heavy and weird');
+    // Not in the code rules (jaw / shoulder + sweating): only the classifier knows.
+    const r = await t.send('gym today? my jaw and shoulder feel weird and I am sweating a lot');
     assert.match(r.text, /^Go light today\.\n\n[\s\S]*112/);
     assert.match(r.final.reply, /112/);
+});
+
+test('exercise chest pain (option B): coaching + fixed caution line; the classifier\'s red flag does not override it', async () => {
+    const t = setup({ classification: C({ redFlag: true, language: 'hinglish' }) });
+    const r = await t.send('chest workout ke baad chest mein dard hai, kal gym jaun?');
+    assert.match(r.text, /^Go light today\.\n\nDhyan rahe: .*112/);
+    assert.doesNotMatch(r.text, /Ye symptom serious ho sakta hai/); // not the emergency reply
+    assert.match(r.final.reply, /112/);
+    assert.match(r.final.dataBlock, /chest pain or breathlessness after exercise/);
+});
+
+test('red flag in the code rules gets the safety reply BEFORE any coaching (left arm, 24 Nov staging miss)', async () => {
+    const t = setup({ classification: C({ redFlag: false }) });
+    const r = await t.send('gym today? my left arm feels heavy and weird');
+    assert.doesNotMatch(r.text, /Go light today/);
+    assert.match(r.text, /112/);
 });
 
 test('reconcile: a volunteered fact is asked about at the end (one question), and "haan" then saves it', async () => {

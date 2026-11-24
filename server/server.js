@@ -413,6 +413,7 @@ try {
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
     { path: "/api/shop", module: "./modules/shop/routes" }, // Shop: catalog, cart, Fastrr catalog pull
     { path: "/api/health-profile", module: "./modules/health-profile/routes" }, // Health profile (master copy of health facts)
+    { path: "/api/coach", module: "./modules/ai-coach/routes" }, // AI coach extras (opener); chat stays on POST /api/chat
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots
     { path: "/api", module: "./routes/chatRoutes" }, // 🔚 Generic catch-all goes last
   ];

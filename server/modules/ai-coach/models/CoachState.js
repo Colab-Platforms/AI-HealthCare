@@ -17,7 +17,15 @@ const coachStateSchema = new mongoose.Schema({
         field: String,
         question: String,
         askedAt: Date,
+        followUp: Boolean, // "what exactly?" after a vague "yes": asked once, never again
     },
+    // Language of the conversation, for short messages with no language of
+    // their own ("ok", "haan", "72"): they keep the language already in use.
+    lastLanguage: { type: String, enum: ['english', 'hindi', 'hinglish'] },
+    // Chat opener (one message when the user opens the coach screen): at most
+    // once a day, and not on a day the user already chatted.
+    lastChatAt: Date,
+    lastOpenerAt: Date,
     // A list, not a Map: field names contain dots ("fitness.limitations") and
     // Mongoose Map keys can't.
     askedLog: {

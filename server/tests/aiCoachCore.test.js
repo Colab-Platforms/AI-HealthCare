@@ -37,6 +37,76 @@ test('safety: emergencies in English and Hinglish are flagged', () => {
     }
 });
 
+// Staging 24 Nov: the first two were caught only by the classifier (or not at all).
+test('safety: Hinglish chest / breathing / left-arm phrasings are caught by code rules', () => {
+    for (const msg of [
+        'chest mein dard ho raha hai aur saans phool rahi hai',
+        'chest me bahut dard hai',
+        'chhaati mein dabav sa lag raha hai',
+        'seene me tez dard ho raha',
+        'dil mein dard ho raha hai',
+        'saans phool rahi hai',
+        'saans nahi le pa raha',
+        'dum ghut raha hai',
+        'left haath sunn ho raha hai',
+        'baaye haath mein jhunjhuni ho rahi hai',
+        'my left arm is numb',
+        'pain going down my left arm',
+        'left arm feels heavy',
+    ]) {
+        const r = checkMessage(msg);
+        assert.equal(r.flagged, true, msg);
+        assert.equal(r.kind, EMERGENCY, msg);
+    }
+});
+
+// Product decision 24 Nov (option B): exercise-related chest pain / breathlessness
+// gets coaching + a caution line; a severe sign in the same message stays an emergency.
+test('safety: chest pain / breathlessness after exercise is a caution, not an emergency', () => {
+    for (const msg of [
+        'chest workout ke baad chest mein dard hai',
+        'gym ke baad saans phool rahi hai',
+        'after my run I have chest pain',
+    ]) {
+        const r = checkMessage(msg);
+        assert.equal(r.flagged, false, msg);
+        assert.equal(r.caution?.kind, 'exercise', msg);
+    }
+});
+
+test('safety: exercise + a severe sign stays an emergency', () => {
+    for (const msg of [
+        'gym ke baad chest mein bahut dard hai',
+        'workout ke baad chest pain aur left haath sunn',
+        'after running chest pain and sweating a lot',
+        'gym ke baad saans phool rahi hai, aaram karne pe bhi',
+        'chest workout ke baad chest mein dard aur chakkar aa raha',
+    ]) {
+        const r = checkMessage(msg);
+        assert.equal(r.flagged, true, msg);
+        assert.equal(r.kind, EMERGENCY, msg);
+    }
+});
+
+test('safety: caution line names 112 and the warning signs, in the user\'s language', () => {
+    const { exerciseCautionLine } = require('../modules/ai-coach/safety/safetyRules');
+    assert.match(exerciseCautionLine({ language: 'hinglish' }), /baaye haath.*112/);
+    assert.match(exerciseCautionLine({ language: 'english' }), /left arm.*112/);
+});
+
+test('safety: acidity, habitual breathlessness after exercise and negations are not flagged', () => {
+    for (const msg of [
+        'chest mein dard nahi hai',
+        'left haath sunn nahi hai',
+        'seene mein jalan ho rahi hai',
+        'pait mein jalan hai',
+        'running ke baad saans phoolti hai',
+        'left haath se likhta hoon',
+    ]) {
+        assert.equal(checkMessage(msg).flagged, false, msg);
+    }
+});
+
 test('safety: self-harm is a mental-health crisis, never negation-filtered', () => {
     for (const msg of ["I don't want to live anymore", 'I want to kill myself', 'marna chahta hoon', 'jeena nahi chahti']) {
         const r = checkMessage(msg);

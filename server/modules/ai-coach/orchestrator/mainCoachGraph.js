@@ -16,14 +16,14 @@
 //   { type: 'profile_confirm', facts }
 
 const { Annotation, StateGraph, START, END } = require('@langchain/langgraph');
-const { checkMessage, safetyReply } = require('../safety/safetyRules');
+const { checkMessage, safetyReply, exerciseCautionLine } = require('../safety/safetyRules');
 const { detectInjection, scopeReply } = require('../safety/scopeGuard');
 const { classify, keywordFallback } = require('./intentClassifier');
 const { pickGapQuestion } = require('./gapEngine');
-const { pickCheckIn, isRelated } = require('./checkIns');
+const { pickCheckIn, isRelated, inQuestionCooldown, LAST_ASK_KEY } = require('./checkIns');
 const { runSpecialists } = require('../specialists');
 const { buildRequest, streamAnswer } = require('../response/responseGenerator');
-const { triageFacts, isYes, isNo, isUndo, describeFact, UNDO_WINDOW_MS, CONFIRM_WINDOW_MS } = require('../tools/profileTools');
+const { triageFacts, isYes, isNo, isUndo, describeFact, specifyQuestion, specifyQuestionAlt, SPECIFIC_TARGETS, UNDO_WINDOW_MS, CONFIRM_WINDOW_MS } = require('../tools/profileTools');
 const { parseSymptomReply } = require('../tools/symptomTools');
 const { applyRoutingRules, mergeRouting } = require('./routingRules');
 const { parseLookbackDays, mergeLookback, LONG_RANGE_DAYS } = require('../context/lookback');
@@ -59,6 +59,8 @@ const State = Annotation.Root({
     mealOffer: last(),        // offer "add this meal pattern to your 7-day plan?" at the end
     savedMealPatterns: last(),
     foodToConfirm: last(),    // "I ate X": estimated entry shown for "save?"
+    specify: last(),          // "yes" without what to a profile question: ask "what exactly?" once
+    droppedRequest: last(),   // a paused request the user moved on from: the answer must not cover it
     loggedFood: last(),       // entry saved this turn after "yes"
 
     reply: last(),
@@ -97,7 +99,7 @@ const FACT_HINT_RE = /\b(i take|i'm taking|i am taking|le raha|le rahi|leta hoon
 const SYMPTOM_HINT_RE = /\b(stomach|acidity|acid reflux|heartburn|gas|bloat\w*|nausea|vomit\w*|diarrh\w*|loose motion|constipat\w*|indigestion|pait|pet dard|jalan|ulti|dast|kabz|pain|ache|dard|sore throat|fever|bukhar|cold|cough|khansi|zukam|dizz\w*|chakkar|headache|migraine|injur\w*|sprain|swelling|sujan)\b/i;
 // "what should I eat", "meal do", "supplement lu?": the answer would recommend food.
 const RECOMMEND_RE = /\b(what (should|can|to) (i )?eat|suggest|recommend|meal (generate|plan|do|bana\w*|chahiye)|diet plan|plan (do|bana\w*)|kya khaun|kya khau|kya khana chahiye|kya khaana|supplements?|vitamins?|should i take|kaun sa khana)\b/i;
-const HINGLISH_HINT = /\b(hai|hain|kya|mujhe|mera|meri|mere|aaj|kal|nahi|kaise|karna|karu|kar|bhai|thoda|kyu|kyun)\b/i;
+const { detectLanguage, resolveLanguage } = require('./language');
 
 // The rule-based stand-in used on the fast path until the classifier's
 // answer arrives (applied in `reconcile`).
@@ -109,7 +111,7 @@ function provisionalClassification(message, ruled, lookbackDays) {
         topics: ruled.topics.length ? ruled.topics : ['general'],
         specialists: ruled.specialists,
         lookbackDays,
-        language: HINGLISH_HINT.test(message) ? 'hinglish' : 'english',
+        language: detectLanguage(message), // may be 'neutral': resolved in prepare
         recommendsFoodOrSupplement: RECOMMEND_RE.test(message),
         source: 'rules',
         provisional: true,
@@ -262,10 +264,19 @@ async function prepare(state, config) {
         };
     }
 
+    // ONE language for this message, used by every node (fixed lines, gap
+    // questions, the answer). Short neutral messages keep the chat's language.
+    const language = resolveLanguage({
+        message: state.message,
+        classifierLanguage: classification.source === 'model' ? classification.language : null,
+        previous: coachState.lastLanguage,
+    });
+    classification = { ...classification, language };
+
     return {
         now,
         startedAt,
-        coachState: { ...coachState, pendingQuestion },
+        coachState: { ...coachState, pendingQuestion, lastLanguage: language },
         profileContext,
         classification,
         safety: { ...safety, injection },
@@ -275,6 +286,9 @@ async function prepare(state, config) {
         targets,
         freshness,
         activeSymptoms,
+        // Still in the chat history the app sends, so the answer model would
+        // answer it too (staging 24 Nov) unless told it was dropped.
+        droppedRequest: newRequest ? String(pausedRaw.message).slice(0, 300) : null,
         prefetched: { lookbackDays: parsedLookback, results: prefetchedResults },
         timings: { ...timings, prepareMs: Date.now() - startedAt },
     };
@@ -296,7 +310,9 @@ const N = {
 };
 
 function routeAfterPrepare(state) {
-    if (state.safety.flagged || state.classification.redFlag) return N.safety;
+    // An exercise caution (code rules already checked for severe signs) is not
+    // turned back into an emergency by the classifier: product decision 24 Nov.
+    if (state.safety.flagged || (state.classification.redFlag && !state.safety.caution)) return N.safety;
     if (state.safety.injection) return N.scope;
     if (!state.action && state.classification.intent === 'off_topic' && !state.classification.facts?.length) return N.scope;
     if (!state.action && ['greeting', 'thanks'].includes(state.classification.intent)) return N.quick;
@@ -389,7 +405,19 @@ async function actionsNode(state, config) {
     }
 
     // Facts in this message (none when it was only "yes" / "no" / "undo").
-    const { saveNow, confirm } = state.action ? { saveNow: [], confirm: [] } : triageFacts(state.classification.facts, cs.pendingQuestion);
+    const { saveNow, confirm, vague } = state.action ? { saveNow: [], confirm: [], vague: [] } : triageFacts(state.classification.facts, cs.pendingQuestion);
+
+    // "haan" / "yes, an injury" to "any injury?" says nothing usable: save
+    // nothing and ask once what exactly. A second vague answer is let go.
+    const pq = cs.pendingQuestion;
+    let specify = null;
+    if (!state.action && pq && !pq.followUp && SPECIFIC_TARGETS.includes(pq.field)
+        && !saveNow.some((f) => f.target === pq.field)
+        && (vague.some((f) => f.target === pq.field) || isYes(state.message))) {
+        const hi = ['hinglish', 'hindi'].includes(state.classification.language);
+        const question = specifyQuestion(pq.field, hi);
+        if (question) specify = { field: pq.field, question, questionAlt: specifyQuestionAlt(pq.field, hi), blocking: false, followUp: true };
+    }
     if (saveNow.length) savedFacts = savedFacts.concat(await d.profileTools.saveFacts(state.userId, saveNow));
     if (savedFacts.length) {
         next.lastSaved = { items: savedFacts, savedAt: state.now };
@@ -421,7 +449,7 @@ async function actionsNode(state, config) {
 
     return {
         savedFacts, confirmFacts: confirm, undoneCount, nextCoachState: next, profileContext, symptomChanges, activeSymptoms,
-        savedMealPatterns, loggedFood, foodToConfirm, targets, usage: usageNow,
+        savedMealPatterns, loggedFood, foodToConfirm, targets, usage: usageNow, specify,
     };
 }
 
@@ -430,6 +458,11 @@ async function actionsNode(state, config) {
 async function gapNode(state, config) {
     // Don't stack a question on undo / yes / no, or on top of "save this?" / "log this meal?".
     if (state.action || state.confirmFacts?.length || state.foodToConfirm) return { gapQuestion: null, checkIn: null, mealOffer: false };
+    // The user said "yes" without what: this turn's one question is "what exactly?".
+    if (state.specify) {
+        const s = state.specify;
+        return { gapQuestion: s, checkIn: { kind: 'gap', key: s.field, blocking: false, question: s.question, instruction: null, followUp: true }, mealOffer: false };
+    }
     const resuming = Boolean(state.classification.resumeRequest);
     let gapQuestion = pickGapQuestion(state.classification, state.profileContext, state.nextCoachState.askedLog, state.now);
     // Resuming a paused request: never block a second time (that would loop
@@ -454,6 +487,7 @@ async function gapNode(state, config) {
     const c = state.classification;
     const stomachIssue = (state.activeSymptoms || []).some((s) => isRelated(s, ['nutrition']));
     const mealOffer = Boolean(deps(config).mealPrefTools) && c.recommendsFoodOrSupplement && (c.topics || []).includes('nutrition')
+        && !inQuestionCooldown(state.nextCoachState.askedLog, state.now)
         && !stomachIssue && !checkIn?.blocking;
     // One question per reply: the plan offer replaces a non-blocking check-in.
     const finalCheckIn = mealOffer && checkIn && !checkIn.blocking ? null : checkIn;
@@ -549,6 +583,8 @@ async function respondNode(state, config) {
         foodToConfirm: state.foodToConfirm || null,
         loggedFood: state.loggedFood || null,
         foodLogDeclined: state.action === 'food_log_no',
+        exerciseCaution: Boolean(state.safety && state.safety.caution),
+        droppedRequest: state.droppedRequest || null,
     });
     const t0 = Date.now();
     let firstTokenAt = null;
@@ -561,15 +597,23 @@ async function respondNode(state, config) {
             write(config, { type: 'token', text });
         },
     });
+    // Fixed text, not model text: the "when to call 112" line must always be there.
+    if (state.safety && state.safety.caution) {
+        const line = `\n\n${exerciseCautionLine({ language: state.classification.language })}`;
+        write(config, { type: 'token', text: line });
+        out.text += line;
+    }
 
     // Remember what was asked: snooze it, and read the next message as its answer.
     const next = { ...state.nextCoachState };
     if (state.mealOffer) next.pendingMealPref = { replyText: out.text.slice(0, 4000), askedAt: state.now };
     const ci = state.checkIn;
+    // Any non-blocking question starts the 30-min question cooldown (issue #6).
+    if (state.mealOffer || (ci && !ci.blocking)) next.askedLog = { ...(next.askedLog || {}), [LAST_ASK_KEY]: state.now };
     if (ci) {
         next.askedLog = { ...(next.askedLog || {}), [ci.key]: state.now };
-        if (ci.kind === 'gap') next.pendingQuestion = { field: ci.key, question: ci.question, askedAt: state.now };
-        if (ci.kind === 'weight') next.pendingQuestion = { field: 'body.weightKg', question: 'Would you like to update your weight?', askedAt: state.now };
+        if (ci.kind === 'gap') next.pendingQuestion = { field: ci.key, question: ci.question, askedAt: state.now, ...(ci.followUp ? { followUp: true } : {}) };
+        if (ci.kind === 'weight') next.pendingQuestion = { field: 'body.weightKg', question: ci.question?.en || 'What is your weight now?', askedAt: state.now };
         if (ci.blocking) {
             next.pendingRequest = {
                 message: String(state.message).slice(0, 2000),
@@ -616,12 +660,16 @@ async function reconcileNode(state, config) {
         return {};
     }
     const waited = Date.now() - t0;
-    const hi = ['hinglish', 'hindi'].includes(full.language);
+    // Same resolution as prepare, now with the classifier's view; the answer
+    // already streamed in state.classification.language, so neutral keeps it.
+    const lang = resolveLanguage({ message: state.message, classifierLanguage: full.language, previous: state.classification.language });
+    full = { ...full, language: lang };
+    const hi = ['hinglish', 'hindi'].includes(lang);
     const next = { ...state.nextCoachState };
     let appended = '';
     const say = (text) => { appended += text; write(config, { type: 'token', text }); };
 
-    if (full.redFlag && !state.safety.flagged) say(`\n\n${safetyReply('emergency', { language: full.language })}`);
+    if (full.redFlag && !state.safety.flagged && !state.safety.caution) say(`\n\n${safetyReply('emergency', { language: full.language })}`);
 
     let symptomChanges = state.symptomChanges || [];
     const done = new Set((state.classification.symptomUpdates || []).map((u) => String(u.name).toLowerCase()));
@@ -635,6 +683,7 @@ async function reconcileNode(state, config) {
         const { confirm } = triageFacts(full.facts, null);
         if (confirm.length) {
             next.pendingConfirm = { facts: confirm, askedAt: state.now };
+            next.askedLog = { ...(next.askedLog || {}), [LAST_ASK_KEY]: state.now }; // counts as a question (issue #6)
             write(config, { type: 'profile_confirm', facts: confirm.map(({ target, value, none }) => ({ target, value, none })) });
             const what = confirm.map((f) => describeFact(f, hi)).join('; ');
             say(hi
@@ -656,7 +705,8 @@ async function reconcileNode(state, config) {
 async function persistNode(state, config) {
     const d = deps(config);
     try {
-        await d.coachStateRepo.save(state.userId, state.nextCoachState || state.coachState || {});
+        const toSave = { ...(state.nextCoachState || state.coachState || {}), lastChatAt: state.now || new Date() };
+        await d.coachStateRepo.save(state.userId, toSave);
     } catch (err) {
         d.logger.error(`[AICoach] coach state not saved: ${err.message}`);
     }

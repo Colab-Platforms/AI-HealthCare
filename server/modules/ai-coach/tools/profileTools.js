@@ -40,18 +40,57 @@ const isYes = (m) => YES_RE.test(m);
 const isNo = (m) => NO_RE.test(m);
 const isUndo = (m) => UNDO_RE.test(m) && String(m).trim().split(/\s+/).length <= MAX_UNDO_WORDS;
 
+// Fields where only a specific value is useful ("knee pain", "Metformin",
+// "Peanut"). "yes" / "an injury" / "unspecified" there is junk (staging 24 Nov:
+// "haan" saved fitness.limitations = "Yes, has an injury or pain (unspecified)").
+const SPECIFIC_TARGETS = [...LIST_TARGETS, 'fitness.limitations'];
+const VAGUE_RE = new RegExp('^(' + [
+    'yes|yeah|yep|haan|haa|ha|han|ji|true|hai|ha hai|haan hai',
+    'some|kuch|thoda|unknown|unspecified|not sure|pata nahi|maybe|shayad|n/?a|other',
+    '.*\\bunspecified\\b.*|.*\\bunknown\\b.*|yes\\b.*',
+    'has (an? |some )?(injury|pain|allergy|allergies|condition|medicine|medication|surgery)s?\\b.*',
+    '((an?|some|old|purani|purana|minor|chhoti|ek|thodi|thoda) )?(injury|injuries|pain|dard|chot|allergy|allergies|condition|bimari|medicine|medicines|medication|dawai|dawa|tablet|goli|surgery|operation)',
+].join('|') + ')$', 'i');
+
+function isVague(f) {
+    if (!f || f.none || !SPECIFIC_TARGETS.includes(f.target)) return false;
+    const v = String(f.value || '').trim().replace(/[.!]+$/, '').toLowerCase();
+    return !v || VAGUE_RE.test(v);
+}
+
+// The follow-up when the user said "yes" but not what. One thing only.
+const SPECIFY_QUESTIONS = {
+    'fitness.limitations': { en: 'Where exactly is the injury or pain?', hi: 'Injury ya dard exactly kahan hai?' },
+    medications: { en: 'What is the name of the medicine?', hi: 'Dawai ka naam kya hai?' },
+    allergies: { en: 'What are you allergic to?', hi: 'Kis cheez se allergy hai?' },
+    conditions: { en: 'Which health condition is it?', hi: 'Kaunsi health condition hai?' },
+    surgeries: { en: 'Which surgery was it?', hi: 'Kaunsi surgery hui thi?' },
+    familyHistory: { en: 'Which condition runs in your family?', hi: 'Family mein kaunsi bimari hai?' },
+};
+function specifyQuestion(field, hinglish = false) {
+    const q = SPECIFY_QUESTIONS[field];
+    return q ? (hinglish ? q.hi : q.en) : null;
+}
+function specifyQuestionAlt(field, hinglish = false) {
+    const q = SPECIFY_QUESTIONS[field];
+    return q ? (hinglish ? q.en : q.hi) : null;
+}
+
 // Which facts to save now, which to confirm first, which to ignore.
+// `vague`: facts that need a specific value first (never saved or confirmed).
 function triageFacts(facts = [], pendingQuestion = null) {
     const saveNow = [];
     const confirm = [];
+    const vague = [];
     const answered = pendingQuestion ? (ANSWERS[pendingQuestion.field] || [pendingQuestion.field]) : [];
     for (const f of facts) {
         if (!f || f.statedAs === 'question' || f.statedAs === 'hypothetical' || f.aboutSelf === false) continue;
+        if (isVague(f)) { vague.push(f); continue; }
         if (!f.none && !String(f.value || '').trim()) continue;
         if (f.statedAs === 'answer' && answered.includes(f.target)) saveNow.push(f);
         else confirm.push(f);
     }
-    return { saveNow, confirm };
+    return { saveNow, confirm, vague };
 }
 
 // "Metformin 500mg" -> { name: 'Metformin', dose: '500mg' }
@@ -191,6 +230,10 @@ function createProfileTools({
 module.exports = {
     createProfileTools,
     triageFacts,
+    isVague,
+    specifyQuestion,
+    specifyQuestionAlt,
+    SPECIFIC_TARGETS,
     describeFact,
     splitDose,
     listItem,

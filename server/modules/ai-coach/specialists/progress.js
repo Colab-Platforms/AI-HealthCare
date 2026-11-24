@@ -123,11 +123,25 @@ async function progressSpecialist({ userId, now = new Date(), deps = {} }) {
     ].filter(Boolean);
     if (todayParts.length) findings.push(`Today so far (day not over, not in the weekly numbers): ${todayParts.join(', ')}.`);
 
+    // Same numbers as structured data, for code that writes user-facing text
+    // itself (the chat opener) instead of passing findings to the model.
+    const week = (i) => ({
+        stepsAvg: stepAvgs[i], stepDays: weeks[i].steps.length, stepGoalDays: weeks[i].stepGoalDays,
+        sleepAvg: sleepAvgs[i], sleepNights: weeks[i].sleep.length, sleepGoalNights: weeks[i].sleepGoalNights,
+        kcalAvg: kcalAvgs[i], kcalDays: weeks[i].kcal.length, kcalOnTarget: weeks[i].kcalOnTarget,
+        cardioMin: Math.round(weeks[i].cardio), strengthMin: Math.round(weeks[i].strength),
+    });
     return result('progress', {
         findings,
         data_used: ['weekly_steps', 'weekly_sleep', 'weekly_calories', 'weekly_workouts'],
         missing_data: weeks[0].kcal.length ? [] : ['food_logs_this_week'],
         confidence: 'high',
+        summary: {
+            targets: { steps: t.steps || null, sleepHours: t.sleepHours || null, calories: t.calories || null },
+            thisWeek: week(0),
+            lastWeek: week(1),
+            today: { steps: today.steps, kcal: today.kcal },
+        },
     });
 }
 

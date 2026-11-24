@@ -5,7 +5,7 @@
 // In the graph, askedLog is { [field]: Date }; in Mongo it is
 // [{ field, askedAt }] (field names contain dots, which Map keys can't).
 
-const KEYS = ['pendingQuestion', 'pendingConfirm', 'pendingRequest', 'pendingFoodLog', 'pendingMealPref', 'lastSaved'];
+const KEYS = ['pendingQuestion', 'pendingConfirm', 'pendingRequest', 'pendingFoodLog', 'pendingMealPref', 'lastSaved', 'lastLanguage', 'lastChatAt', 'lastOpenerAt'];
 
 function toDoc(state = {}) {
     const doc = {};
@@ -30,6 +30,9 @@ function fromDoc(doc) {
         pendingMealPref: doc.pendingMealPref?.replyText ? doc.pendingMealPref : null,
         pendingFoodLog: doc.pendingFoodLog?.entry ? doc.pendingFoodLog : null,
         lastSaved: doc.lastSaved?.items?.length ? doc.lastSaved : null,
+        lastLanguage: doc.lastLanguage || null,
+        lastChatAt: doc.lastChatAt || null,
+        lastOpenerAt: doc.lastOpenerAt || null,
     };
 }
 
@@ -63,9 +66,16 @@ function createMemoryCoachStateRepo(initial = {}) {
         async save(userId, state) {
             const CoachState = require('../models/CoachState');
             const doc = toDoc(state);
-            const err = new CoachState({ user: userId, ...doc }).validateSync();
+            const model = new CoachState({ user: userId, ...doc });
+            const err = model.validateSync();
             if (err) throw err;
-            store.set(String(userId), JSON.parse(JSON.stringify(doc)));
+            // Store what MongoDB would store: fields not in the schema are
+            // dropped (strict mode), so a field missing from the model fails
+            // tests instead of silently vanishing in production.
+            const stored = model.toObject({ depopulate: true, versionKey: false });
+            delete stored._id;
+            delete stored.user;
+            store.set(String(userId), JSON.parse(JSON.stringify(stored)));
         },
     };
 }

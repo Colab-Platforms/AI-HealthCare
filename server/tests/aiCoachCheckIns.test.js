@@ -82,6 +82,76 @@ test('symptom follow-up (unrelated request): every 2 days until resolved; not wh
     assert.match(pickCheckIn({ ...base, symptoms: [symptom({ startedAt: daysAgo(15) })] }).instruction, /suggest seeing a doctor/);
 });
 
+// Issue #6 (staging 24 Nov): injury, then weight, then weight; a weight
+// question under "pait mein jalan hai".
+test('question cooldown: no non-blocking question within 30 min of the last one; blocking ones still go', () => {
+    const { LAST_ASK_KEY } = require('../modules/ai-coach/orchestrator/checkIns');
+    const base = { classification: cls(), freshness: fresh(), profileContext: profile, targets, now: NOW };
+    const justAsked = { [LAST_ASK_KEY]: new Date(NOW.getTime() - 10 * 60000) };
+    assert.equal(pickCheckIn({ ...base, askedLog: justAsked }), null); // weight held back
+    assert.equal(pickCheckIn({ ...base, askedLog: justAsked, gapQuestion: { field: 'allergies', question: 'Any allergies?', blocking: false } }), null);
+    assert.equal(pickCheckIn({ ...base, askedLog: justAsked, gapQuestion: { field: 'medications', question: 'Any medicines?', blocking: true } }).kind, 'gap');
+    assert.equal(pickCheckIn({ ...base, askedLog: justAsked, symptoms: [symptom()] }).blocking, true); // related symptom first
+    const longAgo = { [LAST_ASK_KEY]: new Date(NOW.getTime() - 31 * 60000) };
+    assert.equal(pickCheckIn({ ...base, askedLog: longAgo }).kind, 'weight');
+});
+
+test('unwell turn: no weight / sugar / other-symptom questions; a profile question tied to the request is still allowed', () => {
+    const base = { freshness: fresh(), profileContext: profile, targets, now: NOW };
+    const unwell = cls({ topics: ['medical_lab'], symptoms: ['stomach burning'] });
+    assert.equal(pickCheckIn({ ...base, classification: unwell }), null); // no weight question
+    assert.equal(pickCheckIn({ ...base, classification: unwell, symptoms: [symptom({ name: 'headache', key: 'headache', lastAskedAt: daysAgo(3) })] }), null);
+    const gym = cls({ topics: ['fitness'], symptoms: ['fatigue'] });
+    assert.equal(pickCheckIn({ ...base, classification: gym, gapQuestion: { field: 'fitness.limitations', question: 'Any injury?', blocking: false } }).kind, 'gap');
+});
+
+test('graph: one question, then the next replies within 30 min ask nothing (no injury -> weight -> weight)', async () => {
+    const { LAST_ASK_KEY } = require('../modules/ai-coach/orchestrator/checkIns');
+    const memory = createMemoryCoachStateRepo();
+    const deps = {
+        client: {
+            messages: { create: async () => ({ stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 }, content: [{ type: 'text', text: JSON.stringify({ intent: 'health_coaching', topics: ['nutrition'], specialists: [], timeframe: 'today', lookbackDays: 0, symptoms: [], symptomUpdates: [], redFlag: false, distress: false, language: 'english', recommendsFoodOrSupplement: false, facts: [], mealLog: { isLogging: false, mealType: 'unknown', description: '', statedCalories: -1, statedProtein: -1, statedCarbs: -1, statedFats: -1 } }) }] }) },
+            beta: { messages: { stream: () => ({ async *[Symbol.asyncIterator]() { yield { type: 'content_block_delta', delta: { type: 'text_delta', text: 'ok' } }; }, finalMessage: async () => ({ usage: {}, stop_reason: 'end_turn' }) }) } },
+        },
+        coachStateRepo: memory,
+        getProfileContext: async () => ({ summary: '', allergies: { state: 'none' }, medications: { state: 'none' }, conditions: { state: 'none', items: [] }, fitness: { limitations: ['none'] }, diet: { preference: 'vegetarian' }, body: { weightKg: 56 } }),
+        getTargets: async () => targets,
+        getFreshness: async () => fresh(),
+        logger: { warn: () => {}, error: () => {} },
+        specialistDeps: { nutrition: { getNutritionTrends: async () => ({ daysLogged: 0 }) } },
+    };
+    const send = async (message, now) => {
+        const events = [];
+        const final = await runCoach({ input: { userId: USER, userName: 'R', message, history: [], now, startedAt: Date.now() }, deps, onEvent: (e) => events.push(e) });
+        return final;
+    };
+    const first = await send('how much protein should I eat?', NOW);
+    assert.equal(first.checkIn?.kind, 'weight');
+    assert.ok((await memory.load(USER)).askedLog[LAST_ASK_KEY]);
+    const second = await send('and how much water?', new Date(NOW.getTime() + 5 * 60000));
+    assert.equal(second.checkIn, null);
+    assert.doesNotMatch(second.dataBlock, /weight now/);
+});
+
+// Issue #4 (staging 24 Nov): the model asked "theek hua ya abhi bhi hai?".
+test('symptom and weight check-ins carry the exact question in both languages and forbid A-or-B options', () => {
+    const hi = pickCheckIn({ classification: cls({ topics: ['medical_lab'], language: 'hinglish' }), symptoms: [symptom({ lastAskedAt: daysAgo(3) })], now: NOW });
+    assert.match(hi.instruction, /"Ab stomach burning kaisa hai\?" \(other wording: "How is your stomach burning now\?"\)/);
+    assert.match(hi.instruction, /Do not add options/);
+    assert.deepEqual(hi.question, { en: 'How is your stomach burning now?', hi: 'Ab stomach burning kaisa hai?' });
+
+    const en = pickCheckIn({ classification: cls({ topics: ['medical_lab'], language: 'english' }), symptoms: [symptom({ lastAskedAt: daysAgo(3) })], now: NOW });
+    assert.match(en.instruction, /"How is your stomach burning now\?" \(other wording: "Ab stomach burning kaisa hai\?"\)/);
+
+    const related = pickCheckIn({ classification: cls({ language: 'hinglish' }), symptoms: [symptom()], now: NOW });
+    assert.equal(related.blocking, true);
+    assert.match(related.instruction, /"Ab stomach burning kaisa hai\?"/);
+
+    const w = pickCheckIn({ classification: cls(), freshness: fresh(), profileContext: profile, targets, now: NOW });
+    assert.match(w.instruction, /"What is your weight now\?"[\s\S]*Do not add options/);
+    assert.doesNotMatch(w.instruction, /if they'd like to update/); // asks for the number, not yes/no
+});
+
 test('weight check-in: reasoned from goal + activity; snoozed 7 days; skipped for inactive users with a recent-ish reading', () => {
     const base = { classification: cls(), profileContext: profile, targets, now: NOW };
     const w = pickCheckIn({ ...base, freshness: fresh() });
@@ -193,7 +263,7 @@ test('graph: stomach pain is recorded, asked about 2+ days later, closed only wh
     assert.equal(later.checkIn.kind, 'symptom');
     assert.equal(later.checkIn.blocking, true);
     const block = d.calls.params.at(-1).messages.at(-1).content;
-    assert.match(block, /Symptoms on record, not yet resolved: stomach burning[\s\S]*Do NOT give the plan or advice yet[\s\S]*ask how their stomach burning is now/);
+    assert.match(block, /Symptoms on record, not yet resolved: stomach burning[\s\S]*Do NOT give the plan or advice yet[\s\S]*ask exactly this one question[\s\S]*(stomach burning kaisa hai\?|How is your stomach burning now\?)/);
     assert.ok(!/undefined/.test(block));
     assert.equal(d.symptomRepo.rows[0].askCount, 1);
 

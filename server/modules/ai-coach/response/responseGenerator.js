@@ -44,6 +44,7 @@ Questions (strict):
 - If "Data for this message" gives a question to ask or something to confirm, end the reply with it, worded naturally, as the single last line, and ask nothing else.
 - Otherwise do NOT end with a question. No follow-up questions of your own ("morning or evening?", "do you prefer X?", "kab se hai?"). End with the advice itself. Only exception: the message is too unclear to answer at all; then ask one short clarifying question instead of answering.
 - Any question: one thing only, answerable with a short reply, never "A or B?" / "X ya Y?".
+- A question given in the data is in English or Hinglish only for convenience: always ask it in the language of your reply, keeping its meaning. Never switch language for the last line.
 
 What you can and can't do (never claim otherwise, never offer anything else):
 - You CAN: log a meal the user says they ate (they just tell you what and how much), save health facts they tell you to their profile, update their weight, add a meal pattern to their 7-day meal plan (only when the data tells you to offer it), and look at their own data.
@@ -72,7 +73,7 @@ function findingsBlock(results) {
 /**
  * @returns { system, messages } for client.messages.stream
  */
-function buildRequest({ message, history = [], userName, profileContext, classification = {}, specialistResults = [], gapQuestion = null, confirmFacts = [], savedFacts = [], undoneCount = 0, targets = null, checkInInstruction = null, activeSymptoms = [], symptomChanges = [], mealOffer = false, savedMealPatterns = null, mealPrefDeclined = false, foodToConfirm = null, loggedFood = null, foodLogDeclined = false }) {
+function buildRequest({ message, history = [], userName, profileContext, classification = {}, specialistResults = [], gapQuestion = null, confirmFacts = [], savedFacts = [], undoneCount = 0, targets = null, checkInInstruction = null, activeSymptoms = [], symptomChanges = [], mealOffer = false, savedMealPatterns = null, mealPrefDeclined = false, foodToConfirm = null, loggedFood = null, foodLogDeclined = false, exerciseCaution = false, droppedRequest = null }) {
     const hinglish = ['hinglish', 'hindi'].includes(classification.language);
     const turns = history.slice(-HISTORY_TURNS * 2)
         .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
@@ -81,11 +82,17 @@ function buildRequest({ message, history = [], userName, profileContext, classif
     while (turns.length && turns[0].role !== 'user') turns.shift();
 
     const data = [`Today (UTC): ${new Date().toISOString().slice(0, 10)}`];
+    if (droppedRequest) {
+        data.push(`The user's earlier request ("${droppedRequest}") was put on hold, and they have now moved on to something new. That earlier request is dropped: answer ONLY the latest message. Do not answer, mention or give advice for the earlier request, even though it is in the chat above.`);
+    }
     if (classification.resumeRequest) {
         data.push(`Earlier the user asked: "${classification.resumeRequest.slice(0, 500)}". You paused it to ask them a question; the message above is their reply. Now answer that earlier request, adjusted to their reply.`);
     }
     if (classification.timeframe && classification.timeframe !== 'unspecified') data.push(`The user means: ${classification.timeframe}`);
     if (classification.symptoms?.length) data.push(`Symptoms mentioned: ${classification.symptoms.join(', ')}`);
+    if (exerciseCaution) {
+        data.push('The user has chest pain or breathlessness after exercise. Advise no workout today: rest, water, light walking only once it settles, and to see a doctor if it keeps coming back with exercise. Do not diagnose. A fixed line about when to call 112 is added after your reply, so do not write your own emergency instructions.');
+    }
     if (classification.lookbackDays > 0) data.push(`The question covers the last ${classification.lookbackDays} days.`);
     if (activeSymptoms.length) {
         data.push(`Symptoms on record, not yet resolved: ${activeSymptoms.map((s) => `${s.name} (since ${new Date(s.startedAt).toISOString().slice(0, 10)}${s.lastStatus && s.lastStatus !== 'new' ? `, last update: ${s.lastStatus}` : ''})`).join('; ')}. Keep food and exercise advice gentle on these.`);
@@ -105,9 +112,12 @@ function buildRequest({ message, history = [], userName, profileContext, classif
     }
     if (undoneCount) data.push(`You just removed ${undoneCount} item(s) you had saved, as the user asked. Confirm briefly.`);
     if (gapQuestion) {
-        data.push(gapQuestion.blocking
+        // Both wordings: the question must be in the reply's language (staging
+        // 24 Nov: a Hinglish reply ended with the question in English).
+        const alt = gapQuestion.questionAlt ? ` Ask it in the same language as the rest of your reply (other wording: "${gapQuestion.questionAlt}").` : ' Ask it in the same language as the rest of your reply.';
+        data.push((gapQuestion.blocking
             ? `Before advising, you need one fact. Do NOT give the recommendation yet: explain briefly why you need it and ask: "${gapQuestion.question}"`
-            : `After answering, ask this one question as the last line: "${gapQuestion.question}"`);
+            : `After answering, ask this one question as the last line: "${gapQuestion.question}"`) + alt);
     }
     if (foodToConfirm) {
         data.push(`The user wants to log a meal: ${describeEntry(foodToConfirm)}. Show it in 1-2 short lines (keep the ~ on estimates), then ask as the last line whether to save it to their ${foodToConfirm.mealType} log (yes / no). If they want different numbers, they can just say them. Don't give meal advice unless they asked.`);

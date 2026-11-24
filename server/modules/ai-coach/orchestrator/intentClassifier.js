@@ -97,6 +97,7 @@ Fields:
 - facts: lasting facts about the user's own health in THIS message that belong in their profile (allergies, medicines, conditions, surgeries, family history, injuries/limitations, diet type, age, height, weight, smoking, alcohol, usual sleep hours, stress level). Not today's symptoms, not moods, not one-off meals.
   - target: where it goes. value: the fact in short English ("Peanut", "Metformin 500mg", "Type 2 Diabetes", "knee pain", "vegetarian", "32", "170", "68.5", "current", "6", "high"). Units: age in years, height in cm, weight in kg (convert if given otherwise).
   - none: true if the user says they have none ("no allergies", "koi dawai nahi") - then value is "".
+  - Only a specific value counts ("knee pain", "Metformin", "Peanut"). If the user only says yes / that they have one without saying what ("haan", "yes I have an injury", "ek dawai leta hoon"), return NO fact for it. Never write "unspecified", "unknown" or "yes" as a value.
   - statedAs: "answer" if it answers the coach's pending question (given below), "volunteered" if told unprompted, "question" if they are asking ("do I have diabetes?"), "hypothetical" if not a real fact ("what if I had...").
   - aboutSelf: false if the fact is about someone else ("my mother has diabetes" is familyHistory with aboutSelf true, since it describes the user's family history; "my friend is diabetic" is aboutSelf false).`;
 
@@ -129,7 +130,7 @@ const KEYWORDS = {
     medical_lab: /\b(report|lab|test|blood test|hba1c|cholesterol|vitamin d|b12|thyroid|tsh|lipid|cbc)\b/i,
 };
 const SUPPLEMENT_RE = /\b(supplement|vitamin|protein powder|whey|creatine|multivitamin|omega)\b/i;
-const HINGLISH_RE = /\b(hai|hain|kya|mujhe|mera|meri|aaj|kal|nahi|kaise|karna|karu|kar|bhai|thoda)\b/i;
+const { detectLanguage } = require('./language');
 
 function keywordFallback(message, reason) {
     const specialists = SPECIALISTS.filter((s) => KEYWORDS[s]?.test(message));
@@ -139,7 +140,8 @@ function keywordFallback(message, reason) {
         intent: specialists.length ? 'health_coaching' : 'other',
         topics: topics.length ? topics : ['general'],
         specialists,
-        language: HINGLISH_RE.test(message) ? 'hinglish' : 'english',
+        // 'neutral' ("ok", "72") is resolved to the conversation's language by the graph.
+        language: ((l) => (l === 'neutral' ? 'english' : l))(detectLanguage(message)),
         source: 'fallback',
         fallbackReason: reason,
     });

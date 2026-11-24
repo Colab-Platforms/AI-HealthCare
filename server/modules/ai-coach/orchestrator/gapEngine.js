@@ -110,7 +110,8 @@ function pickGapQuestion(classification, profileContext, askedLog = {}, now = ne
     for (const field of candidates) {
         const def = FIELDS[field];
         if (!def || def.answered(profileContext) || isSnoozed(askedLog, field, now)) continue;
-        return { field, question: hinglish ? def.hi : def.en, blocking: isBlocking(field, classification) };
+        // Both wordings go to the answer model, which asks in its reply's language.
+        return { field, question: hinglish ? def.hi : def.en, questionAlt: hinglish ? def.en : def.hi, blocking: isBlocking(field, classification) };
     }
     return null;
 }
