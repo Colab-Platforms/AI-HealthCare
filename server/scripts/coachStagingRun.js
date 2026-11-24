@@ -7,6 +7,8 @@
  *   node scripts/coachStagingRun.js "I'm feeling tired today, and I've to go to the gym today"
  *   node scripts/coachStagingRun.js "hi" "no injuries" "undo"        # several turns, one conversation
  *   --email=<address>   default coach-test@example.invalid (scripts/createCoachTestUser.js)
+ *   --verbose           also print the exact per-message data the model saw
+ *   --days-later=N      pretend N days have passed (tests follow-ups: symptoms, stale weight...)
  *
  * Staging only. Writes what the real chat would write: HealthProfile changes
  * from chat, CoachState. No UsageLog rows.
@@ -28,6 +30,9 @@ const mongoose = require('mongoose');
 const args = process.argv.slice(2);
 const EMAIL = (args.find((a) => a.startsWith('--email=')) || '--email=coach-test@example.invalid').slice(8).trim().toLowerCase();
 const MESSAGES = args.filter((a) => !a.startsWith('--'));
+const VERBOSE = args.includes('--verbose');
+const DAYS_LATER = Number((args.find((a) => a.startsWith('--days-later=')) || '--days-later=0').slice(13)) || 0;
+const nowFor = () => new Date(Date.now() + DAYS_LATER * 86400000);
 
 async function main() {
     if (!MESSAGES.length) {
@@ -53,9 +58,19 @@ async function main() {
     const { getProfileContext } = require('../modules/health-profile/services/profileContextService');
     const { mongoRepo } = require('../modules/ai-coach/orchestrator/coachStateRepo');
     const { createProfileTools } = require('../modules/ai-coach/tools/profileTools');
+    const { getTargets } = require('../modules/ai-coach/context/targets');
+    const { getFreshness } = require('../modules/ai-coach/context/freshness');
+    const { createSymptomTools } = require('../modules/ai-coach/tools/symptomTools');
+    const { createMealPrefTools } = require('../modules/ai-coach/tools/mealPrefTools');
+    const { createFoodLogTools } = require('../modules/ai-coach/tools/foodLogTools');
     const deps = {
+        mealPrefTools: createMealPrefTools(),
+        foodLogTools: createFoodLogTools(),
         client: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
         getProfileContext,
+        getTargets,
+        getFreshness,
+        symptomTools: createSymptomTools(),
         coachStateRepo: mongoRepo,
         profileTools: createProfileTools(),
         specialistDeps: {},
@@ -71,7 +86,7 @@ async function main() {
         const events = [];
         let reply = '';
         const final = await runCoach({
-            input: { userId: user._id, userName: user.name, message, history: [...history], now: new Date() },
+            input: { userId: user._id, userName: user.name, message, history: [...history], now: nowFor(), startedAt: started },
             deps,
             onEvent: (e) => {
                 if (e.type === 'token') {
@@ -86,16 +101,29 @@ async function main() {
         const total = Date.now() - started;
         console.log('\n');
         console.log(`  route:        ${final.route}${final.classification?.source ? ` (classifier: ${final.classification.source})` : ''}`);
-        console.log(`  classified:   intent=${final.classification?.intent} topics=[${(final.classification?.topics || []).join(', ')}] language=${final.classification?.language}`);
+        console.log(`  classified:   intent=${final.classification?.intent} topics=[${(final.classification?.topics || []).join(', ')}] language=${final.classification?.language}`
+            + `${final.classification?.lookbackDays ? ` lookbackDays=${final.classification.lookbackDays}` : ''}`
+            + `${final.classification?.ruleMatches?.length ? ` rules=[${final.classification.ruleMatches.join(', ')}]` : ''}`);
         if (final.specialistResults) {
             console.log(`  specialists:  ${final.specialistResults.map((s) => `${s.specialist}=${s.status} (${s.ms}ms)`).join(', ')}`);
         }
-        if (final.gapQuestion) console.log(`  gap question: ${final.gapQuestion.field}${final.gapQuestion.blocking ? ' (blocking)' : ''}`);
+        if (final.checkIn) console.log(`  question:     ${final.checkIn.kind} (${final.checkIn.key})${final.checkIn.blocking ? ' BLOCKING' : ''}`);
+        if (final.symptomChanges?.length) console.log(`  symptoms:     ${final.symptomChanges.map((c) => `${c.name} -> ${c.status}`).join(', ')}`);
         for (const e of events) console.log(`  event:        ${JSON.stringify(e)}`);
         for (const u of final.usage || []) {
             console.log(`  usage:        ${u.feature} ${u.model} in=${u.usage?.input_tokens} out=${u.usage?.output_tokens} cacheRead=${u.usage?.cache_read_input_tokens || 0} cacheWrite=${u.usage?.cache_creation_input_tokens || 0}${u.stopReason ? ` stop=${u.stopReason}` : ''}`);
         }
         console.log(`  timing:       first word ${firstToken === null ? '-' : `${(firstToken / 1000).toFixed(2)}s`}, total ${(total / 1000).toFixed(2)}s`);
+        const t = final.timings || {};
+        const ms = (v) => (typeof v === 'number' ? `${v}ms` : '-');
+        console.log(`  breakdown:    [${t.path || '-'} path] prepare ${ms(t.prepareMs)} [classify ${ms(t.classifyMs)} | prefetch ${ms(t.prefetchMs)} | profile ${ms(t.profileMs)} | targets ${ms(t.targetsMs)}]`
+            + ` -> extra specialists ${ms(t.extraSpecialistsMs)} (reused ${t.specialistsReused ?? 0}, fetched after ${t.specialistsFetchedAfter ?? 0})`
+            + ` -> Sonnet first token ${ms(t.answerFirstTokenMs)}`
+            + (t.classifierWaitAfterAnswerMs != null ? ` (classifier finished ${ms(t.classifierWaitAfterAnswerMs)} after the answer)` : ''));
+        if (VERBOSE && final.dataBlock) {
+            console.log('  ── data the model saw ──');
+            console.log(final.dataBlock.split('\n').map((l) => `  | ${l}`).join('\n'));
+        }
         history.push({ role: 'user', content: message }, { role: 'assistant', content: reply });
     }
 }

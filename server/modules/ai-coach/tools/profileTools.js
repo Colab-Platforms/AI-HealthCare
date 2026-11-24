@@ -90,6 +90,10 @@ function createProfileTools({
     service = writeService,
     repo = require('../../health-profile/services/profileRepo').mongoRepo,
     sideEffects = require('../../health-profile/services/profileSideEffects').createProfileSideEffects(),
+    // Weight said in chat goes through the app's own weight log (graph, goal,
+    // BMI, profile), not just the profile field.
+    logWeight = (args) => require('../../../services/weightLogService').logWeight(args),
+    removeWeightLog = async (metricId) => require('../../../models/HealthMetric').deleteOne({ _id: metricId, type: 'weight' }),
     logger = console,
 } = {}) {
     const { ProfileInputError } = writeService;
@@ -115,6 +119,15 @@ function createProfileTools({
             const res = await service.updateSection(userId, 'fitness', { limitations: next }, opts);
             return { res, field: 'fitness.limitations' };
         }
+        if (f.target === 'body.weightKg' && !f.none) {
+            const kg = Number(String(f.value).replace(/[^\d.]/g, ''));
+            if (!Number.isFinite(kg) || kg <= 0 || kg > 500) return null;
+            const before = (await repo.findProfile(userId))?.body?.weightKg;
+            const { metric, created } = await logWeight({ userId, weightKg: kg, source: 'chat' });
+            // Profile already written inside logWeight (with its own side effects).
+            // Only a reading the chat CREATED is removed on undo.
+            return { res: { changed: before !== kg, sections: [] }, field: 'body.weightKg', metricId: created && metric?._id ? String(metric._id) : null };
+        }
         const map = SCALAR_TARGETS[f.target];
         if (!map || f.none) return null;
         const [section, key, type] = map;
@@ -139,7 +152,11 @@ function createProfileTools({
                 const out = await saveOne(userId, f);
                 if (!out?.res?.changed) continue;
                 (out.res.sections || []).forEach((s) => sections.add(s));
-                saved.push({ target: f.target, value: f.value, none: Boolean(f.none), historyId: await latestHistoryId(userId, out.field) });
+                saved.push({
+                    target: f.target, value: f.value, none: Boolean(f.none),
+                    historyId: await latestHistoryId(userId, out.field),
+                    ...(out.metricId ? { metricId: out.metricId } : {}),
+                });
             } catch (err) {
                 // No values in logs: health data.
                 if (err instanceof ProfileInputError) logger.warn(`[AICoach] fact for ${f.target} not saved: invalid`);
@@ -158,6 +175,8 @@ function createProfileTools({
             if (!item?.historyId) continue;
             try {
                 await service.undo(userId, item.historyId, { source: 'chat' });
+                // A weigh-in the chat created goes too, or the graph keeps the wrong number.
+                if (item.metricId) await removeWeightLog(item.metricId);
                 undone++;
             } catch (err) {
                 logger.warn(`[AICoach] undo of ${item.target} skipped: ${err.message}`);

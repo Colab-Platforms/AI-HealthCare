@@ -37,6 +37,10 @@ function fakeDeps({ answerError = null, facts = [] } = {}) {
         coachStateRepo: createMemoryCoachStateRepo(),
         profileTools: { saveFacts: async (u, f) => f.map((x) => ({ ...x, historyId: 'h1' })), undoSaved: async () => 0 },
         logger: { warn: () => {}, error: () => {} },
+        specialistDeps: {
+            sleep: { getSleepAnalytics: async () => ({ entries: [] }) },
+            recovery: { getRecoveryAnalytics: async () => ({ entries: [] }) },
+        },
     };
 }
 

@@ -7,20 +7,124 @@
 
 ## 0. Progress (start here)
 
-### Resume on another machine
+### Resume on another machine (updated 24 Nov evening)
 
-1. `git pull origin Staging`, then in `server/`: `npm install` (adds `@langchain/langgraph`, `@langchain/core`, `zod`).
-2. Offline tests (no DB, no API): `cd server && node --test "tests/healthProfile*.test.js" "tests/aiCoach*.test.js"` → 152 pass. Full suite: `$env:USE_STAGING_DB="false"; npm test` → only the 4 known vault failures.
-3. **Next step: first real-API run on staging** (costs a few cents per message):
+1. `git pull origin Staging`, then in `server/`: `npm install`.
+2. Offline tests: `cd server && node --test "tests/healthProfile*.test.js" "tests/aiCoach*.test.js"` → all pass. Full suite: `$env:USE_STAGING_DB="false"; npm test` → 790 pass, only the 4 known vault failures.
+3. Staging runs (real Claude API, a few cents per message), from `server/`:
    ```
    $env:USE_STAGING_DB="true"
-   node scripts/createCoachTestUser.js        # prints email + one-time password; --reset for a new one
-   node scripts/coachStagingRun.js "I'm feeling tired today, and I've to go to the gym today" "no injuries" "undo"
+   node scripts/createCoachTestUser.js --reset-coach     # clear coach memory + symptoms (do this before and after --days-later runs)
+   node scripts/coachStagingRun.js --verbose "msg 1" "msg 2"   # one conversation; --days-later=N simulates time passing
+   node scripts/inspectCoachTestUser.js                  # read-only: seed rows, odd sleep nights, targets, coach state
    ```
-   Check in the output: classifier `model` (not `fallback`), specialists `completed`, the injury question, the save + undo events, first-word time (estimate 1.7–2.5 s), and that Sonnet 5.5 accepts `thinking: between_tools` + `fallbacks: "default"` (if it 400s, change `RESPONDER_THINKING` / `RESPONDER_FALLBACK` in `modules/ai-coach/config.js`).
-4. Then: `AI_COACH_V2=true` on the staging server(s) and test from the app with the test user (login = email + password). App opt-in for typed events: `"coachEvents": true` in the `/api/chat` body.
-5. Day 3 (25 Nov): SymptomLog, CoachRun log, `POST /api/coach/feedback`, post-chat summary (QStash); then the eval (~50 English + Hinglish questions, old vs new).
-6. Production: follow the "Production rollout checklist" below (indexes first, then deploy, then migration). `AI_COACH_V2` and `HEALTH_PROFILE_WRITES` must match on Vercel and Render.
+4. **NEXT: fix these 7 issues** (found in the 24 Nov evening staging test, ~20 messages; agreed, not started):
+   1. **Red flags (safety):** code rules miss "chest mein dard ... saans phool rahi" (only the classifier caught it, 1.7 s; a classifier timeout would miss it) and "left haath sunn ho raha". Add `(seene|chhati|chaati|chest) (me|mein|mai|main) (dard|...)` and left/baaye arm/haath numb/sunn/bhaari to `safety/safetyRules.js` + tests (keep negation handling).
+   2. **Junk save:** "haan" to "koi injury ya dard hai?" saved fitness.limitations = "Yes, has an injury or pain (unspecified)". Don't save vague values (yes / unspecified / unknown) for list fields (limitations, medications, allergies, conditions); keep the pending question one more turn and ask "kahan dard hai?". Place: `tools/profileTools.js` triageFacts + classifier prompt.
+   3. **Language mix:** Hinglish reply ended with the gap question in English. Prompt/instruction: ask the given question in the reply's language (gap questions are stored in English).
+   4. **"A ya B?" in symptom check-ins:** "theek hua ya abhi bhi hai?". Give the exact question in the check-in instruction (`orchestrator/checkIns.js`): "Ab <symptom> kaisa hai?" / "How is your <symptom> now?".
+   5. **Dropped paused request still answered from history:** after "tired, gym?" dropped the paused dinner request, the reply still suggested dinner. When `timings.droppedPausedRequest`, add a data line: "The earlier request was dropped; answer only the latest message."
+   6. **A question every turn:** injury, then weight, then weight; and a weight question in the "pait mein jalan hai" reply. Rule: after one non-blocking check-in (weight / glucose / vault / report), none for the next 30 min; none on a turn where the user reports a new symptom or feels unwell.
+   7. **Coach gender:** "update kar dungi" vs "kar sakta hoon". Decision: male forms everywhere (quick reply already uses "sakta"); add a prompt rule.
+   - Optional (asked, no answer yet): fixed reply for "undo" (now a Sonnet call, 2.1 s) like the meal "haan" reply.
+   - Speed notes: fast path 1.1-2.5 s, full path 2.5-5.5 s (classifier 1.4-3.1 s). A pending question forces the full path even for "hi" (2.5 s).
+5. After the fixes: re-run the same staging checks yourself (reset-coach before/after), then `AI_COACH_V2=true` on the staging server(s) and test from the app with the test user. App opt-in for typed events: `"coachEvents": true` in the `/api/chat` body.
+6. Later (Day 3 list): CoachRun log, `POST /api/coach/feedback`, post-chat summary (QStash), eval (~50 English + Hinglish questions, old vs new).
+7. Production: follow the "Production rollout checklist" below (indexes incl. CoachState + SymptomLog first, then deploy, then migration). `AI_COACH_V2` and `HEALTH_PROFILE_WRITES` must match on Vercel and Render.
+
+Test-user data notes: the test user has real apple_watch rows (created 23 Nov 12:24, someone synced a watch on this account), incl. a 1233-min sleep row on 10 Nov (shown capped at 14 h by the app). Old "74" recovery: probably from that sync, unverified (row gone).
+
+### First real-API staging run (24 Nov) and fixes (committed 24 Nov)
+
+Run: "I'm tired + gym" / "no injuries" / "undo". Worked: classifier on the model, Sonnet 5.5 accepted `between_tools` + `fallbacks`, safe answer with the injury question, cost ~$0.006 then ~$0.002 per message. First word 4.40 s / 2.95 s / 2.35 s (target ≤ 2 s).
+
+| Problem found | Cause (checked, not guessed) | Fix |
+| --- | --- | --- |
+| Coach memory not saved (`Mongoose maps do not support keys that contain "."`) | `CoachState.askedLog` was a Map; key `fitness.limitations`. Tests used an in-memory repo that didn't apply Mongoose's rule | `askedLog` is now `[{ field, askedAt }]`; the in-memory repo now validates against the real model, so the same class of bug fails in tests |
+| Turn 3 "corrected" its own real numbers | No specialists ran for "undo"; the model read the missing data as "I made it up" | Rule: never retract earlier numbers unless the user says so; data block says "none fetched because not needed" |
+| Sleep never checked for "tired" | Classifier picked only recovery + fitness | `orchestrator/routingRules.js`: 15 keyword rules (EN + Hinglish) always added to the classifier's choice; 35 real-user phrasings tested |
+| Advice could ignore the app's targets | Targets weren't in the prompt | `context/targets.js`: calories / macros (from `nutritionGoal`, as the dashboard), water, steps, sleep, weekly exercise, and what is left today; rule: suggestions must fit them |
+| "Yesterday 74" while the seed wrote 38 for that date | **Not settled.** Code: only the seed and `calculateRecoveryScore` write that collection, and the latter deletes (not writes 74) when there is no HRV / RHR. Also the seed's max is 72 | `scripts/inspectCoachTestUser.js` (read-only) shows each row's source and created / updated time; `coachStagingRun.js --verbose` prints the exact data the model saw. Run both before `--reset` |
+| Slow first word | Two model calls in a row; Haiku thinking on; specialists waited for the classifier | Haiku `thinking: disabled`; specialists from the rules are prefetched in parallel with the classifier (reused, only additions fetched after); per-step timings recorded |
+
+Also: months-back questions ("last 6 months", "pichle 3 mahine", "since June") → `context/lookback.js` + monthly averages in sleep / recovery / fitness / nutrition, read through `{user, date}` indexes and cached 6 h; 5 s limit for that first read.
+
+Pre-existing bug found, not fixed: `getExerciseGuidance(null)` puts an unknown age in the youth bucket (`null <= 17` is true in JS), so `getStepGoal` and exercise targets give adults 7,000 steps / 420 min cardio. The coach skips the weekly exercise target when age is unknown.
+
+Tests: `tests/aiCoachRouting.test.js` (3), `tests/aiCoachV2Fixes.test.js` (11); all health profile + coach tests 166 pass; full suite 748: 4 known vault failures, 1 skipped.
+
+Next (user runs, staging):
+```
+node scripts/inspectCoachTestUser.js            # BEFORE reset: where did 74 come from
+node scripts/createCoachTestUser.js --reset     # data relative to today
+node scripts/coachStagingRun.js --verbose "I'm feeling tired today, and I've to go to the gym today" "no injuries" "undo"
+node scripts/coachStagingRun.js --verbose "what should I eat for dinner?" "how was my sleep in the last 6 months?"
+```
+
+### Coach V2 round 2 (24 Nov, committed 24 Nov)
+
+Agreed scope before launch (user, 24 Nov): scope guard, chat food logging, SymptomLog + follow-up, meal -> plan preference, week-over-week + goal adherence, activity rule. After launch: vault analysis, report timeline, condition -> food rules (doctor review), chat-summary memory. (Speed step was pulled in before launch, done 24 Nov.)
+
+Done in this round:
+
+| Part | File | Notes |
+| --- | --- | --- |
+| Scope + injection guard | `safety/scopeGuard.js`, classifier intent `off_topic`, prompt "Scope" rules | injection = regex, no model call; off-topic = fixed friendly reply, no answer-model call; mixed messages answer only the health part |
+| Week-over-week + goals | `specialists/progress.js` (new specialist `progress`) | last 4 rolling weeks vs app targets: steps goal-met days, sleep goal-met nights, calories within ±10%, cardio/strength minutes vs weekly target, trend vs last week |
+| Symptoms | `models/SymptomLog.js` (`symptom_logs`), `tools/symptomTools.js`, classifier `symptomUpdates` | episode opens on mention; closes ONLY when the user says it's gone; better/same/worse recorded; active ones make advice gentle. DPDPA delete + export |
+| Check-ins (one question per reply) | `orchestrator/checkIns.js`, `context/freshness.js` | priority: blocking gap > symptom follow-up (every 2 days until resolved, doctor nudge after 14 days) > gap > stale weight (weight goal + active user, 14 days; else 45) > stale sugar (diabetes, 7 days) > vault file not analysed > old report with out-of-range values (120 days). Each has its own snooze |
+| Weight from chat | `services/weightLogService.js` (moved out of `nutritionController.logWeight`, unchanged) | chat weight = the app's weigh-in (HealthMetric, profile + BMI, HealthGoal, nutritionGoal); undo removes a weigh-in the chat created |
+| Routing | "activity" word added; "improve / goals / compare" -> `progress` | |
+
+Vault (checked): `VaultReport` stores files only (title, note, date, file); nothing reads their contents, lab values exist only in analysed `HealthReport`. Product decision (24 Nov): vault stays storage; the coach notices a vault upload with no analysed report after it and suggests uploading it under Reports.
+
+Meal plan (checked): the 7-day plan generator (`dietRecommendationAI`) already uses `foodPreferences.mealPreferences` as favourites and avoids the previous plan's dishes, so "add this meal pattern to my plan" = save the pattern there. Temporary needs (upset stomach) must come from active SymptomLog episodes, not mealPreferences.
+
+Then (same day):
+
+| Part | File | Notes |
+| --- | --- | --- |
+| Related symptom asked FIRST (user decision) | `checkIns.js` (`SYMPTOM_TOPICS`, `isRelated`) | e.g. stomach symptom + food request -> "pait ab kaisa hai?" before any plan; no specialists fetched for that turn; not again within 12 h if skipped |
+| Paused request | `CoachState.pendingRequest` | a blocking question (symptom or missing allergy) saves the request; the reply resumes it ("Earlier the user asked ... now answer it"). Before this, the original request was lost after a blocking question (also for the allergy question) |
+| Meal -> 7-day plan | `tools/mealPrefTools.js`, `CoachState.pendingMealPref` | offered after meal suggestions; on "haan" a small Haiku call extracts the meal PATTERNS from that reply into `foodPreferences.mealPreferences` (max 6 per slot); never while a stomach-type symptom is active; nothing extracted on "nahi" |
+| Food logging from chat | `tools/foodLogTools.js`, `services/foodLogService.js`, classifier `mealLog`, `FoodLog.source: 'chat'` | numbers the user said win; the app's estimator (`nutritionAI.quickFoodCheck`, basic tier) fills the rest, scaled to the user's calories; shown with ~ on estimates; saved only on "yes" via `updateDailySummaryInternal` (same as the app); "left for today" re-read after saving |
+| Sleep wording | `specialists/sleep.js` | "last night (woke up today)" instead of "night ending today" (the model had said "aaj raat") |
+
+Follow-up: `logMeal` still has its own copy of item / total normalisation; move it onto `foodLogService` after launch. Food logging adds the estimator call (Gemini via OpenRouter) to that turn; not measured yet.
+
+Speed (24 Nov staging, measured before the fix): Sonnet first token ~0.8 s; Haiku classifier 1.7-4.2 s = most of the 2.2-5.5 s first word.
+
+**Speed step DONE (24 Nov, user said go; not yet measured on staging):**
+- Fast path (`mainCoachGraph.js` prepare): if the routing rules matched a topic, the answer starts at once; the classifier runs in parallel (`runCtx.classify`). `timings.path` = fast / full / no_model.
+- Goes the slow (full) path: no topic matched (possible off-topic), a meal eaten (food log), a stated health fact (`FACT_HINT_RE`), stomach/pain symptoms (`SYMPTOM_HINT_RE`), a pending coach question, a paused request.
+- New `reconcile` node (after respond, fast path only): waits for the classifier, then appends the safety line if it says redFlag, records symptoms, and asks "save to profile?" (`profile_confirm`) for volunteered facts if nothing else was asked.
+- Code red-flag rules still run before any answer. Trade-off: a red flag only the classifier catches is added at the end of the same reply.
+- Food log turns: the estimator (`runCtx.estimate`) runs in parallel with the classifier.
+- `parseSymptomReply` (symptomTools): short replies like "ab thik hai" / "thoda kam" / "theek nahi" update the single open symptom without the classifier (staging miss).
+- Prompt: capabilities list (CAN log meals / save facts / weight / meal pattern; CANNOT log water, sleep, workouts, make the plan, set reminders), no invented offers, no "A or B?" questions.
+- Staging script: `--days-later=N` time shift (test symptom follow-ups, stale weight), breakdown shows the path + classifier finish time.
+- Tests: `tests/aiCoachFastPath.test.js`; full suite 776 pass, 4 known vault failures.
+
+**Staging run after the speed step (24 Nov) and round 3 fixes (committed 24 Nov):**
+- Measured: fast path warm first word 1.15 s (was 3-5 s); first message of a process ~2.8 s (prepare ~2 s: memory load, then the other reads).
+- `prepare` now starts profile / targets / freshness / prefetch together with the coach-memory load (skipped for short yes/no/undo replies, started after memory if needed).
+- Related symptoms ranked (`relevance` in checkIns.js): main topic first (dinner -> stomach burning before fatigue), tie -> most recently mentioned.
+- Progress weeks = last 7 complete days (today excluded; sleep dated today = last night, included). Today shown as its own "today so far" line. Fixes "steps down 25%" caused by today's half day, and the clash with fitness's 7-day average.
+- "yes" to a meal: fixed reply node `food_logged_reply` (no Sonnet call), Hinglish from the reply or the previous user message.
+- Prompt: no follow-up questions of its own (only the one the data gives; a clarifying one only if the message can't be answered), never "X ya Y?", tu / aap by how the user talks.
+- `inspectCoachTestUser.js` lists odd sleep nights (>12 h, <1 h, several sessions per date) for the "2 weeks ago avg 14 h" row (not yet checked).
+- Tests: `tests/aiCoachRound3.test.js`; full suite 784 pass, 4 known vault failures.
+
+**Round 4 (24 Nov, committed 24 Nov), from the staging re-run:**
+- Measured: first message fast path 1.81 s (was 2.85), meal "haan" 1.25 s with no Sonnet call, symptom ranking + progress weeks confirmed on staging.
+- Bug: a paused request (blocking symptom question) resumed on ANY next message ("tired, gym?" got the paused dinner plan). Now it resumes only for an answer: a symptom update, or a short reply (<= 6 words). A new request (rule topic + longer message) wins; paused one dropped (`timings.droppedPausedRequest`). Blocking profile questions unchanged.
+- `within()` (graph) and `askedWithin()` (checkIns): a date more than 5 min in the future = not within / not asked (time-shifted runs, clock skew).
+- "14 h sleep" verified: a 1233-min Apple Watch row (10 Nov) capped by the app's `filterPlausibleSleep` at 840 min. Coach sleep + progress now leave nights at the cap out (`isBrokenNight`) and say so. The app's Sleep screen still shows 14 h (app-side, not changed).
+- The test user has real apple_watch rows created 23 Nov 12:24 (someone synced a watch on this account): probable source of the old "74" recovery, unverified (row gone).
+- `createCoachTestUser.js --reset-coach`: clears CoachState + SymptomLog only; `--delete` now also removes SymptomLog.
+- Tests: 6 more in `aiCoachRound3.test.js`; full suite 790 pass, 4 known vault failures.
+
+Tests: 191 health profile + coach tests pass; full suite 773: 4 known vault failures, 1 skipped. New collection `symptom_logs` has a partial unique index: include `SymptomLog` in `syncIndexes --only=...` at rollout.
 
 ### Done (22–23 Nov)
 
@@ -54,7 +158,7 @@ Staging: `$env:USE_STAGING_DB="true"; node scripts/healthProfileStagingSmoke.js`
 - Example flow and latency estimate ("I'm feeling tired today and I have to go to the gym"): auth ~10 ms → context + classify in parallel ~0.5–0.8 s → safety + gap (code) → recovery/sleep/fitness specialists in parallel ~0.2–0.5 s → Sonnet first token ~1 s. Estimated first word 1.7–2.5 s; measure on staging.
 - SDK check done: `@anthropic-ai/sdk` 0.100.1 already types `output_config` (effort + `json_schema`) and has `client.beta.messages.stream`. No upgrade needed.
 
-### Coach V2 progress (23 Nov, uncommitted)
+### Coach V2 progress (23 Nov, committed 24 Nov)
 
 Built in `server/modules/ai-coach/` (framework-agnostic; the LangGraph wiring is next):
 
@@ -92,7 +196,7 @@ Staging note: only 14 users, all with clean data, so the "invalid legacy data" p
 ### Production rollout checklist (in this order)
 
 1. `HEALTH_PROFILE_WRITES` unset (default on) or `true` on BOTH Vercel and Render.
-2. `node scripts/syncIndexes.js --dry-run --only=HealthProfile,ProfileHistory`, then without `--dry-run`. **Before** deploying the code: without the unique index, two parallel first writes can create two profiles for one user.
+2. `node scripts/syncIndexes.js --dry-run --only=HealthProfile,ProfileHistory,CoachState,SymptomLog`, then without `--dry-run`. **Before** deploying the code: without the unique index, two parallel first writes can create two profiles for one user.
 3. Deploy.
 4. `node scripts/migrateHealthProfile.js --prod` (dry run), review invalid users, then `--prod --apply`, then `--prod --verify`.
 5. Fix the users listed as invalid (their old data breaks the schema); until then their writes fall back to legacy-only and are logged.

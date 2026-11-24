@@ -26,6 +26,10 @@ module.exports = {
     // { type: 'adaptive' } if answers need more reasoning (measure first).
     RESPONDER_THINKING: { type: 'between_tools' },
 
+    // Haiku 5.5: thinking is on by default; "disabled" is accepted at effort
+    // high or below. Classification doesn't need it.
+    CLASSIFIER_THINKING: { type: 'disabled' },
+
     // Server-side fallback if Sonnet 5.5 declines a request (beta).
     RESPONDER_FALLBACK: { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' },
 
@@ -33,6 +37,7 @@ module.exports = {
     TIMEOUTS: {
         classifier: 4000,    // fall back to keyword routing after this
         specialist: 2500,    // each specialist; a late one is reported as "data unavailable"
+        specialistLong: 5000, // when the question goes months back (first read; then cached 6 h)
     },
 
     // How long a skipped coach question stays quiet before it may be asked again.

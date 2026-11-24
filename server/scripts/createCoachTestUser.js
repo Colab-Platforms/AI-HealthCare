@@ -6,6 +6,7 @@
  *
  *   node scripts/createCoachTestUser.js             # create (prints email + password once)
  *   node scripts/createCoachTestUser.js --reset     # new password + fresh sample data
+ *   node scripts/createCoachTestUser.js --reset-coach  # clear coach memory + symptoms only (after --days-later runs)
  *   node scripts/createCoachTestUser.js --no-data   # user + profile only
  *   node scripts/createCoachTestUser.js --delete    # remove the user and everything seeded
  *   --email=<address>                               # default coach-test@example.invalid
@@ -80,6 +81,19 @@ async function main() {
         ]);
     };
 
+    const SymptomLog = require('../modules/ai-coach/models/SymptomLog');
+
+    // Coach memory only (pending questions, asked log, symptoms). Use after a
+    // --days-later run of coachStagingRun.js, which writes future dates.
+    if (has('reset-coach')) {
+        if (!existing) return console.log(`No user ${EMAIL}.`);
+        const [cs, sy] = await Promise.all([
+            CoachState.deleteMany({ user: existing._id }),
+            SymptomLog.deleteMany({ user: existing._id }),
+        ]);
+        return console.log(`Coach memory cleared for ${EMAIL}: ${cs.deletedCount} coach state, ${sy.deletedCount} symptom rows. Profile, health data and food logs kept.`);
+    }
+
     if (has('delete')) {
         if (!existing) return console.log(`No user ${EMAIL}. Nothing to delete.`);
         await removeSeed(existing._id);
@@ -87,6 +101,7 @@ async function main() {
             HealthProfile.deleteMany({ user: existing._id }),
             ProfileHistory.deleteMany({ user: existing._id }),
             CoachState.deleteMany({ user: existing._id }),
+            SymptomLog.deleteMany({ user: existing._id }),
         ]);
         await User.deleteOne({ _id: existing._id });
         return console.log(`Deleted ${EMAIL} and its sample data, health profile and coach state.`);

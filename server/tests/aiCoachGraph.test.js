@@ -61,6 +61,9 @@ function setup({ answer = 'Take it easy today.', answerError = null } = {}) {
         getProfileContext: async (userId) => buildContext(profileRepo.state.profiles[userId] || { basic: { age: 29 } }, NOW),
         profileTools: createProfileTools({ service, repo: profileRepo, sideEffects: { afterProfileChange: async () => {} }, logger: { warn: () => {}, error: () => {} } }),
         specialistDeps: {
+            nutrition: { getNutritionTrends: async () => ({ daysLogged: 0 }) },
+            medical_lab: { latestReports: async () => [] },
+            progress: { getTargets: async () => null, getActivityAnalytics: async () => ({ days: [] }), getSleepAnalytics: async () => ({ entries: [] }), loadNutritionDays: async () => [], loadWorkouts: async () => [] },
             recovery: { getRecoveryAnalytics: async () => ({ entries: [{ date: '2026-11-24', recoveryScore: 38, band: { label: 'Very low' } }], personalBaselineRange: { low: 60, high: 72 } }) },
             sleep: { getSleepAnalytics: async () => ({ entries: [{ date: '2026-11-24', totalHours: 5.2, source: 'wearable' }] }) },
             fitness: {
@@ -88,7 +91,7 @@ test('tired + gym: classify -> recovery/sleep/fitness data -> streamed answer ->
 
     assert.equal(r.final.route, 'coach');
     assert.equal(r.text, 'Recovery is low today, keep the gym light.');
-    assert.deepEqual(r.final.specialistResults.map((s) => [s.specialist, s.status]), [['recovery', 'completed'], ['sleep', 'completed'], ['fitness', 'completed']]);
+    assert.deepEqual(r.final.specialistResults.map((s) => [s.specialist, s.status]).sort(), [['fitness', 'completed'], ['recovery', 'completed'], ['sleep', 'completed']]);
 
     const dataMsg = t.calls.answerParams[0].messages.at(-1);
     assert.equal(dataMsg.role, 'system');
@@ -100,7 +103,8 @@ test('tired + gym: classify -> recovery/sleep/fitness data -> streamed answer ->
     const saved = await t.coachStateRepo.load(USER);
     assert.equal(saved.pendingQuestion.field, 'fitness.limitations');
     assert.ok(saved.askedLog['fitness.limitations']);
-    assert.deepEqual(r.final.usage.map((u) => u.feature), ['ai_coach_classify', 'ai_coach_v2']);
+    assert.deepEqual(r.final.usage.map((u) => u.feature).sort(), ['ai_coach_classify', 'ai_coach_v2']); // each counted once
+    assert.equal(r.final.timings.path, 'fast'); // rules knew the topic: answer did not wait for the classifier
 });
 
 test('red flag: fixed safety reply, no model calls, no profile question', async () => {

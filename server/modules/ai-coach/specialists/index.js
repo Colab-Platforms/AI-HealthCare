@@ -4,6 +4,7 @@ const { sleepSpecialist } = require('./sleep');
 const { fitnessSpecialist } = require('./fitness');
 const { nutritionSpecialist } = require('./nutrition');
 const { medicalLabSpecialist } = require('./medicalLab');
+const { progressSpecialist } = require('./progress');
 
 const REGISTRY = {
     recovery: recoverySpecialist,
@@ -11,6 +12,7 @@ const REGISTRY = {
     fitness: fitnessSpecialist,
     nutrition: nutritionSpecialist,
     medical_lab: medicalLabSpecialist,
+    progress: progressSpecialist,
 };
 
 const timeoutAfter = (ms) => new Promise((resolve) => {
@@ -21,12 +23,15 @@ const timeoutAfter = (ms) => new Promise((resolve) => {
 // Runs the named specialists in parallel. Each one gets its own time limit;
 // a slow or failing one comes back as status 'timeout' / 'error' and the
 // answer is built from the rest. Never throws.
-async function runSpecialists(names, { userId, now = new Date(), deps = {}, timeoutMs = TIMEOUTS.specialist, logger = console } = {}) {
+async function runSpecialists(names, { userId, now = new Date(), deps = {}, lookbackDays = 0, timeoutMs, logger = console } = {}) {
+    const { LONG_RANGE_DAYS } = require('../context/lookback');
+    const limit = timeoutMs ?? (lookbackDays > LONG_RANGE_DAYS ? TIMEOUTS.specialistLong : TIMEOUTS.specialist);
     const unique = [...new Set(names)].filter((n) => REGISTRY[n]);
     return Promise.all(unique.map(async (name) => {
         const started = Date.now();
+        const timeoutMs = limit;
         try {
-            const out = await Promise.race([REGISTRY[name]({ userId, now, deps: deps[name] || {} }), timeoutAfter(timeoutMs)]);
+            const out = await Promise.race([REGISTRY[name]({ userId, now, deps: { cache: deps.cache, ...(deps[name] || {}) }, lookbackDays }), timeoutAfter(timeoutMs)]);
             if (out?.timedOut) {
                 logger.warn(`[AICoach] specialist ${name} timed out after ${timeoutMs}ms`);
                 return { specialist: name, status: 'timeout', findings: [], data_used: [], missing_data: [name], confidence: 'low', ms: Date.now() - started };

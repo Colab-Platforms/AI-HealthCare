@@ -18,9 +18,33 @@ const coachStateSchema = new mongoose.Schema({
         question: String,
         askedAt: Date,
     },
-    askedLog: { type: Map, of: Date, default: {} },
+    // A list, not a Map: field names contain dots ("fitness.limitations") and
+    // Mongoose Map keys can't.
+    askedLog: {
+        type: [new mongoose.Schema({ field: { type: String, required: true }, askedAt: { type: Date, required: true } }, { _id: false })],
+        default: [],
+    },
     pendingConfirm: {
         facts: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+        askedAt: Date,
+    },
+    // A request paused by a blocking question ("meal generate karo" -> "pait
+    // kaisa hai?"): resumed with the user's answer on the next message.
+    pendingRequest: {
+        message: { type: String, maxlength: 2000 },
+        topics: { type: [String], default: undefined },
+        specialists: { type: [String], default: undefined },
+        recommendsFoodOrSupplement: Boolean,
+        askedAt: Date,
+    },
+    // A meal the user described, shown back with its nutrition, waiting for "save it".
+    pendingFoodLog: {
+        entry: mongoose.Schema.Types.Mixed,
+        askedAt: Date,
+    },
+    // "Add this kind of meal to your 7-day plan?" was asked: the reply it refers to.
+    pendingMealPref: {
+        replyText: { type: String, maxlength: 4000 },
         askedAt: Date,
     },
     lastSaved: {

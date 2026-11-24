@@ -13,7 +13,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { isEnabled, HISTORY_TURNS } = require('./config');
 const { runCoach } = require('./orchestrator/mainCoachGraph');
 
-const TYPED_EVENTS = new Set(['profile_saved', 'profile_undone', 'profile_confirm']);
+const TYPED_EVENTS = new Set(['profile_saved', 'profile_undone', 'profile_confirm', 'meal_pref_saved', 'food_log_confirm', 'food_logged']);
 
 let sharedDeps;
 function defaultDeps() {
@@ -21,9 +21,19 @@ function defaultDeps() {
     const { getProfileContext } = require('../health-profile/services/profileContextService');
     const { mongoRepo } = require('./orchestrator/coachStateRepo');
     const { createProfileTools } = require('./tools/profileTools');
+    const { getTargets } = require('./context/targets');
+    const { getFreshness } = require('./context/freshness');
+    const { createSymptomTools } = require('./tools/symptomTools');
+    const { createMealPrefTools } = require('./tools/mealPrefTools');
+    const { createFoodLogTools } = require('./tools/foodLogTools');
     sharedDeps = {
+        mealPrefTools: createMealPrefTools(),
+        foodLogTools: createFoodLogTools(),
         client: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
         getProfileContext,
+        getTargets,
+        getFreshness,
+        symptomTools: createSymptomTools(),
         coachStateRepo: mongoRepo,
         profileTools: createProfileTools(),
         specialistDeps: {},
@@ -84,6 +94,7 @@ async function handleCoachV2({ req, sendToken, sendEvent, finishStream, deps }) 
                 message: String(req.body.query),
                 history: cleanHistory(req.body.conversationHistory),
                 now: new Date(),
+                startedAt: started,
             },
             deps: { ...(deps || defaultDeps()), signal: abort.signal },
             onEvent: (event) => {

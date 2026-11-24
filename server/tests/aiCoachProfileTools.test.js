@@ -20,12 +20,21 @@ function setup() {
     });
     const service = createProfileWriteService({ repo, afterCommit: async () => {} });
     const effects = [];
+    const weightLogs = [];
+    const removedLogs = [];
     const tools = createProfileTools({
         service, repo,
         sideEffects: { afterProfileChange: async (u, s) => { effects.push(s); } },
+        // Stand-in for services/weightLogService: the profile part of a weigh-in.
+        logWeight: async ({ userId, weightKg, source }) => {
+            await service.updateSection(userId, 'body', { weightKg }, { source });
+            weightLogs.push({ weightKg, source });
+            return { metric: { _id: `m${weightLogs.length}` }, created: true };
+        },
+        removeWeightLog: async (id) => { removedLogs.push(id); },
         logger: { warn: () => {}, error: () => {} },
     });
-    return { repo, service, tools, effects, hp: () => repo.state.profiles[USER], user: () => repo.state.users[USER] };
+    return { repo, service, tools, effects, weightLogs, removedLogs, hp: () => repo.state.profiles[USER], user: () => repo.state.users[USER] };
 }
 
 const fact = (target, value, over = {}) => ({ target, value, none: false, statedAs: 'volunteered', aboutSelf: true, ...over });
@@ -89,18 +98,27 @@ test('saveFacts: "none" marks the list none; injuries none -> [\'none\'], later 
     assert.deepEqual(hp().fitness.limitations, ['knee pain']);
 });
 
-test('saveFacts: scalars coerced; invalid values skipped without failing the rest; body change triggers side effects', async () => {
+test('saveFacts: scalars coerced; invalid values skipped without failing the rest', async () => {
     const { tools, hp, effects } = setup();
     const saved = await tools.saveFacts(USER, [
-        fact('body.weightKg', '68.5 kg'),
         fact('diet.preference', 'Vegetarian'),
+        fact('basic.age', '31'),
         fact('lifestyle.smoking', 'sometimes'), // not in the enum -> skipped
-        fact('basic.age', 'abc'),               // not a number -> skipped
+        fact('lifestyle.sleepHours', 'abc'),     // not a number -> skipped
     ]);
-    assert.deepEqual(saved.map((s) => s.target), ['body.weightKg', 'diet.preference']);
-    assert.equal(hp().body.weightKg, 68.5);
+    assert.deepEqual(saved.map((s) => s.target), ['diet.preference', 'basic.age']);
     assert.equal(hp().diet.preference, 'vegetarian');
-    assert.ok(effects[0].includes('body'));
+    assert.equal(hp().basic.age, 31);
+    assert.ok(effects[0].includes('basic')); // nutrition side effects for basic/body/goals
+});
+
+test('saveFacts: weight said in chat goes through the app\'s weight log (graph, goal), not just the profile', async () => {
+    const { tools, hp, weightLogs } = setup();
+    const saved = await tools.saveFacts(USER, [fact('body.weightKg', '68.5 kg')]);
+    assert.deepEqual(weightLogs, [{ weightKg: 68.5, source: 'chat' }]);
+    assert.equal(hp().body.weightKg, 68.5);
+    assert.equal(saved[0].metricId, 'm1');
+    assert.deepEqual(await tools.saveFacts(USER, [fact('body.weightKg', '900')]), []); // out of range
 });
 
 test('saveFacts: re-saving a known fact is not reported as saved (nothing to undo)', async () => {
@@ -110,11 +128,12 @@ test('saveFacts: re-saving a known fact is not reported as saved (nothing to und
     assert.deepEqual(again, []);
 });
 
-test('undoSaved: reverts the batch, newest first; mirror restored', async () => {
-    const { tools, hp, user } = setup();
+test('undoSaved: reverts the batch, newest first; mirror restored; the weigh-in the chat created is removed', async () => {
+    const { tools, hp, user, removedLogs } = setup();
     const saved = await tools.saveFacts(USER, [fact('allergies', 'Peanut'), fact('body.weightKg', '66')]);
     assert.equal(await tools.undoSaved(USER, saved), 2);
     assert.equal(hp().allergies.items.length, 0);
     assert.equal(hp().body.weightKg, 70);
     assert.equal(user().profile.weight, 70);
+    assert.deepEqual(removedLogs, ['m1']);
 });

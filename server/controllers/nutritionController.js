@@ -1291,90 +1291,10 @@ exports.logWeight = async (req, res) => {
       });
     }
 
-    // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
-    let recordedDate;
-    if (date && typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const [y, m, d] = date.split('-').map(Number);
-      recordedDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-    } else {
-      recordedDate = date ? new Date(date) : new Date();
-    }
-    
-    // Check if entry exists for this date, if so update it to avoid duplicates
-    let metric = await HealthMetric.findOne({ 
-      userId: req.user._id, 
-      type: 'weight',
-      recordedAt: {
-        $gte: new Date(new Date(recordedDate).setUTCHours(0,0,0,0)),
-        $lt: new Date(new Date(recordedDate).setUTCHours(23,59,59,999))
-      }
-    });
-
-    if (metric) {
-      metric.value = Number(weight);
-      metric.notes = notes;
-    } else {
-      metric = new HealthMetric({
-        userId: req.user._id,
-        type: 'weight',
-        value: Number(weight),
-        unit: 'kg',
-        readingContext: 'general',
-        recordedAt: recordedDate,
-        notes
-      });
-    }
-
-    await metric.save({ maxTimeMS: 30000 });
-
-    // Also update profile weight (through HealthProfile) and BMI, together.
-    const user = await withTimeout(User.findById(req.user._id).select('profile.height').lean());
-    if (user) {
-      const height = user.profile?.height;
-      const bmiPatch = height
-        ? { $set: { 'healthMetrics.bmi': Number((weightKg / Math.pow(height / 100, 2)).toFixed(1)) } }
-        : {};
-      await profileSync.writeWithUser(req.user._id, { body: { weightKg } }, bmiPatch, { source: 'manual' });
-    }
-
-    // Update health goal if exists
-    const healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
-
-    if (healthGoal) {
-      healthGoal.currentWeight = Number(weight);
-      healthGoal.weeklyWeightLogs.push({
-        weight: Number(weight),
-        date: new Date(),
-        notes
-      });
-      // Recalculate targets based on new weight
-      await healthGoal.save({ maxTimeMS: 30000 });
-
-      // Ensure macroTargets exist before accessing them to avoid crashes
-      const proteinGoal = healthGoal.macroTargets?.protein || 100;
-      const carbsGoal = healthGoal.macroTargets?.carbs || 250;
-      const fatGoal = healthGoal.macroTargets?.fats || 65;
-
-      await profileSync.writeWithUser(req.user._id, {
-        goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
-      }, {
-        $set: {
-          nutritionGoal: {
-            goal: healthGoal.goalType,
-            targetWeight: healthGoal.targetWeight,
-            calorieGoal: healthGoal.dailyCalorieTarget,
-            proteinGoal: proteinGoal,
-            carbsGoal: carbsGoal,
-            fatGoal: fatGoal,
-            lastUpdated: new Date()
-          }
-        }
-      }, { source: 'manual' });
-    }
-
-    // Invalidate server-side dashboard cache so next fetch returns fresh data
-    cache.delete(`dashboard:${req.user._id}`);
-    cache.delete(`health_goal:${req.user._id}`);
+    // Shared with the AI coach: services/weightLogService.js does every write
+    // (HealthMetric, HealthProfile + BMI, HealthGoal, nutritionGoal, caches).
+    const { metric, healthGoal } = await require('../services/weightLogService')
+      .logWeight({ userId: req.user._id, weightKg, date, notes, source: 'manual' });
 
     res.json({
       success: true,

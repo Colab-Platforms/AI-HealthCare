@@ -223,6 +223,7 @@ exports.deleteUser = async (req, res) => {
       require('../modules/health-profile/models/HealthProfile').deleteMany({ user: id }),
       require('../modules/health-profile/models/ProfileHistory').deleteMany({ user: id }),
       require('../modules/ai-coach/models/CoachState').deleteMany({ user: id }),
+      require('../modules/ai-coach/models/SymptomLog').deleteMany({ user: id }),
     ]);
 
     res.json({ message: 'User and all related data deleted successfully' });

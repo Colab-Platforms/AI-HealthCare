@@ -297,10 +297,13 @@ test('DPDPA: account deletion and data export cover HealthProfile + ProfileHisto
     assert.match(privacy, /health_profile_history\.json/);
     assert.match(privacy, /CoachState\.deleteMany\(\{ user: uid \}\)/);
     assert.match(privacy, /coach_state\.json/);
+    assert.match(privacy, /SymptomLog\.deleteMany\(\{ user: uid \}\)/);
+    assert.match(privacy, /symptom_log\.json/);
     const admin = fs.readFileSync(path.join(__dirname, '..', 'controllers', 'adminController.js'), 'utf8');
     assert.match(admin, /HealthProfile'\)\.deleteMany\(\{ user: id \}\)/);
     assert.match(admin, /ProfileHistory'\)\.deleteMany\(\{ user: id \}\)/);
     assert.match(admin, /CoachState'\)\.deleteMany\(\{ user: id \}\)/);
+    assert.match(admin, /SymptomLog'\)\.deleteMany\(\{ user: id \}\)/);
 });
 
 test('admin delete: every deleteMany filter uses a field the model actually has', () => {
