@@ -9,16 +9,16 @@
 
 ### Resume on another machine (updated 25 Nov)
 
-**Status (25 Nov, uncommitted on top of c187070):** issues 1–7 DONE, fixed "undo" reply DONE, all re-tested on staging (real API) with 4 more fixes from that run (below, "25 Nov staging re-test"). **Next:** commit + push, then step 6 (`AI_COACH_V2=true` on staging + app test with the opener), Day 3 list, production.
+**Status (25 Nov night, all committed: 19ba584 + edea4a4 on Staging):** issues 1–7 DONE, undo reply DONE, 25 Nov staging re-test fixes DONE, manual chat test fixes + age-aware coaching DONE (section "25 Nov evening" below). `AI_COACH_V2=true` set on staging Vercel + Render by the user (25 Nov). **Next:** test from the app with the test user (step 6; Flutter contract in section 8), then the small "coach knows the app" set (section "Next: coach knows the app"), Day 3 list, production.
 
 1. `git pull origin Staging`, then in `server/`: `npm install` (needed: `@langchain/langgraph`, `@langchain/core`, `zod`; without it the coach tests fail with "Cannot find module").
-2. Offline tests: `cd server && node --test "tests/healthProfile*.test.js" "tests/aiCoach*.test.js"` → 249 pass (+4 in coachSeedPersonas.test.js). Full suite: `$env:USE_STAGING_DB="false"; npm test` → 835 tests, 830 pass, only the 4 known vault failures + 1 skipped.
+2. Offline tests: `cd server && node --test "tests/healthProfile*.test.js" "tests/aiCoach*.test.js"` → add `"tests/coach*.test.js"` too: 271 pass (25 Nov night). Full suite (last run 25 Nov morning): `$env:USE_STAGING_DB="false"; npm test` → 835 tests, 830 pass, only the 4 known vault failures + 1 skipped.
 3. **Test users + terminal chat (25 Nov).** Two seeded personas on staging, 6 months of data each (`scripts/lib/coachSeedPersonas.js`, re-seed any time with `--reset`; it prints a new password):
    - **a** = Rahul, 24, male, `coach-test@example.invalid`: muscle gain, vegetarian, peanut allergy, Vit D / B12 low + LDL high (report 5 months old), unanalysed vault file, steps 5k -> 9.5k, 2-week sick break ~2 months ago, short sleep last night + recovery 38, hard leg day yesterday, protein always short, last weigh-in 20 days ago. App targets: 2878 kcal, 7500 steps, 8 h sleep, 60 cardio + 120 strength / week.
    - **b** = Sushila, 67, female, `coach-test-b@example.invalid`: type 2 diabetes (metformin) + hypertension (amlodipine), knee pain (osteoarthritis), eggetarian, weight 88 -> 84.6 kg (last weigh-in 50 days ago), fasting sugar 165 -> 135 (last 9 days ago), HbA1c 8.4 -> 7.6 (two reports), walks + chair yoga, high-carb meals, light sleep. Allergies deliberately not filled (tests the "ask first" gap). App targets: 1625 kcal, 8602 steps, 7.5 h sleep, 150 cardio + 90 strength / week.
    - Seed = app paths where possible: `calculateNutritionGoals` (signup), `HealthGoal.create` (hooks), FoodLog rows + the app's `updateDailySummaryInternal` per day, real report `aiAnalysis.metrics` shape, catalog activity ids (the old seed's `weight_training` was not in the catalog). Rows tagged `test_seed`; `--reset` also clears chat meal logs, summaries, coach state, health profile, the old diet plan; real device rows (apple_watch on user a) are kept. Waits for Redis before clearing caches (a stale diet-plan cache otherwise leaked 2400 kcal into half the summaries). Test: `tests/coachSeedPersonas.test.js`.
    - `node scripts/coachStagingRun.js --chat --persona=b`: interactive chat with history; `/data` (what the model saw), `/details`, `/days N`, `/opener`, `/reset`, `/user a|b`, `exit`. One-line summary under each answer (route, path, first word, question, saves).
-   - **App finding (not fixed, app-side):** two calorie goals disagree for persona b: `User.nutritionGoal` (signup calculator, what targets.js / dashboard use) = 1625 kcal, active `HealthGoal.dailyCalorieTarget` (model hook, what daily summaries + the nutrition specialist use) = 1476. Same signup creates both, so real users can have this too; the coach's data block then shows both numbers. Needs one source (decide which).
+   - **App finding (not fixed, app-side):** two calorie goals disagree for persona b: `User.nutritionGoal` (signup calculator, what targets.js / dashboard use) = 1625 kcal, active `HealthGoal.dailyCalorieTarget` (model hook, what daily summaries + the nutrition specialist use) = 1476. Same signup creates both, so real users can have this too; the coach's data block then shows both numbers. Needs one source (decide which). They are made equal again by any weight log or profile change (both write `nutritionGoal` from the HealthGoal). Note: the 2877 / 2736 / 2804 numbers seen for persona a on 25 Nov were NOT this: they were weight changes from chat (74 -> 78 = at target) plus the undo bug fixed in edea4a4.
 4. Staging runs (scripted), from `server/`:
    ```
    $env:USE_STAGING_DB="true"
@@ -52,9 +52,29 @@
      - `coachStagingRun.js --opener`: runs the opener first (same logic as `POST /api/coach/opener`), its text goes into the history.
    - Not fixed, noted: "ok" is read as thanks ("You're welcome!"); a short symptom reply after the opener ("thoda better hai") takes the full path (3.7 s, no rule topic) and could use the fast path; buildRequest's "Today (UTC)" uses the real clock, not `--days-later`.
    - Speed notes: fast path 1.1-2.5 s, full path 2.5-5.5 s (classifier 1.4-3.1 s). A pending question forces the full path even for "hi" (2.5 s).
-6. After the fixes: re-run the same staging checks yourself (reset-coach before/after), then `AI_COACH_V2=true` on the staging server(s) and test from the app with the test user. App opt-in for typed events: `"coachEvents": true` in the `/api/chat` body.
+6. App test on staging (env done 25 Nov): check both Vercel and Render run edea4a4, log in as persona a, open the coach screen (opener bubble), send 2-3 messages incl. a "yes" to a save question. App opt-in for typed events: `"coachEvents": true` in the `/api/chat` body. Full Flutter contract: section 8.
 7. Later (Day 3 list): CoachRun log, `POST /api/coach/feedback`, post-chat summary (QStash), eval (~50 English + Hinglish questions, old vs new).
 8. Production: follow the "Production rollout checklist" below (indexes incl. CoachState + SymptomLog first, then deploy, then migration). `AI_COACH_V2` and `HEALTH_PROFILE_WRITES` must match on Vercel and Render.
+
+### 25 Nov evening: manual chat test fixes + age-aware coaching (committed 19ba584 + edea4a4)
+
+From the user's own terminal chat (persona a) and a same-questions run on a (24) vs b (67). DB checks confirmed chat saves are real (HealthProfile + history + `User.profile` mirror + weight log), not just coach memory.
+
+- **"yess" was not a yes:** the model then said "saving it now" and nothing was saved. `YES_RE` / `NO_RE` (`tools/profileTools.js`) take stretched / casual forms (yess, haanji, okk, bilkul, kardo, noo, nahii); "ya phir", "hai na", "now ..." are not yes / no. Prompt rule: never claim a save that "Data for this message" doesn't show.
+- **Two save questions in one reply** (fast path: the answer asked, then reconcile appended its own in the other language). `endingQuestion()`: answer already ends with a save question -> no extra line, but `pendingConfirm` is still set (so "yes" saves); ends with another question -> no confirm at all; else the fixed line in the streamed answer's language (`confirmText`).
+- **tu / aap / tum mix:** fixed Hinglish texts (gap questions, weight check-in, confirm line, scope replies, opener greeting) now have no pronoun, so they fit either form.
+- **Weight undo bugs (verified on staging):** (1) undo did not run the profile side effects, so the HealthGoal stayed at the chat weight and calories stayed wrong (2804 at 70 kg after undo back to 78); (2) when the app already had a reading that day, the chat overwrote it and undo left the chat value in the graph + goal log. Now `logWeight` returns `previousValue`; the saved item keeps `weightLog { kg, loggedAt, created, metricId, previousValue }`; undo deletes a created reading or restores the old value, pulls the goal's `weeklyWeightLogs` entry, then runs `afterProfileChange`. Seed `--reset` now removes all the test user's weight readings (a chat 78 kg survived a reseed).
+- **Age-aware coaching** (`context/ageGuidance.js`): age group decided in code (under 18 / 18-49 / 50-64 / 65+, + woman 45+ bone health) and its short rules added to every answer's data (65+: low-impact, balance, warm-up, easy day between sessions, 0.25-0.5 kg/week is good, protein, water, dizziness on BP medicines; under 18: no deficit / fasting / supplements, involve a parent). The app's own exercise note (65+: balance training) now reaches the coach (`targets.exerciseNote`). 65+ symptom follow-up: daily (not every 2 days), doctor suggestion after 7 days (not 14).
+- **Falls** (`safety/safetyRules.js`): "gir gaya / gayi, fell, slipped, phisal gaya" -> caution turn (no question, fall data line, fixed `fallCautionLine`); with a head injury, can't get up, fracture -> emergency reply. Not falls: "weight / sugar gir gaya", "fell asleep"; "sir pe chot nahi lagi" is not an emergency.
+- **One 112 line on caution turns:** the model's own "call 112 / 108" sentences are dropped while streaming (`createEmergencyLineFilter`, per sentence so the first word isn't held back; "108 g carbs" kept); only the fixed line remains.
+- Prompt: no "X and Y?" double questions; never tell the user their logs "don't match" what they say.
+- Staging after the fixes: b's workout plan has balance + warm-up + "no jumping" + water + BP dizziness; fall replies ask nothing, mention 67 + BP / diabetes medicines -> doctor, one 112 line; first word 2.0-3.6 s.
+- Tests: `aiCoachRound4.test.js`, `aiCoachAge.test.js`, updated `aiCoachProfileTools` / `aiCoachOpener`.
+- Not fixed, noted: "yes" to a profile save takes ~3 s (fixed reply is ~1.3 s for undo); the vault nudge sometimes rides on unrelated answers.
+
+### Next: coach knows the app (agreed 25 Nov, small set first)
+
+User wants the coach to know everything about the app and the user, with create / update from chat. Phase A (read): account (plan, status, valid till, plan features, last invoice), vitals (heart rate, SpO2, BP, stress), 7-30 day water history, supplements / doses, appointments, orders, health score, a short "which screen does what" app guide; each loaded only when the question needs it. Phase B (write, always "do this? yes / no" + undo, through the app's existing services): goal change (e.g. fat loss to 60 kg), water / sleep / workout log, meal edit / delete, supplement add / stop, reminders. Phase C stays OFF in chat (decided 25 Nov): subscription cancel, payments, account / report / vault deletes: the coach only points to the screen. First: account + subscription read, goal change, heart rate + water history. Today "subscription plan" questions are answered as off_topic.
 
 Test-user data notes: the test user has real apple_watch rows (created 23 Nov 12:24, someone synced a watch on this account), incl. a 1233-min sleep row on 10 Nov (shown capped at 14 h by the app). Old "74" recovery: probably from that sync, unverified (row gone).
 
@@ -449,7 +469,9 @@ All tools take `userId` from `req.user`, never from the LLM.
 
 ### Safety (code, always runs)
 
-- Red-flag symptoms (chest pain, breathing trouble, fainting, suicidal thoughts) → emergency/doctor message, skip coaching.
+- Red-flag symptoms (chest pain, breathing trouble, fainting, suicidal thoughts, a fall with a head injury / can't get up / fracture) → emergency/doctor message, skip coaching.
+- Caution turns (coaching + a fixed "when to call 112" line, no question, model's own 112 sentences dropped): chest pain / breathlessness after exercise without a severe sign; any other fall.
+- Age group rules from code (`context/ageGuidance.js`) on every answer.
 - No diagnosis, no medicine doses, no "X caused Y" claims.
 - Diet/exercise advice filtered by allergies, conditions, limitations.
 - Missing data is reported as missing, never as 0.
@@ -477,6 +499,23 @@ All tools take `userId` from `req.user`, never from the LLM.
 | GET | `/api/health-profile/completeness` | protect |
 | GET | `/api/health-profile/history?field=&before=&limit=` | protect |
 | POST | `/api/health-profile/undo/:historyId` | protect |
+| POST | `/api/coach/opener` | protect, consent, `aiHealthCoach` |
+
+### Chat + opener contract for the app (Flutter, 25 Nov)
+
+- `POST /api/chat` body `{ query, conversationHistory: [{ role, content }], coachEvents: true }` (last ~12 messages). SSE: `data: {"token":"..."}` (append), `data: [DONE]` (end), and only with `coachEvents: true` typed events `data: {"type": ...}`:
+
+| type | payload | app UI |
+| --- | --- | --- |
+| `profile_saved` | `items: [{ target, value, none, historyId }]` | "Saved" chip + Undo (`POST /api/health-profile/undo/:historyId` or the user types "undo") |
+| `profile_undone` | `count` | toast |
+| `profile_confirm` | `facts: [{ target, value, none }]` | Yes / No buttons that send "yes" / "no" |
+| `food_log_confirm` | `entry` | meal card + Yes / No |
+| `food_logged` | `mealType, nutrition` | chip; refresh nutrition screen |
+| `meal_pref_saved` | `patterns` | toast |
+
+- `POST /api/coach/opener`: only when the coach screen opens. `{ success, opener: { text, language, question } | null, reason? }`; show `opener.text` as the first coach bubble and save it to history; `null` → nothing (`reason`: disabled, already_today, chatted_today, nothing_to_say, error).
+- Env (Vercel AND Render): `AI_COACH_V2=true`, `HEALTH_PROFILE_WRITES=true`, `ANTHROPIC_API_KEY` starting `sk-ant` (otherwise V2 silently falls back to the old chat).
 
 ### Health profile API contract (built 23 Nov)
 
