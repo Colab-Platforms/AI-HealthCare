@@ -39,6 +39,7 @@ async function sleepSpecialist({ userId, now = new Date(), deps = {}, lookbackDa
     // Sleep rows are dated by the morning they end: "today" = LAST night.
     const ago = daysBetween(now, last.date);
     const nightLabel = ago === 0 ? 'last night (woke up today)' : ago === 1 ? 'the night before last' : `the night ending ${whenLabel(last.date, now)}`;
+    if (ago >= 1) findings.push('No sleep logged for last night yet.');
     findings.push(`Most recent sleep, ${nightLabel}: ${hm(last.totalHours)}`
         + `${typeof last.sleepScore === 'number' ? `, sleep score ${Math.round(last.sleepScore)}/100 (${last.scoreType === 'device' ? 'from device' : 'estimated'})` : ''}.`);
 
@@ -46,7 +47,8 @@ async function sleepSpecialist({ userId, now = new Date(), deps = {}, lookbackDa
     const avg7 = avg(prior.map((e) => e.totalHours));
     if (avg7 !== null) {
         const diffMin = Math.round((last.totalHours - avg7) * 60);
-        findings.push(`Previous 7 nights average ${hm(avg7)} (last night ${diffMin >= 0 ? `${diffMin} min more` : `${-diffMin} min less`}).`);
+        // Same night as above (staging 25 Nov: said "last night" for the night before last).
+        findings.push(`Previous 7 nights average ${hm(avg7)} (${ago === 0 ? 'last night' : 'that night'} ${diffMin >= 0 ? `${diffMin} min more` : `${-diffMin} min less`}).`);
     }
     const avg30 = avg(nights.map((e) => e.totalHours));
     if (nights.length >= 10) findings.push(`30-night average ${hm(avg30)} over ${nights.length} logged nights.`);

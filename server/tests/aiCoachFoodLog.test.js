@@ -116,3 +116,29 @@ test('graph: "I ate X" -> shown with estimates + "save?"; "haan" saves through t
     assert.equal(saved.length, 1);
     assert.match(answers.at(-1).messages.at(-1).content, /chose not to save that meal/);
 });
+
+test('English chat: "yes" to a meal gets the English fixed reply (regression: a removed regex crashed this path)', async () => {
+    const saved = [];
+    const cls = { intent: 'profile_update', topics: ['nutrition'], specialists: [], timeframe: 'today', lookbackDays: 0, symptoms: [], symptomUpdates: [], redFlag: false, distress: false, language: 'english', recommendsFoodOrSupplement: false, facts: [], mealLog: meal({ description: '2 eggs and toast', statedCalories: 300, mealType: 'breakfast' }) };
+    const deps = {
+        client: {
+            messages: { create: async () => ({ stop_reason: 'end_turn', usage: {}, content: [{ type: 'text', text: JSON.stringify(cls) }] }) },
+            beta: { messages: { stream: () => ({ async *[Symbol.asyncIterator]() { yield { type: 'content_block_delta', delta: { type: 'text_delta', text: 'ok' } }; }, finalMessage: async () => ({ usage: {}, stop_reason: 'end_turn' }) }) } },
+        },
+        coachStateRepo: createMemoryCoachStateRepo(),
+        getProfileContext: async () => ({ summary: '', completeness: {}, allergies: { state: 'none' }, medications: { state: 'none' }, conditions: { state: 'none', items: [] } }),
+        getTargets: async () => ({ targets: { calories: 2400 }, today: { calories: 300 }, remaining: { calories: 2100 }, loggedToday: true }),
+        profileTools: { saveFacts: async () => [], undoSaved: async () => 0 },
+        foodLogTools: createFoodLogTools({ estimateFood: async () => estimate, saveMealLog: async (args) => { saved.push(args); return {}; } }),
+        logger: { warn: () => {}, error: () => {} },
+        specialistDeps: { nutrition: { getNutritionTrends: async () => ({ daysLogged: 0 }) } },
+    };
+    const history = [];
+    const send = (message) => runCoach({ input: { userId: USER, userName: 'Sam', message, history, now: NOW, startedAt: Date.now() }, deps, onEvent: () => {} });
+    await send('I had 2 eggs and toast for breakfast, 300 kcal');
+    history.push({ role: 'user', content: 'I had 2 eggs and toast for breakfast, 300 kcal' }, { role: 'assistant', content: 'ok' });
+    const yes = await send('yes');
+    assert.equal(saved.length, 1);
+    assert.match(yes.reply, /^Done, saved to your breakfast log: 300 kcal/);
+    assert.match(yes.reply, /Left for today: 2100 kcal\./);
+});

@@ -17,11 +17,11 @@ function scopeReply(kind, { language = 'english', firstName = '' } = {}) {
     const name = firstName ? `${hi ? '' : ' '}${firstName}` : '';
     if (kind === 'injection') {
         return hi
-            ? 'Main apni settings change ya share nahi kar sakta, par tumhari health mein poori madad kar sakta hoon. Batao, aaj kya help chahiye?'
+            ? 'Main apni settings change ya share nahi kar sakta, par health mein poori madad kar sakta hoon. Aaj kis cheez mein help chahiye?'
             : 'I can\'t change or share how I\'m set up, but I\'m happy to help with your health. What would you like help with today?';
     }
     return hi
-        ? `Ye mere area se bahar hai${name ? ` ${name}` : ''} 🙂 Main tumhari health, khana, neend, fitness aur reports mein madad karta hoon. Waise, aaj ka din kaisa ja raha hai?`
+        ? `Ye mere area se bahar hai${name ? ` ${name}` : ''} 🙂 Main health, khana, neend, fitness aur reports mein madad karta hoon. Waise, aaj ka din kaisa ja raha hai?`
         : `That's outside what I can help with${name} 🙂 I'm here for your health, food, sleep, fitness and reports. How's your day going so far?`;
 }
 

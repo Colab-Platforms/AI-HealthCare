@@ -27,8 +27,10 @@ const ANSWERS = {
     basics: ['basic.age', 'body.heightCm', 'body.weightKg'],
 };
 
-const YES_RE = /^\s*(yes|yeah|yep|yup|haan|haa|ha|han|ji|ji haan|sure|ok|okay|save( it)?|kar do|save kar do|theek hai|thik hai|correct|right)\b/i;
-const NO_RE = /^\s*(no|nope|nahi|nahin|nhi|mat|don'?t|dont|cancel|rehne do)\b/i;
+// Stretched and casual forms too (staging 25 Nov: "yess" was not a yes, the
+// model then said "saving it now" and nothing was saved).
+const YES_RE = /^\s*(y+e+s+|yea+h*|yep+|yup+|ha+n*|ha+n* ?ji|ji+|ji ha+n*|sure|ok+|o+kay+|okk*|bilkul|zaroor|haa?n bhai|save( it| karo| kar do| kardo)?|kar do|kardo|kar de|karde|theek hai|thik hai|correct|right|go ahead|do it)\b/i;
+const NO_RE = /^\s*(n+o+|nope|nah|na+hi+n?|nhi+|mat|don'?t|dont|cancel|rehne do|rehne de)\b/i;
 // Undo must be a short, direct instruction: "what's wrong with my sleep?"
 // right after a save must NOT revert it.
 const UNDO_RE = /\b(undo|hata do|hatao|remove (that|it)|delete (that|it)|galat (save|tha)|wrong save|that'?s (wrong|not right)|vo galat hai|woh galat hai|save mat karo)\b/i;

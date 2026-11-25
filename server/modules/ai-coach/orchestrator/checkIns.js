@@ -41,7 +41,7 @@ const NO_CHECKIN_INTENTS = new Set(['greeting', 'thanks', 'small_talk', 'off_top
 // its reply's language.
 const QUESTIONS = {
     symptom: (name) => ({ en: `How is your ${name} now?`, hi: `Ab ${name} kaisa hai?` }),
-    weight: () => ({ en: 'What is your weight now?', hi: 'Abhi aapka weight kitna hai?' }),
+    weight: () => ({ en: 'What is your weight now?', hi: 'Abhi weight kitna hai?' }),
 };
 function askExactly(q, hinglish) {
     const [main, alt] = hinglish ? [q.hi, q.en] : [q.en, q.hi];

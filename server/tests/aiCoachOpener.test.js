@@ -62,7 +62,7 @@ test('opener: missing important profile fact -> one gap question, saved as the p
     const t = setup({ profile: { ...fullProfile, allergies: { state: 'missing' } }, state: { lastLanguage: 'hinglish' } });
     const { opener } = await t.open();
     assert.match(opener.text, /^Good morning Rahul!\nPichhle 7 din: roz avg 6,240 steps \(goal 8,000, 3\/7 din poora\)/);
-    assert.match(opener.text, /\nKya aapko kisi khane ya dawai se allergy hai\?$/);
+    assert.match(opener.text, /\nKisi khane ya dawai se allergy hai\?$/);
     const state = await t.coachStateRepo.load(USER);
     assert.equal(state.pendingQuestion.field, 'allergies');
 });

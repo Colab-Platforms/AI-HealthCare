@@ -100,7 +100,7 @@ function slowDeps({ delay = 300, calls }) {
             messages: { create: async () => ({ stop_reason: 'end_turn', usage: {}, content: [{ type: 'text', text: JSON.stringify({ intent: 'health_coaching', topics: ['sleep'], specialists: ['sleep'], timeframe: 'today', lookbackDays: 0, symptoms: [], symptomUpdates: [], redFlag: false, distress: false, language: 'english', recommendsFoodOrSupplement: false, facts: [], mealLog: { isLogging: false, mealType: 'unknown', description: '', statedCalories: -1, statedProtein: -1, statedCarbs: -1, statedFats: -1 } }) }] }) },
             beta: { messages: { stream: () => ({ async *[Symbol.asyncIterator]() { yield { type: 'content_block_delta', delta: { type: 'text_delta', text: 'ok' } }; }, finalMessage: async () => ({ usage: {}, stop_reason: 'end_turn' }) }) } },
         },
-        coachStateRepo: { load: async (u) => { await sleep(delay); return repo.load(u); }, save: repo.save },
+        coachStateRepo: { load: async (u) => { await sleep(delay); calls.push('memory-loaded'); return repo.load(u); }, save: repo.save },
         getProfileContext: async () => { calls.push('profile'); await sleep(delay); return { summary: '', completeness: {}, allergies: { state: 'none' }, medications: { state: 'none' }, conditions: { state: 'none', items: [] } }; },
         getTargets: async () => { calls.push('targets'); await sleep(delay); return null; },
         profileTools: { saveFacts: async () => [], undoSaved: async () => 0 },
@@ -116,8 +116,11 @@ test('prepare: memory, profile, targets and prefetch load together (one wait, no
     const calls = [];
     const final = await runCoach({ input: { userId: String(new mongoose.Types.ObjectId()), userName: 'R', message: 'how did I sleep last night?', history: [], now: NOW, startedAt: Date.now() }, deps: slowDeps({ calls }), onEvent: () => {} });
     assert.equal(final.timings.path, 'fast');
-    assert.ok(final.timings.prepareMs < 550, `prepare took ${final.timings.prepareMs} ms (sequential would be ~600+)`);
-    assert.deepEqual(calls.sort(), ['profile', 'sleep', 'targets']); // each once
+    // Order, not a stopwatch (a timing limit was flaky under the parallel full suite):
+    // profile / targets / prefetch must START before the memory load finishes.
+    const loadedAt = calls.indexOf('memory-loaded');
+    for (const read of ['profile', 'targets', 'sleep']) assert.ok(calls.indexOf(read) < loadedAt, `${read} started after memory: ${calls.join(', ')}`);
+    assert.deepEqual(calls.filter((c) => c !== 'memory-loaded').sort(), ['profile', 'sleep', 'targets']); // each once
 });
 
 test('prepare: a bare "haan" with nothing pending still gets targets (started after memory), each read once', async () => {
@@ -206,4 +209,72 @@ test('progress: broken 14 h night not in the weekly sleep average', async () => 
     const text = r.findings.join(' ');
     assert.match(text, /this week avg 7 h, goal met 0\/1 nights/);
     assert.match(text, /1 night\(s\) with a broken device reading/);
+});
+
+// ── 25 Nov: coach gender (male forms), fixed "undo" reply ───────────────────
+
+const { undoText } = require('../modules/ai-coach/orchestrator/mainCoachGraph');
+
+test('undo reply: names what was removed, Hinglish / English, nothing-to-remove case', () => {
+    const items = [{ target: 'fitness.limitations', value: 'knee pain' }, { target: 'medications', none: true }];
+    assert.equal(undoText(items, 2, true), 'Theek hai, hata diya: injury / limitation: knee pain; koi dawai nahi. Profile pehle jaisi ho gayi hai.');
+    assert.equal(undoText(items.slice(0, 1), 1, false), 'Done, removed: injury / limitation: knee pain. Your profile is back to how it was.');
+    assert.match(undoText(items, 0, true), /Hatane ke liye kuch nahi mila/);
+    assert.ok(!/undefined/.test(undoText([{ target: 'body.weightKg', value: 72 }], 1, false)));
+});
+
+test('prompt: the coach speaks about itself in masculine forms', () => {
+    const { system } = buildRequest({ message: 'hi', profileContext: null });
+    const rules = system.map((b) => b.text).join('\n');
+    assert.match(rules, /always speak about yourself in the masculine form/);
+});
+
+test('code-written Hinglish lines use masculine first-person forms only', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const root = path.join(__dirname, '..', 'modules', 'ai-coach');
+    const files = [];
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : e.name.endsWith('.js') && files.push(path.join(dir, e.name))));
+    walk(root);
+    const FEMININE = /\b(main|mai|mein)\b[^'"`\n]{0,40}\b(dungi|karungi|sakti hoon|rahi hoon|chahti hoon|deti hoon|karti hoon|bataungi)\b/i;
+    for (const f of files) {
+        const src = fs.readFileSync(f, 'utf8');
+        // the prompt rule itself lists the forms to avoid
+        const offending = src.split('\n').filter((l) => FEMININE.test(l) && !/never "dungi"/.test(l));
+        assert.deepEqual(offending, [], path.relative(root, f));
+    }
+});
+
+// ── 25 Nov staging: caution turn asks nothing; sleep night label ─────────────
+
+test('exercise caution turn: no extra question, the reply ends with the fixed 112 line', async () => {
+    const calls = [];
+    const deps = slowDeps({ delay: 1, calls });
+    deps.specialistDeps.fitness = { getActivityAnalytics: async () => ({ days: [] }), recentWorkouts: async () => [] };
+    const r = await runCoach({ input: { userId: String(new mongoose.Types.ObjectId()), userName: 'R', message: 'gym ke baad thodi saans phool rahi hai, normal hai kya?', history: [], now: NOW, startedAt: Date.now() }, deps, onEvent: () => {} });
+    assert.ok(r.safety.caution, 'expected an exercise caution');
+    assert.equal(r.checkIn, null);
+    assert.match(r.reply, /112/);
+    assert.ok(r.reply.trim().endsWith(r.reply.trim().split('\n').at(-1)));
+    assert.ok(!/\?\s*\n\n[^\n]*112[^\n]*$/.test(r.reply), 'no question right before the caution line');
+});
+
+test('sleep: latest night is the night before last -> says so, and no "last night" in the comparison', async () => {
+    const entries = [];
+    for (let i = 9; i >= 1; i--) entries.push({ date: dateKey(i), totalHours: i === 1 ? 5.2 : 7 });
+    const r = await sleepSpecialist({ userId: 'u', now: NOW, deps: { getSleepAnalytics: async () => ({ entries }) } });
+    const text = r.findings.join(' ');
+    assert.match(text, /No sleep logged for last night yet\./);
+    assert.match(text, /Most recent sleep, the night before last: 5h 12m/);
+    assert.match(text, /\(that night 108 min less\)/);
+    assert.ok(!/last night \d/.test(text));
+});
+
+test('data block states the reply language decided for this message (English message after a Hinglish chat)', () => {
+    const history = [{ role: 'user', content: 'aaj dinner mein kya khaun?' }, { role: 'assistant', content: 'Ab stomach burning kaisa hai?' }];
+    const en = buildRequest({ message: 'should I go to the gym?', history, classification: { language: 'english' } });
+    assert.match(en.messages.at(-1).content, /Reply language: English \(the user wrote this message in English/);
+    const hi = buildRequest({ message: 'gym jaun?', history, classification: { language: 'hinglish' } });
+    assert.match(hi.messages.at(-1).content, /Reply language: Hinglish/);
+    assert.ok(!/Reply language/.test(buildRequest({ message: 'x', classification: {} }).messages.at(-1).content));
 });

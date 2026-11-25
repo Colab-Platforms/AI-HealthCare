@@ -305,7 +305,7 @@ const N = {
     specialists: 'run_specialists',
     respond: 'respond',
     reconcile: 'reconcile',
-    logged: 'food_logged_reply',
+    logged: 'action_reply', // fixed reply after "yes" to a meal or "undo"
     persist: 'persist',
 };
 
@@ -344,7 +344,7 @@ async function quickNode(state, config) {
     const hinglish = ['hinglish', 'hindi'].includes(state.classification.language);
     const reply = state.classification.intent === 'thanks'
         ? (hinglish ? 'Koi baat nahi! Aur kuch poochna ho to bataiye.' : 'You\'re welcome! Let me know if there\'s anything else.')
-        : `Hi${first ? ` ${first}` : ''}! ${hinglish ? 'Aaj main aapki kaise madad kar sakta hoon?' : 'How can I help you today?'}`;
+        : `Hi${first ? ` ${first}` : ''}! ${hinglish ? 'Aaj kis cheez mein madad karun?' : 'How can I help you today?'}`;
     write(config, { type: 'token', text: reply });
     return { reply, route: 'quick', nextCoachState: { ...state.coachState }, timings: { firstTokenMs: Date.now() - state.startedAt } };
 }
@@ -468,7 +468,7 @@ async function gapNode(state, config) {
     // Resuming a paused request: never block a second time (that would loop
     // if the user skipped the question); ask at the end instead.
     if (resuming && gapQuestion?.blocking) gapQuestion = { ...gapQuestion, blocking: false };
-    const checkIn = pickCheckIn({
+    let checkIn = pickCheckIn({
         resuming,
         classification: state.classification,
         gapQuestion,
@@ -480,6 +480,13 @@ async function gapNode(state, config) {
         askedLog: state.nextCoachState.askedLog,
         now: state.now,
     });
+    // Exercise caution turn (breathless / chest after the gym): no extra
+    // question; the reply ends with the fixed "when to call 112" line
+    // (staging 25 Nov: an injury question landed before that line). On the
+    // fast path the classifier's symptom list isn't known yet, so the caution
+    // flag is what marks this as an "unwell" turn.
+    const caution = Boolean(state.safety && state.safety.caution);
+    if (caution && checkIn && !checkIn.blocking) checkIn = null;
 
     // Meal suggestions -> offer to add the pattern to the 7-day plan. Not while
     // a stomach-type symptom is active (temporary gentle food must not become
@@ -488,7 +495,7 @@ async function gapNode(state, config) {
     const stomachIssue = (state.activeSymptoms || []).some((s) => isRelated(s, ['nutrition']));
     const mealOffer = Boolean(deps(config).mealPrefTools) && c.recommendsFoodOrSupplement && (c.topics || []).includes('nutrition')
         && !inQuestionCooldown(state.nextCoachState.askedLog, state.now)
-        && !stomachIssue && !checkIn?.blocking;
+        && !stomachIssue && !caution && !checkIn?.blocking;
     // One question per reply: the plan offer replaces a non-blocking check-in.
     const finalCheckIn = mealOffer && checkIn && !checkIn.blocking ? null : checkIn;
     return { gapQuestion: finalCheckIn?.kind === 'gap' ? gapQuestion : null, checkIn: finalCheckIn, mealOffer };
@@ -496,11 +503,42 @@ async function gapNode(state, config) {
 
 // "yes" to a meal shown last turn: it is saved in `actions`; the reply is a
 // fixed line (no answer-model call: staging 24 Nov this took ~2.7 s for one
-// sentence). Language from this reply or, for a bare "yes"/"ok", the user's
-// previous message.
-const HINGLISH_YES = /\b(haan|haa|han|ha|ji|kar do|thik|theek)\b/i;
+// sentence). Same for "undo".
 function routeAfterActions(state) {
-    return state.action === 'food_log_yes' ? N.logged : N.gap;
+    return state.action === 'food_log_yes' || state.action === 'undo' ? N.logged : N.gap;
+}
+
+// "undo": say what was removed in one fixed line (staging 24 Nov: a Sonnet
+// call took 2.1 s for this).
+function undoText(items = [], count = 0, hinglish = false) {
+    if (!count) {
+        return hinglish
+            ? 'Hatane ke liye kuch nahi mila, shayad pehle hi hat chuka hai. Profile screen pe check kar sakte ho.'
+            : 'There was nothing left to remove; it may already be gone. You can check on the Profile screen.';
+    }
+    const what = items.map((f) => describeFact(f, hinglish)).filter(Boolean).join('; ');
+    return hinglish
+        ? `Theek hai, hata diya${what ? `: ${what}` : ''}. Profile pehle jaisi ho gayi hai.`
+        : `Done, removed${what ? `: ${what}` : ''}. Your profile is back to how it was.`;
+}
+
+// How a streamed answer ends: null = no question, 'save' = it already asks to
+// save something to the profile, 'other' = some other question.
+const SAVE_QUESTION_RE = /\b(save|profile|update|note|record)\b|\bsave kar|\bprofile mein/i;
+function endingQuestion(reply = '') {
+    const lines = String(reply).trim().split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const last = lines[lines.length - 1] || '';
+    if (!last.includes('?')) return null;
+    return SAVE_QUESTION_RE.test(last) ? 'save' : 'other';
+}
+
+// Fixed "save this?" line. Hinglish has no tu / aap word, so it fits either
+// form the answer used (staging 25 Nov: "tumne bataya" after a "tu" reply).
+function confirmText(facts, hinglish) {
+    const what = facts.map((f) => describeFact(f, hinglish)).join('; ');
+    return hinglish
+        ? `\n\nEk baat: ${what}. Ye profile mein save kar doon? (haan / nahi)`
+        : `\n\nBy the way, you mentioned ${what}. Should I save this to your profile? (yes / no)`;
 }
 
 function foodLoggedText(loggedFood, targets, hinglish) {
@@ -524,11 +562,13 @@ function foodLoggedText(loggedFood, targets, hinglish) {
         : `Done, saved to your ${meal} log: ${saved}.${leftText}`;
 }
 
-async function foodLoggedNode(state, config) {
-    const lastUser = [...(state.history || [])].reverse().find((m) => m.role === 'user')?.content || '';
-    const hinglish = ['hinglish', 'hindi'].includes(state.classification.language)
-        || HINGLISH_YES.test(state.message) || HINGLISH_HINT.test(lastUser);
-    const reply = foodLoggedText(state.loggedFood, state.targets, hinglish);
+// Fixed replies, no answer-model call: "yes" to a meal, "undo".
+async function actionReplyNode(state, config) {
+    // Language resolved once in prepare (short "yes" / "undo" keep the chat's language).
+    const hinglish = ['hinglish', 'hindi'].includes(state.classification.language);
+    const reply = state.action === 'undo'
+        ? undoText(state.coachState?.lastSaved?.items || [], state.undoneCount || 0, hinglish)
+        : foodLoggedText(state.loggedFood, state.targets, hinglish);
     write(config, { type: 'token', text: reply });
     return { reply, route: 'coach', timings: { firstTokenMs: Date.now() - state.startedAt } };
 }
@@ -664,7 +704,6 @@ async function reconcileNode(state, config) {
     // already streamed in state.classification.language, so neutral keeps it.
     const lang = resolveLanguage({ message: state.message, classifierLanguage: full.language, previous: state.classification.language });
     full = { ...full, language: lang };
-    const hi = ['hinglish', 'hindi'].includes(lang);
     const next = { ...state.nextCoachState };
     let appended = '';
     const say = (text) => { appended += text; write(config, { type: 'token', text }); };
@@ -681,14 +720,18 @@ async function reconcileNode(state, config) {
     const askedSomething = state.checkIn || state.mealOffer || state.foodToConfirm || state.confirmFacts?.length || full.redFlag;
     if (!askedSomething) {
         const { confirm } = triageFacts(full.facts, null);
-        if (confirm.length) {
+        // One question per reply (staging 25 Nov: the answer already asked
+        // "update your weight to 70 kg?" and the fixed line asked it again).
+        const ending = endingQuestion(state.reply);
+        if (confirm.length && ending !== 'other') {
             next.pendingConfirm = { facts: confirm, askedAt: state.now };
             next.askedLog = { ...(next.askedLog || {}), [LAST_ASK_KEY]: state.now }; // counts as a question (issue #6)
             write(config, { type: 'profile_confirm', facts: confirm.map(({ target, value, none }) => ({ target, value, none })) });
-            const what = confirm.map((f) => describeFact(f, hi)).join('; ');
-            say(hi
-                ? `\n\nEk baat: tumne bataya ${what}. Kya main ise tumhari profile mein save kar doon? (haan / nahi)`
-                : `\n\nBy the way, you mentioned ${what}. Should I save this to your profile? (yes / no)`);
+            if (!ending) {
+                // Same language as the answer that already streamed.
+                const replyHi = ['hinglish', 'hindi'].includes(state.classification.language);
+                say(confirmText(confirm, replyHi));
+            }
         }
     }
 
@@ -721,7 +764,7 @@ function buildCoachGraph() {
         .addNode(N.safety, safetyNode)
         .addNode(N.scope, scopeNode)
         .addNode(N.quick, quickNode)
-        .addNode(N.logged, foodLoggedNode)
+        .addNode(N.logged, actionReplyNode)
         .addNode(N.actions, actionsNode)
         .addNode(N.gap, gapNode)
         .addNode(N.specialists, specialistsNode)
@@ -762,4 +805,4 @@ async function runCoach({ input, deps: d, onEvent }) {
     return finalState;
 }
 
-module.exports = { buildCoachGraph, getCoachGraph, runCoach, routeAfterPrepare, routeAfterGap, foodLoggedText };
+module.exports = { buildCoachGraph, getCoachGraph, runCoach, routeAfterPrepare, routeAfterGap, foodLoggedText, undoText, endingQuestion, confirmText };

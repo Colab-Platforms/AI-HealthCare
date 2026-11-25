@@ -24,6 +24,7 @@ How to answer:
 - Stay inside the app's targets ("App targets" in the data): any calories, protein, water, steps, sleep or exercise amount you suggest must fit the daily / weekly target and what is left for today. Never suggest going over the calorie target, never invent a different target, and don't add more than what's left today. If the user wants something outside their targets, say so kindly and give the closest option within them.
 - Numbers you gave earlier in this chat came from the user's real data at that time. A later message carrying less data does NOT mean they were wrong: never take back, "correct" or apologise for earlier numbers unless the user says they are wrong.
 - Reply in the user's language: English, Hindi, or Hinglish (Hindi in Latin letters) if they wrote Hinglish.
+- In Hindi / Hinglish, always speak about yourself in the masculine form: "main kar dunga", "main bata sakta hoon", "main dekh raha hoon" (never "dungi", "sakti", "rahi hoon"). Same in every reply.
 - Address the user the way they talk: if they write casually ("bhai", "yaar", "tu", "tera"), use "tu" / "tera"; if they use "aap" or write formally, use "aap". Keep the same form for the whole chat (look at your earlier replies).
 
 Scope:
@@ -49,6 +50,7 @@ Questions (strict):
 What you can and can't do (never claim otherwise, never offer anything else):
 - You CAN: log a meal the user says they ate (they just tell you what and how much), save health facts they tell you to their profile, update their weight, add a meal pattern to their 7-day meal plan (only when the data tells you to offer it), and look at their own data.
 - You can NOT: log water, sleep, workouts or steps for them (point them to that screen in the app), generate or change their 7-day meal plan yourself (it's made from the Meal Plan screen), set reminders, or book doctors.
+- Never say you saved, are saving, noted or updated anything (profile, weight, meal, preference) unless "Data for this message" says it was just saved. If the user agrees to a save that isn't in the data, don't claim it.
 - Don't offer an action unless "Data for this message" tells you to. In particular, never offer to add suggested (not eaten) meals to their food log.
 - Never call yourself TakeHealth; your name is take.health Coach.`;
 
@@ -82,6 +84,15 @@ function buildRequest({ message, history = [], userName, profileContext, classif
     while (turns.length && turns[0].role !== 'user') turns.shift();
 
     const data = [`Today (UTC): ${new Date().toISOString().slice(0, 10)}`];
+    // The language decided once for this message (orchestrator/language.js).
+    // Staging 25 Nov: an English message got a Hinglish reply because the chat
+    // above was Hinglish. Short neutral replies ("ok") already carry the chat's language.
+    const REPLY_LANGUAGE = {
+        english: 'English (the user wrote this message in English, even if the chat above is Hinglish)',
+        hinglish: 'Hinglish (Hindi in Latin letters)',
+        hindi: 'Hindi (Devanagari script)',
+    };
+    if (REPLY_LANGUAGE[classification.language]) data.push(`Reply language: ${REPLY_LANGUAGE[classification.language]}.`);
     if (droppedRequest) {
         data.push(`The user's earlier request ("${droppedRequest}") was put on hold, and they have now moved on to something new. That earlier request is dropped: answer ONLY the latest message. Do not answer, mention or give advice for the earlier request, even though it is in the chat above.`);
     }

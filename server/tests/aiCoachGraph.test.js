@@ -227,10 +227,13 @@ test('answer to the coach\'s question is saved now, then "undo" reverts it', asy
     assert.ok(savedEvent.items[0].historyId);
     assert.match(t.calls.answerParams.at(-1).messages.at(-1).content, /Just saved to their profile: injury \/ limitation: knee pain/);
 
+    const answersBefore = t.calls.answer;
     const u = await t.send('undo');
     assert.equal(u.events.find((e) => e.type === 'profile_undone').count, 1);
     assert.equal(t.hp().fitness.limitations.length, 0);
-    assert.match(t.calls.answerParams.at(-1).messages.at(-1).content, /removed 1 item/);
+    // Fixed reply naming what was removed; no answer-model call.
+    assert.equal(t.calls.answer, answersBefore);
+    assert.equal(u.text, 'Done, removed: injury / limitation: knee pain. Your profile is back to how it was.');
     assert.ok(!(await t.coachStateRepo.load(USER)).lastSaved);
 });
 
