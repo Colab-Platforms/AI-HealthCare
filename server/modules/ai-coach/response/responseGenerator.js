@@ -13,6 +13,7 @@
 const { MODELS, EFFORT, MAX_TOKENS, RESPONDER_THINKING, RESPONDER_FALLBACK, HISTORY_TURNS } = require('../config');
 const { describeFact } = require('../tools/profileTools');
 const { formatTargets } = require('../context/targets');
+const { ageGuidance } = require('../context/ageGuidance');
 const { describeEntry } = require('../tools/foodLogTools');
 
 const COACH_RULES = `You are take.health Coach, a warm, knowledgeable health coach inside the take.health app (users in India).
@@ -44,7 +45,8 @@ Format:
 Questions (strict):
 - If "Data for this message" gives a question to ask or something to confirm, end the reply with it, worded naturally, as the single last line, and ask nothing else.
 - Otherwise do NOT end with a question. No follow-up questions of your own ("morning or evening?", "do you prefer X?", "kab se hai?"). End with the advice itself. Only exception: the message is too unclear to answer at all; then ask one short clarifying question instead of answering.
-- Any question: one thing only, answerable with a short reply, never "A or B?" / "X ya Y?".
+- Any question: one thing only, answerable with a short reply, never "A or B?" / "X ya Y?", and never two questions joined with "and" / "aur" ("where did you get hurt and is there pain?" is two questions).
+- Never point out that their logged data "doesn't match" what they say (an old log, a workout on a sick day): data can be late or wrong. Use what they tell you now.
 - A question given in the data is in English or Hinglish only for convenience: always ask it in the language of your reply, keeping its meaning. Never switch language for the last line.
 
 What you can and can't do (never claim otherwise, never offer anything else):
@@ -75,7 +77,7 @@ function findingsBlock(results) {
 /**
  * @returns { system, messages } for client.messages.stream
  */
-function buildRequest({ message, history = [], userName, profileContext, classification = {}, specialistResults = [], gapQuestion = null, confirmFacts = [], savedFacts = [], undoneCount = 0, targets = null, checkInInstruction = null, activeSymptoms = [], symptomChanges = [], mealOffer = false, savedMealPatterns = null, mealPrefDeclined = false, foodToConfirm = null, loggedFood = null, foodLogDeclined = false, exerciseCaution = false, droppedRequest = null }) {
+function buildRequest({ message, history = [], userName, profileContext, classification = {}, specialistResults = [], gapQuestion = null, confirmFacts = [], savedFacts = [], undoneCount = 0, targets = null, checkInInstruction = null, activeSymptoms = [], symptomChanges = [], mealOffer = false, savedMealPatterns = null, mealPrefDeclined = false, foodToConfirm = null, loggedFood = null, foodLogDeclined = false, exerciseCaution = false, fallCaution = false, droppedRequest = null }) {
     const hinglish = ['hinglish', 'hindi'].includes(classification.language);
     const turns = history.slice(-HISTORY_TURNS * 2)
         .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
@@ -104,6 +106,9 @@ function buildRequest({ message, history = [], userName, profileContext, classif
     if (exerciseCaution) {
         data.push('The user has chest pain or breathlessness after exercise. Advise no workout today: rest, water, light walking only once it settles, and to see a doctor if it keeps coming back with exercise. Do not diagnose. A fixed line about when to call 112 is added after your reply, so do not write your own emergency instructions.');
     }
+    if (fallCaution) {
+        data.push('The user had a fall. Ask no question. Advise: rest, check the hurt area, ice for swelling, no exercise until it is clearly fine (then restart gently), and to see a doctor today if pain or swelling stays, if they are 65+, if they take BP / diabetes / blood-thinner medicines, or if they felt dizzy before falling. Add one or two practical prevention tips if they fit (non-slip mat, light at night, get up slowly). Do not diagnose. A fixed line about when to call 112 is added after your reply, so do not write your own emergency instructions.');
+    }
     if (classification.lookbackDays > 0) data.push(`The question covers the last ${classification.lookbackDays} days.`);
     if (activeSymptoms.length) {
         data.push(`Symptoms on record, not yet resolved: ${activeSymptoms.map((s) => `${s.name} (since ${new Date(s.startedAt).toISOString().slice(0, 10)}${s.lastStatus && s.lastStatus !== 'new' ? `, last update: ${s.lastStatus}` : ''})`).join('; ')}. Keep food and exercise advice gentle on these.`);
@@ -114,6 +119,9 @@ function buildRequest({ message, history = [], userName, profileContext, classif
         else data.push(`The user says their ${c.name} is ${c.status}.`);
     }
     if (targets) data.push(`App targets:\n${formatTargets(targets)}`);
+    // Age group + its rules, decided in code (context/ageGuidance.js).
+    const ageRules = ageGuidance(profileContext?.basic || {});
+    if (ageRules) data.push(ageRules.text);
     const f = findingsBlock(specialistResults);
     data.push(f
         ? `User's data:\n${f}`

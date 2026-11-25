@@ -37,6 +37,7 @@ async function logWeight({ userId, weightKg, date, notes, source = 'manual' }) {
     }).maxTimeMS(30000);
 
     const created = !metric;
+    const previousValue = metric ? metric.value : null;
     if (metric) {
         metric.value = weightKg;
         metric.notes = notes;
@@ -94,8 +95,9 @@ async function logWeight({ userId, weightKg, date, notes, source = 'manual' }) {
     cache.delete(`health_goal:${userId}`);
 
     // `created`: false when the day's existing reading was updated (an undo
-    // must then not delete the user's own earlier entry).
-    return { metric, healthGoal, created };
+    // must then not delete the user's own earlier entry); `previousValue`:
+    // that entry's value before this call, so an undo can put it back.
+    return { metric, healthGoal, created, previousValue };
 }
 
 module.exports = { logWeight, parseRecordedDate };

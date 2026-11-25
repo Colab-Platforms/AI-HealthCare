@@ -61,6 +61,8 @@ function computeTargets({ user, healthGoal, dietPlan, today }) {
         sleepRange: sleep.targetRange,
         cardioMinPerWeek: num(guidance.cardioMinutesPerWeek),
         strengthMinPerWeek: num(guidance.strengthMinutesPerWeek),
+        // The app's own exercise note for this age / goal (65+: balance training).
+        exerciseNote: typeof guidance.note === 'string' && guidance.note.trim() ? guidance.note.trim() : null,
         goalType,
         targetWeightKg: num(ng.targetWeight) ?? num(healthGoal?.targetWeight),
         dietPlanCalories: num(dietPlan?.dailyCalorieTarget),
@@ -101,6 +103,7 @@ function formatTargets(ctx) {
     if (t.cardioMinPerWeek || t.strengthMinPerWeek) {
         lines.push(`Weekly exercise target: ${t.cardioMinPerWeek || 0} min cardio + ${t.strengthMinPerWeek || 0} min strength.`);
     }
+    if (t.exerciseNote) lines.push(`App exercise note: ${t.exerciseNote}`);
     if (t.goalType || t.targetWeightKg) {
         lines.push(`Goal: ${t.goalType ? t.goalType.replace(/_/g, ' ') : 'general'}${t.targetWeightKg ? `, target weight ${t.targetWeightKg} kg` : ''}.`);
     }

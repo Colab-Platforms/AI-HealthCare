@@ -16,7 +16,7 @@
 //   { type: 'profile_confirm', facts }
 
 const { Annotation, StateGraph, START, END } = require('@langchain/langgraph');
-const { checkMessage, safetyReply, exerciseCautionLine } = require('../safety/safetyRules');
+const { checkMessage, safetyReply, cautionLine } = require('../safety/safetyRules');
 const { detectInjection, scopeReply } = require('../safety/scopeGuard');
 const { classify, keywordFallback } = require('./intentClassifier');
 const { pickGapQuestion } = require('./gapEngine');
@@ -522,6 +522,47 @@ function undoText(items = [], count = 0, hinglish = false) {
         : `Done, removed${what ? `: ${what}` : ''}. Your profile is back to how it was.`;
 }
 
+// A line telling the user to call 112 / 108. Needs a call / help word too, so
+// "108 g carbs" or "112 kcal" are kept.
+const EMERGENCY_NUMBER_RE = /\b(112|108)\b(?!\s*(g|gm|grams?|kg|kcal|cal|mg|ml|min|minutes?|steps|bpm|%|\/))/i;
+const EMERGENCY_WORD_RE = /\b(call|dial|ambulance|emergency|hospital|helpline|turant|foran|fauran|kariye|karein|karo|kar)\b/i;
+const isEmergencyLine = (line) => EMERGENCY_NUMBER_RE.test(line) && EMERGENCY_WORD_RE.test(line);
+
+// Streams text sentence by sentence (not line by line: staging 25 Nov, a
+// whole first paragraph held back put the first word at 6.5 s), dropping
+// sentences that tell the user to call 112 / 108. Newlines are held back so a
+// dropped paragraph leaves no extra gap; trailing ones go.
+// push(text) for each token, end() -> the text that was actually sent.
+const SENTENCE_END_RE = /[.!?।](?: +|(?=\n))|\n/;
+function createEmergencyLineFilter(emit) {
+    let buf = '';
+    let pendingWs = '';
+    let sent = '';
+    const out = (text) => { sent += text; emit(text); };
+    const unit = (u) => {
+        if (!u.trim()) { if (sent) pendingWs += u; return; }
+        if (isEmergencyLine(u)) return;
+        if (pendingWs) { out(pendingWs.replace(/\n{3,}/g, '\n\n')); pendingWs = ''; }
+        out(u);
+    };
+    return {
+        push(text) {
+            buf += text;
+            let m;
+            while ((m = SENTENCE_END_RE.exec(buf))) {
+                const end = m.index + m[0].length;
+                unit(buf.slice(0, end));
+                buf = buf.slice(end);
+            }
+        },
+        end() {
+            if (buf) unit(buf);
+            buf = '';
+            return sent.replace(/\s+$/, '');
+        },
+    };
+}
+
 // How a streamed answer ends: null = no question, 'save' = it already asks to
 // save something to the profile, 'other' = some other question.
 const SAVE_QUESTION_RE = /\b(save|profile|update|note|record)\b|\bsave kar|\bprofile mein/i;
@@ -623,24 +664,32 @@ async function respondNode(state, config) {
         foodToConfirm: state.foodToConfirm || null,
         loggedFood: state.loggedFood || null,
         foodLogDeclined: state.action === 'food_log_no',
-        exerciseCaution: Boolean(state.safety && state.safety.caution),
+        exerciseCaution: Boolean(state.safety?.caution) && state.safety.caution.kind !== 'fall',
+        fallCaution: state.safety?.caution?.kind === 'fall',
         droppedRequest: state.droppedRequest || null,
     });
     const t0 = Date.now();
     let firstTokenAt = null;
+    const send = (text) => {
+        if (firstTokenAt === null) firstTokenAt = Date.now();
+        write(config, { type: 'token', text });
+    };
+    // Caution turn: the fixed 112 line below is the only one. Lines the model
+    // wrote about calling 112 / 108 are dropped as they stream (staging 25 Nov:
+    // the fall reply showed two emergency lines).
+    const caution = state.safety && state.safety.caution;
+    const filter = caution ? createEmergencyLineFilter(send) : null;
     const out = await streamAnswer({
         client: d.client,
         request,
         signal: d.signal,
-        onToken: (text) => {
-            if (firstTokenAt === null) firstTokenAt = Date.now();
-            write(config, { type: 'token', text });
-        },
+        onToken: filter ? filter.push : send,
     });
+    if (filter) out.text = filter.end();
     // Fixed text, not model text: the "when to call 112" line must always be there.
-    if (state.safety && state.safety.caution) {
-        const line = `\n\n${exerciseCautionLine({ language: state.classification.language })}`;
-        write(config, { type: 'token', text: line });
+    if (caution) {
+        const line = `\n\n${cautionLine(caution, { language: state.classification.language })}`;
+        send(line);
         out.text += line;
     }
 
@@ -805,4 +854,4 @@ async function runCoach({ input, deps: d, onEvent }) {
     return finalState;
 }
 
-module.exports = { buildCoachGraph, getCoachGraph, runCoach, routeAfterPrepare, routeAfterGap, foodLoggedText, undoText, endingQuestion, confirmText };
+module.exports = { buildCoachGraph, getCoachGraph, runCoach, routeAfterPrepare, routeAfterGap, foodLoggedText, undoText, endingQuestion, confirmText, createEmergencyLineFilter, isEmergencyLine };

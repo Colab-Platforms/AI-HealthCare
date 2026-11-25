@@ -104,7 +104,9 @@ async function main() {
         M.ExerciseLog.deleteMany({ userId: uid, $or: [{ notes: SEED }, { notes: { $regex: `\\[${SEED}\\]` } }] }),
         M.FoodLog.deleteMany({ userId: uid, $or: [{ notes: SEED }, { source: 'chat' }] }),
         M.NutritionSummary.deleteMany({ userId: uid }),
-        M.HealthMetric.deleteMany({ userId: uid, $or: [{ notes: SEED }, { notes: /chat/i }] }),
+        // Weigh-ins carry no seed tag when the chat (or app) logged them: all of
+        // this test user's weight readings go, or a chat 78 kg survives a reseed.
+        M.HealthMetric.deleteMany({ userId: uid, $or: [{ notes: SEED }, { notes: /chat/i }, { type: 'weight' }] }),
         M.HealthGoal.deleteMany({ userId: uid }),
         M.HealthReport.deleteMany({ user: uid, 'originalFile.filename': SEED }),
         M.VaultReport.deleteMany({ userId: uid, note: SEED }),

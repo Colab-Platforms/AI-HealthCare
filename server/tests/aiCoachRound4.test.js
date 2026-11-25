@@ -57,3 +57,49 @@ test('prompt forbids claiming a save that is not in the data', () => {
     const system = Array.isArray(req.system) ? req.system.map((b) => b.text).join('\n') : String(req.system);
     assert.match(system, /Never say you saved, are saving, noted or updated anything/);
 });
+
+test('undo of a chat weight: weigh-in removed for this user and calorie targets re-synced', async () => {
+    const { createProfileTools } = require('../modules/ai-coach/tools/profileTools');
+    const calls = [];
+    const tools = createProfileTools({
+        service: { undo: async () => ({ changed: true, sections: ['body'] }) },
+        repo: {},
+        sideEffects: { afterProfileChange: async (userId, sections) => calls.push(['sync', userId, sections]) },
+        revertWeightLog: async (log, userId) => calls.push(['revert', log.metricId, userId]),
+        logger: { warn() {}, error() {} },
+    });
+    const n = await tools.undoSaved('u1', [{ target: 'body.weightKg', value: '70', historyId: 'h1', weightLog: { metricId: 'm1', kg: 70, created: true, loggedAt: '2026-11-25T10:00:00Z' } }]);
+    assert.equal(n, 1);
+    assert.deepEqual(calls, [['revert', 'm1', 'u1'], ['sync', 'u1', ['body']]]);
+});
+
+test('undo: nothing undone -> no side effects', async () => {
+    const { createProfileTools } = require('../modules/ai-coach/tools/profileTools');
+    let synced = false;
+    const tools = createProfileTools({
+        service: { undo: async () => { throw new Error('newer change'); } },
+        repo: {},
+        sideEffects: { afterProfileChange: async () => { synced = true; } },
+        revertWeightLog: async () => {},
+        logger: { warn() {}, error() {} },
+    });
+    assert.equal(await tools.undoSaved('u1', [{ target: 'diet.preference', historyId: 'h1' }]), 0);
+    assert.equal(synced, false);
+});
+
+test('chat weight over a same-day reading: undo info keeps the old value (not a delete)', async () => {
+    const { createProfileTools } = require('../modules/ai-coach/tools/profileTools');
+    const tools = createProfileTools({
+        service: {},
+        repo: { findProfile: async () => ({ body: { weightKg: 74 } }), listHistory: async () => [{ _id: 'h9' }] },
+        sideEffects: { afterProfileChange: async () => {} },
+        logWeight: async () => ({ metric: { _id: 'm7' }, created: false, previousValue: 78 }),
+        logger: { warn() {}, error() {} },
+    });
+    const [item] = await tools.saveFacts('u1', [{ target: 'body.weightKg', value: '70 kg', statedAs: 'answer' }]);
+    assert.equal(item.weightLog.metricId, 'm7');
+    assert.equal(item.weightLog.created, false);
+    assert.equal(item.weightLog.previousValue, 78);
+    assert.equal(item.weightLog.kg, 70);
+    assert.ok(!Number.isNaN(Date.parse(item.weightLog.loggedAt)));
+});

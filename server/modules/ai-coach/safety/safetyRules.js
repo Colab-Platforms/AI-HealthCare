@@ -44,6 +44,23 @@ const SOFTENABLE = new Set(['chest pain', 'breathing difficulty']);
 const EXERCISE_CONTEXT_RE = /\b(gym|workout|work ?out|exercise|training|run(ning)?|jog(ging)?|daud|cardio|chest day|push ?-?ups?|bench|lifting|weights?|sports?|cricket|football|match|cycling|kasrat|vyayam)\b/i;
 const SEVERE_SIGN_RE = /\b(left|baaye|baayen|bayen|ulte) (haath|hath|arm|baazu|kandha|kandhe)|\b(jaw|jabda|jabde)\b|\b(sweat\w*|pasina|paseena)\b|\b(chakkar|dizzy|dizziness|behosh|faint\w*)\b|\b(tez|bahut|bohot|severe|unbearable|crushing|intense)\b|aaram (karne )?(pe|par|mein|me) bhi|even (at|when) rest|at rest|rest (karne )?ke baad bhi|ruk (nahi|nhi) (raha|rahi)|won'?t stop|ghabrahat|\b(ulti|vomit\w*)\b/i;
 
+// Falls (staging 25 Nov: "bathroom mein gir gaya tha" from a 67-year-old was
+// only a symptom). A fall with a head injury, no way to get up, a possible
+// fracture or bleeding is an emergency; any other fall gets coaching plus a
+// fixed caution line. "weight / sugar gir gayi", "fell asleep" are not falls.
+const FALL_RE = /\b(fell|fallen|fall down|had a fall|slipped|tripped|gir (gaya|gayi|gaye|gya|gyi|gai|pada|padi|pade|padaa)|gir ?pad(a|i|e|aa)|phisal (gaya|gayi|gya|gyi|gai|ke gir)|fisal (gaya|gayi|gya|gyi|gai))\b/i;
+const NOT_FALL_RE = /\b(weight|wajan|vajan|wazan|sugar|glucose|bp|pressure|score|steps|neend|kg|kilo|level|rate|price|baal|hair)\b(\s+\S+){0,3}\s+(gir|fell|fallen|slipped)|\b(fell|fall|fallen) (asleep|in love|behind|short|ill|sick)\b/i;
+const FALL_SEVERE_RE = /\b(sir|sar|head|matha|maatha)\b(\s+\S+){0,3}?\s+(chot|lagi|laga|lag gayi|hit|injur\w*|bump|soojan|sujan|phat|fat)|\bhit (my )?head\b|\bhead injury\b|\b(uth|khada|khade|chal) (nahi|nhi|nahin) (pa|paa|sak)|can'?t (get up|stand|walk|move)|couldn'?t (get up|stand)|unable to (get up|stand|walk)|\b(haddi|bone) (toot|tut|broke\w*)|\bfracture\w*\b/i; // heavy bleeding: the severe-bleeding rule above
+
+function checkFall(message) {
+    if (!FALL_RE.test(message) || NOT_FALL_RE.test(message)) return null;
+    const m = FALL_SEVERE_RE.exec(message);
+    if (m && !NEG_AFTER.test(message.slice(m.index + m[0].length)) && !NEG_BEFORE.test(message.slice(0, m.index))) {
+        return { flagged: true, kind: EMERGENCY, reason: 'fall with serious injury' };
+    }
+    return { flagged: false, caution: { kind: 'fall', reason: 'fall' } };
+}
+
 function checkMessage(text) {
     const message = String(text || '');
     let caution = null;
@@ -68,7 +85,23 @@ function checkMessage(text) {
             return { flagged: true, kind: EMERGENCY, reason: `blood sugar ${value}` };
         }
     }
+    const fall = checkFall(message);
+    if (fall?.flagged) return fall;
+    if (fall && !caution) caution = fall.caution;
     return caution ? { flagged: false, caution } : { flagged: false };
+}
+
+// Fixed line after the coach's answer to a fall: when to get help now.
+function fallCautionLine({ language = 'english' } = {}) {
+    const hinglish = language === 'hinglish' || language === 'hindi';
+    return hinglish
+        ? 'Dhyan rahe: agar sir pe chot lagi ho, ulti, chakkar, behoshi ya bhoolne jaisa lage, tez dard ya sujan ho, ya pair pe wazan na daal paa rahe ho, to turant 112 ya 108 pe call kariye ya hospital jaiye.'
+        : 'Important: if you hit your head, or have vomiting, dizziness, fainting or confusion, strong pain or swelling, or can\'t put weight on your leg, call 112 or 108 or go to a hospital right away.';
+}
+
+// The fixed line for a caution turn, by kind.
+function cautionLine(caution, opts = {}) {
+    return caution?.kind === 'fall' ? fallCautionLine(opts) : exerciseCautionLine(opts);
 }
 
 // Fixed line appended after the coach's answer for exercise-related chest pain
@@ -93,4 +126,4 @@ function safetyReply(kind, { language = 'english' } = {}) {
         : 'This could be serious. Please get medical help right away: call 112 (emergency) or 108 (ambulance), or go to the nearest hospital. Until help arrives, don\'t stay alone and don\'t start any workout or medicine on your own.';
 }
 
-module.exports = { checkMessage, safetyReply, exerciseCautionLine, EMERGENCY, MENTAL_HEALTH };
+module.exports = { checkMessage, safetyReply, exerciseCautionLine, fallCautionLine, cautionLine, EMERGENCY, MENTAL_HEALTH };

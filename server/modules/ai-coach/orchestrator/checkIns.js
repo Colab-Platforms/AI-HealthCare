@@ -15,6 +15,8 @@
 const DAY = 86400000;
 const SNOOZE_DAYS = { weight: 7, glucose: 7, vault: 14, report: 30 };
 const SYMPTOM_FOLLOWUP_DAYS = 2;
+const SYMPTOM_FOLLOWUP_DAYS_OLDER = 1; // 65+
+const { ageBand } = require('../context/ageGuidance');
 // Issue #6 (staging 24 Nov: injury, then weight, then weight again, and a
 // weight question under "pait mein jalan hai"): after any non-blocking
 // question, none for 30 min; none on a turn where the user reports a symptom.
@@ -119,15 +121,20 @@ function pickCheckIn({ classification, gapQuestion, symptoms = [], symptomUpdate
     // request (e.g. injuries before gym advice) is still fine.
     const unwellNow = (classification.symptoms || []).length > 0;
 
-    // 2b. symptom follow-up: oldest active one not talked about in this message
+    // 2b. symptom follow-up: oldest active one not talked about in this message.
+    // 65+: asked daily and a doctor is suggested after 1 week, not 2 (illness
+    // hits harder and lasts longer at that age).
+    const older = ageBand(profileContext?.basic?.age) === 'older';
+    const followUpDays = older ? SYMPTOM_FOLLOWUP_DAYS_OLDER : SYMPTOM_FOLLOWUP_DAYS;
+    const doctorDays = older ? 7 : 14;
     for (const s of unwellNow ? [] : symptoms) {
         if (fresh(s)) continue;
-        if (askedWithin(s.lastAskedAt, SYMPTOM_FOLLOWUP_DAYS * DAY, now)) continue;
+        if (askedWithin(s.lastAskedAt, followUpDays * DAY, now)) continue;
         const since = daysAgo(s.startedAt, now);
         return {
             kind: 'symptom', key: `symptom:${s.key}`, symptomId: s._id,
             question: QUESTIONS.symptom(s.name),
-            instruction: `Earlier (${since} days ago) the user said they had ${s.name}${s.lastStatus && s.lastStatus !== 'new' ? ` (last update: ${s.lastStatus})` : ''}; they haven't said it's gone.${since >= 14 ? ' It has lasted 2+ weeks: in one sentence before the question, gently suggest seeing a doctor if it is still there.' : ''} As the last line, warmly, ${askExactly(QUESTIONS.symptom(s.name), hinglish)}`,
+            instruction: `Earlier (${since} days ago) the user said they had ${s.name}${s.lastStatus && s.lastStatus !== 'new' ? ` (last update: ${s.lastStatus})` : ''}; they haven't said it's gone.${since >= doctorDays ? ` It has lasted ${doctorDays === 7 ? 'a week or more' : '2+ weeks'}: in one sentence before the question, gently suggest seeing a doctor if it is still there.` : ''} As the last line, warmly, ${askExactly(QUESTIONS.symptom(s.name), hinglish)}`,
         };
     }
 

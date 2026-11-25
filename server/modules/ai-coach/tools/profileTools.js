@@ -134,7 +134,24 @@ function createProfileTools({
     // Weight said in chat goes through the app's own weight log (graph, goal,
     // BMI, profile), not just the profile field.
     logWeight = (args) => require('../../../services/weightLogService').logWeight(args),
-    removeWeightLog = async (metricId) => require('../../../models/HealthMetric').deleteOne({ _id: metricId, type: 'weight' }),
+    // Reverts the chat's weigh-in: a reading the chat created is deleted, a
+    // same-day reading it overwrote gets its old value back (only if nobody
+    // changed it since). The entry logWeight pushed into the HealthGoal's
+    // weeklyWeightLogs goes too (same weight, within 2 min of the save).
+    // Staging 25 Nov: undo left today's reading and the goal log at 69 kg.
+    revertWeightLog = async (log, userId) => {
+        const HealthMetric = require('../../../models/HealthMetric');
+        if (log.metricId) {
+            const own = { _id: log.metricId, userId, type: 'weight', value: log.kg };
+            if (log.created) await HealthMetric.deleteOne(own);
+            else if (log.previousValue > 0) await HealthMetric.updateOne(own, { $set: { value: log.previousValue } });
+        }
+        const t = new Date(log.loggedAt).getTime();
+        if (!Number.isFinite(t)) return;
+        await require('../../../models/HealthGoal').updateOne({ userId }, {
+            $pull: { weeklyWeightLogs: { weight: log.kg, date: { $gte: new Date(t - 120000), $lte: new Date(t + 120000) } } },
+        });
+    },
     logger = console,
 } = {}) {
     const { ProfileInputError } = writeService;
@@ -164,10 +181,16 @@ function createProfileTools({
             const kg = Number(String(f.value).replace(/[^\d.]/g, ''));
             if (!Number.isFinite(kg) || kg <= 0 || kg > 500) return null;
             const before = (await repo.findProfile(userId))?.body?.weightKg;
-            const { metric, created } = await logWeight({ userId, weightKg: kg, source: 'chat' });
+            const loggedAt = new Date().toISOString();
+            const { metric, created, previousValue } = await logWeight({ userId, weightKg: kg, source: 'chat' });
             // Profile already written inside logWeight (with its own side effects).
-            // Only a reading the chat CREATED is removed on undo.
-            return { res: { changed: before !== kg, sections: [] }, field: 'body.weightKg', metricId: created && metric?._id ? String(metric._id) : null };
+            // What undo needs to put the weight log back exactly.
+            const weightLog = {
+                kg, loggedAt, created: Boolean(created),
+                metricId: metric?._id ? String(metric._id) : null,
+                previousValue: created ? null : (previousValue ?? null),
+            };
+            return { res: { changed: before !== kg, sections: [] }, field: 'body.weightKg', weightLog };
         }
         const map = SCALAR_TARGETS[f.target];
         if (!map || f.none) return null;
@@ -196,7 +219,7 @@ function createProfileTools({
                 saved.push({
                     target: f.target, value: f.value, none: Boolean(f.none),
                     historyId: await latestHistoryId(userId, out.field),
-                    ...(out.metricId ? { metricId: out.metricId } : {}),
+                    ...(out.weightLog ? { weightLog: out.weightLog } : {}),
                 });
             } catch (err) {
                 // No values in logs: health data.
@@ -210,17 +233,31 @@ function createProfileTools({
 
     // Reverts the last saved batch, newest first. A change already superseded
     // by a newer edit is left alone.
+    // Then runs the same side effects as a save (staging 25 Nov: undoing a chat
+    // weight of 70 kg left the HealthGoal at 70, so calories stayed 2804
+    // while the profile was back at 78).
     async function undoSaved(userId, items = []) {
         let undone = 0;
+        const sections = new Set();
         for (const item of [...items].reverse()) {
             if (!item?.historyId) continue;
             try {
-                await service.undo(userId, item.historyId, { source: 'chat' });
-                // A weigh-in the chat created goes too, or the graph keeps the wrong number.
-                if (item.metricId) await removeWeightLog(item.metricId);
+                const res = await service.undo(userId, item.historyId, { source: 'chat' });
+                (res?.sections || []).forEach((s) => sections.add(s));
+                // The weigh-in goes back too, or the graph and goal keep the wrong number.
+                // (metricId alone: an item saved before weightLog existed.)
+                const log = item.weightLog || (item.metricId ? { metricId: item.metricId, created: true, kg: Number(String(item.value).replace(/[^\d.]/g, '')) } : null);
+                if (log) await revertWeightLog(log, userId);
                 undone++;
             } catch (err) {
                 logger.warn(`[AICoach] undo of ${item.target} skipped: ${err.message}`);
+            }
+        }
+        if (sections.size) {
+            try {
+                await sideEffects.afterProfileChange(userId, [...sections]);
+            } catch (err) {
+                logger.error(`[AICoach] side effects after undo failed: ${err.message}`);
             }
         }
         return undone;

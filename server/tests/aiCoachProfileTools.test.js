@@ -31,7 +31,7 @@ function setup() {
             weightLogs.push({ weightKg, source });
             return { metric: { _id: `m${weightLogs.length}` }, created: true };
         },
-        removeWeightLog: async (id) => { removedLogs.push(id); },
+        revertWeightLog: async (log) => { removedLogs.push(log.metricId); },
         logger: { warn: () => {}, error: () => {} },
     });
     return { repo, service, tools, effects, weightLogs, removedLogs, hp: () => repo.state.profiles[USER], user: () => repo.state.users[USER] };
@@ -117,7 +117,9 @@ test('saveFacts: weight said in chat goes through the app\'s weight log (graph, 
     const saved = await tools.saveFacts(USER, [fact('body.weightKg', '68.5 kg')]);
     assert.deepEqual(weightLogs, [{ weightKg: 68.5, source: 'chat' }]);
     assert.equal(hp().body.weightKg, 68.5);
-    assert.equal(saved[0].metricId, 'm1');
+    assert.equal(saved[0].weightLog.metricId, 'm1');
+    assert.equal(saved[0].weightLog.created, true);
+    assert.equal(saved[0].weightLog.kg, 68.5);
     assert.deepEqual(await tools.saveFacts(USER, [fact('body.weightKg', '900')]), []); // out of range
 });
 
