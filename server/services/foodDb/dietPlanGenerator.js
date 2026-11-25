@@ -174,9 +174,18 @@ function foodText(food) {
 
 /** Why a food can never be served to this user, or null. */
 function excludeReason(food, ctx) {
+  if (!['verified', 'estimated'].includes(food.dataQuality?.status)) return 'not reviewed';
+  return dishReason(food, ctx);
+}
+
+/**
+ * The same rules without the review status: used for dishes the AI names in a hybrid plan, which
+ * may be new `ai_pending` foods (services/foodDb/hybridPlan.js).
+ */
+function dishReason(food, ctx) {
   const c = food.classification || {};
   if (food.isActive === false || food.mergedInto) return 'inactive';
-  if (!['verified', 'estimated'].includes(food.dataQuality?.status)) return 'not reviewed';
+  if (food.dataQuality?.status === 'rejected') return 'rejected';
   if ((food.dataQuality?.flags || []).some((f) => BAD_FLAGS.has(f))) return 'bad data';
   if (c.cuisine !== 'indian') return 'not Indian home food';
   if (JUNK_NAME.test(food.name)) return 'not a dish';
@@ -767,6 +776,16 @@ function isEnabled() {
   return process.env.FOOD_DB_DIET_ENABLED === 'true';
 }
 
+/**
+ * Share of plan meals the AI writes in a hybrid plan (FOOD_DB_AI_SHARE, 0–1, default 0.5).
+ * 0 = plans come from the DB only, built instantly in the request.
+ */
+function aiShare() {
+  const raw = process.env.FOOD_DB_AI_SHARE;
+  const n = raw === undefined || raw === '' ? 0.5 : Number(raw);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.5;
+}
+
 async function generatePlan(userData, opts = {}) {
   const unsupported = unsupportedReason(userData);
   if (unsupported) return { ok: false, reason: unsupported };
@@ -790,16 +809,25 @@ function planFoodIds(plan) {
 
 module.exports = {
   isEnabled,
+  aiShare,
   generatePlan,
   generateMeal,
   planFoodIds,
-  // pure core + helpers, for tests
+  // pure core + helpers, for tests and services/foodDb/hybridPlan.js
   generatePlanFromFoods,
   generateMealFromFoods,
   unsupportedReason,
   excludeReason,
+  dishReason,
+  rolesOf,
+  familyOf,
+  isCountUnit,
+  fitPortions,
+  toMeal,
   buildContext,
   portionText,
   displayName,
+  mulberry32,
+  hashSeed,
   DISH_ROLES,
 };

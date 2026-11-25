@@ -66,30 +66,16 @@ const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
       >
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-black/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/20 transition-all"
+          className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
-          {/* Top/Left: Image */}
-          <div className="w-full md:w-1/2 h-64 md:h-auto relative bg-emerald-50">
-            <ImageWithFallback
-              src={food.imageUrl}
-              query={food.name}
-              alt={food.name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:hidden" />
-            <div className="absolute bottom-6 left-6 md:hidden">
-              <h2 className="text-2xl font-black text-white">{food.name}</h2>
-            </div>
-          </div>
-
-          {/* Right: Details */}
+          {/* Details (food photos are switched off) */}
           <div className="flex-1 p-6 md:p-10 overflow-y-auto">
-            <div className="hidden md:block mb-6">
-              <h2 className="text-3xl font-black text-[#064e3b] tracking-tight">
+            <div className="mb-6 pr-12">
+              <h2 className="text-2xl md:text-3xl font-black text-[#064e3b] tracking-tight">
                 {food.name}
               </h2>
               <p className="text-emerald-800/40 font-bold uppercase tracking-widest text-xs mt-1">
@@ -367,11 +353,7 @@ const MealSectionCard = ({
             transition={{ duration: 1.4, ease: [0.4, 0, 0.2, 1] }}
             className="absolute inset-0"
           >
-            <ImageWithFallback
-              src={currentMeal?.imageUrl}
-              query={currentName}
-              className="w-full h-full object-cover"
-            />
+            <ImageWithFallback className="w-full h-full" />
           </motion.div>
         </AnimatePresence>
 
@@ -573,11 +555,7 @@ const MealOptionsModal = ({
               >
                 <div className="flex gap-5">
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-50 shadow-inner">
-                    <ImageWithFallback
-                      src={meal.imageUrl}
-                      query={name}
-                      className="w-full h-full object-cover"
-                    />
+                    <ImageWithFallback className="w-full h-full" />
                   </div>
                   <div className="flex-1 py-1">
                     <h3 className="text-base md:text-lg font-bold text-[#1a2e35] mb-2 leading-tight">

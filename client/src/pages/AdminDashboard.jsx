@@ -153,7 +153,9 @@ export default function AdminDashboard() {
   const systemHubs = [
     { label: "Manage Users", path: "/admin/users", icon: Users },
     { label: "User Intelligence", path: "/admin/activity", icon: Activity },
-    { label: "Food DB", path: "/admin/food-cache", icon: Utensils },
+    // Food Data = the food reference DB (AI-added foods). Food cache = old AI scan results.
+    { label: "Food Data", path: "/admin/food-data", icon: Utensils },
+    { label: "AI Food Cache (old)", path: "/admin/food-cache", icon: Utensils },
     { label: "Health Reports", path: "/admin/reports", icon: FileText },
     { label: "AI Usage & Cost", path: "/admin/ai-usage", icon: Zap },
     { label: "Creator Applications", path: "/admin/creator-applications", icon: UserPlus },

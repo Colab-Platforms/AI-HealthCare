@@ -83,6 +83,7 @@ const imageSchema = new Schema({
   searchedAt: { type: Date, default: null },
   reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   reviewedAt: { type: Date, default: null },
+  reviewNote: { type: String, default: null },
   alternatives: { type: [imageCandidateSchema], default: [] }, // next-best matches, not uploaded
 }, { _id: false });
 

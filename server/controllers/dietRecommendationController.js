@@ -4,6 +4,7 @@ const HealthReport = require('../models/HealthReport');
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
 const dietPlanGenerator = require('../services/foodDb/dietPlanGenerator');
+const hybridPlan = require('../services/foodDb/hybridPlan');
 const { resolveDietTargets, normalizeGoal } = require('../services/dietTargets');
 const queueService = require('../services/queueService');
 const cache = require('../utils/cache');
@@ -48,11 +49,38 @@ async function tryFoodDbPlan(userData) {
   }
 }
 
+/**
+ * Food DB week with FOOD_DB_AI_SHARE of the meals written by the AI (services/foodDb/hybridPlan).
+ * Never throws. ok:false only when the DB itself cannot plan (the caller then uses the AI generator);
+ * an AI failure just means fewer AI meals.
+ */
+async function tryHybridPlan(userData, userId) {
+  const started = Date.now();
+  try {
+    const result = await hybridPlan.generateHybridPlan(userData, { previousFoodIds: userData.previousFoodIds || [], userId });
+    if (!result.ok) {
+      console.log(`[DietGeneration] Food DB plan not possible (${result.reason}), using AI`);
+      return result;
+    }
+    const s = result.stats;
+    console.log(`[DietGeneration] Hybrid plan in ${Date.now() - started} ms: ${s.aiMeals}/${s.aiSlotsAsked} AI meals, ${s.createdFoodIds.length} new food(s), max day error ${s.maxDayErrorPct.toFixed(1)}%`);
+    if (s.modelError) console.warn('[DietGeneration] AI meals skipped, DB plan used:', s.modelError);
+    if (s.aiKept.length) console.log('[DietGeneration] DB meal kept for:', s.aiKept.map((k) => `day ${k.day + 1} ${k.slot} (${k.reason})`).join('; '));
+    return result;
+  } catch (err) {
+    console.error('[DietGeneration] Hybrid plan failed, trying the DB alone:', err.message);
+    return tryFoodDbPlan(userData);
+  }
+}
+
+/** Plans whose meals carry `items` and DB nutrition (no calorie rescaling, DB-aware regeneration). */
+const DB_GENERATORS = new Set(['food_db', 'hybrid']);
+
 /** Fields saved on a finished plan, shared by the Food DB and AI paths. */
 function buildPlanDocument(planData, userData) {
   return {
     ...planData,
-    generator: planData.generator === 'food_db' ? 'food_db' : 'ai',
+    generator: DB_GENERATORS.has(planData.generator) ? planData.generator : 'ai',
     status: 'completed',
     inputData: {
       age: userData.age,
@@ -299,9 +327,13 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     // 3b. Food DB plan (no AI, well under a second), built in this request. The client already
     // handles backgroundProcessing: false and shows the plan straight away. Whatever the DB cannot
     // plan for (Jain, occasions, outside India, too few dishes) falls through to the AI below.
+    // With FOOD_DB_AI_SHARE > 0 the plan is hybrid: the DB check runs here (so a user the DB cannot
+    // serve goes straight to the AI), and the AI meals are added in the background job below.
     if (dietPlanGenerator.isEnabled()) {
       const db = await tryFoodDbPlan(userData);
-      if (db.ok) {
+      if (db.ok && dietPlanGenerator.aiShare() > 0) {
+        // Hybrid: processDietInternal builds it (it needs a model call, so not in this request).
+      } else if (db.ok) {
         await PersonalizedDietPlan.updateMany({ userId, isActive: true }, { isActive: false });
         const dietPlan = await PersonalizedDietPlan.create({
           userId,
@@ -315,13 +347,14 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         return res.status(200).json({
           success: true,
           message: 'Diet plan ready',
-          dietPlan,
+          dietPlan: dietPlan,
           backgroundProcessing: false,
           generator: 'food_db'
         });
+      } else {
+        // Tell the background job not to try the DB again for the same inputs.
+        userData.foodDbSkipReason = db.reason;
       }
-      // Tell the background job not to try the DB again for the same inputs.
-      userData.foodDbSkipReason = db.reason;
     }
 
     // 4. Deactivate ALL previous active plans immediately so getActiveDietPlan only sees the new one
@@ -422,8 +455,11 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
     let aiDietPlan;
     // Food DB first (the auto-after-report and QStash paths arrive here directly). Skipped when the
     // request path already tried it for these same inputs.
+    // The share is read here, not from the request: the auto-after-report path never had a request.
     if (dietPlanGenerator.isEnabled() && !userData.foodDbSkipReason) {
-      const db = await tryFoodDbPlan(userData);
+      const db = dietPlanGenerator.aiShare() > 0
+        ? await tryHybridPlan(userData, userId)
+        : await tryFoodDbPlan(userData);
       if (db.ok) aiDietPlan = db.plan;
     }
     try {
@@ -465,7 +501,7 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
     // Not for Food DB plans: their grams already add up to the target, and scaling the numbers
     // would make them disagree with the stored grams (and with what logging the meal records).
     const calorieCap = userData.nutritionGoals.dailyCalories;
-    if (calorieCap && aiDietPlan.mealPlan && aiDietPlan.generator !== 'food_db') {
+    if (calorieCap && aiDietPlan.mealPlan && !DB_GENERATORS.has(aiDietPlan.generator)) {
       const { scaled, unfixable } = normalizePlanCalories(aiDietPlan.mealPlan, calorieCap);
       if (scaled.length) console.log(`[BG-DIET] Scaled day(s) ${scaled.map(i => i + 1).join(', ')} onto the ${calorieCap} kcal target`);
       if (unfixable.length) console.warn(`[BG-DIET] Day(s) ${unfixable.map(i => i + 1).join(', ')} are too far from ${calorieCap} kcal to scale honestly (goal: ${userData.bmiGoal})`);
@@ -703,17 +739,31 @@ async function processMealRegenInternal({ planId, mealType, dayIndex, remainingC
   try {
     let newMeal = null;
 
-    // A Food DB plan gets a Food DB replacement (no AI): different dishes from the rest of the
-    // week for this meal type, same calorie budget. Falls back to the AI if the DB has nothing.
+    // A Food DB or hybrid plan gets a replacement of the same kind: an AI-written meal (ai_db) is
+    // replaced by a new AI meal matched to the DB, a DB meal by a DB meal (no AI). Either way it
+    // has different dishes from the rest of the week for this meal type and the same calorie
+    // budget. Each step falls back to the next: AI meal → DB meal → the old free-form AI meal.
     if (dietPlanGenerator.isEnabled()) {
-      const plan = await PersonalizedDietPlan.findById(planId).select('generator mealPlan').lean();
-      if (plan?.generator === 'food_db') {
+      const plan = await PersonalizedDietPlan.findById(planId).select('generator mealPlan userId').lean();
+      if (DB_GENERATORS.has(plan?.generator)) {
         const excludeFoodIds = (plan.mealPlan?.[mealType] || [])
           .flatMap((m) => (m?.items || []).filter((i) => dietPlanGenerator.DISH_ROLES.has(i.role)).map((i) => i.foodId));
-        try {
-          newMeal = await dietPlanGenerator.generateMeal(userData, { slot: mealType, budget: remainingCalories, excludeFoodIds });
-        } catch (err) {
-          console.warn('[MealRegen] Food DB replacement failed, using AI:', err.message);
+        const current = plan.mealPlan?.[mealType]?.[dayIndex];
+        if (current?.source === hybridPlan.AI_SOURCE && dietPlanGenerator.aiShare() > 0) {
+          try {
+            newMeal = await hybridPlan.generateHybridMeal(userData, {
+              mealPlan: plan.mealPlan, slot: mealType, dayIndex, budget: remainingCalories, excludeFoodIds, userId: plan.userId,
+            });
+          } catch (err) {
+            console.warn('[MealRegen] AI meal (DB-matched) failed, trying the DB:', err.message);
+          }
+        }
+        if (!newMeal) {
+          try {
+            newMeal = await dietPlanGenerator.generateMeal(userData, { slot: mealType, budget: remainingCalories, excludeFoodIds });
+          } catch (err) {
+            console.warn('[MealRegen] Food DB replacement failed, using AI:', err.message);
+          }
         }
         if (!newMeal) console.log(`[MealRegen] No Food DB replacement for ${mealType}, using AI`);
       }
@@ -851,7 +901,9 @@ exports.getActiveDietPlan = async (req, res) => {
 
     res.json({
       success: true,
-      dietPlan,
+      // Meals with DB items get the main dish's approved photo (looked up now, so a photo approved
+      // after the plan was made still shows).
+      dietPlan: dietPlan,
       // `isStale` / `staleReason` are the original diet-type-only flag, kept
       // as-is for clients already reading it. `staleness` is the superset: it
       // also covers a changed goal or calorie target, with the old/new values.
@@ -917,7 +969,7 @@ exports.getDietPlanById = async (req, res) => {
 
     res.json({
       success: true,
-      dietPlan
+      dietPlan: dietPlan
     });
   } catch (error) {
     console.error('Get diet plan by ID error:', error);

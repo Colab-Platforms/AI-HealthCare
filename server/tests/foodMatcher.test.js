@@ -83,7 +83,7 @@ test('search result shape and portion maths', () => {
   const r = M.toSearchResult(top('chicken dum biryani')[0]);
   assert.equal(r.foodId, seed.find((f) => f.name === 'Chicken Dum Biryani').foodId);
   assert.deepEqual(Object.keys(r), ['foodId', 'name', 'matchScore', 'matchedOn', 'dietType', 'category',
-    'defaultServing', 'nutritionPerServing', 'glycemicIndex', 'dataStatus']);
+    'defaultServing', 'nutritionPerServing', 'glycemicIndex', 'dataStatus']); // no photo: food images are off
   assert.equal(r.matchedOn, 'name');
   // 143.83 kcal/100 g × 377.7 g = 543 kcal
   assert.equal(r.nutritionPerServing.calories, 543);

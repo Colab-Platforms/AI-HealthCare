@@ -47,9 +47,11 @@ const planItemSchema = new mongoose.Schema({
   calories: Number
 }, { _id: false });
 
+// source: 'food_db' = picked by the DB generator; 'ai_db' = picked by the AI in a hybrid plan, with
+// every dish matched to (or added to) the Food DB, so it has `items` and DB nutrition too.
 const dbMealFields = {
   items: { type: [planItemSchema], default: undefined },
-  source: { type: String, enum: ['ai', 'food_db'] }
+  source: { type: String, enum: ['ai', 'food_db', 'ai_db'] }
 };
 
 const mealOptionSchema = { ...aiMealFields, ...dbMealFields };
@@ -173,9 +175,10 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     default: false
   },
   // Which generator built the plan. Decides how a single meal is regenerated and logged.
+  // 'hybrid' = Food DB week with a share of meals written by the AI (services/foodDb/hybridPlan).
   generator: {
     type: String,
-    enum: ['ai', 'food_db'],
+    enum: ['ai', 'food_db', 'hybrid'],
     default: 'ai'
   },
 
