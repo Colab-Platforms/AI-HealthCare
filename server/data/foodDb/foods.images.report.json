@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T09:40:20.685Z",
+  "generatedAt": "2026-11-25T09:56:32.206Z",
   "mode": "apply",
   "options": {
     "apply": true,
@@ -17,9 +17,9 @@
     "minMatch": 0.6
   },
   "counts": {
-    "error": 14,
-    "uploaded": 46,
-    "missing": 15
+    "error": 16,
+    "uploaded": 83,
+    "missing": 26
   },
   "foods": [
     {
@@ -2681,6 +2681,1875 @@
       "rejected": {},
       "errors": [],
       "result": "missing"
+    },
+    {
+      "foodId": "THF-00932",
+      "name": "Mango Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "licence not allowed": 6,
+        "title mentions \"plant\"": 1,
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "rawpixel",
+        "title": "Tropical orange green fruit leaves",
+        "matchScore": 1,
+        "precision": 0,
+        "license": "cc0",
+        "creator": null,
+        "imageUrl": "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA0L3Vwd2s2MTg1MzY0OC13aWtpbWVkaWEtaW1hZ2Uta293cG9wdGMuanBn.jpg",
+        "sourceUrl": "https://www.rawpixel.com/image/3301068/free-photo-image-brazil-flora-blur-background-bokeh",
+        "width": 5616,
+        "height": 3744,
+        "query": "Mango Squash",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599646/takehealth/food_db/THF-00932.webp"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00933",
+      "name": "Pineapple Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 18,
+      "rejected": {
+        "licence not allowed": 6,
+        "title mentions \"box\"": 1,
+        "title mentions \"vendor\"": 1,
+        "title mentions \"market\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Bright color delicious diet - Credit to https://homegets.com/",
+        "matchScore": 1,
+        "precision": 0,
+        "license": "by",
+        "creator": "homegets.com",
+        "imageUrl": "https://live.staticflickr.com/65535/49774498887_356e495afb_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/141436406@N04/49774498887",
+        "width": 1024,
+        "height": 680,
+        "query": "Pineapple Squash",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599674/takehealth/food_db/THF-00933.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00934",
+      "name": "Lemon and Ginger Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00935",
+      "name": "Apple Jam",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "title mentions \"farm\"": 1,
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Tasting apple jams in Institute (M.Yuldashev)",
+        "matchScore": 1,
+        "precision": 0.333,
+        "license": "by-sa",
+        "creator": "Shuhrataxmedov",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Tasting_apple_jams_in_Institute_%28M.Yuldashev%29.jpg/1280px-Tasting_apple_jams_in_Institute_%28M.Yuldashev%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tasting_apple_jams_in_Institute_(M.Yuldashev).jpg",
+        "width": 3296,
+        "height": 2472,
+        "query": "Apple Jam",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599734/takehealth/food_db/THF-00935.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Tasting_apple_jams_in_Institute_%28all_scientists%29.jpg/1280px-Tasting_apple_jams_in_Institute_%28all_scientists%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tasting_apple_jams_in_Institute_(all_scientists).jpg",
+          "license": "by-sa",
+          "creator": "Shuhrataxmedov",
+          "title": "Tasting apple jams in Institute (all scientists)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d2/Tasting_apple_jams_in_Institute_%28Duysenov_and_Saeva%29.jpg/1280px-Tasting_apple_jams_in_Institute_%28Duysenov_and_Saeva%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tasting_apple_jams_in_Institute_(Duysenov_and_Saeva).jpg",
+          "license": "by-sa",
+          "creator": "Shuhrataxmedov",
+          "title": "Tasting apple jams in Institute (Duysenov and Saeva)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Tasting_apple_jams_in_Institute_%28Baymetov_and_Amanova%29.jpg/1280px-Tasting_apple_jams_in_Institute_%28Baymetov_and_Amanova%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tasting_apple_jams_in_Institute_(Baymetov_and_Amanova).jpg",
+          "license": "by-sa",
+          "creator": "Shuhrataxmedov",
+          "title": "Tasting apple jams in Institute (Baymetov and Amanova)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00936",
+      "name": "Plum Jam",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Plum jam (9696385354)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "James Petts from London, England",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Plum_jam_%289696385354%29.jpg/1280px-Plum_jam_%289696385354%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plum_jam_(9696385354).jpg",
+        "width": 4032,
+        "height": 3024,
+        "query": "Plum Jam",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599739/takehealth/food_db/THF-00936.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Plum-jam.JPG/500px-Plum-jam.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plum-jam.JPG",
+          "license": "by-sa",
+          "creator": "ドングリ",
+          "title": "Plum-jam",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Plumge_with_plum_jam_%289690631400%29.jpg/1280px-Plumge_with_plum_jam_%289690631400%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plumge_with_plum_jam_(9690631400).jpg",
+          "license": "by-sa",
+          "creator": "James Petts from London, England",
+          "title": "Plumge with plum jam (9690631400)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Spread_plum-jam_on_sauce-senbei.jpg/500px-Spread_plum-jam_on_sauce-senbei.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Spread_plum-jam_on_sauce-senbei.jpg",
+          "license": "by-sa",
+          "creator": "ドングリ",
+          "title": "Spread plum-jam on sauce-senbei",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00937",
+      "name": "Pineapple Jam",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"farm\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Pineapple jam",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by",
+        "creator": "Hyeon-Jeong Suk",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a6/Pineapple_jam.jpg/1280px-Pineapple_jam.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_jam.jpg",
+        "width": 3456,
+        "height": 2304,
+        "query": "Pineapple Jam",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599743/takehealth/food_db/THF-00937.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b9/-2016-10-20_Homemade_pineapple_jam%2C_Trimingham%2C_Norfolk.JPG/1280px--2016-10-20_Homemade_pineapple_jam%2C_Trimingham%2C_Norfolk.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:-2016-10-20_Homemade_pineapple_jam,_Trimingham,_Norfolk.JPG",
+          "license": "by-sa",
+          "creator": "Kolforn ( Kolforn ) I'd appreciate if you could mail me (Kolforn@gmail.com) if you want to use this picture out of the Wikimedia project scope. This file is licensed under the Creative Commons Attribution-Share Alike 4.0 International license. You are free: to share – to copy, distribute and transmit the work to remix – to adapt the work Under the following conditions: attribution – You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use. share alike – If you remix, transform, or build upon the material, you must distribute your contributions under the same or compatible license as the original. https://creativecommons.org/licenses/by-sa/4.0 CC BY-SA 4.0 Creative Commons Attribution-Share Alike 4.0 true true",
+          "title": "-2016-10-20 Homemade pineapple jam, Trimingham, Norfolk",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00938",
+      "name": "Guava Jelly",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {
+        "licence not allowed": 11
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Show Guava Jelly",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by",
+        "creator": "Festival Contato",
+        "imageUrl": "https://live.staticflickr.com/5573/15251368911_4814aa4eea_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/11233182@N07/15251368911",
+        "width": 1024,
+        "height": 683,
+        "query": "Guava Jelly",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599771/takehealth/food_db/THF-00938.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/3858/15251348061_bcea8d1c44_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/11233182@N07/15251348061",
+          "license": "by",
+          "creator": "Festival Contato",
+          "title": "Show Guava Jelly",
+          "matchScore": 1
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/3873/15231451716_130f624c90_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/11233182@N07/15231451716",
+          "license": "by",
+          "creator": "Festival Contato",
+          "title": "Show Guava Jelly",
+          "matchScore": 1
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/3857/15067883937_33c29423c8_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/11233182@N07/15067883937",
+          "license": "by",
+          "creator": "Festival Contato",
+          "title": "Show Guava Jelly",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00939",
+      "name": "Orange Marmalade",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Orange Marmalade",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Miansari66",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Orange_Marmalade.JPG/1280px-Orange_Marmalade.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_Marmalade.JPG",
+        "width": 2816,
+        "height": 2112,
+        "query": "Orange Marmalade",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599778/takehealth/food_db/THF-00939.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Orange_marmalade-3.jpg/1280px-Orange_marmalade-3.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_marmalade-3.jpg",
+          "license": "by",
+          "creator": "jules",
+          "title": "Orange marmalade-3",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/Marmalade_oranges.jpg/1280px-Marmalade_oranges.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Marmalade_oranges.jpg",
+          "license": "by-sa",
+          "creator": "amandabhslater",
+          "title": "Marmalade oranges",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Orange_Glow_%28Marmalade%29.jpg/500px-Orange_Glow_%28Marmalade%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_Glow_(Marmalade).jpg",
+          "license": "by-sa",
+          "creator": "amandabhslater",
+          "title": "Orange Glow (Marmalade)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00940",
+      "name": "Carrot Murabba",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00941",
+      "name": "Gooseberry Marmalade",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {
+        "licence not allowed": 2,
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Amla Murubba",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Mannamajumder",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Amla_Murubba.jpg/1280px-Amla_Murubba.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Amla_Murubba.jpg",
+        "width": 3264,
+        "height": 1836,
+        "query": "amla murabba",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599825/takehealth/food_db/THF-00941.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00942",
+      "name": "Ginger Candy",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"market\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Ginger Candy",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "AIT",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/Ginger_Candy.jpg/1280px-Ginger_Candy.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ginger_Candy.jpg",
+        "width": 1952,
+        "height": 3264,
+        "query": "Ginger Candy",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599830/takehealth/food_db/THF-00942.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/SINA_GINGER_CANDY.JPG/1280px-SINA_GINGER_CANDY.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:SINA_GINGER_CANDY.JPG",
+          "license": "by-sa",
+          "creator": "Summer ... hier! ( talk )",
+          "title": "SINA GINGER CANDY",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/A_image_of_Ginger_Candy_%28Inji_Murappa%29.jpg/1280px-A_image_of_Ginger_Candy_%28Inji_Murappa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:A_image_of_Ginger_Candy_(Inji_Murappa).jpg",
+          "license": "by-sa",
+          "creator": "Thamizhpparithi Maari",
+          "title": "A image of Ginger Candy (Inji Murappa)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/Ginger_candy_and_2_and_a_half_men._-_panoramio.jpg/1280px-Ginger_candy_and_2_and_a_half_men._-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ginger_candy_and_2_and_a_half_men._-_panoramio.jpg",
+          "license": "by-sa",
+          "creator": "Linnea Almlöf",
+          "title": "Ginger candy and 2 and a half men. - panoramio",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00943",
+      "name": "Mango Pickle",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Mango Pickle (17739816136)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "nasir khan from Dhaka, Bangladesh",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Mango_Pickle_%2817739816136%29.jpg/1280px-Mango_Pickle_%2817739816136%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_Pickle_(17739816136).jpg",
+        "width": 3704,
+        "height": 3286,
+        "query": "Mango Pickle",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599835/takehealth/food_db/THF-00943.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Mango_pickle2.jpg/1280px-Mango_pickle2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_pickle2.jpg",
+          "license": "by-sa",
+          "creator": "BHAVAPRIYA J U",
+          "title": "Mango pickle2",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Mango_pickle_01.jpg/1280px-Mango_pickle_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_pickle_01.jpg",
+          "license": "by-sa",
+          "creator": "ShahadatHossain",
+          "title": "Mango pickle 01",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Mango_pickle_03.jpg/1280px-Mango_pickle_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_pickle_03.jpg",
+          "license": "by-sa",
+          "creator": "ShahadatHossain",
+          "title": "Mango pickle 03",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00944",
+      "name": "Mixed Vegetable Pickle",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Vegetable tikka masala and mixed pickles, with black pepper, on naan fried in oil - Massachusetts",
+        "matchScore": 1,
+        "precision": 0.3,
+        "license": "cc0",
+        "creator": "Daderot",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Vegetable_tikka_masala_and_mixed_pickles%2C_with_black_pepper%2C_on_naan_fried_in_oil_-_Massachusetts.jpg/1280px-Vegetable_tikka_masala_and_mixed_pickles%2C_with_black_pepper%2C_on_naan_fried_in_oil_-_Massachusetts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vegetable_tikka_masala_and_mixed_pickles,_with_black_pepper,_on_naan_fried_in_oil_-_Massachusetts.jpg",
+        "width": 2824,
+        "height": 2824,
+        "query": "Mixed Vegetable Pickle",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599839/takehealth/food_db/THF-00944.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Mixed_Pickles_%289370-72%29.jpg/1280px-Mixed_Pickles_%289370-72%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_Pickles_(9370-72).jpg",
+          "license": "by-sa",
+          "creator": "Raimond Spekking",
+          "title": "Mixed Pickles (9370-72)",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Mixed_Pickle_%2837651998895%29.jpg/1280px-Mixed_Pickle_%2837651998895%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_Pickle_(37651998895).jpg",
+          "license": "by-sa",
+          "creator": "nasir khan from Dhaka, Bangladesh",
+          "title": "Mixed Pickle (37651998895)",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/Mixed_Pickle.jpg/1280px-Mixed_Pickle.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_Pickle.jpg",
+          "license": "by-sa",
+          "creator": "Gaurav Dhwaj Khadka",
+          "title": "Mixed Pickle",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00945",
+      "name": "Sweet Lemon Pickle",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 8,
+      "rejected": {
+        "too small": 6,
+        "title mentions \"stall\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Lemon pickle ( sweet)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Chrystledsouza",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Lemon_pickle_%28_sweet%29.JPG/1280px-Lemon_pickle_%28_sweet%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lemon_pickle_(_sweet).JPG",
+        "width": 4608,
+        "height": 3456,
+        "query": "Sweet Lemon Pickle",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599843/takehealth/food_db/THF-00945.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00946",
+      "name": "Plum Chutney",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {
+        "title mentions \"stamp\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Plum Chutney (Aaloo Bukhari Chutney)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Miansari66",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e5/Plum_Chutney_%28Aaloo_Bukhari_Chutney%29.JPG/1280px-Plum_Chutney_%28Aaloo_Bukhari_Chutney%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plum_Chutney_(Aaloo_Bukhari_Chutney).JPG",
+        "width": 2816,
+        "height": 2112,
+        "query": "Plum Chutney",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599847/takehealth/food_db/THF-00946.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/Plum_chutney_ingredients.jpg/1280px-Plum_chutney_ingredients.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plum_chutney_ingredients.jpg",
+          "license": "by",
+          "creator": "Lenore Edman from Sunnyvale, CA",
+          "title": "Plum chutney ingredients",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b9/Sweet_juice_%28chutney%29_of_Indian_hog_plums_%28Spondias_mombin%29%2C_popular_in_Bengali_cuisine_while_in_Summer%2C_photographed_in_West_Bengal%2C_India%2C_by_Yogabrata_Chakraborty%2C_on_June_18%2C_2023.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sweet_juice_(chutney)_of_Indian_hog_plums_(Spondias_mombin),_popular_in_Bengali_cuisine_while_in_Summer,_photographed_in_West_Bengal,_India,_by_Yogabrata_Chakraborty,_on_June_18,_2023.jpg",
+          "license": "by-sa",
+          "creator": "Billjones94",
+          "title": "Sweet juice (chutney) of Indian hog plums (Spondias mombin), popular in Bengali cuisine while in Summer, photographed in West Bengal, India, by Yogabrata Chakraborty, on June 18, 2023",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00947",
+      "name": "Raw Mango Chutney",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"raw\"": 17,
+        "title mentions \"vendor\"": 2,
+        "title mentions \"tree\"": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Mango Chutney",
+        "matchScore": 0.667,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Miansari66",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Mango_Chutney.JPG/1280px-Mango_Chutney.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_Chutney.JPG",
+        "width": 4896,
+        "height": 3672,
+        "query": "Raw Mango Chutney",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599893/takehealth/food_db/THF-00947.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Mango_Chutney.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/w/index.php?curid=26508798",
+          "license": "cc0",
+          "creator": "Miansari66",
+          "title": "Mango Chutney",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Mango_Chutney_Sweet.JPG/1280px-Mango_Chutney_Sweet.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_Chutney_Sweet.JPG",
+          "license": "by-sa",
+          "creator": "Kajori.p",
+          "title": "Mango Chutney Sweet",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Homemade_Green_Mango_Chutney.JPG/500px-Homemade_Green_Mango_Chutney.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Homemade_Green_Mango_Chutney.JPG",
+          "license": "by-sa",
+          "creator": "Arnab Mukherjee",
+          "title": "Homemade Green Mango Chutney",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00948",
+      "name": "Tomato Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Fresh Tomato Sauce (Unsplash)",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "Dennis Klein klein2",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Fresh_Tomato_Sauce_%28Unsplash%29.jpg/1280px-Fresh_Tomato_Sauce_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fresh_Tomato_Sauce_(Unsplash).jpg",
+        "width": 3000,
+        "height": 2000,
+        "query": "Tomato Sauce",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599900/takehealth/food_db/THF-00948.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/Tomato_sauce_2021_P02.jpg/1280px-Tomato_sauce_2021_P02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tomato_sauce_2021_P02.jpg",
+          "license": "by-sa",
+          "creator": "Fallaner",
+          "title": "Tomato sauce 2021 P02",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/65/Tomato_sauce_2021_P01.jpg/1280px-Tomato_sauce_2021_P01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tomato_sauce_2021_P01.jpg",
+          "license": "by-sa",
+          "creator": "Fallaner",
+          "title": "Tomato sauce 2021 P01",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Tomato_sauce_-_Stew.jpg/1280px-Tomato_sauce_-_Stew.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tomato_sauce_-_Stew.jpg",
+          "license": "cc0",
+          "creator": "Adesolive",
+          "title": "Tomato sauce - Stew",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00949",
+      "name": "Tomato Puree",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Tomato puree in glass bottles 01",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "Miluša Snidová",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/78/Tomato_puree_in_glass_bottles_01.jpg/1280px-Tomato_puree_in_glass_bottles_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tomato_puree_in_glass_bottles_01.jpg",
+        "width": 6720,
+        "height": 4480,
+        "query": "Tomato Puree",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599905/takehealth/food_db/THF-00949.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/Tomato_puree_in_glass_bottles_02.jpg/1280px-Tomato_puree_in_glass_bottles_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tomato_puree_in_glass_bottles_02.jpg",
+          "license": "by-sa",
+          "creator": "Miluša Snidová",
+          "title": "Tomato puree in glass bottles 02",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/0436Chicken_with_spaghetti%2C_carrots%2C_green_shingkang_pechay_and_tomato_pur%C3%A9e_in_lemon_grass_01.jpg/1280px-0436Chicken_with_spaghetti%2C_carrots%2C_green_shingkang_pechay_and_tomato_pur%C3%A9e_in_lemon_grass_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:0436Chicken_with_spaghetti,_carrots,_green_shingkang_pechay_and_tomato_pur%C3%A9e_in_lemon_grass_01.jpg",
+          "license": "cc0",
+          "creator": "Judgefloro",
+          "title": "0436Chicken with spaghetti, carrots, green shingkang pechay and tomato purée in lemon grass 01",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/0436Chicken_with_spaghetti%2C_carrots%2C_green_shingkang_pechay_and_tomato_pur%C3%A9e_in_lemon_grass_06.jpg/1280px-0436Chicken_with_spaghetti%2C_carrots%2C_green_shingkang_pechay_and_tomato_pur%C3%A9e_in_lemon_grass_06.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:0436Chicken_with_spaghetti,_carrots,_green_shingkang_pechay_and_tomato_pur%C3%A9e_in_lemon_grass_06.jpg",
+          "license": "cc0",
+          "creator": "Judgefloro",
+          "title": "0436Chicken with spaghetti, carrots, green shingkang pechay and tomato purée in lemon grass 06",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00955",
+      "name": "Kashmiri Tea",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Kashmiri Tea",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Sachindubey4",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Kashmiri_Tea.jpg/1280px-Kashmiri_Tea.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kashmiri_Tea.jpg",
+        "width": 3088,
+        "height": 1744,
+        "query": "Kashmiri Tea",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599910/takehealth/food_db/THF-00955.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Kashmiri_Kahwa_2.jpg/1280px-Kashmiri_Kahwa_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kashmiri_Kahwa_2.jpg",
+          "license": "by-sa",
+          "creator": "Sayantan Sarkar",
+          "title": "Kashmiri Kahwa 2",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Kashmiri_Kahwa_%2851549%29.jpg/1280px-Kashmiri_Kahwa_%2851549%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kashmiri_Kahwa_(51549).jpg",
+          "license": "by-sa",
+          "creator": "Gannu03",
+          "title": "Kashmiri Kahwa (51549)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f1/Kashmiri_Kahwa_%2828963%29.jpg/1280px-Kashmiri_Kahwa_%2828963%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kashmiri_Kahwa_(28963).jpg",
+          "license": "by-sa",
+          "creator": "Gannu03",
+          "title": "Kashmiri Kahwa (28963)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00956",
+      "name": "Steeped Hot Coffee",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 32,
+      "rejected": {
+        "licence not allowed": 1,
+        "title mentions \"market\"": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Hot Water",
+        "matchScore": 0.667,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "nalundgaard",
+        "imageUrl": "https://live.staticflickr.com/3015/2900395386_aebda3733f_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/43547678@N00/2900395386",
+        "width": 1024,
+        "height": 680,
+        "query": "Steeped Hot Coffee",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599990/takehealth/food_db/THF-00956.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/6040/6303308012_da77e857c2_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/53197929@N00/6303308012",
+          "license": "by-sa",
+          "creator": "skinnydiver",
+          "title": "Hot water loaded",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00957",
+      "name": "Hot Chocolate",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Hot chocolate (1)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Jo Anslow from Cambridge",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Hot_chocolate_%281%29.jpg/1280px-Hot_chocolate_%281%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hot_chocolate_(1).jpg",
+        "width": 4000,
+        "height": 3000,
+        "query": "Hot Chocolate",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599995/takehealth/food_db/THF-00957.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Hot_chocolate_%283485595907%29.jpg/1280px-Hot_chocolate_%283485595907%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hot_chocolate_(3485595907).jpg",
+          "license": "by",
+          "creator": "Dennis Wong from Hong Kong, Hong Kong",
+          "title": "Hot chocolate (3485595907)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/2020-10-18_Hot_chocolate.jpg/1280px-2020-10-18_Hot_chocolate.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:2020-10-18_Hot_chocolate.jpg",
+          "license": "by-sa",
+          "creator": "Maksym Kozlenko",
+          "title": "2020-10-18 Hot chocolate",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/Hot_Chocolate_in_December.jpg/1280px-Hot_Chocolate_in_December.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hot_Chocolate_in_December.jpg",
+          "license": "by-sa",
+          "creator": "Emna Mizouni",
+          "title": "Hot Chocolate in December",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00958",
+      "name": "Cold Coffee with Cream",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {
+        "too small": 2,
+        "title mentions \"restaurant\"": 4
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Cold Coffee With Vanilla Ice Cream",
+        "matchScore": 1,
+        "precision": 0.6,
+        "license": "by-sa",
+        "creator": "Mrudit161187",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Cold_Coffee_With_Vanilla_Ice_Cream.jpg/1280px-Cold_Coffee_With_Vanilla_Ice_Cream.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cold_Coffee_With_Vanilla_Ice_Cream.jpg",
+        "width": 3264,
+        "height": 2448,
+        "query": "Cold Coffee with Cream",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599999/takehealth/food_db/THF-00958.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Tillamook_Stumptown_Cold_Brew_Coffee_Ice_Cream_%2827955911933%29.jpg/1280px-Tillamook_Stumptown_Cold_Brew_Coffee_Ice_Cream_%2827955911933%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tillamook_Stumptown_Cold_Brew_Coffee_Ice_Cream_(27955911933).jpg",
+          "license": "by-sa",
+          "creator": "Willis Lam",
+          "title": "Tillamook Stumptown Cold Brew Coffee Ice Cream (27955911933)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d2/Maple_Cream_Cold_Brew_-_Trading_Post_Coffee_Roasters_2026-07-16.jpg/1280px-Maple_Cream_Cold_Brew_-_Trading_Post_Coffee_Roasters_2026-07-16.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Maple_Cream_Cold_Brew_-_Trading_Post_Coffee_Roasters_2026-07-16.jpg",
+          "license": "cc0",
+          "creator": "Andy Li",
+          "title": "Maple Cream Cold Brew - Trading Post Coffee Roasters 2026-07-16",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Cold_Coffee_2026.jpg/500px-Cold_Coffee_2026.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cold_Coffee_2026.jpg",
+          "license": "by-sa",
+          "creator": "Sannidhishetty",
+          "title": "Cold Coffee 2026",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00959",
+      "name": "Banana Milkshake with Ice Cream",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "too small": 2
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00960",
+      "name": "Flavoured Milkshake",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 11,
+      "rejected": {
+        "too small": 2,
+        "odd aspect ratio": 2
+      },
+      "errors": [
+        "openverse \"Flavoured Milkshake\": api.openverse.org: ECONNABORTED"
+      ],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00961",
+      "name": "Jal Jeera",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 7,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Jal Jeera",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Miansari66",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/96/Jal_Jeera.JPG/1280px-Jal_Jeera.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jal_Jeera.JPG",
+        "width": 2112,
+        "height": 2816,
+        "query": "Jal Jeera",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600133/takehealth/food_db/THF-00961.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/21/Jal_jeera.jpg/1280px-Jal_jeera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jal_jeera.jpg",
+          "license": "by-sa",
+          "creator": "Rutvi Mistry",
+          "title": "Jal jeera",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Jal_Zeera.jpg/1280px-Jal_Zeera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jal_Zeera.jpg",
+          "license": "by-sa",
+          "creator": "Rahul Verma",
+          "title": "Jal Zeera",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00962",
+      "name": "Gingo",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Поперечный срез стебля Ginkgo biloba",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "Anatoly Mikhaltsov",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/%D0%9F%D0%BE%D0%BF%D0%B5%D1%80%D0%B5%D1%87%D0%BD%D1%8B%D0%B9_%D1%81%D1%80%D0%B5%D0%B7_%D1%81%D1%82%D0%B5%D0%B1%D0%BB%D1%8F_Ginkgo_biloba.jpg/1280px-%D0%9F%D0%BE%D0%BF%D0%B5%D1%80%D0%B5%D1%87%D0%BD%D1%8B%D0%B9_%D1%81%D1%80%D0%B5%D0%B7_%D1%81%D1%82%D0%B5%D0%B1%D0%BB%D1%8F_Ginkgo_biloba.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:%D0%9F%D0%BE%D0%BF%D0%B5%D1%80%D0%B5%D1%87%D0%BD%D1%8B%D0%B9_%D1%81%D1%80%D0%B5%D0%B7_%D1%81%D1%82%D0%B5%D0%B1%D0%BB%D1%8F_Ginkgo_biloba.jpg",
+        "width": 7874,
+        "height": 7874,
+        "query": "Gingo",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600141/takehealth/food_db/THF-00962.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Ginkgo_biloba_11_%283%29.JPG/1280px-Ginkgo_biloba_11_%283%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ginkgo_biloba_11_(3).JPG",
+          "license": "by-sa",
+          "creator": "Marija Gajić",
+          "title": "Ginkgo biloba 11 (3)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/Ginkgo-Blatt_--_2024_--_6855.jpg/1280px-Ginkgo-Blatt_--_2024_--_6855.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ginkgo-Blatt_--_2024_--_6855.jpg",
+          "license": "by-sa",
+          "creator": "Dietmar Rabich",
+          "title": "Ginkgo-Blatt -- 2024 -- 6855",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Ginkgo_biloba._filare.jpg/960px-Ginkgo_biloba._filare.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ginkgo_biloba._filare.jpg",
+          "license": "by-sa",
+          "creator": "This photo was taken by Susanna Giaccai . Feel free to use my photos, but please mention me as the author and if you want send me a message. or mailto:giaccai@pm.me",
+          "title": "Ginkgo biloba. filare",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00963",
+      "name": "Mintade",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00978",
+      "name": "Mixed Stock",
+      "category": "soup",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"farm\"": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Mixed_stock_-_geograph.org.uk_-_2414821.jpg/960px-Mixed_stock_-_geograph.org.uk_-_2414821.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Mixed_stock_-_geograph.org.uk_-_2414821.jpg/960px-Mixed_stock_-_geograph.org.uk_-_2414821.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Mixed stock grazing - geograph.org.uk - 8337985",
+        "matchScore": 1,
+        "precision": 0.333,
+        "license": "by-sa",
+        "creator": "Robin Webster",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Mixed_stock_grazing_-_geograph.org.uk_-_8337985.jpg/960px-Mixed_stock_grazing_-_geograph.org.uk_-_8337985.jpg",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_stock_grazing_-_geograph.org.uk_-_8337985.jpg",
+        "width": 1024,
+        "height": 768,
+        "query": "Mixed Stock",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600203/takehealth/food_db/THF-00978.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Mixed_stock_-_geograph.org.uk_-_2414821.jpg/960px-Mixed_stock_-_geograph.org.uk_-_2414821.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_stock_-_geograph.org.uk_-_2414821.jpg",
+          "license": "by-sa",
+          "creator": "Alan Murray-Rust",
+          "title": "Mixed stock - geograph.org.uk - 2414821",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Mixed_rolling_stock_-_geograph.org.uk_-_4148891.jpg/500px-Mixed_rolling_stock_-_geograph.org.uk_-_4148891.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_rolling_stock_-_geograph.org.uk_-_4148891.jpg",
+          "license": "by-sa",
+          "creator": "Richard Hoare",
+          "title": "Mixed rolling stock - geograph.org.uk - 4148891",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Mixed_rolling_stock_outside_the_old_BIM%2C_Bristol_%282604335791%29.jpg/960px-Mixed_rolling_stock_outside_the_old_BIM%2C_Bristol_%282604335791%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mixed_rolling_stock_outside_the_old_BIM,_Bristol_(2604335791).jpg",
+          "license": "by",
+          "creator": "crabchick from Bristol, England",
+          "title": "Mixed rolling stock outside the old BIM, Bristol (2604335791)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00996",
+      "name": "Tartare Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Sauce tartare",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Jpbrigand",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Sauce_tartare.jpg/1280px-Sauce_tartare.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sauce_tartare.jpg",
+        "width": 1476,
+        "height": 1128,
+        "query": "Tartare Sauce",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600209/takehealth/food_db/THF-00996.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/19/Tartar_Sauce.jpg/1280px-Tartar_Sauce.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tartar_Sauce.jpg",
+          "license": "by",
+          "creator": "jeffreyw",
+          "title": "Tartar Sauce",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Fish_sandwich_with_tartar_sauce.jpg/1280px-Fish_sandwich_with_tartar_sauce.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_sandwich_with_tartar_sauce.jpg",
+          "license": "by",
+          "creator": "jeffreyw",
+          "title": "Fish sandwich with tartar sauce",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f4/Fish_sandwich_with_dilled_tartar_sauce.jpg/1280px-Fish_sandwich_with_dilled_tartar_sauce.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_sandwich_with_dilled_tartar_sauce.jpg",
+          "license": "by",
+          "creator": "jeffreyw",
+          "title": "Fish sandwich with dilled tartar sauce",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00997",
+      "name": "Barbeque Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"logo\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Samosa, chicken, with Kansas City barbeque sauce - Massachusetts",
+        "matchScore": 1,
+        "precision": 0.286,
+        "license": "cc0",
+        "creator": "Daderot",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Samosa%2C_chicken%2C_with_Kansas_City_barbeque_sauce_-_Massachusetts.jpg/1280px-Samosa%2C_chicken%2C_with_Kansas_City_barbeque_sauce_-_Massachusetts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Samosa,_chicken,_with_Kansas_City_barbeque_sauce_-_Massachusetts.jpg",
+        "width": 2726,
+        "height": 2726,
+        "query": "Barbeque Sauce",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600213/takehealth/food_db/THF-00997.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Ground_beef%2C_fried%2C_on_sticky_white_rice_with_Kansas_City_barbeque_sauce_and_black_pepper_-_Massachusetts.jpg/1280px-Ground_beef%2C_fried%2C_on_sticky_white_rice_with_Kansas_City_barbeque_sauce_and_black_pepper_-_Massachusetts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ground_beef,_fried,_on_sticky_white_rice_with_Kansas_City_barbeque_sauce_and_black_pepper_-_Massachusetts.jpg",
+          "license": "cc0",
+          "creator": "Daderot",
+          "title": "Ground beef, fried, on sticky white rice with Kansas City barbeque sauce and black pepper - Massachusetts",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00998",
+      "name": "Bread Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Bread sauce",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "ElinorD",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Bread_sauce.jpg/1280px-Bread_sauce.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bread_sauce.jpg",
+        "width": 2042,
+        "height": 1814,
+        "query": "Bread Sauce",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600217/takehealth/food_db/THF-00998.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Pieces_of_bread_with_garlic_sauce_20130308.jpg/1280px-Pieces_of_bread_with_garlic_sauce_20130308.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pieces_of_bread_with_garlic_sauce_20130308.jpg",
+          "license": "by",
+          "creator": "褒忠國中 雲端網",
+          "title": "Pieces of bread with garlic sauce 20130308",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Pasta_bread_and_sauce_A.jpg/1280px-Pasta_bread_and_sauce_A.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pasta_bread_and_sauce_A.jpg",
+          "license": "by-sa",
+          "creator": null,
+          "title": "Pasta bread and sauce A",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/Bread_and_egg_sauce_01.jpg/1280px-Bread_and_egg_sauce_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bread_and_egg_sauce_01.jpg",
+          "license": "by-sa",
+          "creator": "Matino183",
+          "title": "Bread and egg sauce 01",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01020",
+      "name": "Masala Dosa Paneer Fillings",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/e/eb/PANEER_MASALA_DOSA_-_Mini_MADRAS_2026-05-03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original: Error in loading https://upload.wikimedia.org/wikipedia/commons/e/eb/PANEER_MASALA_DOSA_-_Mini_MADRAS_2026-05-03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01025",
+      "name": "Spaghetti with Meat Balls and Tomato Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01026",
+      "name": "Spaghetti with Paneer Balls and Tomato Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01027",
+      "name": "Lasagne with Meat Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 18,
+      "rejected": {
+        "odd aspect ratio": 1,
+        "too small": 2,
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Baked pasta with meat sauce and cheese",
+        "matchScore": 0.667,
+        "precision": 0.4,
+        "license": "by-sa",
+        "creator": "Geoffreyrabbit",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Baked_pasta_with_meat_sauce_and_cheese.jpg/1280px-Baked_pasta_with_meat_sauce_and_cheese.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Baked_pasta_with_meat_sauce_and_cheese.jpg",
+        "width": 4000,
+        "height": 3000,
+        "query": "Lasagne with Meat Sauce",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600326/takehealth/food_db/THF-01027.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01029",
+      "name": "Green Chilli Sauce",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Green Chilli Sauce",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Ravi Talwar",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f5/Green_Chilli_Sauce.JPG/1280px-Green_Chilli_Sauce.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Green_Chilli_Sauce.JPG",
+        "width": 5184,
+        "height": 3456,
+        "query": "Green Chilli Sauce",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600331/takehealth/food_db/THF-01029.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c0/Grilled_chicken_with_green_sauce.jpg/1280px-Grilled_chicken_with_green_sauce.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Grilled_chicken_with_green_sauce.jpg",
+          "license": "by-sa",
+          "creator": "Mumujit",
+          "title": "Grilled chicken with green sauce",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Herring_in_dill-herb_sauce_and_chili_powder%2C_on_peas_and_broccoli_in_garlic_olive_oil%2C_on_an_unfortunately_smashed_plate_-_Massachusetts.jpg/1280px-Herring_in_dill-herb_sauce_and_chili_powder%2C_on_peas_and_broccoli_in_garlic_olive_oil%2C_on_an_unfortunately_smashed_plate_-_Massachusetts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Herring_in_dill-herb_sauce_and_chili_powder,_on_peas_and_broccoli_in_garlic_olive_oil,_on_an_unfortunately_smashed_plate_-_Massachusetts.jpg",
+          "license": "cc0",
+          "creator": "Daderot",
+          "title": "Herring in dill-herb sauce and chili powder, on peas and broccoli in garlic olive oil, on an unfortunately smashed plate - Massachusetts",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01033",
+      "name": "Cumin Seeds Baghar",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 12,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01034",
+      "name": "Onion Tomato Baghar",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01035",
+      "name": "Mustard Seeds Baghar",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 17,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01051",
+      "name": "Mushroom Matar",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Matar mushroom",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Hrishikes",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Matar_mushroom.jpg/500px-Matar_mushroom.jpg",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Matar_mushroom.jpg",
+        "width": 720,
+        "height": 540,
+        "query": "Mushroom Matar",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600448/takehealth/food_db/THF-01051.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01064",
+      "name": "Fish in Coconut Milk",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "title mentions \"box\"": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Fish curry with coconut milk",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Pushkar_Ekbote",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Fish_curry_with_coconut_milk.jpg/1280px-Fish_curry_with_coconut_milk.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_curry_with_coconut_milk.jpg",
+        "width": 1874,
+        "height": 1700,
+        "query": "Fish in Coconut Milk",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600454/takehealth/food_db/THF-01064.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Fish_with_coconut_milk.jpg/1280px-Fish_with_coconut_milk.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_with_coconut_milk.jpg",
+          "license": "by-sa",
+          "creator": "GerryYabes",
+          "title": "Fish with coconut milk",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f5/Fish_soup_with_reef_fish_and_coconut_milk.jpg/1280px-Fish_soup_with_reef_fish_and_coconut_milk.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_soup_with_reef_fish_and_coconut_milk.jpg",
+          "license": "by-sa",
+          "creator": "Dave O from North Vancouver, CANADA",
+          "title": "Fish soup with reef fish and coconut milk",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/Fish_with_coconut_milk_served_in_banana_leaf.jpg/1280px-Fish_with_coconut_milk_served_in_banana_leaf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_with_coconut_milk_served_in_banana_leaf.jpg",
+          "license": "by-sa",
+          "creator": "mick62",
+          "title": "Fish with coconut milk served in banana leaf",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01103",
+      "name": "Vegetable and Cheese Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 8,
+      "rejected": {
+        "licence not allowed": 7
+      },
+      "errors": [
+        "openverse \"Vegetable and Cheese Pie\": api.openverse.org: ECONNABORTED"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Homemade pie (burek) with spinach and cheese 01",
+        "matchScore": 0.667,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "Milica Buha",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Homemade_pie_%28burek%29_with_spinach_and_cheese_01.jpg/1280px-Homemade_pie_%28burek%29_with_spinach_and_cheese_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Homemade_pie_(burek)_with_spinach_and_cheese_01.jpg",
+        "width": 3708,
+        "height": 3810,
+        "query": "Vegetable and Cheese Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600484/takehealth/food_db/THF-01103.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Homemade_pie_%28burek%29_with_spinach_and_cheese_02.jpg/1280px-Homemade_pie_%28burek%29_with_spinach_and_cheese_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Homemade_pie_(burek)_with_spinach_and_cheese_02.jpg",
+          "license": "by-sa",
+          "creator": "Milica Buha",
+          "title": "Homemade pie (burek) with spinach and cheese 02",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Homemade_pie_%28burek%29_with_spinach_and_cheese_03.jpg/1280px-Homemade_pie_%28burek%29_with_spinach_and_cheese_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Homemade_pie_(burek)_with_spinach_and_cheese_03.jpg",
+          "license": "by-sa",
+          "creator": "Milica Buha",
+          "title": "Homemade pie (burek) with spinach and cheese 03",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01104",
+      "name": "Spinach Souffle",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 11,
+      "rejected": {
+        "too small": 1,
+        "title mentions \"farm\"": 3
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Spinach souffle (3645139036)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by",
+        "creator": "Karen and Brad Emerson",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Spinach_souffle_%283645139036%29.jpg/1280px-Spinach_souffle_%283645139036%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Spinach_souffle_(3645139036).jpg",
+        "width": 2272,
+        "height": 1704,
+        "query": "Spinach Souffle",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600489/takehealth/food_db/THF-01104.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Souffle_with_spinach_and_romesco_sauce_%283478386272%29.jpg/1280px-Souffle_with_spinach_and_romesco_sauce_%283478386272%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Souffle_with_spinach_and_romesco_sauce_(3478386272).jpg",
+          "license": "by",
+          "creator": "Karen and Brad Emerson",
+          "title": "Souffle with spinach and romesco sauce (3478386272)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/Artichoke%2C_spinach%2C_onion_and_goats_cheese_souffle%2C_Harbor_Light_Inn%2C_Marblehead_%2842995831625%29.jpg/1280px-Artichoke%2C_spinach%2C_onion_and_goats_cheese_souffle%2C_Harbor_Light_Inn%2C_Marblehead_%2842995831625%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Artichoke,_spinach,_onion_and_goats_cheese_souffle,_Harbor_Light_Inn,_Marblehead_(42995831625).jpg",
+          "license": "by-sa",
+          "creator": "Haydn Blackey from Cardiff, Wales",
+          "title": "Artichoke, spinach, onion and goats cheese souffle, Harbor Light Inn, Marblehead (42995831625)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01114",
+      "name": "French Dressing",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "title mentions \"label\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "1925 French dressing table (45952488022)",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by",
+        "creator": "Thomas Quine",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/1925_French_dressing_table_%2845952488022%29.jpg/1280px-1925_French_dressing_table_%2845952488022%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:1925_French_dressing_table_(45952488022).jpg",
+        "width": 3648,
+        "height": 5472,
+        "query": "French Dressing",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600494/takehealth/food_db/THF-01114.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Lois_Wilson_French_Dressing_1927.jpg/960px-Lois_Wilson_French_Dressing_1927.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lois_Wilson_French_Dressing_1927.jpg",
+          "license": "pdm",
+          "creator": "First National Pictures",
+          "title": "Lois Wilson French Dressing 1927",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/French_Dressing_1927_Lobby_Card.jpg/1280px-French_Dressing_1927_Lobby_Card.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:French_Dressing_1927_Lobby_Card.jpg",
+          "license": "pdm",
+          "creator": "First National Pictures",
+          "title": "French Dressing 1927 Lobby Card",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Kroger_Creamy_French_Dressing_-_October_2023_-_Sarah_Stierch.jpg/1280px-Kroger_Creamy_French_Dressing_-_October_2023_-_Sarah_Stierch.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kroger_Creamy_French_Dressing_-_October_2023_-_Sarah_Stierch.jpg",
+          "license": "by",
+          "creator": "Missvain",
+          "title": "Kroger Creamy French Dressing - October 2023 - Sarah Stierch",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01115",
+      "name": "Mayonnaise Without Eggs",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 12,
+      "rejected": {
+        "licence not allowed": 3
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Egg mayonnaise bread 2023-11-04",
+        "matchScore": 0.667,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "Andy Li",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Egg_mayonnaise_bread_2023-11-04.jpg/1280px-Egg_mayonnaise_bread_2023-11-04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Egg_mayonnaise_bread_2023-11-04.jpg",
+        "width": 4032,
+        "height": 3024,
+        "query": "Mayonnaise Without Eggs",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600509/takehealth/food_db/THF-01115.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/Potato_salad_with_egg_and_mayonnaise.jpg/1280px-Potato_salad_with_egg_and_mayonnaise.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Potato_salad_with_egg_and_mayonnaise.jpg",
+          "license": "pdm",
+          "creator": "Zeamays",
+          "title": "Potato salad with egg and mayonnaise",
+          "matchScore": 0.667
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Roasted_potatoes_with_garlic_mayonnaise%2C_smoked_oysters%2C_hard-boiled_eggs%2C_and_cornichons%2C_all_cold_-_Massachusetts.jpg/1280px-Roasted_potatoes_with_garlic_mayonnaise%2C_smoked_oysters%2C_hard-boiled_eggs%2C_and_cornichons%2C_all_cold_-_Massachusetts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Roasted_potatoes_with_garlic_mayonnaise,_smoked_oysters,_hard-boiled_eggs,_and_cornichons,_all_cold_-_Massachusetts.jpg",
+          "license": "cc0",
+          "creator": "Daderot",
+          "title": "Roasted potatoes with garlic mayonnaise, smoked oysters, hard-boiled eggs, and cornichons, all cold - Massachusetts",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01116",
+      "name": "Curd Dressing",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {
+        "title mentions \"farm\"": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01123",
+      "name": "Mango Raita",
+      "category": "raita or curd side",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "title mentions \"menu\"": 1,
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Mango_Raita.jpg/500px-Mango_Raita.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Mango_Raita.jpg/500px-Mango_Raita.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01126",
+      "name": "Bottle Gourd Kheer",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Kauki Ki Kheer",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Miansari66",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/Kauki_Ki_Kheer.JPG/1280px-Kauki_Ki_Kheer.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kauki_Ki_Kheer.JPG",
+        "width": 2816,
+        "height": 2112,
+        "query": "Bottle Gourd Kheer",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600582/takehealth/food_db/THF-01126.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01127",
+      "name": "Pumpkin Kheer",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Pumpkin kheer",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Dilip2292",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Pumpkin_kheer.jpg/1280px-Pumpkin_kheer.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pumpkin_kheer.jpg",
+        "width": 4000,
+        "height": 3000,
+        "query": "Pumpkin Kheer",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600587/takehealth/food_db/THF-01127.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01128",
+      "name": "Apple Kheer",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Apple kheer",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Milanography",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/Apple_kheer.jpg/1280px-Apple_kheer.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_kheer.jpg",
+        "width": 5120,
+        "height": 2880,
+        "query": "Apple Kheer",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795600591/takehealth/food_db/THF-01128.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/37/Fruit_kheer%28jack_fruit%2Cguava%2Capple_%26grapes%29.JPG/1280px-Fruit_kheer%28jack_fruit%2Cguava%2Capple_%26grapes%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fruit_kheer(jack_fruit,guava,apple_%26grapes).JPG",
+          "license": "by-sa",
+          "creator": "Aravind Lakshmanaswamy",
+          "title": "Fruit kheer(jack fruit,guava,apple &grapes)",
+          "matchScore": 1
+        }
+      ]
     }
   ]
 }
