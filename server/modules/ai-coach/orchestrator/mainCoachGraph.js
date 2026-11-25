@@ -27,6 +27,8 @@ const { triageFacts, isYes, isNo, isUndo, describeFact, specifyQuestion, specify
 const { parseSymptomReply } = require('../tools/symptomTools');
 const { applyRoutingRules, mergeRouting } = require('./routingRules');
 const { parseLookbackDays, mergeLookback, LONG_RANGE_DAYS } = require('../context/lookback');
+const { buildGreeting, dayPlanRequest, offerDeclinedReply, isFirstChatToday, toneFor, istDay } = require('./greeting');
+const { provisionalReplyMode, specialistsForMetrics, scopeData } = require('./replyMode');
 
 const PENDING_QUESTION_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -61,6 +63,10 @@ const State = Annotation.Root({
     foodToConfirm: last(),    // "I ate X": estimated entry shown for "save?"
     specify: last(),          // "yes" without what to a profile question: ask "what exactly?" once
     droppedRequest: last(),   // a paused request the user moved on from: the answer must not cover it
+    logsToConfirm: last(),    // water / sleep / smoke / alcohol entries shown for "yes / no"
+    loggedActivities: last(), // [{ kind, label, ok, detail }] saved this turn after "yes"
+    logsDeclined: last(),     // the user said no to logging them
+    logNeeds: last(),         // { needsAmount: [kind], needsDrinkType } -> ask instead of guessing
     loggedFood: last(),       // entry saved this turn after "yes"
 
     reply: last(),
@@ -88,7 +94,13 @@ const SHORT_REPLY_WORDS = 6; // "thoda better hai ab" is an answer; "I'm tired, 
 // ── nodes ──────────────────────────────────────────────────────────────────
 
 // "I ate / had / khaya ...": a meal to log (needs the classifier + estimator first).
-const FOOD_EATEN_RE = /\b(khaya|khayi|khaye|khaa liya|kha liya|kha li|kha chuka|kha chuki|piya|pi li|pee li|ate|eaten|i had|i've had|had (a |an |some |my )?(breakfast|lunch|dinner|snack)|drank)\b/i;
+// Water / sleep / smoking / alcohol the user says they did (with an amount or a
+// past-tense verb): the classifier must read it, so no fast path.
+const ACTIVITY_LOG_RE = /\b(paani|pani|water|glass|litre|liter|bottle|soya|soyi|so gaya|so gayi|slept|neend|cigarettes?|smoked|sutta|beer|peg|whisky|wine|vodka|rum|daaru|sharab|drinks?)\b/i;
+// A food or a meal named: the meal estimator is worth starting.
+const FOOD_NAMED_RE = /\b(khaya|khayi|khaye|kha liya|kha li|ate|eaten|roti|chapati|chawal|rice|dal|daal|sabzi|paneer|egg|anda|chicken|breakfast|lunch|dinner|nashta|snack|meal|chai|tea|coffee|milk|doodh|juice|lassi|shake|smoothie|biscuit|fruit|banana|apple)\b/i;
+const DID_IT_RE =/\d|\b(ek|do|teen|chaar|paanch|one|two|three|four|five|piya|piye|pi li|pee li|liya|li|soya|soyi|so gaya|so gayi|slept|smoked|had|drank|log kar|add kar)\b/i;
+const FOOD_EATEN_RE =/\b(khaya|khayi|khaye|khaa liya|kha liya|kha li|kha chuka|kha chuki|piya|pi li|pee li|ate|eaten|i had|i've had|had (a |an |some |my )?(breakfast|lunch|dinner|snack)|drank)\b/i;
 // A health fact the user states about themselves ("I take metformin", "mujhe
 // allergy hai", "I weigh 70"): the classifier must see it BEFORE the answer so
 // the reply can ask "save it?" (fast path would lose it under another question).
@@ -113,6 +125,8 @@ function provisionalClassification(message, ruled, lookbackDays) {
         lookbackDays,
         language: detectLanguage(message), // may be 'neutral': resolved in prepare
         recommendsFoodOrSupplement: RECOMMEND_RE.test(message),
+        // chat / specific / coaching until the classifier says otherwise (orchestrator/replyMode.js)
+        ...provisionalReplyMode(message),
         source: 'rules',
         provisional: true,
     };
@@ -171,11 +185,41 @@ async function prepare(state, config) {
         if (isYes(state.message)) action = 'confirm_yes';
         else if (isNo(state.message)) action = 'confirm_no';
     } else if (coachState.pendingFoodLog && within(coachState.pendingFoodLog.askedAt, CONFIRM_WINDOW_MS, now)) {
+        // A water / sleep / smoke / drink entry shown in the same card rides on this yes / no.
         if (isYes(state.message)) action = 'food_log_yes';
         else if (isNo(state.message)) action = 'food_log_no';
+    } else if (coachState.pendingLog?.entries?.length && within(coachState.pendingLog.askedAt, CONFIRM_WINDOW_MS, now)) {
+        if (isYes(state.message)) action = 'log_yes';
+        else if (isNo(state.message)) action = 'log_no';
     } else if (coachState.pendingMealPref && within(coachState.pendingMealPref.askedAt, CONFIRM_WINDOW_MS, now)) {
         if (isYes(state.message)) action = 'meal_pref_yes';
         else if (isNo(state.message)) action = 'meal_pref_no';
+    }
+
+    // Greeting offered "want me to plan your day?": a short "yes" becomes that
+    // request (routed and answered like any message), a short "no" is closed
+    // with one friendly line. Anything else just moves on (offer dropped).
+    const offer = !action && !state.offerAccepted && coachState.pendingOffer?.kind === 'day_plan'
+        && within(coachState.pendingOffer.askedAt, CONFIRM_WINDOW_MS, now) && wordCount(state.message) <= 4;
+    if (offer && isYes(state.message)) {
+        const language = resolveLanguage({ message: state.message, previous: coachState.lastLanguage });
+        const request = dayPlanRequest(language);
+        const out = await prepare({ ...state, message: request, offerAccepted: true }, config);
+        return { ...out, message: request, timings: { ...out.timings, dayPlanFromOffer: true } };
+    }
+    if (offer && isNo(state.message)) {
+        const language = resolveLanguage({ message: state.message, previous: coachState.lastLanguage });
+        return {
+            now, startedAt,
+            coachState: { ...coachState, pendingOffer: null, lastLanguage: language },
+            profileContext: await profileCall, // age decides the tone of the reply
+            classification: { ...keywordFallback(state.message, 'offer_declined'), intent: 'offer_declined', language },
+            safety: { ...safety, injection: false },
+            action: null,
+            usage: [],
+            activeSymptoms,
+            timings: { ...timings, path: 'no_model', prepareMs: Date.now() - startedAt },
+        };
     }
 
     const pendingQuestion = coachState.pendingQuestion && within(coachState.pendingQuestion.askedAt, PENDING_QUESTION_TTL_MS, now)
@@ -185,7 +229,12 @@ async function prepare(state, config) {
     // an emergency reply. Prompt injection: also decided without a model call.
     const usage = [];
     const skipModel = safety.flagged || injection || action;
-    const loggingFood = FOOD_EATEN_RE.test(state.message);
+    // Water / alcohol / sleep / smoking only (no food named): no calorie estimate
+    // (staging 25 Nov: "2 glass paani piya" started the meal estimator).
+    const drinkOrHabitOnly = ACTIVITY_LOG_RE.test(state.message) && !FOOD_NAMED_RE.test(state.message);
+    const loggingFood = FOOD_EATEN_RE.test(state.message) && !drinkOrHabitOnly;
+    // Either kind of log needs the classifier to read it first: no fast path.
+    const loggingSomething = loggingFood || (ACTIVITY_LOG_RE.test(state.message) && DID_IT_RE.test(state.message));
     // Short replies about an open symptom ("ab thik hai"), read by code.
     const replyUpdates = parseSymptomReply(state.message, activeSymptoms);
     // A request paused by a blocking symptom question resumes only if this
@@ -206,7 +255,7 @@ async function prepare(state, config) {
     // its results are applied after the answer (node `reconcile`). Not used when
     // the classifier must decide first: no topic matched (could be off-topic),
     // a meal to log, the answer to a pending question, or a paused request.
-    const fast = !skipModel && ruled.specialists.length > 0 && !loggingFood && !pendingQuestion && !paused
+    const fast = !skipModel && ruled.specialists.length > 0 && !loggingSomething && !pendingQuestion && !paused
         && !FACT_HINT_RE.test(state.message) && !SYMPTOM_HINT_RE.test(state.message);
 
     const classifyCall = skipModel
@@ -272,11 +321,20 @@ async function prepare(state, config) {
         previous: coachState.lastLanguage,
     });
     classification = { ...classification, language };
+    // A question about particular numbers always fetches them (never answered
+    // from memory or a guess): add the specialists those numbers live in.
+    if (classification.replyMode !== 'chat' && classification.askedMetrics?.length) {
+        classification = {
+            ...classification,
+            specialists: [...new Set([...(classification.specialists || []), ...specialistsForMetrics(classification.askedMetrics)])],
+        };
+    }
 
     return {
         now,
         startedAt,
-        coachState: { ...coachState, pendingQuestion, lastLanguage: language },
+        // A greeting's day-plan offer lives for one message only.
+        coachState: { ...coachState, pendingQuestion, lastLanguage: language, pendingOffer: null },
         profileContext,
         classification,
         safety: { ...safety, injection },
@@ -315,7 +373,7 @@ function routeAfterPrepare(state) {
     if (state.safety.flagged || (state.classification.redFlag && !state.safety.caution)) return N.safety;
     if (state.safety.injection) return N.scope;
     if (!state.action && state.classification.intent === 'off_topic' && !state.classification.facts?.length) return N.scope;
-    if (!state.action && ['greeting', 'thanks'].includes(state.classification.intent)) return N.quick;
+    if (!state.action && ['greeting', 'thanks', 'offer_declined'].includes(state.classification.intent)) return N.quick;
     return N.actions;
 }
 
@@ -339,14 +397,42 @@ async function scopeNode(state, config) {
     return { reply, route: state.safety.injection ? 'injection' : 'off_topic', nextCoachState: { ...state.coachState }, timings: { firstTokenMs: Date.now() - state.startedAt } };
 }
 
+// Greeting / thanks / "no" to the day-plan offer: fixed text, no answer model.
 async function quickNode(state, config) {
-    const first = String(state.userName || '').trim().split(/\s+/)[0];
-    const hinglish = ['hinglish', 'hindi'].includes(state.classification.language);
-    const reply = state.classification.intent === 'thanks'
-        ? (hinglish ? 'Koi baat nahi! Aur kuch poochna ho to bataiye.' : 'You\'re welcome! Let me know if there\'s anything else.')
-        : `Hi${first ? ` ${first}` : ''}! ${hinglish ? 'Aaj kis cheez mein madad karun?' : 'How can I help you today?'}`;
+    const d = deps(config);
+    const language = state.classification.language;
+    const hinglish = ['hinglish', 'hindi'].includes(language);
+    const next = { ...state.coachState };
+    let reply;
+
+    if (state.classification.intent === 'thanks') {
+        reply = hinglish ? 'Koi baat nahi! Aur kuch poochna ho to bataiye.' : 'You\'re welcome! Let me know if there\'s anything else.';
+    } else if (state.classification.intent === 'offer_declined') {
+        reply = offerDeclinedReply(language, toneFor({ message: state.message, profileContext: state.profileContext }));
+    } else {
+        // First chat of the day: a true compliment needs this week's numbers
+        // (DB only, no model). Skipped when today's opener already showed them.
+        const now = state.now || new Date();
+        const openerToday = state.coachState.lastOpenerAt && istDay(state.coachState.lastOpenerAt) === istDay(now);
+        let progressSummary = null;
+        if (isFirstChatToday(state.coachState, now) && !openerToday) {
+            const [progress] = await runSpecialists(['progress'], {
+                userId: state.userId, now, deps: d.specialistDeps || {}, logger: d.logger,
+            }).catch(() => []);
+            progressSummary = progress?.summary || null;
+        }
+        const greeting = buildGreeting({
+            message: state.message, userName: state.userName, profileContext: state.profileContext,
+            coachState: state.coachState, language, now, progressSummary,
+        });
+        reply = greeting.text;
+        if (greeting.offer) {
+            next.pendingOffer = { kind: 'day_plan', askedAt: now };
+            next.askedLog = { ...(next.askedLog || {}), [LAST_ASK_KEY]: now }; // it is this reply's one question
+        }
+    }
     write(config, { type: 'token', text: reply });
-    return { reply, route: 'quick', nextCoachState: { ...state.coachState }, timings: { firstTokenMs: Date.now() - state.startedAt } };
+    return { reply, route: 'quick', nextCoachState: next, timings: { firstTokenMs: Date.now() - state.startedAt } };
 }
 
 // Undo / confirm handling + saving facts from this message.
@@ -389,6 +475,32 @@ async function actionsNode(state, config) {
         if (foodToConfirm) {
             next.pendingFoodLog = { entry: foodToConfirm, askedAt: state.now };
             write(config, { type: 'food_log_confirm', entry: foodToConfirm });
+        }
+    }
+
+    // Water / sleep / smoke / alcohol (tools/activityLogTools.js): shown for
+    // "yes / no" first, saved only after yes, through the app's own log code.
+    let loggedActivities = null;
+    let logsToConfirm = null;
+    let logNeeds = null;
+    const logsDeclined = Boolean(cs.pendingLog?.entries?.length) && ['log_no', 'food_log_no'].includes(state.action);
+    next.pendingLog = null;
+    if (d.activityLogTools && cs.pendingLog?.entries?.length && ['log_yes', 'food_log_yes'].includes(state.action)) {
+        loggedActivities = await d.activityLogTools.save(state.userId, cs.pendingLog.entries, { now: state.now });
+        write(config, { type: 'activity_logged', entries: loggedActivities.map(({ kind, label, ok }) => ({ kind, label, ok })) });
+        if (loggedActivities.some((e) => e.ok && e.kind === 'water') && d.getTargets) {
+            targets = await d.getTargets(state.userId, { now: state.now }).catch(() => targets); // "water left today"
+        }
+    } else if (!state.action && d.activityLogTools && state.classification.activityLogs?.length) {
+        const prepared = await d.activityLogTools.prepare(state.userId, state.classification.activityLogs, { now: state.now })
+            .catch((err) => { d.logger.warn(`[AICoach] activity log not prepared: ${err.message}`); return null; });
+        if (prepared?.entries.length) {
+            logsToConfirm = prepared.entries;
+            next.pendingLog = { entries: logsToConfirm, askedAt: state.now };
+            write(config, { type: 'activity_log_confirm', entries: logsToConfirm.map(({ kind, label }) => ({ kind, label })) });
+        }
+        if (prepared && (prepared.needsAmount.length || prepared.needsDrinkType)) {
+            logNeeds = { needsAmount: prepared.needsAmount, needsDrinkType: prepared.needsDrinkType };
         }
     }
 
@@ -450,6 +562,7 @@ async function actionsNode(state, config) {
     return {
         savedFacts, confirmFacts: confirm, undoneCount, nextCoachState: next, profileContext, symptomChanges, activeSymptoms,
         savedMealPatterns, loggedFood, foodToConfirm, targets, usage: usageNow, specify,
+        loggedActivities, logsToConfirm, logsDeclined, logNeeds,
     };
 }
 
@@ -457,7 +570,12 @@ async function actionsNode(state, config) {
 // stale weight / sugar, vault file, old report (orchestrator/checkIns.js).
 async function gapNode(state, config) {
     // Don't stack a question on undo / yes / no, or on top of "save this?" / "log this meal?".
-    if (state.action || state.confirmFacts?.length || state.foodToConfirm) return { gapQuestion: null, checkIn: null, mealOffer: false };
+    if (state.action || state.confirmFacts?.length || state.foodToConfirm || state.logsToConfirm?.length || state.logNeeds) {
+        return { gapQuestion: null, checkIn: null, mealOffer: false };
+    }
+    // Casual talk or a question about particular numbers: no nagging check-ins,
+    // only what's needed for safety (a blocking question still goes out below).
+    const quietMode = ['chat', 'specific'].includes(state.classification.replyMode);
     // The user said "yes" without what: this turn's one question is "what exactly?".
     if (state.specify) {
         const s = state.specify;
@@ -486,7 +604,7 @@ async function gapNode(state, config) {
     // fast path the classifier's symptom list isn't known yet, so the caution
     // flag is what marks this as an "unwell" turn.
     const caution = Boolean(state.safety && state.safety.caution);
-    if (caution && checkIn && !checkIn.blocking) checkIn = null;
+    if ((caution || quietMode) && checkIn && !checkIn.blocking) checkIn = null;
 
     // Meal suggestions -> offer to add the pattern to the 7-day plan. Not while
     // a stomach-type symptom is active (temporary gentle food must not become
@@ -495,7 +613,7 @@ async function gapNode(state, config) {
     const stomachIssue = (state.activeSymptoms || []).some((s) => isRelated(s, ['nutrition']));
     const mealOffer = Boolean(deps(config).mealPrefTools) && c.recommendsFoodOrSupplement && (c.topics || []).includes('nutrition')
         && !inQuestionCooldown(state.nextCoachState.askedLog, state.now)
-        && !stomachIssue && !caution && !checkIn?.blocking;
+        && !stomachIssue && !caution && !quietMode && !checkIn?.blocking;
     // One question per reply: the plan offer replaces a non-blocking check-in.
     const finalCheckIn = mealOffer && checkIn && !checkIn.blocking ? null : checkIn;
     return { gapQuestion: finalCheckIn?.kind === 'gap' ? gapQuestion : null, checkIn: finalCheckIn, mealOffer };
@@ -505,7 +623,7 @@ async function gapNode(state, config) {
 // fixed line (no answer-model call: staging 24 Nov this took ~2.7 s for one
 // sentence). Same for "undo".
 function routeAfterActions(state) {
-    return state.action === 'food_log_yes' || state.action === 'undo' ? N.logged : N.gap;
+    return ['food_log_yes', 'undo', 'log_yes', 'log_no'].includes(state.action) ? N.logged : N.gap;
 }
 
 // "undo": say what was removed in one fixed line (staging 24 Nov: a Sonnet
@@ -603,19 +721,54 @@ function foodLoggedText(loggedFood, targets, hinglish) {
         : `Done, saved to your ${meal} log: ${saved}.${leftText}`;
 }
 
-// Fixed replies, no answer-model call: "yes" to a meal, "undo".
+// "yes" to water / sleep / smoke / drink logs: what was saved, from the save
+// results (never from the model), plus water left today if water was logged.
+function activityLoggedText(results = [], targets, hinglish) {
+    const ok = results.filter((r) => r.ok);
+    const failed = results.filter((r) => !r.ok);
+    const parts = [];
+    if (ok.length) {
+        const list = ok.map((r) => r.label).join('; ');
+        parts.push(hinglish ? `Log kar diya: ${list}.` : `Logged: ${list}.`);
+        const waterLeft = targets?.remaining?.waterMl;
+        if (ok.some((r) => r.kind === 'water') && waterLeft != null) {
+            parts.push(waterLeft > 0
+                ? (hinglish ? `Aaj ke liye ${waterLeft} ml paani aur bacha hai.` : `${waterLeft} ml of water left for today.`)
+                : (hinglish ? 'Aaj ka paani ka target poora ho gaya!' : 'You\'ve hit today\'s water target!'));
+        }
+    }
+    if (failed.length) {
+        const list = failed.map((r) => r.label).join('; ');
+        parts.push(hinglish ? `Ye save nahi ho paaya: ${list}. App ki screen se add kar lo.` : `Couldn't save: ${list}. Please add it from the app screen.`);
+    }
+    return parts.join(' ');
+}
+
+function logsDeclinedText(hinglish) {
+    return hinglish ? 'Theek hai, log nahi kiya. Sahi numbers bata doge to log kar dunga.' : 'Okay, I didn\'t log it. Tell me the right numbers anytime and I\'ll log them.';
+}
+
+// Fixed replies, no answer-model call: "yes" to a meal or a log, "no" to a log, "undo".
 async function actionReplyNode(state, config) {
     // Language resolved once in prepare (short "yes" / "undo" keep the chat's language).
     const hinglish = ['hinglish', 'hindi'].includes(state.classification.language);
-    const reply = state.action === 'undo'
-        ? undoText(state.coachState?.lastSaved?.items || [], state.undoneCount || 0, hinglish)
-        : foodLoggedText(state.loggedFood, state.targets, hinglish);
+    let reply;
+    if (state.action === 'undo') reply = undoText(state.coachState?.lastSaved?.items || [], state.undoneCount || 0, hinglish);
+    else if (state.action === 'log_yes') reply = activityLoggedText(state.loggedActivities || [], state.targets, hinglish);
+    else if (state.action === 'log_no') reply = logsDeclinedText(hinglish);
+    else {
+        reply = foodLoggedText(state.loggedFood, state.targets, hinglish);
+        // Same card held water / sleep / smoke / drink entries too.
+        if (state.loggedActivities?.length) reply += ` ${activityLoggedText(state.loggedActivities, null, hinglish)}`;
+    }
     write(config, { type: 'token', text: reply });
     return { reply, route: 'coach', timings: { firstTokenMs: Date.now() - state.startedAt } };
 }
 
 function routeAfterGap(state) {
-    const needs = state.classification.specialists?.length > 0 && !state.checkIn?.blocking && !state.action;
+    // Chat mode sends the model no data, so there is nothing to fetch.
+    const needs = state.classification.specialists?.length > 0 && !state.checkIn?.blocking && !state.action
+        && state.classification.replyMode !== 'chat';
     return needs ? N.specialists : N.respond;
 }
 
@@ -643,20 +796,30 @@ async function specialistsNode(state, config) {
 
 async function respondNode(state, config) {
     const d = deps(config);
+    // What the model may see depends on the reply mode (orchestrator/replyMode.js):
+    // chat -> no data at all; specific -> only the asked-for numbers.
+    const scoped = scopeData({ classification: state.classification, specialistResults: state.specialistResults || [], targets: state.targets });
     const request = buildRequest({
         message: state.message,
         history: state.history,
         userName: state.userName,
         profileContext: state.profileContext,
         classification: state.classification,
-        specialistResults: state.specialistResults || [],
+        specialistResults: scoped.specialistResults,
         gapQuestion: state.gapQuestion,
         confirmFacts: state.confirmFacts || [],
         savedFacts: state.savedFacts || [],
         undoneCount: state.undoneCount || 0,
-        targets: state.targets,
+        targets: scoped.targets,
+        replyMode: scoped.chat ? 'chat' : (state.classification.replyMode || 'coaching'),
+        focusMetrics: scoped.focusMetrics,
+        unavailableMetrics: scoped.unavailableMetrics,
+        logsToConfirm: state.logsToConfirm || null,
+        logNeeds: state.logNeeds || null,
+        logsDeclined: Boolean(state.logsDeclined),
         checkInInstruction: state.checkIn && state.checkIn.kind !== 'gap' ? state.checkIn.instruction : null,
-        activeSymptoms: state.activeSymptoms || [],
+        // Chat mode: don't bring up recorded symptoms the user didn't mention.
+        activeSymptoms: scoped.chat ? [] : (state.activeSymptoms || []),
         symptomChanges: state.symptomChanges || [],
         mealOffer: Boolean(state.mealOffer),
         savedMealPatterns: state.savedMealPatterns || null,

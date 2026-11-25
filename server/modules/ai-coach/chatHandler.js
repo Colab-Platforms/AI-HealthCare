@@ -13,7 +13,10 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { isEnabled, HISTORY_TURNS } = require('./config');
 const { runCoach } = require('./orchestrator/mainCoachGraph');
 
-const TYPED_EVENTS = new Set(['profile_saved', 'profile_undone', 'profile_confirm', 'meal_pref_saved', 'food_log_confirm', 'food_logged']);
+const TYPED_EVENTS = new Set([
+    'profile_saved', 'profile_undone', 'profile_confirm', 'meal_pref_saved', 'food_log_confirm', 'food_logged',
+    'activity_log_confirm', 'activity_logged', // water / sleep / smoke / alcohol (25 Nov)
+]);
 
 let sharedDeps;
 function defaultDeps() {
@@ -26,9 +29,11 @@ function defaultDeps() {
     const { createSymptomTools } = require('./tools/symptomTools');
     const { createMealPrefTools } = require('./tools/mealPrefTools');
     const { createFoodLogTools } = require('./tools/foodLogTools');
+    const { createActivityLogTools } = require('./tools/activityLogTools');
     sharedDeps = {
         mealPrefTools: createMealPrefTools(),
         foodLogTools: createFoodLogTools(),
+        activityLogTools: createActivityLogTools(),
         client: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
         getProfileContext,
         getTargets,

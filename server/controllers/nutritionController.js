@@ -1375,64 +1375,30 @@ exports.setLifestyleGoals = async (req, res) => {
 // Log water — accepts either a glass count (converted via the user's configured
 // glass size) or a raw ml amount, and ADDS it to the day's total by default.
 // action:'set' overwrites the day's total instead (used for corrections).
+// Sets the day's total. Logic lives in services/activityLogService.js (also used
+// by the AI coach). Fixed 25 Nov: the response used `glassSizeMl` without ever
+// defining it, so every successful save answered 500 (ReferenceError).
 exports.logWater = async (req, res) => {
   try {
     const { waterIntake, date } = req.body;
-    const waterAmount = Number(waterIntake);
-    if (!Number.isFinite(waterAmount) || waterAmount < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'waterIntake must be a finite number greater than or equal to 0'
-      });
-    }
-    const queryDate = date ? new Date(date) : new Date();
-    const targetDate = new Date(queryDate.toISOString().split('T')[0]);
-    targetDate.setUTCHours(0, 0, 0, 0);
-
-    // Atomic get-or-create: a plain findOne + `new Model()` + save() has a gap
-    // between the check and the insert where two concurrent requests (e.g. a
-    // double-tap) can both see "no summary yet" and both try to create one,
-    // tripping the userId+date unique index (E11000). findOneAndUpdate with
-    // upsert:true does the get-or-create as a single atomic DB operation, so
-    // only one request can ever create the document; the later .save() below
-    // is then always an update to an existing doc, never a second insert.
-    const summary = await NutritionSummary.findOneAndUpdate(
-      { userId: req.user._id, date: targetDate },
-      { $setOnInsert: { userId: req.user._id, date: targetDate } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    summary.waterIntake = waterAmount;
-    await summary.save();
-
-    // Also update DailyProgress for dashboard metrics
-    const dateStr = targetDate.toISOString().split('T')[0];
-    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, dateStr);
-    const DailyProgress = require('../models/DailyProgress');
-    await DailyProgress.findOneAndUpdate(
-      { userId: req.user._id, date: dateStr },
-      { waterIntake: waterAmount },
-      { upsert: true, new: true }
-    );
-
-    // Invalidate caches so next fetch returns fresh data
-    cache.delete(`dashboard:${req.user._id}`);
-    cache.deletePattern(`water_analytics:${req.user._id}:*`);
-
-    const gamificationResult = await gamificationService.awardPoints(req.user._id, 'water_intake', `Logged water intake`).catch(err => {
-      console.error('Gamification Error:', err);
-      return null;
-    });
+    const activityLog = require('../services/activityLogService');
+    const [{ totalMl, gamification }, glassSizeMl] = await Promise.all([
+      activityLog.setWaterTotal(req.user._id, waterIntake, date),
+      activityLog.getGlassSizeMl(req.user._id),
+    ]);
 
     res.json({
       success: true,
-      totalMl: summary.waterIntake,
-      glasses: Math.round(summary.waterIntake / glassSizeMl),
+      totalMl,
+      glasses: Math.round(totalMl / glassSizeMl),
       glassSizeMl,
-      gamification: gamificationResult,
+      gamification,
       message: 'Water intake logged successfully'
     });
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error('Log water error:', error);
     res.status(500).json({
       success: false,

@@ -1260,68 +1260,13 @@ exports.getDrinkCatalog = async (req, res) => {
 // Unlike saveAlcoholLog (full-map replace, used for bulk/manual edit), this
 // only ever adds one session so two concurrent logs from the same user never
 // clobber each other.
+// Logic lives in services/activityLogService.js (also used by the AI coach).
 exports.logAlcoholSession = async (req, res) => {
   try {
-    const { drinkType, size, volumeMl: rawVolumeMl, abv: rawAbv, name, context, mood, notes, date } = req.body || {};
-
-    if (!drinkType || !isValidDrinkType(drinkType)) {
-      return res.status(400).json({ message: 'Invalid or missing drinkType' });
-    }
-
-    let volumeMl = rawVolumeMl;
-    let abv = rawAbv;
-
-    if (drinkType === 'other') {
-      // No catalog defaults exist for an unknown drink — refusing to guess is
-      // the whole point of 'other', so both fields are mandatory here.
-      if (volumeMl === undefined || abv === undefined) {
-        return res.status(400).json({ message: 'volumeMl and abv are required when drinkType is "other"' });
-      }
-    } else if (size) {
-      const defaults = getSizeDefaults(drinkType, size);
-      if (!defaults) {
-        return res.status(400).json({ message: `Invalid size "${size}" for drinkType "${drinkType}"` });
-      }
-      volumeMl = volumeMl ?? defaults.volumeMl;
-      abv = abv ?? defaults.defaultAbv;
-    } else if (volumeMl === undefined || abv === undefined) {
-      return res.status(400).json({ message: 'Provide either size or explicit volumeMl + abv' });
-    }
-
-    // Reject out-of-range values outright instead of silently clamping them —
-    // a client typo (abv=300) must surface as an error, never get saved as a
-    // wrong-but-plausible number.
-    const validationError = validateDrinkInput(volumeMl, abv);
-    if (validationError) {
-      return res.status(400).json({ message: validationError });
-    }
-
-    const session = sanitizeSession({ drinkType, volumeMl, abv, name, context, mood, notes, time: new Date().toISOString() });
-
-    const dateKey = date && ALCOHOL_DATE_KEY_RE.test(date) ? date : getTodayKey();
-    const path = `alcoholLog.${dateKey}`;
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        $push: { [`${path}.sessions`]: session },
-        $inc: {
-          [`${path}.count`]: 1,
-          [`${path}.units`]: session.units,
-          [`${path}.totalVolumeMl`]: session.volumeMl || 0
-        }
-      },
-      { new: true, upsert: false, runValidators: false }
-    ).select('alcoholLog');
-
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    await cache.delete(`dashboard:${req.user._id}`);
-    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
-
-    res.json({ success: true, session, alcoholLog: toPlainAlcoholLog(user.alcoholLog)[dateKey] });
+    const { session, day } = await require('../services/activityLogService').logAlcoholDrink(req.user._id, req.body || {});
+    res.json({ success: true, session, alcoholLog: day });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 

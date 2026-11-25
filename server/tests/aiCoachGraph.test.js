@@ -127,7 +127,8 @@ test('greeting: instant reply with first name, no model calls', async () => {
     const t = setup();
     const r = await t.send('hi');
     assert.equal(r.final.route, 'quick');
-    assert.equal(r.text, 'Hi Coach! How can I help you today?');
+    // First chat of the day (08:00 UTC = 13:30 IST): warm hello + day-plan offer (tests/aiCoachGreeting.test.js).
+    assert.equal(r.text, 'Hey Coach! How\'s it going?\nWant a quick plan for the rest of your day?');
     assert.equal(t.calls.classify + t.calls.answer, 0);
 });
 

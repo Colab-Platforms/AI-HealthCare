@@ -13,6 +13,17 @@ const TOPICS = ['recovery', 'sleep', 'nutrition', 'supplements', 'fitness', 'med
 const INTENTS = ['greeting', 'thanks', 'small_talk', 'health_coaching', 'data_question', 'medical_question', 'profile_update', 'off_topic', 'other'];
 const TIMEFRAMES = ['today', 'yesterday', 'week', 'month', 'unspecified'];
 const LANGUAGES = ['english', 'hinglish', 'hindi', 'other'];
+// How to answer (25 Nov, "talk like a human, data only when asked"):
+//   chat      casual / emotional / vague, no question about their data -> no numbers at all
+//   specific  asks about particular numbers -> only those (askedMetrics)
+//   coaching  asks what to do / for a plan or advice -> the data that decision needs
+const REPLY_MODES = ['chat', 'specific', 'coaching'];
+const METRICS = ['steps', 'activity', 'workouts', 'sleep', 'recovery', 'heart', 'calories', 'protein', 'food', 'water', 'weight', 'sugar', 'bp', 'reports', 'goals', 'smoking', 'alcohol'];
+// Things the user says they did, to be logged in the app (after a yes).
+const LOG_KINDS = ['water', 'sleep', 'smoke', 'alcohol'];
+const LOG_UNITS = ['glass', 'ml', 'litre', 'bottle', 'hours', 'minutes', 'count', 'none'];
+const DRINK_SIZES = ['small', 'medium', 'large', 'unknown'];
+const LOG_WHEN = ['today', 'last_night', 'yesterday'];
 const FACT_TARGETS = [
     'allergies', 'medications', 'conditions', 'surgeries', 'familyHistory', 'fitness.limitations',
     'diet.preference', 'basic.age', 'body.heightCm', 'body.weightKg',
@@ -22,9 +33,27 @@ const FACT_TARGETS = [
 const SCHEMA = {
     type: 'object',
     additionalProperties: false,
-    required: ['intent', 'topics', 'specialists', 'timeframe', 'lookbackDays', 'symptoms', 'symptomUpdates', 'redFlag', 'distress', 'language', 'recommendsFoodOrSupplement', 'facts', 'mealLog'],
+    required: ['intent', 'replyMode', 'askedMetrics', 'topics', 'specialists', 'timeframe', 'lookbackDays', 'symptoms', 'symptomUpdates', 'redFlag', 'distress', 'language', 'recommendsFoodOrSupplement', 'facts', 'mealLog', 'activityLogs'],
     properties: {
         intent: { type: 'string', enum: INTENTS },
+        replyMode: { type: 'string', enum: REPLY_MODES },
+        askedMetrics: { type: 'array', items: { type: 'string', enum: METRICS } },
+        activityLogs: {
+            type: 'array',
+            items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['kind', 'amount', 'unit', 'drinkType', 'drinkSize', 'when'],
+                properties: {
+                    kind: { type: 'string', enum: LOG_KINDS },
+                    amount: { type: 'number' },
+                    unit: { type: 'string', enum: LOG_UNITS },
+                    drinkType: { type: 'string' },
+                    drinkSize: { type: 'string', enum: DRINK_SIZES },
+                    when: { type: 'string', enum: LOG_WHEN },
+                },
+            },
+        },
         topics: { type: 'array', items: { type: 'string', enum: TOPICS } },
         specialists: { type: 'array', items: { type: 'string', enum: SPECIALISTS } },
         timeframe: { type: 'string', enum: TIMEFRAMES },
@@ -82,6 +111,12 @@ const SCHEMA = {
 const SYSTEM = `You route messages for a health coaching app (users in India; English, Hindi or Hinglish). Return JSON only, matching the schema.
 
 Fields:
+- replyMode: how the coach should answer, like a good friend would.
+  - "chat": casual or emotional talk, venting, a vague feeling, small talk, with NO question about their numbers or what to do ("kuch sahi nahi lag raha", "bore ho raha hoon", "aaj mood off hai", "bas aise hi", "thak gaya yaar"). The coach talks, it doesn't report data.
+  - "specific": asks about particular numbers of their own ("aaj kitne steps hue", "how did I sleep", "mera weight kitna hai") -> askedMetrics says which.
+  - "coaching": asks what to do, for advice, a plan or a decision ("gym jaun?", "dinner mein kya khaun", "how can I sleep better", "plan my day").
+- askedMetrics: for "specific" (and for "coaching" when they name one), exactly which of their numbers they asked about, nothing more. Empty for "chat".
+- activityLogs: things the user says THEY did that the app tracks, to log for them: water drunk, sleep last night, cigarettes smoked, alcoholic drinks. Only when the amount is stated or clearly one ("ek beer" = 1). kind water: amount + unit glass / ml / litre / bottle. kind sleep: amount + unit hours / minutes, when last_night unless they say otherwise. kind smoke: amount = cigarettes, unit count. kind alcohol: amount = number of drinks, unit count; drinkType = one of beer, light_beer, craft_beer, cider, wine, champagne, fortified_wine, vodka, whisky, rum, gin, tequila, liqueur, sake, soju, hard_seltzer, cocktail, other; drinkSize small / medium / large if said ("peg" = small, "pint" = medium), else unknown. If they did it but gave no amount ("maine paani piya"), amount -1. Not for plans, questions or wishes ("paani peena chahiye"). Empty otherwise.
 - intent: greeting | thanks | small_talk | health_coaching (advice about their own health, body, habits, workouts, food) | data_question (asks for their own numbers: "how did I sleep") | medical_question (about a disease, medicine, test or symptom) | profile_update (only tells a fact about themselves) | off_topic (nothing to do with health, body, fitness, food, sleep, mood, medical reports or the take.health app: coding, homework, politics, news, trivia, celebrities, writing essays, other apps; general health knowledge like "what is cholesterol" is NOT off_topic; a message mixing both is NOT off_topic) | other.
 - topics: every topic the message touches. "supplements" for vitamins, protein powder, any supplement. "general" if none fits.
 - specialists: which data the answer needs. recovery = readiness, HRV, resting heart rate, tiredness, soreness; sleep = sleep amount or quality; nutrition = food, calories, water, diet; fitness = workouts, steps, activity, gym; medical_lab = lab reports and test values; progress = am I improving / hitting my goals / week-over-week comparison. Empty for greetings and general knowledge questions that don't depend on the user's data.
@@ -93,7 +128,7 @@ Fields:
 - distress: true if the user sounds very upset, hopeless or panicked.
 - language: the language of the user's message. Hinglish = Hindi written in Latin letters, often mixed with English.
 - recommendsFoodOrSupplement: true if a good answer would recommend specific foods, meals, a diet plan or supplements.
-- mealLog: isLogging = true when the user tells you what they ATE or DRANK (past or just now: "maine 2 roti dal khayi", "had oats for breakfast", "lunch was 500 kcal with 30 g protein"), not when asking what to eat. mealType as they said it, else "unknown". description = the food and quantities in short English ("2 roti, 1 bowl dal"). stated* = numbers the user SAID for the whole meal (kcal, grams), else -1. Never estimate them yourself. When isLogging is false: mealType "unknown", description "", all stated* -1.
+- mealLog: (water and alcoholic drinks are NOT meals: they go in activityLogs; a milk / juice / lassi / chai is a meal) isLogging = true when the user tells you what they ATE or DRANK (past or just now: "maine 2 roti dal khayi", "had oats for breakfast", "lunch was 500 kcal with 30 g protein"), not when asking what to eat. mealType as they said it, else "unknown". description = the food and quantities in short English ("2 roti, 1 bowl dal"). stated* = numbers the user SAID for the whole meal (kcal, grams), else -1. Never estimate them yourself. When isLogging is false: mealType "unknown", description "", all stated* -1.
 - facts: lasting facts about the user's own health in THIS message that belong in their profile (allergies, medicines, conditions, surgeries, family history, injuries/limitations, diet type, age, height, weight, smoking, alcohol, usual sleep hours, stress level). Not today's symptoms, not moods, not one-off meals.
   - target: where it goes. value: the fact in short English ("Peanut", "Metformin 500mg", "Type 2 Diabetes", "knee pain", "vegetarian", "32", "170", "68.5", "current", "6", "high"). Units: age in years, height in cm, weight in kg (convert if given otherwise).
   - none: true if the user says they have none ("no allergies", "koi dawai nahi") - then value is "".
@@ -103,7 +138,8 @@ Fields:
 
 // ── fast path ───────────────────────────────────────────────────────────────
 
-const GREETING_RE = /^\s*(hi+|hello+|hey+|hii+|namaste|namaskar|good (morning|afternoon|evening|night)|gm|yo)[\s!.,]*$/i;
+// A plain greeting, optionally with "bhai / bro / ji ..." and "kaise ho / how are you" (no model call).
+const GREETING_RE = /^\s*(hi+|hello+|hey+|hii+|namaste|namaskar|good (morning|afternoon|evening|night)|gm|yo)(\s+(bhai|bhaiya|bro|yaar|ji|coach|there|buddy))?([\s,!.]+(kaise ho|kaisa hai|kaisi hai|kya haal( hai)?|how are you|how r u|what'?s up|sup))?[\s!.,?]*$/i;
 const THANKS_RE = /^\s*(thanks?|thank you|thx|ty|shukriya|dhanyavaad|dhanyawad|ok(ay)?|got it|cool|great|nice)( (so much|a lot|bro|bhai))?[\s!.,🙏👍]*$/i;
 
 function fastPath(message) {
@@ -114,7 +150,8 @@ function fastPath(message) {
 
 function base(over = {}) {
     return {
-        intent: 'other', topics: [], specialists: [], timeframe: 'unspecified', lookbackDays: 0, symptoms: [], symptomUpdates: [],
+        intent: 'other', replyMode: 'coaching', askedMetrics: [], activityLogs: [],
+        topics: [], specialists: [], timeframe: 'unspecified', lookbackDays: 0, symptoms: [], symptomUpdates: [],
         redFlag: false, distress: false, language: 'english', recommendsFoodOrSupplement: false, facts: [], mealLog: { ...NO_MEAL },
         source: 'model', ...over,
     };
@@ -166,10 +203,30 @@ function sanitizeMealLog(m) {
     };
 }
 
+// Amounts must be finite and plausible; anything else is "not said" (-1).
+const LOG_MAX = { water: 10000, sleep: 1440, smoke: 100, alcohol: 30 };
+function sanitizeActivityLogs(logs) {
+    if (!Array.isArray(logs)) return [];
+    return logs.filter((l) => l && LOG_KINDS.includes(l.kind)).slice(0, 6).map((l) => {
+        const amount = typeof l.amount === 'number' && Number.isFinite(l.amount) && l.amount > 0 && l.amount <= LOG_MAX[l.kind] ? l.amount : -1;
+        return {
+            kind: l.kind,
+            amount,
+            unit: LOG_UNITS.includes(l.unit) ? l.unit : 'none',
+            drinkType: typeof l.drinkType === 'string' ? l.drinkType.trim().toLowerCase().slice(0, 30) : '',
+            drinkSize: DRINK_SIZES.includes(l.drinkSize) ? l.drinkSize : 'unknown',
+            when: LOG_WHEN.includes(l.when) ? l.when : (l.kind === 'sleep' ? 'last_night' : 'today'),
+        };
+    });
+}
+
 function sanitize(raw) {
     const pick = (arr, allowed) => (Array.isArray(arr) ? [...new Set(arr.filter((x) => allowed.includes(x)))] : []);
     return base({
         intent: INTENTS.includes(raw.intent) ? raw.intent : 'other',
+        replyMode: REPLY_MODES.includes(raw.replyMode) ? raw.replyMode : 'coaching',
+        askedMetrics: pick(raw.askedMetrics, METRICS),
+        activityLogs: sanitizeActivityLogs(raw.activityLogs),
         topics: pick(raw.topics, TOPICS),
         specialists: pick(raw.specialists, SPECIALISTS),
         timeframe: TIMEFRAMES.includes(raw.timeframe) ? raw.timeframe : 'unspecified',
@@ -232,4 +289,4 @@ async function classify({ message, history = [], pendingQuestion = null, activeS
     }
 }
 
-module.exports = { classify, fastPath, keywordFallback, sanitize, sanitizeMealLog, SPECIALISTS, TOPICS, FACT_TARGETS, CLASSIFIER_SCHEMA: SCHEMA };
+module.exports = { classify, fastPath, keywordFallback, sanitize, sanitizeMealLog, sanitizeActivityLogs, SPECIALISTS, TOPICS, FACT_TARGETS, METRICS, REPLY_MODES, CLASSIFIER_SCHEMA: SCHEMA };

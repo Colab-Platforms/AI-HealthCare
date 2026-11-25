@@ -5,7 +5,7 @@
 // In the graph, askedLog is { [field]: Date }; in Mongo it is
 // [{ field, askedAt }] (field names contain dots, which Map keys can't).
 
-const KEYS = ['pendingQuestion', 'pendingConfirm', 'pendingRequest', 'pendingFoodLog', 'pendingMealPref', 'lastSaved', 'lastLanguage', 'lastChatAt', 'lastOpenerAt'];
+const KEYS = ['pendingQuestion', 'pendingConfirm', 'pendingRequest', 'pendingFoodLog', 'pendingMealPref', 'lastSaved', 'lastLanguage', 'lastChatAt', 'lastOpenerAt', 'pendingOffer', 'pendingLog'];
 
 function toDoc(state = {}) {
     const doc = {};
@@ -33,6 +33,8 @@ function fromDoc(doc) {
         lastLanguage: doc.lastLanguage || null,
         lastChatAt: doc.lastChatAt || null,
         lastOpenerAt: doc.lastOpenerAt || null,
+        pendingOffer: doc.pendingOffer?.kind ? doc.pendingOffer : null,
+        pendingLog: doc.pendingLog?.entries?.length ? doc.pendingLog : null,
     };
 }
 

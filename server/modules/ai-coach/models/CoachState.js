@@ -26,6 +26,17 @@ const coachStateSchema = new mongoose.Schema({
     // once a day, and not on a day the user already chatted.
     lastChatAt: Date,
     lastOpenerAt: Date,
+    // Water / sleep / smoke / alcohol entries shown for "log this? yes / no".
+    pendingLog: {
+        entries: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+        askedAt: Date,
+    },
+    // "Want me to tell you what to focus on today?" was offered (greeting):
+    // the next short "yes" asks for the day plan, "no" just closes it.
+    pendingOffer: {
+        kind: { type: String, enum: ['day_plan'] },
+        askedAt: Date,
+    },
     // A list, not a Map: field names contain dots ("fitness.limitations") and
     // Mongoose Map keys can't.
     askedLog: {

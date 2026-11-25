@@ -128,9 +128,12 @@ function buildDeps() {
     const { createSymptomTools } = require('../modules/ai-coach/tools/symptomTools');
     const { createMealPrefTools } = require('../modules/ai-coach/tools/mealPrefTools');
     const { createFoodLogTools } = require('../modules/ai-coach/tools/foodLogTools');
+    const { createActivityLogTools } = require('../modules/ai-coach/tools/activityLogTools');
+    // Keep in step with chatHandler.defaultDeps (the real route).
     return {
         mealPrefTools: createMealPrefTools(),
         foodLogTools: createFoodLogTools(),
+        activityLogTools: createActivityLogTools(),
         client: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
         getProfileContext,
         getTargets,

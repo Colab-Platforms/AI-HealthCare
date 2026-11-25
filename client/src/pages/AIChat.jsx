@@ -22,6 +22,7 @@ import {
   ChevronRight,
   TrendingUp,
   Zap,
+  Undo2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -51,6 +52,61 @@ function formatResponse(text) {
   return cleaned.trim();
 }
 
+// ── AI Coach V2 typed events (server: modules/ai-coach/chatHandler.js) ──────
+// Sent only because we pass `coachEvents: true`; older clients get tokens only.
+const COACH_EVENT_TYPES = new Set([
+  "profile_saved",
+  "profile_undone",
+  "profile_confirm",
+  "food_log_confirm",
+  "food_logged",
+  "meal_pref_saved",
+  "activity_log_confirm", // water / sleep / smoke / alcohol shown for yes / no
+  "activity_logged",
+]);
+// Questions the user answers with a button instead of typing "yes" / "no".
+const CONFIRM_EVENT_TYPES = new Set(["profile_confirm", "food_log_confirm", "activity_log_confirm"]);
+const HISTORY_FOR_COACH = 12;
+
+const FACT_LABELS = {
+  allergies: "Allergy",
+  medications: "Medicine",
+  conditions: "Health condition",
+  surgeries: "Surgery",
+  familyHistory: "Family history",
+  "fitness.limitations": "Injury / limitation",
+  "diet.preference": "Diet",
+  "basic.age": "Age",
+  "body.heightCm": "Height (cm)",
+  "body.weightKg": "Weight (kg)",
+  "lifestyle.smoking": "Smoking",
+  "lifestyle.alcohol": "Alcohol",
+  "lifestyle.sleepHours": "Usual sleep (hours)",
+  "lifestyle.stressLevel": "Stress level",
+};
+
+function describeFact(fact) {
+  const label = FACT_LABELS[fact?.target] || fact?.target || "Profile";
+  return fact?.none ? `No ${label.toLowerCase()}` : `${label}: ${fact?.value}`;
+}
+
+function describeFood(entry) {
+  const n = entry?.nutrition || {};
+  const parts = [
+    n.calories != null && `${Math.round(n.calories)} kcal`,
+    n.protein != null && `${Math.round(n.protein)} g protein`,
+  ].filter(Boolean);
+  const name = entry?.description || entry?.name || "Meal";
+  return `${name}${entry?.mealType ? ` (${entry.mealType})` : ""}${parts.length ? ` · ${parts.join(", ")}` : ""}`;
+}
+
+// The coach only needs role + content; extra local fields (events, ids) stay in the app.
+const toCoachHistory = (msgs) =>
+  msgs
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim() && !m.local)
+    .slice(-HISTORY_FOR_COACH)
+    .map((m) => ({ role: m.role, content: m.content }));
+
 export default function AIChat() {
   const { user } = useAuth();
   const location = useLocation();
@@ -69,6 +125,8 @@ export default function AIChat() {
   const chatContainerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const streamIntervalRef = useRef(null);
+  const openerRequestedRef = useRef(null);
+  const [undoingId, setUndoingId] = useState(null);
 
   const isDiabetic =
     user?.profile?.isDiabetic === "yes" ||
@@ -148,13 +206,19 @@ export default function AIChat() {
         console.error("Backend load failed:", error);
       }
 
-      // Fallback: Show greeting
+      // Fallback: Show greeting (local only: replaced by the coach's opener if one comes)
       console.log(`🆕 Fresh start`);
       const greeting = generateGreetingWithReports();
-      setMessages([{ role: "assistant", content: greeting, timestamp: new Date() }]);
+      setMessages([{ role: "assistant", content: greeting, timestamp: new Date(), local: true }]);
     };
 
-    if (user?._id) loadChatHistory();
+    // The coach's opener: only here, when the user opens the coach screen
+    // (never on app launch). Skipped when they arrived with a question.
+    if (user?._id) {
+      loadChatHistory().then(() => {
+        if (!location.state?.initialQuery) fetchOpener();
+      });
+    }
 
     if (location.state?.initialQuery) {
       setInput(location.state.initialQuery);
@@ -177,6 +241,64 @@ export default function AIChat() {
       greeting += `I can help you analyze medical reports, plan your nutrition, or answer any health-related questions. What's on your mind?`;
     }
     return greeting;
+  };
+
+  const persistLocal = (msgs) => {
+    try {
+      localStorage.setItem(`chat_history_${user?._id}`, JSON.stringify(msgs.filter((m) => !m.local)));
+    } catch (_) {}
+  };
+
+  // POST /api/coach/opener: at most once a day (the server decides); null = say nothing.
+  const fetchOpener = async () => {
+    if (!user?._id || openerRequestedRef.current === user._id) return;
+    openerRequestedRef.current = user._id; // once per screen visit (also under StrictMode)
+    try {
+      const { data } = await api.post("coach/opener", {}, { skipAutoLogout: true });
+      const text = data?.opener?.text;
+      if (!text) return;
+      const openerMsg = {
+        role: "assistant",
+        content: text,
+        timestamp: new Date(),
+        id: `${Date.now()}-opener`,
+        opener: true,
+      };
+      setMessages((current) => {
+        const next = [...current.filter((m) => !m.local), openerMsg];
+        setSearchHistory(next);
+        persistLocal(next);
+        return next;
+      });
+      // Saved like any coach message, so the next request's history has it.
+      api
+        .post("chat/history", { messages: [{ role: "assistant", content: text, timestamp: openerMsg.timestamp, id: openerMsg.id }] }, { skipAutoLogout: true })
+        .catch((err) => console.warn("Opener not saved to history:", err.message));
+    } catch (err) {
+      console.warn("Coach opener unavailable:", err.message); // no opener is fine
+    }
+  };
+
+  // "Saved · Undo": revert one value the coach saved from chat.
+  const undoProfileSave = async (messageId, historyId) => {
+    if (!historyId || undoingId) return;
+    setUndoingId(historyId);
+    try {
+      await api.post(`health-profile/undo/${historyId}`, {}, { skipAutoLogout: true });
+      setMessages((current) => {
+        const next = current.map((m) =>
+          m.id === messageId ? { ...m, undone: [...(m.undone || []), historyId] } : m,
+        );
+        persistLocal(next);
+        return next;
+      });
+      toast.success("Removed from your profile");
+    } catch (err) {
+      const msg = err.response?.data?.message || "Couldn't undo that. Try typing \"undo\".";
+      toast.error(msg);
+    } finally {
+      setUndoingId(null);
+    }
   };
 
   const deduplicateMessages = (msgs) => {
@@ -202,21 +324,15 @@ export default function AIChat() {
 
   const saveChatToBackend = async (updatedMessages) => {
     try {
-      const newMessages = updatedMessages.slice(-2);
+      const newMessages = updatedMessages.filter((m) => !m.local).slice(-2);
       await api.post("chat/history", { messages: newMessages }, { skipAutoLogout: true });
-      localStorage.setItem(
-        `chat_history_${user?._id}`,
-        JSON.stringify(updatedMessages),
-      );
+      persistLocal(updatedMessages);
       console.log(`💾 localStorage updated with ${updatedMessages.length} messages`);
       
     } catch (error) {
       console.error('❌ Backend save failed:', error.response?.data || error.message);
       // Still save to localStorage even if backend fails
-      localStorage.setItem(
-        `chat_history_${user?._id}`,
-        JSON.stringify(updatedMessages),
-      );
+      persistLocal(updatedMessages);
       console.log(`⚠️ localStorage fallback saved (${updatedMessages.length} messages)`);
     }
   };
@@ -228,7 +344,7 @@ export default function AIChat() {
         localStorage.removeItem(`chat_history_${user?._id}`);
         const greeting = generateGreetingWithReports();
         setMessages([
-          { role: "assistant", content: greeting, timestamp: new Date() },
+          { role: "assistant", content: greeting, timestamp: new Date(), local: true },
         ]);
         setSearchHistory([]);
         toast.success("Conversation history wiped");
@@ -236,7 +352,7 @@ export default function AIChat() {
         localStorage.removeItem(`chat_history_${user?._id}`);
         const greeting = generateGreetingWithReports();
         setMessages([
-          { role: "assistant", content: greeting, timestamp: new Date() },
+          { role: "assistant", content: greeting, timestamp: new Date(), local: true },
         ]);
         setSearchHistory([]);
       }
@@ -248,15 +364,21 @@ export default function AIChat() {
     return () => abortControllerRef.current?.abort();
   }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    sendMessage(input);
+  };
 
-    const previousMessages = [...messages];
+  // Used by the input box and by the coach's Yes / No buttons.
+  const sendMessage = async (text) => {
+    const currentInput = String(text || "").trim();
+    if (!currentInput || loading || streaming) return;
+
+    const previousMessages = messages.filter((m) => !m.local);
 
     const userMessage = {
       role: "user",
-      content: input,
+      content: currentInput,
       timestamp: new Date(),
       id: `${Date.now()}-user`
     };
@@ -265,7 +387,6 @@ export default function AIChat() {
     setMessages(updatedMessages);
     setSearchHistory(updatedMessages);
 
-    const currentInput = input;
     setInput("");
     // Abort any in-flight stream before starting a new one
     abortControllerRef.current?.abort();
@@ -283,7 +404,10 @@ export default function AIChat() {
         },
         body: JSON.stringify({
           query: currentInput,
-          conversationHistory: updatedMessages.slice(-10),
+          // Earlier turns only: the server adds the current message itself.
+          conversationHistory: toCoachHistory(previousMessages),
+          // Opt in to typed events (Saved · Undo, Yes / No confirmations).
+          coachEvents: true,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -298,6 +422,7 @@ export default function AIChat() {
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
+      const coachEvents = [];
       let streamDone = false;
       let tokenCount = 0;
       const startTime = Date.now();
@@ -321,6 +446,10 @@ export default function AIChat() {
           }
           try {
             const parsed = JSON.parse(raw);
+            if (parsed.type && COACH_EVENT_TYPES.has(parsed.type)) {
+              coachEvents.push(parsed);
+              continue;
+            }
             if (parsed.token) {
               // Split large tokens into individual words for smoother streaming
               const words = parsed.token.split(/(\s+)/);
@@ -359,6 +488,7 @@ export default function AIChat() {
         content: cleanedResponse,
         timestamp: new Date(),
         id: `${Date.now()}-ai`,
+        ...(coachEvents.length ? { events: coachEvents } : {}),
       };
       setStreamingText("");
       setStreaming(false);
@@ -655,6 +785,129 @@ export default function AIChat() {
     );
   };
 
+  // Chips and buttons from the coach's typed events, under its reply.
+  const renderCoachEvents = (msg, index) => {
+    const events = Array.isArray(msg.events) ? msg.events : [];
+    if (!events.length) return null;
+    const isLatest = index === messages.length - 1;
+    const canAnswer = isLatest && !loading && !streaming;
+    const chip = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border";
+
+    return (
+      <div className="mt-3 flex flex-col gap-2">
+        {events.map((ev, ei) => {
+          if (ev.type === "profile_saved") {
+            return (
+              <div key={ei} className="flex flex-wrap gap-1.5">
+                {(ev.items || []).map((item, ii) => {
+                  const undone = (msg.undone || []).includes(item.historyId);
+                  return (
+                    <span
+                      key={ii}
+                      className={`${chip} ${undone ? "bg-slate-50 border-slate-200 text-slate-400 line-through" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}
+                    >
+                      <Check className="w-3 h-3" />
+                      Saved · {describeFact(item)}
+                      {!undone && item.historyId && (
+                        <button
+                          type="button"
+                          onClick={() => undoProfileSave(msg.id, item.historyId)}
+                          disabled={Boolean(undoingId)}
+                          className="ml-1 inline-flex items-center gap-1 text-emerald-800 underline underline-offset-2 disabled:opacity-40"
+                        >
+                          {undoingId === item.historyId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
+                          Undo
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          }
+          if (ev.type === "profile_undone") {
+            return (
+              <span key={ei} className={`${chip} self-start bg-slate-50 border-slate-200 text-slate-600`}>
+                <Undo2 className="w-3 h-3" /> Removed from your profile
+              </span>
+            );
+          }
+          if (ev.type === "food_logged") {
+            const kcal = ev.nutrition?.calories;
+            return (
+              <span key={ei} className={`${chip} self-start bg-emerald-50 border-emerald-200 text-emerald-700`}>
+                <Check className="w-3 h-3" /> Meal logged{ev.mealType ? ` · ${ev.mealType}` : ""}{kcal != null ? ` · ${Math.round(kcal)} kcal` : ""}
+              </span>
+            );
+          }
+          if (ev.type === "activity_logged") {
+            return (
+              <div key={ei} className="flex flex-wrap gap-1.5">
+                {(ev.entries || []).map((entry, li) => (
+                  <span
+                    key={li}
+                    className={`${chip} ${entry.ok ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700"}`}
+                  >
+                    {entry.ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    {entry.ok ? "Logged" : "Not saved"} · {entry.label}
+                  </span>
+                ))}
+              </div>
+            );
+          }
+          if (ev.type === "meal_pref_saved") {
+            return (
+              <span key={ei} className={`${chip} self-start bg-indigo-50 border-indigo-200 text-indigo-700`}>
+                <Check className="w-3 h-3" /> Added to your 7-day meal plan preferences
+              </span>
+            );
+          }
+          if (CONFIRM_EVENT_TYPES.has(ev.type)) {
+            const lines = ev.type === "food_log_confirm"
+              ? [describeFood(ev.entry)]
+              : ev.type === "activity_log_confirm"
+                ? (ev.entries || []).map((entry) => entry.label)
+                : (ev.facts || []).map(describeFact);
+            const title = {
+              food_log_confirm: "Log this meal?",
+              activity_log_confirm: "Log this in the app?",
+              profile_confirm: "Save to your profile?",
+            }[ev.type];
+            return (
+              <div key={ei} className="self-start w-full md:max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                  {title}
+                </p>
+                {lines.map((line, li) => (
+                  <p key={li} className="text-sm font-bold text-slate-800">{line}</p>
+                ))}
+                {canAnswer && (
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => sendMessage("yes")}
+                      className="px-4 py-1.5 rounded-full bg-black text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => sendMessage("no")}
+                      className="px-4 py-1.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-black uppercase tracking-widest hover:bg-slate-100"
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
       className="w-full bg-white flex flex-col md:flex-row md:pb-0"
@@ -688,7 +941,7 @@ export default function AIChat() {
             onClick={() => {
               const greeting = generateGreetingWithReports();
               setMessages([
-                { role: "assistant", content: greeting, timestamp: new Date() },
+                { role: "assistant", content: greeting, timestamp: new Date(), local: true },
               ]);
               setSearchHistory([]); // CRITICAL: Clear search history for new session
               setSidebarOpen(false);
@@ -830,6 +1083,7 @@ export default function AIChat() {
                           </div>
                         );
                       })()}
+                      {renderCoachEvents(msg, i)}
                     </>
                   )}
                   <div

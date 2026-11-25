@@ -5,6 +5,7 @@ const { fitnessSpecialist } = require('./fitness');
 const { nutritionSpecialist } = require('./nutrition');
 const { medicalLabSpecialist } = require('./medicalLab');
 const { progressSpecialist } = require('./progress');
+const { habitsSpecialist } = require('./habits');
 
 const REGISTRY = {
     recovery: recoverySpecialist,
@@ -13,6 +14,7 @@ const REGISTRY = {
     nutrition: nutritionSpecialist,
     medical_lab: medicalLabSpecialist,
     progress: progressSpecialist,
+    habits: habitsSpecialist,
 };
 
 const timeoutAfter = (ms) => new Promise((resolve) => {
