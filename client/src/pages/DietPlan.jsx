@@ -717,7 +717,8 @@ export default function DietPlan() {
       const loggedMap = {};
       (logs || []).forEach((log) => {
         const type = log.mealType;
-        const name = log.name || log.foodItems?.[0]?.name;
+        // Food DB plan meals are logged dish by dish, with the plan's meal name in `notes`.
+        const name = (log.source === "meal_plan" && log.notes) || log.name || log.foodItems?.[0]?.name;
         loggedMap[`${type}-${name}`] = true;
       });
       setLoggedMeals(loggedMap);
@@ -792,57 +793,82 @@ export default function DietPlan() {
 
     try {
       setLoggingMealId(mealId);
-      // Show analyzing toast
-      const analyzeToastId = toast.loading("Analyzing nutrition profile...", {
-        duration: 4000,
-      });
-
-      // 1. Analyze the food to get rich data (AI or Cache)
-      const { data: analysisRes } = await api.post("nutrition/analyze-food", {
-        foodDescription: mealName,
-      });
-
-      if (!analysisRes.success) throw new Error("Analysis failed");
-      const data = analysisRes.analysis;
-
-      // 2. Log with rich data
-      // 2. Log with data from diet plan PREFERRED (for calorie goal consistency)
-      // but enrich with AI analysis findings (benefits, alternatives)
       const todayStr = new Date().toISOString().split("T")[0];
-      const res = await nutritionService.logMeal({
-        mealType: type,
-        foodItems: [
-          {
-            name: mealName,
-            quantity:
-              meal.portionSize || data.foodItem?.quantity || "1 serving",
-            nutrition: {
-              calories:
-                meal.calories || data.foodItem?.nutrition?.calories || 200,
-              protein: meal.protein || data.foodItem?.nutrition?.protein || 10,
-              carbs: meal.carbs || data.foodItem?.nutrition?.carbs || 30,
-              fats: meal.fats || data.foodItem?.nutrition?.fats || 5,
-            },
-          },
-        ],
-        healthScore: data.healthScore || data.foodItem?.healthScore || 80,
-        healthScore10: data.healthScore10 || data.foodItem?.healthScore10 || 8,
-        micronutrients:
-          data.micronutrients || data.foodItem?.micronutrients || [],
-        enhancementTips:
-          data.enhancementTips || data.foodItem?.enhancementTips || [],
-        healthBenefitsSummary:
-          meal.benefits ||
-          data.healthBenefitsSummary ||
-          data.foodItem?.healthBenefitsSummary ||
-          "",
-        warnings: data.warnings || data.foodItem?.warnings || [],
-        alternatives: data.alternatives || data.foodItem?.alternatives || [],
-        source: "meal_plan",
-        date: todayStr,
-      });
+      let res;
 
-      toast.dismiss(analyzeToastId);
+      if (Array.isArray(meal.items) && meal.items.length > 0) {
+        // Food DB plan meal: its dishes and grams are already known, so the same numbers come
+        // straight from the food database. No AI call. `notes` carries the plan's meal name so
+        // this meal shows as logged after a reload (see loadInitialData).
+        const { data: resolved } = await api.post("foods/resolve", {
+          items: meal.items.map((i) => ({ foodId: i.foodId, estGrams: i.grams, portionText: i.portionText })),
+        });
+        if (!resolved?.success) throw new Error("Could not load the meal's nutrition");
+        res = await nutritionService.logMeal({
+          mealType: type,
+          source: "meal_plan",
+          isEdited: false,
+          notes: mealName,
+          dishes: resolved.data.dishes.map((d) => ({
+            name: d.name,
+            quantity: d.quantity,
+            nutrition: d.nutrition,
+            ingredients: (d.ingredients || []).map((ing) => ({ ...ing, nutrition: ing.nutrition || {} })),
+          })),
+          warnings: resolved.data.warnings || [],
+          date: todayStr,
+        });
+      } else {
+        // Older AI-generated plans (no `items`): unchanged legacy path.
+        const analyzeToastId = toast.loading("Analyzing nutrition profile...", {
+          duration: 4000,
+        });
+
+        // 1. Analyze the food to get rich data (AI or Cache)
+        const { data: analysisRes } = await api.post("nutrition/analyze-food", {
+          foodDescription: mealName,
+        });
+
+        if (!analysisRes.success) throw new Error("Analysis failed");
+        const data = analysisRes.analysis;
+
+        // 2. Log with data from diet plan PREFERRED (for calorie goal consistency)
+        // but enrich with AI analysis findings (benefits, alternatives)
+        res = await nutritionService.logMeal({
+          mealType: type,
+          foodItems: [
+            {
+              name: mealName,
+              quantity:
+                meal.portionSize || data.foodItem?.quantity || "1 serving",
+              nutrition: {
+                calories:
+                  meal.calories || data.foodItem?.nutrition?.calories || 200,
+                protein: meal.protein || data.foodItem?.nutrition?.protein || 10,
+                carbs: meal.carbs || data.foodItem?.nutrition?.carbs || 30,
+                fats: meal.fats || data.foodItem?.nutrition?.fats || 5,
+              },
+            },
+          ],
+          healthScore: data.healthScore || data.foodItem?.healthScore || 80,
+          healthScore10: data.healthScore10 || data.foodItem?.healthScore10 || 8,
+          micronutrients:
+            data.micronutrients || data.foodItem?.micronutrients || [],
+          enhancementTips:
+            data.enhancementTips || data.foodItem?.enhancementTips || [],
+          healthBenefitsSummary:
+            meal.benefits ||
+            data.healthBenefitsSummary ||
+            data.foodItem?.healthBenefitsSummary ||
+            "",
+          warnings: data.warnings || data.foodItem?.warnings || [],
+          alternatives: data.alternatives || data.foodItem?.alternatives || [],
+          source: "meal_plan",
+          date: todayStr,
+        });
+
+        toast.dismiss(analyzeToastId);
+      }
       toast.success("Meal logged! Keep it up 🚀");
       
       // Handle Gamification update

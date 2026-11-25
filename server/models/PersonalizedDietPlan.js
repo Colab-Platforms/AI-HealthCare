@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 // stripped by Mongoose's default strict mode even though dietRecommendationAI.js
 // generates them (undeclared fields never survive .save()). Defined once now
 // so all 5 slots stay in sync.
-const mealOptionSchema = {
+const aiMealFields = {
   name: String,
   description: String,
   portionSize: String,
@@ -33,6 +33,26 @@ const mealOptionSchema = {
   magnesium: Number,
   omega3: Number
 };
+
+// Only on meals built from the Food DB (services/foodDb/dietPlanGenerator). `items` is what makes a
+// plan meal loggable without AI: POST /api/foods/resolve with these foodIds and grams gives back the
+// same numbers. An AI-generated meal has neither field, and an AI regeneration of a slot removes them
+// (the slot is replaced whole), which is correct: that meal no longer comes from the DB.
+const planItemSchema = new mongoose.Schema({
+  foodId: String,
+  name: String,
+  grams: Number,
+  portionText: String,
+  role: String, // bfMain | dal | sabzi | oneDish | nonveg | flatbread | rice | sambar | curd | salad | chutney
+  calories: Number
+}, { _id: false });
+
+const dbMealFields = {
+  items: { type: [planItemSchema], default: undefined },
+  source: { type: String, enum: ['ai', 'food_db'] }
+};
+
+const mealOptionSchema = { ...aiMealFields, ...dbMealFields };
 
 const personalizedDietPlanSchema = new mongoose.Schema({
   userId: {
@@ -152,6 +172,12 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Which generator built the plan. Decides how a single meal is regenerated and logged.
+  generator: {
+    type: String,
+    enum: ['ai', 'food_db'],
+    default: 'ai'
+  },
 
   // Single-slot regeneration in flight (one at a time — a second request for a
   // different slot overwrites this rather than queuing, matching the realistic
@@ -173,11 +199,13 @@ personalizedDietPlanSchema.index({ userId: 1, isActive: 1, generatedAt: -1 });
 
 const PersonalizedDietPlan = mongoose.model('PersonalizedDietPlan', personalizedDietPlanSchema);
 
-// The fields a single meal option stores. Every prompt that produces a meal has
+// The fields a single AI meal option stores. Every prompt that produces a meal has
 // to ask for all of them: single-meal regeneration writes the replacement with
 // $set on the whole array element, so a field the prompt omits is deleted from
 // that slot rather than left alone. Exported so a test can assert that from the
-// schema instead of a hand-maintained copy.
-PersonalizedDietPlan.mealOptionFields = Object.keys(mealOptionSchema);
+// schema instead of a hand-maintained copy. The Food DB-only fields (items,
+// source) are deliberately not in this list: the AI never produces them.
+PersonalizedDietPlan.mealOptionFields = Object.keys(aiMealFields);
+PersonalizedDietPlan.dbMealFields = Object.keys(dbMealFields);
 
 module.exports = PersonalizedDietPlan;

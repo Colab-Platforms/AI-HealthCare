@@ -49,6 +49,43 @@ const servingUnitSchema = new Schema({
   grams: { type: Number, required: true, min: 0 },
 }, { _id: false });
 
+// One licensed photo per food, copied to Cloudinary by scripts/foodDb/fetchFoodImages.js.
+// status: pending (found, awaiting admin review) → approved | rejected; missing = searched, nothing usable.
+const imageCandidateSchema = new Schema({
+  source: String,
+  imageUrl: String,
+  sourceUrl: String,
+  license: String,
+  creator: String,
+  title: String,
+  matchScore: Number,
+}, { _id: false });
+
+const imageSchema = new Schema({
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'missing'], required: true },
+  url: { type: String, default: null }, // public Cloudinary URL
+  publicId: { type: String, default: null },
+  source: { type: String, enum: ['openverse', 'wikimedia', 'pexels', 'generated', 'own_photo', 'manual'], default: null },
+  provider: { type: String, default: null }, // e.g. flickr, wikimedia (Openverse aggregates several)
+  license: { type: String, default: null }, // cc0 | pdm | by | by-sa | pexels | own
+  licenseVersion: { type: String, default: null },
+  licenseUrl: { type: String, default: null },
+  attributionRequired: { type: Boolean, default: false },
+  creator: { type: String, default: null },
+  attribution: { type: String, default: null }, // ready-to-show credit line
+  title: { type: String, default: null },
+  sourceUrl: { type: String, default: null }, // page the photo came from
+  originalUrl: { type: String, default: null }, // file that was downloaded
+  width: Number,
+  height: Number,
+  matchScore: { type: Number, default: null }, // share of dish-name words found in the photo's title/tags
+  query: { type: String, default: null },
+  searchedAt: { type: Date, default: null },
+  reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt: { type: Date, default: null },
+  alternatives: { type: [imageCandidateSchema], default: [] }, // next-best matches, not uploaded
+}, { _id: false });
+
 const foodSchema = new Schema({
   foodId: { type: String, required: true, unique: true, trim: true }, // THF-00001 (seed)
   name: { type: String, required: true, trim: true },
@@ -107,6 +144,8 @@ const foodSchema = new Schema({
     hitCount: { type: Number, default: 0 },
     lastMatchedAt: { type: Date, default: null },
   },
+
+  image: { type: imageSchema, default: null },
 
   isActive: { type: Boolean, default: true },
 }, {

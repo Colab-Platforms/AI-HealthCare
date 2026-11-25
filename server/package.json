@@ -12,6 +12,7 @@
     "migrate:heart-rate": "node scripts/migrateHeartRateSamples.js",
     "food:build-seed": "node scripts/foodDb/buildFoodSeed.js",
     "food:import": "node scripts/foodDb/importFoodSeed.js",
+    "food:images": "node scripts/foodDb/fetchFoodImages.js",
     "test:alcohol": "node tests/alcoholLog.test.js"
   },
   "dependencies": {

@@ -1,0 +1,2686 @@
+{
+  "generatedAt": "2026-11-25T09:40:20.685Z",
+  "mode": "apply",
+  "options": {
+    "apply": true,
+    "force": false,
+    "retryMissing": false,
+    "all": true,
+    "limit": 200,
+    "foodIds": [],
+    "sources": [
+      "wikimedia",
+      "openverse",
+      "pexels"
+    ],
+    "delayMs": 1500,
+    "minMatch": 0.6
+  },
+  "counts": {
+    "error": 14,
+    "uploaded": 46,
+    "missing": 15
+  },
+  "foods": [
+    {
+      "foodId": "THF-00075",
+      "name": "Gatte ki Sabzi",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg/960px-Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg/960px-Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00120",
+      "name": "Punjabi Chole Masala",
+      "category": "lentil or legume dish",
+      "hitCount": 0,
+      "candidatesSeen": 7,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Punjabi_Chole_Masala.JPG/960px-Punjabi_Chole_Masala.JPG: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Punjabi_Chole_Masala.JPG/960px-Punjabi_Chole_Masala.JPG - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00198",
+      "name": "Mutton Chettinad",
+      "category": "meat or fish curry",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Mutton_Chettinad.jpg/960px-Mutton_Chettinad.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Mutton_Chettinad.jpg/960px-Mutton_Chettinad.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00212",
+      "name": "Methi Malai Chicken",
+      "category": "meat or fish curry",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Methi_Malai_Chicken.jpg/500px-Methi_Malai_Chicken.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Methi_Malai_Chicken.jpg/500px-Methi_Malai_Chicken.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00285",
+      "name": "Lachha Paratha",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 10,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Lachha-paratha.jpg/960px-Lachha-paratha.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Lachha-paratha.jpg/960px-Lachha-paratha.jpg - 429 Too Many Requests",
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Rajma_with_lachha_parantha.jpg/960px-Rajma_with_lachha_parantha.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Rajma_with_lachha_parantha.jpg/960px-Rajma_with_lachha_parantha.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Lachha parantha in making",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "Kanikatwl",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Lachha_parantha_in_making.jpg/960px-Lachha_parantha_in_making.jpg",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lachha_parantha_in_making.jpg",
+        "width": 1039,
+        "height": 717,
+        "query": "Lachha Paratha",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598285/takehealth/food_db/THF-00285.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Lachha-paratha.jpg/960px-Lachha-paratha.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lachha-paratha.jpg",
+          "license": "by-sa",
+          "creator": "Sonia Goyal",
+          "title": "Lachha-paratha",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Rajma_with_lachha_parantha.jpg/960px-Rajma_with_lachha_parantha.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Rajma_with_lachha_parantha.jpg",
+          "license": "by-sa",
+          "creator": "Kanikatwl",
+          "title": "Rajma with lachha parantha",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Lachha_Paratha_and_Chilly_Chicken.jpg/1280px-Lachha_Paratha_and_Chilly_Chicken.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lachha_Paratha_and_Chilly_Chicken.jpg",
+          "license": "by-sa",
+          "creator": "Dibyadarsi Nayak",
+          "title": "Lachha Paratha and Chilly Chicken",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00362",
+      "name": "Oats Upma",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Oats_Upma...yummy.jpg/960px-Oats_Upma...yummy.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Oats_Upma...yummy.jpg/960px-Oats_Upma...yummy.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00404",
+      "name": "Hara Bhara Kebab",
+      "category": "snack",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Hara_Bhara_kebab_with_cheese.jpg/500px-Hara_Bhara_kebab_with_cheese.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Hara_Bhara_kebab_with_cheese.jpg/500px-Hara_Bhara_kebab_with_cheese.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00543",
+      "name": "Fruit Punch with Fresh Juices",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {
+        "licence not allowed": 1,
+        "too small": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00557",
+      "name": "Cheese and Pineapple Sandwich",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_%2814279816507%29.jpg/500px-Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_%2814279816507%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_%2814279816507%29.jpg/500px-Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_%2814279816507%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Burger hamburger Hawaiian spam luncheon meat patty grilled pineapple lettuce onion American cheese teriyaki sauce hawaiian sweet roll bun (28313918432)",
+        "matchScore": 0.667,
+        "precision": 0.111,
+        "license": "by",
+        "creator": "Personal Creations",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Burger_hamburger_Hawaiian_spam_luncheon_meat_patty_grilled_pineapple_lettuce_onion_American_cheese_teriyaki_sauce_hawaiian_sweet_roll_bun_%2828313918432%29.jpg/500px-Burger_hamburger_Hawaiian_spam_luncheon_meat_patty_grilled_pineapple_lettuce_onion_American_cheese_teriyaki_sauce_hawaiian_sweet_roll_bun_%2828313918432%29.jpg",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Burger_hamburger_Hawaiian_spam_luncheon_meat_patty_grilled_pineapple_lettuce_onion_American_cheese_teriyaki_sauce_hawaiian_sweet_roll_bun_(28313918432).jpg",
+        "width": 800,
+        "height": 800,
+        "query": "Cheese and Pineapple Sandwich",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598453/takehealth/food_db/THF-00557.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_%2814279816507%29.jpg/500px-Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_%2814279816507%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Totally_killer_-braised_-shortrib_-sandwich_with_-fried_-cheese_curds_and_-spicy_pineapple_ketchup._From_The_Kroft_at_the_Anaheim_Packing_House._-foodporn_-hotfood_-lunch_-beef_(14279816507).jpg",
+          "license": "by",
+          "creator": "Drew Hubbard, Ben Waters",
+          "title": "Totally killer -braised -shortrib -sandwich with -fried -cheese curds and -spicy pineapple ketchup. From The Kroft at the Anaheim Packing House. -foodporn -hotfood -lunch -beef (14279816507)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Burger_hamburger_Hawaiian_spam_luncheon_meat_patty_grilled_pineapple_lettuce_onion_American_cheese_teriyaki_sauce_hawaiian_sweet_roll_bun_cutting_board_%2827801929284%29.jpg/960px-Burger_hamburger_Hawaiian_spam_luncheon_meat_patty_grilled_pineapple_lettuce_onion_American_cheese_teriyaki_sauce_hawaiian_sweet_roll_bun_cutting_board_%2827801929284%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Burger_hamburger_Hawaiian_spam_luncheon_meat_patty_grilled_pineapple_lettuce_onion_American_cheese_teriyaki_sauce_hawaiian_sweet_roll_bun_cutting_board_(27801929284).jpg",
+          "license": "by",
+          "creator": "Personal Creations",
+          "title": "Burger hamburger Hawaiian spam luncheon meat patty grilled pineapple lettuce onion American cheese teriyaki sauce hawaiian sweet roll bun cutting board (27801929284)",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00645",
+      "name": "Vegetable Chowmein",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 10,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Vegetable_Chowmein_Served_in_a_Bowl.jpg/960px-Vegetable_Chowmein_Served_in_a_Bowl.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Vegetable_Chowmein_Served_in_a_Bowl.jpg/960px-Vegetable_Chowmein_Served_in_a_Bowl.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00658",
+      "name": "Whole Moong",
+      "category": "lentil or legume dish",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Moong_Dal_%285194456370%29.jpg/960px-Moong_Dal_%285194456370%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Moong_Dal_%285194456370%29.jpg/960px-Moong_Dal_%285194456370%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00675",
+      "name": "Potato Fenugreek",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg/960px-Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg/960px-Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00682",
+      "name": "Stuffed Okra",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {
+        "licence not allowed": 2,
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg/960px-Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg/960px-Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00837",
+      "name": "Curd Dip",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg/500px-Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg/500px-Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00841",
+      "name": "Jam Tart",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Jam tarts (14477998585)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Karen Blakeman from Caversham, UK",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/Jam_tarts_%2814477998585%29.jpg/1280px-Jam_tarts_%2814477998585%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jam_tarts_(14477998585).jpg",
+        "width": 2395,
+        "height": 1535,
+        "query": "Jam Tart",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598582/takehealth/food_db/THF-00841.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/Jam_tarts_%283688742704%29.jpg/1280px-Jam_tarts_%283688742704%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jam_tarts_(3688742704).jpg",
+          "license": "by",
+          "creator": "Sarah from Bristol, UK",
+          "title": "Jam tarts (3688742704)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Jam_tarts_%283687942537%29.jpg/1280px-Jam_tarts_%283687942537%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jam_tarts_(3687942537).jpg",
+          "license": "by",
+          "creator": "Sarah from Bristol, UK",
+          "title": "Jam tarts (3687942537)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f1/Jam_tarts_%285110926065%29.jpg/1280px-Jam_tarts_%285110926065%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jam_tarts_(5110926065).jpg",
+          "license": "by",
+          "creator": "Faye from Liverpool, England",
+          "title": "Jam tarts (5110926065)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00842",
+      "name": "Orange Cream Tart",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 11,
+      "rejected": {
+        "licence not allowed": 6,
+        "too small": 3
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Dark chocolate & orange tart, chantilly cream",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "meganleigh",
+        "imageUrl": "https://live.staticflickr.com/4141/4815903745_cedea1f5e7_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/19511310@N00/4815903745",
+        "width": 768,
+        "height": 1024,
+        "query": "Orange Cream Tart",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598604/takehealth/food_db/THF-00842.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/4020/4245637434_c4329ff031_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/42305326@N05/4245637434",
+          "license": "by",
+          "creator": "jessicahtam",
+          "title": "Pumpkin Tart",
+          "matchScore": 1
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/2769/4473940459_09d53f9c90_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/25128194@N02/4473940459",
+          "license": "by",
+          "creator": "Vegan Feast Catering",
+          "title": "Italian Sugar Plum Tart",
+          "matchScore": 0.667
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/3202/2737859843_c83d52f6eb_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/10559879@N00/2737859843",
+          "license": "by-sa",
+          "creator": "avlxyz",
+          "title": "Lemon curd tart with double cream - Astra Lodge Aipex Ski Dinner",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00843",
+      "name": "Pineapple Tart",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Pineapple tarts",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "ProjectManhattan",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5a/Pineapple_tarts.jpg/1280px-Pineapple_tarts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_tarts.jpg",
+        "width": 3920,
+        "height": 2940,
+        "query": "Pineapple Tart",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598610/takehealth/food_db/THF-00843.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Pineapple_tarts_.jpg/1280px-Pineapple_tarts_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_tarts_.jpg",
+          "license": "by-sa",
+          "creator": "ProjectManhattan",
+          "title": "Pineapple tarts ",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Pineapple_Tart_%2852683586473%29.jpg/1280px-Pineapple_Tart_%2852683586473%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_Tart_(52683586473).jpg",
+          "license": "by",
+          "creator": "Choo Yut Shing from Singapore, Singapore",
+          "title": "Pineapple Tart (52683586473)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ac/Pineapple_Tarts_%2853544184751%29.jpg/1280px-Pineapple_Tarts_%2853544184751%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_Tarts_(53544184751).jpg",
+          "license": "by",
+          "creator": "Choo Yut Shing from Singapore, Singapore",
+          "title": "Pineapple Tarts (53544184751)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00844",
+      "name": "Cheese and Mushroom Tart",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {
+        "licence not allowed": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Mushroom tart with garnish and slivered cheese",
+        "matchScore": 1,
+        "precision": 0.6,
+        "license": "by-sa",
+        "creator": "stu_spivack",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Mushroom_tart_with_garnish_and_slivered_cheese.jpg/1280px-Mushroom_tart_with_garnish_and_slivered_cheese.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mushroom_tart_with_garnish_and_slivered_cheese.jpg",
+        "width": 2560,
+        "height": 1920,
+        "query": "Cheese and Mushroom Tart",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598614/takehealth/food_db/THF-00844.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00845",
+      "name": "Cottage Cheese Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 6,
+      "rejected": {
+        "licence not allowed": 6,
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Recipes_cottage_cheese_pie_named_misa.jpg/500px-Recipes_cottage_cheese_pie_named_misa.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Recipes_cottage_cheese_pie_named_misa.jpg/500px-Recipes_cottage_cheese_pie_named_misa.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Shepherd's pie with a mozzarella cheese topping",
+        "matchScore": 0.667,
+        "precision": 0.333,
+        "license": "by",
+        "creator": "Dwight Burdette",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Shepherd%27s_pie_with_a_mozzarella_cheese_topping.jpg/1280px-Shepherd%27s_pie_with_a_mozzarella_cheese_topping.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Shepherd%27s_pie_with_a_mozzarella_cheese_topping.jpg",
+        "width": 5184,
+        "height": 3456,
+        "query": "Cottage Cheese Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598642/takehealth/food_db/THF-00845.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Recipes_cottage_cheese_pie_named_misa.jpg/500px-Recipes_cottage_cheese_pie_named_misa.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Recipes_cottage_cheese_pie_named_misa.jpg",
+          "license": "by-sa",
+          "creator": "FDominec",
+          "title": "Recipes cottage cheese pie named misa",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00847",
+      "name": "Apple Cinnamon Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Burger King Cinnamon Apple Pie (55600376779)",
+        "matchScore": 1,
+        "precision": 0.6,
+        "license": "by",
+        "creator": "Phillip Pessar",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Burger_King_Cinnamon_Apple_Pie_%2855600376779%29.jpg/1280px-Burger_King_Cinnamon_Apple_Pie_%2855600376779%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Burger_King_Cinnamon_Apple_Pie_(55600376779).jpg",
+        "width": 2513,
+        "height": 3350,
+        "query": "Apple Cinnamon Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598647/takehealth/food_db/THF-00847.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Popeyes_Louisiana_Kitchen_Cinnamon_Apple_Pie_%2830543512654%29.jpg/1280px-Popeyes_Louisiana_Kitchen_Cinnamon_Apple_Pie_%2830543512654%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Popeyes_Louisiana_Kitchen_Cinnamon_Apple_Pie_(30543512654).jpg",
+          "license": "by-sa",
+          "creator": "Willis Lam",
+          "title": "Popeyes Louisiana Kitchen Cinnamon Apple Pie (30543512654)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/Popeyes_Louisiana_Kitchen_Cinnamon_Apple_Pie_inside_%2830543512734%29.jpg/1280px-Popeyes_Louisiana_Kitchen_Cinnamon_Apple_Pie_inside_%2830543512734%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Popeyes_Louisiana_Kitchen_Cinnamon_Apple_Pie_inside_(30543512734).jpg",
+          "license": "by-sa",
+          "creator": "Willis Lam",
+          "title": "Popeyes Louisiana Kitchen Cinnamon Apple Pie inside (30543512734)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4e/Apple_pie_182161_04.JPG/1280px-Apple_pie_182161_04.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_pie_182161_04.JPG",
+          "license": "by-sa",
+          "creator": "Lilitik22",
+          "title": "Apple pie 182161 04",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00848",
+      "name": "Lemon Meringue Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Lemon_Meringue_Pie_on_a_Stove.jpg/960px-Lemon_Meringue_Pie_on_a_Stove.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Lemon_Meringue_Pie_on_a_Stove.jpg/960px-Lemon_Meringue_Pie_on_a_Stove.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Bread Fairy - Lemon Meringue Pie 17",
+        "matchScore": 1,
+        "precision": 0.6,
+        "license": "by",
+        "creator": "claralieu",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Bread_Fairy_-_Lemon_Meringue_Pie_17.jpg/1280px-Bread_Fairy_-_Lemon_Meringue_Pie_17.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bread_Fairy_-_Lemon_Meringue_Pie_17.jpg",
+        "width": 5363,
+        "height": 3555,
+        "query": "Lemon Meringue Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598675/takehealth/food_db/THF-00848.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Lemon_Meringue_Pie_on_a_Stove.jpg/960px-Lemon_Meringue_Pie_on_a_Stove.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lemon_Meringue_Pie_on_a_Stove.jpg",
+          "license": "by",
+          "creator": "AGnias47",
+          "title": "Lemon Meringue Pie on a Stove",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/25/Bread_Fairy_-_Lemon_Meringue_Pie_18.jpg/1280px-Bread_Fairy_-_Lemon_Meringue_Pie_18.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bread_Fairy_-_Lemon_Meringue_Pie_18.jpg",
+          "license": "by",
+          "creator": "claralieu",
+          "title": "Bread Fairy - Lemon Meringue Pie 18",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/Bread_Fairy_-_Lemon_Meringue_Pie_24.jpg/1280px-Bread_Fairy_-_Lemon_Meringue_Pie_24.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bread_Fairy_-_Lemon_Meringue_Pie_24.jpg",
+          "license": "by",
+          "creator": "claralieu",
+          "title": "Bread Fairy - Lemon Meringue Pie 24",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00849",
+      "name": "Chocolate Meringue Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 17,
+      "rejected": {
+        "too small": 3,
+        "licence not allowed": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "chocolate meringue pie",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "stu_spivack",
+        "imageUrl": "https://live.staticflickr.com/2490/4238471584_1db19ddc82_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/35034346243@N01/4238471584",
+        "width": 1024,
+        "height": 681,
+        "query": "Chocolate Meringue Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598697/takehealth/food_db/THF-00849.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/3045/2295730228_a59387ed71_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/87542849@N00/2295730228",
+          "license": "by",
+          "creator": "kimberlykv",
+          "title": "Lemon Meringue Pie",
+          "matchScore": 0.667
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/2255/2211564258_ac9573b3e5_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/87542849@N00/2211564258",
+          "license": "by",
+          "creator": "kimberlykv",
+          "title": "Coconut Meringue Pie",
+          "matchScore": 0.667
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/5135/5484628998_6c5c1f6221_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/30715613@N04/5484628998",
+          "license": "by",
+          "creator": "keith.bellvay",
+          "title": "Lemo Meringue Pie",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00850",
+      "name": "Choux Pastry",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "too small": 1,
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Choux pastry",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Khaled",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Choux_pastry.jpg/1280px-Choux_pastry.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Choux_pastry.jpg",
+        "width": 3968,
+        "height": 2232,
+        "query": "Choux Pastry",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598702/takehealth/food_db/THF-00850.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Choux_pastry1.jpg/1280px-Choux_pastry1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Choux_pastry1.jpg",
+          "license": "by-sa",
+          "creator": "Khaled",
+          "title": "Choux pastry1",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Choux_pastry_buns%2C_2009.jpg/1280px-Choux_pastry_buns%2C_2009.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Choux_pastry_buns,_2009.jpg",
+          "license": "by",
+          "creator": "Two Helmets Cooking",
+          "title": "Choux pastry buns, 2009",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Choux_pastry_swans.jpg/500px-Choux_pastry_swans.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Choux_pastry_swans.jpg",
+          "license": "by",
+          "creator": "Foodista",
+          "title": "Choux pastry swans",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00852",
+      "name": "Chocolate Eclairs",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Eclair Chocolat LMDC 2",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "LMDCWIKI",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Eclair_Chocolat_LMDC_2.png/1280px-Eclair_Chocolat_LMDC_2.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Eclair_Chocolat_LMDC_2.png",
+        "width": 1872,
+        "height": 2095,
+        "query": "Chocolate Eclairs",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598708/takehealth/food_db/THF-00852.png"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Two_Safeway_Chocolate_Eclairs_%2819043880936%29.jpg/1280px-Two_Safeway_Chocolate_Eclairs_%2819043880936%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Two_Safeway_Chocolate_Eclairs_(19043880936).jpg",
+          "license": "by-sa",
+          "creator": "Willis Lam",
+          "title": "Two Safeway Chocolate Eclairs (19043880936)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/Giant_chocolate-glazed_%C3%A9clairs.jpg/1280px-Giant_chocolate-glazed_%C3%A9clairs.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Giant_chocolate-glazed_%C3%A9clairs.jpg",
+          "license": "by-sa",
+          "creator": "Ibex73",
+          "title": "Giant chocolate-glazed éclairs",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/Eclair_with_dark_chocolate_glaze_-_closeup_2.jpg/1280px-Eclair_with_dark_chocolate_glaze_-_closeup_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Eclair_with_dark_chocolate_glaze_-_closeup_2.jpg",
+          "license": "by-sa",
+          "creator": "Nihonjoe",
+          "title": "Eclair with dark chocolate glaze - closeup 2",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00854",
+      "name": "Flaky Pastry",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Flaky_pastry.jpg/960px-Flaky_pastry.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Flaky_pastry.jpg/960px-Flaky_pastry.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Sweet potato flaky pastry",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "Laitr Keiows",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/58/Sweet_potato_flaky_pastry.jpg/1280px-Sweet_potato_flaky_pastry.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sweet_potato_flaky_pastry.jpg",
+        "width": 3982,
+        "height": 3392,
+        "query": "Flaky Pastry",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598738/takehealth/food_db/THF-00854.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Flaky_pastry.jpg/960px-Flaky_pastry.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Flaky_pastry.jpg",
+          "license": "by",
+          "creator": "Oci 1985",
+          "title": "Flaky pastry",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Empanada%2C_flaky_pastry_perfection.jpg/960px-Empanada%2C_flaky_pastry_perfection.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Empanada,_flaky_pastry_perfection.jpg",
+          "license": "by-sa",
+          "creator": "JeanneKikoy",
+          "title": "Empanada, flaky pastry perfection",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00857",
+      "name": "Hot Cheese Souffle",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {
+        "licence not allowed": 3,
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00858",
+      "name": "Hot Potato Souffle",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {
+        "licence not allowed": 4,
+        "title mentions \"restaurant\"": 13,
+        "too small": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00860",
+      "name": "Hot Spinach Souffle",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {
+        "title mentions \"restaurant\"": 3
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00861",
+      "name": "Plain Cream Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 20,
+      "rejected": {
+        "too small": 10
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Ice Cream Cake",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by",
+        "creator": "Shane Adams",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Ice_Cream_Cake.jpg/1280px-Ice_Cream_Cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ice_Cream_Cake.jpg",
+        "width": 3072,
+        "height": 2048,
+        "query": "Cream Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598852/takehealth/food_db/THF-00861.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/67/Ice_cream_cake.jpg/1280px-Ice_cream_cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ice_cream_cake.jpg",
+          "license": "by-sa",
+          "creator": "Jinho Jung",
+          "title": "Ice cream cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Ice_cream_cake%21%21%21.jpg/960px-Ice_cream_cake%21%21%21.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ice_cream_cake!!!.jpg",
+          "license": "by-sa",
+          "creator": "R.B. Boyer",
+          "title": "Ice cream cake!!!",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Toblerone_ice_cream_cake-2.jpg/1280px-Toblerone_ice_cream_cake-2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Toblerone_ice_cream_cake-2.jpg",
+          "license": "by",
+          "creator": "jules",
+          "title": "Toblerone ice cream cake-2",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00862",
+      "name": "Apple Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Apple_cake.JPG/960px-Apple_cake.JPG: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Apple_cake.JPG/960px-Apple_cake.JPG - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Apple juicy cake (2)",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "Roozitaa",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b4/Apple_juicy_cake_%282%29.jpg/1280px-Apple_juicy_cake_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_juicy_cake_(2).jpg",
+        "width": 5184,
+        "height": 3456,
+        "query": "Apple Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598880/takehealth/food_db/THF-00862.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Apple_cake.JPG/960px-Apple_cake.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_cake.JPG",
+          "license": "by-sa",
+          "creator": "Quasipodo",
+          "title": "Apple cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Apple_juicy_cake_%281%29.jpg/1280px-Apple_juicy_cake_%281%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_juicy_cake_(1).jpg",
+          "license": "by-sa",
+          "creator": "Roozitaa",
+          "title": "Apple juicy cake (1)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/Jewish_apple_cake.jpg/1280px-Jewish_apple_cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jewish_apple_cake.jpg",
+          "license": "by",
+          "creator": "karen H. nickname.{ pooh}",
+          "title": "Jewish apple cake",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00863",
+      "name": "Marble Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Marble_cake.jpg/500px-Marble_cake.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Marble_cake.jpg/500px-Marble_cake.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Mini marble cake",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "Tiia Monto",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/Mini_marble_cake.jpg/1280px-Mini_marble_cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mini_marble_cake.jpg",
+        "width": 1752,
+        "height": 1624,
+        "query": "Marble Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598909/takehealth/food_db/THF-00863.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Marble_cake.jpg/500px-Marble_cake.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Marble_cake.jpg",
+          "license": "by-sa",
+          "creator": "Hrishikes",
+          "title": "Marble cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Marble_bundt_cake_%284720935390%29.jpg/1280px-Marble_bundt_cake_%284720935390%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Marble_bundt_cake_(4720935390).jpg",
+          "license": "by-sa",
+          "creator": "Katrin Morenz from Aachen, Deutschland",
+          "title": "Marble bundt cake (4720935390)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3a/Cortado_and_marble_cake_%286836431945%29_%282%29.jpg/1280px-Cortado_and_marble_cake_%286836431945%29_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cortado_and_marble_cake_(6836431945)_(2).jpg",
+          "license": "by-sa",
+          "creator": "Salim Virji",
+          "title": "Cortado and marble cake (6836431945) (2)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00864",
+      "name": "Chocolate Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Chocolate Cake 2",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Ganesh Mohan T",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Chocolate_Cake_2.jpg/1280px-Chocolate_Cake_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_Cake_2.jpg",
+        "width": 16320,
+        "height": 12240,
+        "query": "Chocolate Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598913/takehealth/food_db/THF-00864.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Chocolate_cake_7.jpg/1280px-Chocolate_cake_7.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_cake_7.jpg",
+          "license": "by-sa",
+          "creator": "Gannu03",
+          "title": "Chocolate cake 7",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/Chocolate_cake_8.jpg/1280px-Chocolate_cake_8.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_cake_8.jpg",
+          "license": "by-sa",
+          "creator": "Gannu03",
+          "title": "Chocolate cake 8",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/19/Chocolate_Cake_with_almonds.jpg/1280px-Chocolate_Cake_with_almonds.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_Cake_with_almonds.jpg",
+          "license": "by-sa",
+          "creator": "Kskhh",
+          "title": "Chocolate Cake with almonds",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00865",
+      "name": "Orange Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "title mentions \"restaurant\"": 1,
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Orange_Cake.jpg/500px-Orange_Cake.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Orange_Cake.jpg/500px-Orange_Cake.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Orange cake - Massachusetts",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "Daderot",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Orange_cake_-_Massachusetts.jpg/1280px-Orange_cake_-_Massachusetts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_cake_-_Massachusetts.jpg",
+        "width": 2928,
+        "height": 2785,
+        "query": "Orange Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598942/takehealth/food_db/THF-00865.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Orange_Cake.jpg/500px-Orange_Cake.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_Cake.jpg",
+          "license": "by",
+          "creator": "روتانا",
+          "title": "Orange Cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b9/Orange_Cake_-_Olea_2025-08-17.jpg/1280px-Orange_Cake_-_Olea_2025-08-17.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_Cake_-_Olea_2025-08-17.jpg",
+          "license": "cc0",
+          "creator": "Andy Li",
+          "title": "Orange Cake - Olea 2025-08-17",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Vegan_Orange_Creamsicle_Cake_%283431496879%29.jpg/1280px-Vegan_Orange_Creamsicle_Cake_%283431496879%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vegan_Orange_Creamsicle_Cake_(3431496879).jpg",
+          "license": "by-sa",
+          "creator": "Compassionate Action for Animals from Minneapolis, MN, USA",
+          "title": "Vegan Orange Creamsicle Cake (3431496879)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00866",
+      "name": "Fruit Loaf",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 11,
+      "rejected": {
+        "licence not allowed": 2,
+        "too small": 2
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg/500px-Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg/500px-Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00867",
+      "name": "Banana Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Banana cakes",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Fumikas Sagisavas",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Banana_cakes.jpg/1280px-Banana_cakes.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Banana_cakes.jpg",
+        "width": 3000,
+        "height": 3000,
+        "query": "Banana Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598974/takehealth/food_db/THF-00867.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Banana_cake_2.jpg/500px-Banana_cake_2.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Banana_cake_2.jpg",
+          "license": "cc0",
+          "creator": "Tassilomoedl",
+          "title": "Banana cake 2",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Banana_cake.jpg/500px-Banana_cake.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Banana_cake.jpg",
+          "license": "by-sa",
+          "creator": "Adnergje",
+          "title": "Banana cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2e/Banana_cake_slices.jpg/1280px-Banana_cake_slices.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Banana_cake_slices.jpg",
+          "license": "by-sa",
+          "creator": "ProjectManhattan",
+          "title": "Banana cake slices",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00868",
+      "name": "Chocolate Chiffon Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "title mentions \"shop\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Chocolate chiffon cake sprinkles2",
+        "matchScore": 1,
+        "precision": 0.75,
+        "license": "by-sa",
+        "creator": null,
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Chocolate_chiffon_cake_sprinkles2.jpg/1280px-Chocolate_chiffon_cake_sprinkles2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_chiffon_cake_sprinkles2.jpg",
+        "width": 2684,
+        "height": 2571,
+        "query": "Chocolate Chiffon Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598979/takehealth/food_db/THF-00868.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2e/Meyer_lemon_chiffon_cake%2C_chocolate.jpg/1280px-Meyer_lemon_chiffon_cake%2C_chocolate.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Meyer_lemon_chiffon_cake,_chocolate.jpg",
+          "license": "by-sa",
+          "creator": "stu_spivack",
+          "title": "Meyer lemon chiffon cake, chocolate",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Chiffon_cake_kanko.jpg/500px-Chiffon_cake_kanko.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chiffon_cake_kanko.jpg",
+          "license": "by",
+          "creator": "Kanko from Nagasaki, Japan",
+          "title": "Chiffon cake kanko",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00869",
+      "name": "Christmas Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "title mentions \"tree\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Christmas cake (11160733965)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "James Petts from London, England",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Christmas_cake_%2811160733965%29.jpg/1280px-Christmas_cake_%2811160733965%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_cake_(11160733965).jpg",
+        "width": 4608,
+        "height": 3456,
+        "query": "Christmas Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795598983/takehealth/food_db/THF-00869.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Christmas_cake_%288369363664%29.jpg/1280px-Christmas_cake_%288369363664%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_cake_(8369363664).jpg",
+          "license": "by-sa",
+          "creator": "James Petts from London, England",
+          "title": "Christmas cake (8369363664)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/Christmas_cake_%288240095768%29.jpg/1280px-Christmas_cake_%288240095768%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_cake_(8240095768).jpg",
+          "license": "by-sa",
+          "creator": "James Petts from London, England",
+          "title": "Christmas cake (8240095768)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Christmas_cake_%288240099140%29.jpg/1280px-Christmas_cake_%288240099140%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_cake_(8240099140).jpg",
+          "license": "by-sa",
+          "creator": "James Petts from London, England",
+          "title": "Christmas cake (8240099140)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00870",
+      "name": "Strawberry and Vanilla Cake with Butter Icing",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {
+        "too small": 1,
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00871",
+      "name": "Eggless Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Eggless cake",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Vyom25",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Eggless_cake.JPG/1280px-Eggless_cake.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Eggless_cake.JPG",
+        "width": 3872,
+        "height": 2592,
+        "query": "Eggless Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599040/takehealth/food_db/THF-00871.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Piece_of_Eggless_cake.JPG/1280px-Piece_of_Eggless_cake.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Piece_of_Eggless_cake.JPG",
+          "license": "by-sa",
+          "creator": "Vyom25",
+          "title": "Piece of Eggless cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/Eggless_Cup_Cakes.jpg/1280px-Eggless_Cup_Cakes.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Eggless_Cup_Cakes.jpg",
+          "license": "by-sa",
+          "creator": "Vikramdewangan22889",
+          "title": "Eggless Cup Cakes",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Firangi_Indian_Eggless_cake.jpg/1280px-Firangi_Indian_Eggless_cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Firangi_Indian_Eggless_cake.jpg",
+          "license": "by-sa",
+          "creator": "Mrigankchoubey",
+          "title": "Firangi Indian Eggless cake",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00872",
+      "name": "Sponge Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Sponge cake",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": null,
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Sponge_cake.jpg/1280px-Sponge_cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_cake.jpg",
+        "width": 2560,
+        "height": 1920,
+        "query": "Sponge Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599044/takehealth/food_db/THF-00872.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Sponge_cake_-_brighton.jpg/1280px-Sponge_cake_-_brighton.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_cake_-_brighton.jpg",
+          "license": "by",
+          "creator": "Jeremy Keith",
+          "title": "Sponge cake - brighton",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Victoria_Sponge_Cake.jpg/1280px-Victoria_Sponge_Cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Victoria_Sponge_Cake.jpg",
+          "license": "by-sa",
+          "creator": "Victoria Spongebob",
+          "title": "Victoria Sponge Cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/Chocolate_cake_and_Victoria_sponge.jpg/1280px-Chocolate_cake_and_Victoria_sponge.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_cake_and_Victoria_sponge.jpg",
+          "license": "by-sa",
+          "creator": "Acabashi",
+          "title": "Chocolate cake and Victoria sponge",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00873",
+      "name": "Swiss Roll",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"box\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Swiss roll 001",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Jeuwre",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Swiss_roll_001.jpg/1280px-Swiss_roll_001.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Swiss_roll_001.jpg",
+        "width": 4385,
+        "height": 2923,
+        "query": "Swiss Roll",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599049/takehealth/food_db/THF-00873.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Swiss_roll_002.jpg/1280px-Swiss_roll_002.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Swiss_roll_002.jpg",
+          "license": "cc0",
+          "creator": "Ocdp",
+          "title": "Swiss roll 002",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/98/Swiss_roll_003.jpg/1280px-Swiss_roll_003.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Swiss_roll_003.jpg",
+          "license": "cc0",
+          "creator": "Ocdp",
+          "title": "Swiss roll 003",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e5/Swiss_roll_004.jpg/1280px-Swiss_roll_004.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Swiss_roll_004.jpg",
+          "license": "cc0",
+          "creator": "Ocdp",
+          "title": "Swiss roll 004",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00874",
+      "name": "Pineapple Pastry",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Pineapple Pastry",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Mk2010",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/Pineapple_Pastry.JPG/1280px-Pineapple_Pastry.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_Pastry.JPG",
+        "width": 2800,
+        "height": 1862,
+        "query": "Pineapple Pastry",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599053/takehealth/food_db/THF-00874.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Pineapple_pastry_bricks.jpg/1280px-Pineapple_pastry_bricks.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_pastry_bricks.jpg",
+          "license": "cc0",
+          "creator": "Fumikas Sagisavas",
+          "title": "Pineapple pastry bricks",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a1/Pineapple_pastry_cake_%282026%29.jpg/1280px-Pineapple_pastry_cake_%282026%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_pastry_cake_(2026).jpg",
+          "license": "by-sa",
+          "creator": "Gpkp",
+          "title": "Pineapple pastry cake (2026)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/96/Pineapple_Upside_Down_pastry.jpg/1280px-Pineapple_Upside_Down_pastry.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_Upside_Down_pastry.jpg",
+          "license": "by-sa",
+          "creator": "Vis M",
+          "title": "Pineapple Upside Down pastry",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00875",
+      "name": "Black Forest Pastry",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 7,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Black Forest Pastry",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Gaurav Dhwaj Khadka",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a6/Black_Forest_Pastry.jpg/1280px-Black_Forest_Pastry.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Black_Forest_Pastry.jpg",
+        "width": 3024,
+        "height": 4032,
+        "query": "Black Forest Pastry",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599057/takehealth/food_db/THF-00875.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Black_Forest_Pastry%2C_Kolkata.jpg/960px-Black_Forest_Pastry%2C_Kolkata.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Black_Forest_Pastry,_Kolkata.jpg",
+          "license": "by-sa",
+          "creator": "Rakhshanda Mujib",
+          "title": "Black Forest Pastry, Kolkata",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/Dessert_include_Peanut_brownies%2C_cheeze_cake%2C_black_forest_pastry%2C_butterscotch_pastry.jpg/1280px-Dessert_include_Peanut_brownies%2C_cheeze_cake%2C_black_forest_pastry%2C_butterscotch_pastry.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Dessert_include_Peanut_brownies,_cheeze_cake,_black_forest_pastry,_butterscotch_pastry.jpg",
+          "license": "by-sa",
+          "creator": "Sujata gharat",
+          "title": "Dessert include Peanut brownies, cheeze cake, black forest pastry, butterscotch pastry",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/Indian_vegetarian_thali_meal_tray_with_roti%2C_rice%2C_matar_paneer%2C_dal%2C_salad%2C_barfi%2C_and_Black_Forest_pastry_in_India_02.jpg/1280px-Indian_vegetarian_thali_meal_tray_with_roti%2C_rice%2C_matar_paneer%2C_dal%2C_salad%2C_barfi%2C_and_Black_Forest_pastry_in_India_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Indian_vegetarian_thali_meal_tray_with_roti,_rice,_matar_paneer,_dal,_salad,_barfi,_and_Black_Forest_pastry_in_India_02.jpg",
+          "license": "by-sa",
+          "creator": "Dev Jadiya",
+          "title": "Indian vegetarian thali meal tray with roti, rice, matar paneer, dal, salad, barfi, and Black Forest pastry in India 02",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00877",
+      "name": "Pineapple Cake",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Pineapple Cake",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Karl Thomas Moore",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Pineapple_Cake.jpg/1280px-Pineapple_Cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_Cake.jpg",
+        "width": 7360,
+        "height": 4912,
+        "query": "Pineapple Cake",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599061/takehealth/food_db/THF-00877.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Pineapple_cakes.jpg/1280px-Pineapple_cakes.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_cakes.jpg",
+          "license": "cc0",
+          "creator": "Fumikas Sagisavas",
+          "title": "Pineapple cakes",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Pineapple_Cake.webp/960px-Pineapple_Cake.webp",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pineapple_Cake.webp",
+          "license": "by-sa",
+          "creator": "Eshma P",
+          "title": "Pineapple Cake",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Shaobing_pineapple_cake.JPG/1280px-Shaobing_pineapple_cake.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Shaobing_pineapple_cake.JPG",
+          "license": "cc0",
+          "creator": "Kogimi",
+          "title": "Shaobing pineapple cake",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00878",
+      "name": "Glace Icing",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 12,
+      "rejected": {
+        "too small": 3
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Food-sweet-cake-glace-icing (23697542074)",
+        "matchScore": 1,
+        "precision": 0.4,
+        "license": "cc0",
+        "creator": "www.Pixel.la Free Stock Photos",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Food-sweet-cake-glace-icing_%2823697542074%29.jpg/1280px-Food-sweet-cake-glace-icing_%2823697542074%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Food-sweet-cake-glace-icing_(23697542074).jpg",
+        "width": 5472,
+        "height": 3648,
+        "query": "Glace Icing",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599065/takehealth/food_db/THF-00878.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00879",
+      "name": "Royal Icing",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 12,
+      "rejected": {
+        "too small": 3
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Making Royal icing",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "Roozitaa",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/Making_Royal_icing.jpg/1280px-Making_Royal_icing.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Making_Royal_icing.jpg",
+        "width": 5184,
+        "height": 3456,
+        "query": "Royal Icing",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599068/takehealth/food_db/THF-00879.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Lemon_shortbread_cookies_with_lemon_royal_icing.jpg/960px-Lemon_shortbread_cookies_with_lemon_royal_icing.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lemon_shortbread_cookies_with_lemon_royal_icing.jpg",
+          "license": "by",
+          "creator": "S. Mitchell",
+          "title": "Lemon shortbread cookies with lemon royal icing",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00880",
+      "name": "American Frosting",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 18,
+      "rejected": {
+        "licence not allowed": 11,
+        "too small": 1,
+        "title mentions \"tree\"": 4,
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00881",
+      "name": "Gum Icing",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 17,
+      "rejected": {
+        "licence not allowed": 2,
+        "too small": 2,
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00882",
+      "name": "Chocolate Walnut Cookies",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Chocolate walnut cookie",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Tiia Monto",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2a/Chocolate_walnut_cookie.jpg/1280px-Chocolate_walnut_cookie.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_walnut_cookie.jpg",
+        "width": 1704,
+        "height": 1552,
+        "query": "Chocolate Walnut Cookies",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599125/takehealth/food_db/THF-00882.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7c/Chocolate_Walnut_Cookies_%28140490681%29.jpeg/1280px-Chocolate_Walnut_Cookies_%28140490681%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_Walnut_Cookies_(140490681).jpeg",
+          "license": "by",
+          "creator": "J Doll",
+          "title": "Chocolate Walnut Cookies (140490681)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Plates_of_chocolate_chip_cookies_with_walnuts.jpg/1280px-Plates_of_chocolate_chip_cookies_with_walnuts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plates_of_chocolate_chip_cookies_with_walnuts.jpg",
+          "license": "by-sa",
+          "creator": "Ashley Bilodeau",
+          "title": "Plates of chocolate chip cookies with walnuts",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Walnut_Chocolate_Chip_Cookies_%2825618674274%29.jpg/1280px-Walnut_Chocolate_Chip_Cookies_%2825618674274%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Walnut_Chocolate_Chip_Cookies_(25618674274).jpg",
+          "license": "by",
+          "creator": "Stephanie Clifford from Arlington, VA, USA",
+          "title": "Walnut Chocolate Chip Cookies (25618674274)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00883",
+      "name": "Chocolate Chip Cookies",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "licence not allowed": 1,
+        "title mentions \"raw\"": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Chocolate_chip_cookies_%282%29.jpg/500px-Chocolate_chip_cookies_%282%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Chocolate_chip_cookies_%282%29.jpg/500px-Chocolate_chip_cookies_%282%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Plates of chocolate chip cookies with walnuts",
+        "matchScore": 1,
+        "precision": 0.75,
+        "license": "by-sa",
+        "creator": "Ashley Bilodeau",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Plates_of_chocolate_chip_cookies_with_walnuts.jpg/1280px-Plates_of_chocolate_chip_cookies_with_walnuts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plates_of_chocolate_chip_cookies_with_walnuts.jpg",
+        "width": 3264,
+        "height": 2448,
+        "query": "Chocolate Chip Cookies",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599154/takehealth/food_db/THF-00883.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Chocolate_chip_cookies_%282%29.jpg/500px-Chocolate_chip_cookies_%282%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_chip_cookies_(2).jpg",
+          "license": "cc0",
+          "creator": "Anna Langova",
+          "title": "Chocolate chip cookies (2)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ae/Chocolate_chip_cookies_on_cutting_board.jpg/1280px-Chocolate_chip_cookies_on_cutting_board.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_chip_cookies_on_cutting_board.jpg",
+          "license": "cc0",
+          "creator": "Mshuang2",
+          "title": "Chocolate chip cookies on cutting board",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Chocolate_Chip_Cookies%2C_Subway_Northbridge%2C_2026_%2801%29.jpg/1280px-Chocolate_Chip_Cookies%2C_Subway_Northbridge%2C_2026_%2801%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_Chip_Cookies,_Subway_Northbridge,_2026_(01).jpg",
+          "license": "by-sa",
+          "creator": "Bahnfrend",
+          "title": "Chocolate Chip Cookies, Subway Northbridge, 2026 (01)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00884",
+      "name": "Sweet Plain Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "licence not allowed": 1,
+        "too small": 1,
+        "title mentions \"seller\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Sweet Brown Biscuit from Taiwan",
+        "matchScore": 1,
+        "precision": 0.4,
+        "license": "by-sa",
+        "creator": "Ralff Nestor Nacor",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Sweet_Brown_Biscuit_from_Taiwan.jpg/1280px-Sweet_Brown_Biscuit_from_Taiwan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sweet_Brown_Biscuit_from_Taiwan.jpg",
+        "width": 4080,
+        "height": 3072,
+        "query": "Sweet Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599164/takehealth/food_db/THF-00884.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Sweet_moroccan_honey_biscuits_in_the_Souks_of_Marrakech.JPG/1280px-Sweet_moroccan_honey_biscuits_in_the_Souks_of_Marrakech.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sweet_moroccan_honey_biscuits_in_the_Souks_of_Marrakech.JPG",
+          "license": "by-sa",
+          "creator": "La Chimère",
+          "title": "Sweet moroccan honey biscuits in the Souks of Marrakech",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00885",
+      "name": "Chocolate Biscuit",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Chocolate ripple biscuit",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "Finbar.concaig",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f8/Chocolate_ripple_biscuit.jpg/1280px-Chocolate_ripple_biscuit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_ripple_biscuit.jpg",
+        "width": 3024,
+        "height": 4032,
+        "query": "Chocolate Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599168/takehealth/food_db/THF-00885.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Chocolate_biscuit_Leibniz_2006.jpg/1280px-Chocolate_biscuit_Leibniz_2006.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_biscuit_Leibniz_2006.jpg",
+          "license": "by-sa",
+          "creator": "Banalities",
+          "title": "Chocolate biscuit Leibniz 2006",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Chocolate_biscuit_in_Kuwait.jpg/1280px-Chocolate_biscuit_in_Kuwait.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_biscuit_in_Kuwait.jpg",
+          "license": "by-sa",
+          "creator": "Di7ane",
+          "title": "Chocolate biscuit in Kuwait",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Chocolate_hazelnut_biscuit_cake.jpg/1280px-Chocolate_hazelnut_biscuit_cake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chocolate_hazelnut_biscuit_cake.jpg",
+          "license": "by",
+          "creator": "jules",
+          "title": "Chocolate hazelnut biscuit cake",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00886",
+      "name": "Coconut Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "odd aspect ratio": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Coconut biscuits",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Gaurav Dhwaj Khadka",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Coconut_biscuits.jpg/1280px-Coconut_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Coconut_biscuits.jpg",
+        "width": 4608,
+        "height": 3456,
+        "query": "Coconut Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599173/takehealth/food_db/THF-00886.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Khong_Guan_Butter_coconut_Biscuits_%283%29.jpg/1280px-Khong_Guan_Butter_coconut_Biscuits_%283%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Khong_Guan_Butter_coconut_Biscuits_(3).jpg",
+          "license": "by",
+          "creator": "Franklin (1) Rainier",
+          "title": "Khong Guan Butter coconut Biscuits (3)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00887",
+      "name": "Sweet and Salty Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [
+        "openverse \"Sweet and Salty Biscuit\": api.openverse.org: ECONNABORTED"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00888",
+      "name": "Peanut Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 10,
+      "rejected": {
+        "licence not allowed": 3,
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Peanut Biscuits",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Ivorjosephson",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Peanut_Biscuits.jpg/1280px-Peanut_Biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Peanut_Biscuits.jpg",
+        "width": 4146,
+        "height": 2232,
+        "query": "Peanut Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599260/takehealth/food_db/THF-00888.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Pa%C3%A7oquita%2C_Brazilian_peanut_biscuit.jpg/1280px-Pa%C3%A7oquita%2C_Brazilian_peanut_biscuit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pa%C3%A7oquita,_Brazilian_peanut_biscuit.jpg",
+          "license": "cc0",
+          "creator": "Syced",
+          "title": "Paçoquita, Brazilian peanut biscuit",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/Milk_flavored_peanut_wafer_biscuits.jpg/1280px-Milk_flavored_peanut_wafer_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Milk_flavored_peanut_wafer_biscuits.jpg",
+          "license": "cc0",
+          "creator": "Fumikas Sagisavas",
+          "title": "Milk flavored peanut wafer biscuits",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Belvita_peanut_butter_sandwich_breakfast_biscuits.jpg/1280px-Belvita_peanut_butter_sandwich_breakfast_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Belvita_peanut_butter_sandwich_breakfast_biscuits.jpg",
+          "license": "cc0",
+          "creator": "Mx. Granger",
+          "title": "Belvita peanut butter sandwich breakfast biscuits",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00889",
+      "name": "Pin Wheel Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00890",
+      "name": "Saffron Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00891",
+      "name": "Masala Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 31,
+      "rejected": {
+        "too small": 6,
+        "licence not allowed": 2,
+        "title mentions \"tree\"": 1,
+        "title mentions \"advertisement\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Biscuits",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Keren_",
+        "imageUrl": "https://live.staticflickr.com/2009/2510284449_20b0f6aa6d_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/48889122885@N01/2510284449",
+        "width": 1024,
+        "height": 768,
+        "query": "Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599355/takehealth/food_db/THF-00891.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/3279/2859864085_b0cb12cbc9_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/49462908@N00/2859864085",
+          "license": "by-sa",
+          "creator": "DocChewbacca",
+          "title": "Chocolate Koala Biscuits",
+          "matchScore": 1
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/7100/6864966600_7e9c195146_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/7927684@N03/6864966600",
+          "license": "by",
+          "creator": "jeffreyw",
+          "title": "Mmm... biscuits with spicy sausage gravy",
+          "matchScore": 1
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/5556/15089588110_a835bf4ea6_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/47149893@N07/15089588110",
+          "license": "by",
+          "creator": "Kelly Hunter",
+          "title": "Banana Oat Blueberry Biscuits",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00892",
+      "name": "Ice Box Cookies",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 8,
+      "rejected": {
+        "title mentions \"box\"": 14,
+        "too small": 5,
+        "licence not allowed": 3,
+        "title mentions \"logo\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Thrifty ice cream - Circus Animal Cookies on cake cone",
+        "matchScore": 0.667,
+        "precision": 0.25,
+        "license": "by-sa",
+        "creator": "Raphaelled",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Thrifty_ice_cream_-_Circus_Animal_Cookies_on_cake_cone.jpg/1280px-Thrifty_ice_cream_-_Circus_Animal_Cookies_on_cake_cone.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Thrifty_ice_cream_-_Circus_Animal_Cookies_on_cake_cone.jpg",
+        "width": 1435,
+        "height": 1399,
+        "query": "Ice Box Cookies",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599376/takehealth/food_db/THF-00892.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00893",
+      "name": "Ginger Bread Man",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {
+        "too small": 3,
+        "licence not allowed": 3
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG/500px-GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG/500px-GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Pepperkakemann gingerbread ginger bread man med skjevt smil og 3 grønne knapper",
+        "matchScore": 1,
+        "precision": 0.25,
+        "license": "by-sa",
+        "creator": "Øyvind Holmstad",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Pepperkakemann_gingerbread_ginger_bread_man_med_skjevt_smil_og_3_gr%C3%B8nne_knapper.JPG/1280px-Pepperkakemann_gingerbread_ginger_bread_man_med_skjevt_smil_og_3_gr%C3%B8nne_knapper.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pepperkakemann_gingerbread_ginger_bread_man_med_skjevt_smil_og_3_gr%C3%B8nne_knapper.JPG",
+        "width": 2380,
+        "height": 3949,
+        "query": "Ginger Bread Man",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599406/takehealth/food_db/THF-00893.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG/500px-GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:GINGER_BREAD_MAN_CHRISTMAS_SOAP.JPG",
+          "license": "by-sa",
+          "creator": "Mercedes Duenas",
+          "title": "GINGER BREAD MAN CHRISTMAS SOAP",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00894",
+      "name": "Danish Cookies",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"market\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Danish-butter-cookies-1032894",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "sdnet01",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/13/Danish-butter-cookies-1032894.jpg/1280px-Danish-butter-cookies-1032894.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Danish-butter-cookies-1032894.jpg",
+        "width": 6000,
+        "height": 3376,
+        "query": "Danish Cookies",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599410/takehealth/food_db/THF-00894.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/2023-04-25_Danish_Butter_Cookie_Samples.jpg/1280px-2023-04-25_Danish_Butter_Cookie_Samples.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:2023-04-25_Danish_Butter_Cookie_Samples.jpg",
+          "license": "by-sa",
+          "creator": "Ejay",
+          "title": "2023-04-25 Danish Butter Cookie Samples",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Pretzel_Danish_Butter_Cookie.jpg/960px-Pretzel_Danish_Butter_Cookie.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pretzel_Danish_Butter_Cookie.jpg",
+          "license": "by-sa",
+          "creator": "Manisha",
+          "title": "Pretzel Danish Butter Cookie",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/Danish-butter-cookies_%28ring-shaped%29.jpg/1280px-Danish-butter-cookies_%28ring-shaped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Danish-butter-cookies_(ring-shaped).jpg",
+          "license": "cc0",
+          "creator": "sdnet01",
+          "title": "Danish-butter-cookies (ring-shaped)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00895",
+      "name": "Short Bread Cookies",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Vegan Peppered Lemon Carob Dipped Short Bread Cookies (3315232740)",
+        "matchScore": 1,
+        "precision": 0.375,
+        "license": "by",
+        "creator": "Vegan Feast Catering",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Vegan_Peppered_Lemon_Carob_Dipped_Short_Bread_Cookies_%283315232740%29.jpg/1280px-Vegan_Peppered_Lemon_Carob_Dipped_Short_Bread_Cookies_%283315232740%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vegan_Peppered_Lemon_Carob_Dipped_Short_Bread_Cookies_(3315232740).jpg",
+        "width": 2648,
+        "height": 2592,
+        "query": "Short Bread Cookies",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599413/takehealth/food_db/THF-00895.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-00896",
+      "name": "Coffee Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Coffee and biscuits",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "cc0",
+        "creator": "Zuxra.bmr",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/13/Coffee_and_biscuits.jpg/1280px-Coffee_and_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Coffee_and_biscuits.jpg",
+        "width": 2604,
+        "height": 4624,
+        "query": "Coffee Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599418/takehealth/food_db/THF-00896.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Hot_coffee_with_biscuits.jpg/1280px-Hot_coffee_with_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hot_coffee_with_biscuits.jpg",
+          "license": "by-sa",
+          "creator": "Shreya13jain",
+          "title": "Hot coffee with biscuits",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/44/Coffee_mug_and_biscuit_%28Unsplash%29.jpg/1280px-Coffee_mug_and_biscuit_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Coffee_mug_and_biscuit_(Unsplash).jpg",
+          "license": "cc0",
+          "creator": "Daria Nepriakhina epicantus",
+          "title": "Coffee mug and biscuit (Unsplash)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Wostenholm_coffee_pot_and_biscuit_barrel.jpg/1280px-Wostenholm_coffee_pot_and_biscuit_barrel.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Wostenholm_coffee_pot_and_biscuit_barrel.jpg",
+          "license": "by-sa",
+          "creator": "Smirkybec",
+          "title": "Wostenholm coffee pot and biscuit barrel",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00897",
+      "name": "Melting Moments",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Melting Moments (193350179)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Georgios Liakopoulos",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Melting_Moments_%28193350179%29.jpeg/1280px-Melting_Moments_%28193350179%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Melting_Moments_(193350179).jpeg",
+        "width": 2048,
+        "height": 1536,
+        "query": "Melting Moments",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599422/takehealth/food_db/THF-00897.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Melting_Moments%3F.jpg/1280px-Melting_Moments%3F.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Melting_Moments%3F.jpg",
+          "license": "by-sa",
+          "creator": "Finbar.concaig",
+          "title": "Melting Moments?",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Melting_Moments.jpg/1280px-Melting_Moments.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Melting_Moments.jpg",
+          "license": "by-sa",
+          "creator": "Finbar.concaig",
+          "title": "Melting Moments",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/Melting_Moments_%28BM_2010%2C7081.1953%29.jpg/1280px-Melting_Moments_%28BM_2010%2C7081.1953%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Melting_Moments_(BM_2010,7081.1953).jpg",
+          "license": "pdm",
+          "creator": "Published by: Bowles & Carver After: Robert Dighton (?)",
+          "title": "Melting Moments (BM 2010,7081.1953)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00898",
+      "name": "Ginger Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "too small": 1,
+        "title mentions \"advertisement\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Ginger Biscuit (21614367314)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by",
+        "creator": "Abhinaba Basu from Redmond, United States",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Ginger_Biscuit_%2821614367314%29.jpg/1280px-Ginger_Biscuit_%2821614367314%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ginger_Biscuit_(21614367314).jpg",
+        "width": 5472,
+        "height": 3648,
+        "query": "Ginger Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599426/takehealth/food_db/THF-00898.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Puritan_Wafers%2C_Ginger_Snaps%2C_Toledo_Biscuit_Co._-_DPLA_-_44f2a250453234554f9e6046cf336ce5_%28page_1%29.jpg/1280px-Puritan_Wafers%2C_Ginger_Snaps%2C_Toledo_Biscuit_Co._-_DPLA_-_44f2a250453234554f9e6046cf336ce5_%28page_1%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Puritan_Wafers,_Ginger_Snaps,_Toledo_Biscuit_Co._-_DPLA_-_44f2a250453234554f9e6046cf336ce5_(page_1).jpg",
+          "license": "pdm",
+          "creator": null,
+          "title": "Puritan Wafers, Ginger Snaps, Toledo Biscuit Co. - DPLA - 44f2a250453234554f9e6046cf336ce5 (page 1)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Puritan_Wafers%2C_Ginger_Snaps%2C_Toledo_Biscuit_Co._-_DPLA_-_44f2a250453234554f9e6046cf336ce5_%28page_2%29.jpg/1280px-Puritan_Wafers%2C_Ginger_Snaps%2C_Toledo_Biscuit_Co._-_DPLA_-_44f2a250453234554f9e6046cf336ce5_%28page_2%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Puritan_Wafers,_Ginger_Snaps,_Toledo_Biscuit_Co._-_DPLA_-_44f2a250453234554f9e6046cf336ce5_(page_2).jpg",
+          "license": "pdm",
+          "creator": null,
+          "title": "Puritan Wafers, Ginger Snaps, Toledo Biscuit Co. - DPLA - 44f2a250453234554f9e6046cf336ce5 (page 2)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/%22Say_Zu_Zu_to_the_grocer_man%22_Zu_Zu_Ginger_Snaps_ad_by_National_Biscuit_Company%2C_1915.jpg/500px-%22Say_Zu_Zu_to_the_grocer_man%22_Zu_Zu_Ginger_Snaps_ad_by_National_Biscuit_Company%2C_1915.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:%22Say_Zu_Zu_to_the_grocer_man%22_Zu_Zu_Ginger_Snaps_ad_by_National_Biscuit_Company,_1915.jpg",
+          "license": "pdm",
+          "creator": "Chicago Tribune",
+          "title": "\"Say Zu Zu to the grocer man\" Zu Zu Ginger Snaps ad by National Biscuit Company, 1915",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00902",
+      "name": "Peanut Burfi",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00908",
+      "name": "Wheat Flour and Moong Dal Burfi",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00909",
+      "name": "Spinach Burfi",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00913",
+      "name": "Pearl Millet Ladoo",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00914",
+      "name": "Paushtik Ladoo",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00923",
+      "name": "Mashed Banana with Milk",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {
+        "licence not allowed": 3
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg/500px-Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg/500px-Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00928",
+      "name": "Stewed Apple",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 8,
+      "rejected": {
+        "title mentions \"restaurant\"": 1,
+        "too small": 1,
+        "licence not allowed": 5
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Stewed apples in saucepan",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "Ambrosia10",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Stewed_apples_in_saucepan.jpg/1280px-Stewed_apples_in_saucepan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stewed_apples_in_saucepan.jpg",
+        "width": 3024,
+        "height": 4032,
+        "query": "Stewed Apple",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599600/takehealth/food_db/THF-00928.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Stewed_apple_%26_ginger_crumb_pancake_-_Green_Kitchen_2024-03-11.jpg/1280px-Stewed_apple_%26_ginger_crumb_pancake_-_Green_Kitchen_2024-03-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stewed_apple_%26_ginger_crumb_pancake_-_Green_Kitchen_2024-03-11.jpg",
+          "license": "cc0",
+          "creator": "Andy Li",
+          "title": "Stewed apple & ginger crumb pancake - Green Kitchen 2024-03-11",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00929",
+      "name": "Lemon Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 12,
+      "rejected": {
+        "too small": 2,
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "2- Squash Chips, Lemon Ricotta",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by",
+        "creator": "City Foodsters",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/2-_Squash_Chips%2C_Lemon_Ricotta.jpg/1280px-2-_Squash_Chips%2C_Lemon_Ricotta.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:2-_Squash_Chips,_Lemon_Ricotta.jpg",
+        "width": 4083,
+        "height": 2722,
+        "query": "Lemon Squash",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599605/takehealth/food_db/THF-00929.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8f/2-_Squash_Chips%2C_Lemon_Ricotta_-_10751529766.jpg/1280px-2-_Squash_Chips%2C_Lemon_Ricotta_-_10751529766.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:2-_Squash_Chips,_Lemon_Ricotta_-_10751529766.jpg",
+          "license": "by",
+          "creator": "City Foodsters",
+          "title": "2- Squash Chips, Lemon Ricotta - 10751529766",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00930",
+      "name": "Orange Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Orange squash (Unsplash)",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "Jocelyn Maloney jocelyn",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Orange_squash_%28Unsplash%29.jpg/1280px-Orange_squash_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orange_squash_(Unsplash).jpg",
+        "width": 5472,
+        "height": 3648,
+        "query": "Orange Squash",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795599609/takehealth/food_db/THF-00930.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5f/Butternut_squash_orange_soup_%283868271491%29.jpg/1280px-Butternut_squash_orange_soup_%283868271491%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Butternut_squash_orange_soup_(3868271491).jpg",
+          "license": "by",
+          "creator": "Karen and Brad Emerson",
+          "title": "Butternut squash orange soup (3868271491)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-00931",
+      "name": "Lichi Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    }
+  ]
+}
