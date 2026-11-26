@@ -31,6 +31,9 @@ const healthGoalProfileFacts = (healthGoal) => ({
     weightKg: profileSync.positiveNumber(healthGoal.currentWeight),
   },
   goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
+  // The activity picked on the goal screen is the profile's too, so the two
+  // never disagree (staging 26 Nov: goal "moderate", profile "sedentary").
+  ...(healthGoal.activityLevel ? { lifestyle: { activityLevel: healthGoal.activityLevel } } : {}),
 });
 
 // Food photos are switched off: scan photos are still stored on QuickFoodCheck/FoodLog, but no
@@ -946,11 +949,14 @@ exports.setHealthGoal = async (req, res) => {
     // Warn before saving an unrealistic timeframe instead of silently capping
     // it — the calorie math still caps it regardless (see calculateCalorieTarget),
     // this only decides whether the user gets told about it up front.
+    // Same pace rule as the calorie target: no date -> the user's saved pace.
+    const savedPace = (await withTimeout(HealthGoal.findOne({ userId: req.user._id }).select('weeklyGoal').lean()))?.weeklyGoal;
     const rateCheck = HealthGoal.checkRequestedRate({
       goalType: sanitizedData.goalType,
       currentWeight: sanitizedData.currentWeight,
       targetWeight: sanitizedData.targetWeight,
       targetDate: sanitizedData.targetDate,
+      weeklyGoal: Number(req.body.weeklyGoal) || savedPace,
     });
     if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
       return res.status(422).json({
@@ -977,27 +983,9 @@ exports.setHealthGoal = async (req, res) => {
 
     await healthGoal.save({ maxTimeMS: 30000 });
     
-    // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
-    // Ensure macroTargets exist before accessing them to avoid crashes
-    const proteinGoal = healthGoal.macroTargets?.protein || 150;
-    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
-    const fatGoal = healthGoal.macroTargets?.fats || 65;
-
-    // nutritionGoal + age/height/weight/target weight in one transaction;
-    // the profile facts go through HealthProfile (mirrored to User.profile).
-    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {
-      $set: {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal: proteinGoal,
-          carbsGoal: carbsGoal,
-          fatGoal: fatGoal,
-          lastUpdated: new Date()
-        }
-      }
-    }, { source: 'manual' });
+    // HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
+    // Age / height / weight / target weight go to HealthProfile (mirrored to User.profile).
+    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {}, { source: 'manual' });
 
     // Invalidate server-side dashboard cache and the 15-min cached active goal used by
     // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
@@ -1041,9 +1029,7 @@ exports.setHealthGoal = async (req, res) => {
 // Get health goal
 exports.getHealthGoal = async (req, res) => {
   try {
-    // HealthGoal is the source of truth — User.nutritionGoal is just a best-effort mirror
-    // kept in sync by the goal-setting endpoints, and can lag behind (e.g. if a goal doc
-    // was saved by a path that forgot to update it). Prefer the real doc when it exists.
+    // HealthGoal is the only stored goal (User.nutritionGoal was removed 26 Nov).
     const healthGoal = await withTimeout(
       HealthGoal.findOne({ userId: req.user._id, isActive: true }).sort({ createdAt: -1 })
     );
@@ -1058,22 +1044,23 @@ exports.getHealthGoal = async (req, res) => {
       });
     }
 
-    // Fallback to the User.nutritionGoal mirror only when no HealthGoal doc exists at all
-    const user = await withTimeout(require('../models/User').findById(req.user._id));
+    // No HealthGoal yet: a user the nutritionGoal migration hasn't reached
+    // still has the old stored targets (read-only, services/healthGoalService).
+    const legacy = await require('../services/healthGoalService').getNutritionGoal(req.user._id);
 
-    if (user && user.nutritionGoal && user.nutritionGoal.calorieGoal) {
+    if (legacy && legacy.calorieGoal) {
       return res.json({
         success: true,
         healthGoal: {
           userId: req.user._id,
-          dailyCalorieTarget: user.nutritionGoal.calorieGoal,
+          dailyCalorieTarget: legacy.calorieGoal,
           macroTargets: {
-            protein: user.nutritionGoal.proteinGoal || 150,
-            carbs: user.nutritionGoal.carbsGoal || 200,
-            fats: user.nutritionGoal.fatGoal || 65
+            protein: legacy.proteinGoal || 150,
+            carbs: legacy.carbsGoal || 200,
+            fats: legacy.fatGoal || 65
           },
-          goal: user.nutritionGoal.goal,
-          targetWeight: user.nutritionGoal.targetWeight,
+          goal: legacy.goal,
+          targetWeight: legacy.targetWeight,
           source: 'user_profile'
         }
       });
@@ -1105,11 +1092,13 @@ exports.updateHealthGoal = async (req, res) => {
       manualCalorieTarget: undefined
     };
 
+    const savedPace = (await withTimeout(HealthGoal.findOne({ userId: req.user._id }).select('weeklyGoal').lean()))?.weeklyGoal;
     const rateCheck = HealthGoal.checkRequestedRate({
       goalType: goalData.goalType,
       currentWeight: Number(goalData.currentWeight),
       targetWeight: Number(goalData.targetWeight),
       targetDate: goalData.targetDate,
+      weeklyGoal: Number(req.body.weeklyGoal) || savedPace,
     });
     if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
       return res.status(422).json({
@@ -1130,24 +1119,8 @@ exports.updateHealthGoal = async (req, res) => {
 
     await healthGoal.save({ maxTimeMS: 30000 });
 
-    // SYNC: Update user's nutritionGoal in User model
-    const proteinGoal = healthGoal.macroTargets?.protein || 150;
-    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
-    const fatGoal = healthGoal.macroTargets?.fats || 65;
-
-    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {
-      $set: {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal: proteinGoal,
-          carbsGoal: carbsGoal,
-          fatGoal: fatGoal,
-          lastUpdated: new Date()
-        }
-      }
-    }, { source: 'manual' });
+    // HealthGoal is the only stored goal; profile facts go to HealthProfile.
+    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {}, { source: 'manual' });
 
     // Invalidate server-side dashboard cache and the 15-min cached active goal used by
     // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
@@ -1242,28 +1215,11 @@ exports.setCalorieOverride = async (req, res) => {
     healthGoal.unsafeOverrideAcknowledged = belowFloor || exceedsRateCap;
     await healthGoal.save({ maxTimeMS: 30000 });
 
-    const proteinGoal = healthGoal.macroTargets?.protein || 150;
-    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
-    const fatGoal = healthGoal.macroTargets?.fats || 65;
-
     // targetWeight is also HealthProfile goals.targetWeightKg, so it goes
     // through the bridge too (no-op when unchanged).
     await profileSync.writeWithUser(req.user._id, {
       goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
-    }, {
-      $set: {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal,
-          carbsGoal,
-          fatGoal,
-          autoCalculated: false,
-          lastUpdated: new Date()
-        }
-      }
-    }, { source: 'manual' });
+    }, {}, { source: 'manual' });
 
     cache.delete(`dashboard:${req.user._id}`);
     cache.delete(`health_goal:${req.user._id}`);
@@ -1303,90 +1259,10 @@ exports.logWeight = async (req, res) => {
       });
     }
 
-    // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
-    let recordedDate;
-    if (date && typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const [y, m, d] = date.split('-').map(Number);
-      recordedDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-    } else {
-      recordedDate = date ? new Date(date) : new Date();
-    }
-    
-    // Check if entry exists for this date, if so update it to avoid duplicates
-    let metric = await HealthMetric.findOne({ 
-      userId: req.user._id, 
-      type: 'weight',
-      recordedAt: {
-        $gte: new Date(new Date(recordedDate).setUTCHours(0,0,0,0)),
-        $lt: new Date(new Date(recordedDate).setUTCHours(23,59,59,999))
-      }
-    });
-
-    if (metric) {
-      metric.value = Number(weight);
-      metric.notes = notes;
-    } else {
-      metric = new HealthMetric({
-        userId: req.user._id,
-        type: 'weight',
-        value: Number(weight),
-        unit: 'kg',
-        readingContext: 'general',
-        recordedAt: recordedDate,
-        notes
-      });
-    }
-
-    await metric.save({ maxTimeMS: 30000 });
-
-    // Also update profile weight (through HealthProfile) and BMI, together.
-    const user = await withTimeout(User.findById(req.user._id).select('profile.height').lean());
-    if (user) {
-      const height = user.profile?.height;
-      const bmiPatch = height
-        ? { $set: { 'healthMetrics.bmi': Number((weightKg / Math.pow(height / 100, 2)).toFixed(1)) } }
-        : {};
-      await profileSync.writeWithUser(req.user._id, { body: { weightKg } }, bmiPatch, { source: 'manual' });
-    }
-
-    // Update health goal if exists
-    const healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
-
-    if (healthGoal) {
-      healthGoal.currentWeight = Number(weight);
-      healthGoal.weeklyWeightLogs.push({
-        weight: Number(weight),
-        date: new Date(),
-        notes
-      });
-      // Recalculate targets based on new weight
-      await healthGoal.save({ maxTimeMS: 30000 });
-
-      // Ensure macroTargets exist before accessing them to avoid crashes
-      const proteinGoal = healthGoal.macroTargets?.protein || 100;
-      const carbsGoal = healthGoal.macroTargets?.carbs || 250;
-      const fatGoal = healthGoal.macroTargets?.fats || 65;
-
-      await profileSync.writeWithUser(req.user._id, {
-        goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
-      }, {
-        $set: {
-          nutritionGoal: {
-            goal: healthGoal.goalType,
-            targetWeight: healthGoal.targetWeight,
-            calorieGoal: healthGoal.dailyCalorieTarget,
-            proteinGoal: proteinGoal,
-            carbsGoal: carbsGoal,
-            fatGoal: fatGoal,
-            lastUpdated: new Date()
-          }
-        }
-      }, { source: 'manual' });
-    }
-
-    // Invalidate server-side dashboard cache so next fetch returns fresh data
-    cache.delete(`dashboard:${req.user._id}`);
-    cache.delete(`health_goal:${req.user._id}`);
+    // Shared with the AI coach: services/weightLogService.js does every write
+    // (HealthMetric, HealthProfile + BMI, HealthGoal, caches).
+    const { metric, healthGoal } = await require('../services/weightLogService')
+      .logWeight({ userId: req.user._id, weightKg, date, notes, source: 'manual' });
 
     res.json({
       success: true,
@@ -1467,64 +1343,30 @@ exports.setLifestyleGoals = async (req, res) => {
 // Log water — accepts either a glass count (converted via the user's configured
 // glass size) or a raw ml amount, and ADDS it to the day's total by default.
 // action:'set' overwrites the day's total instead (used for corrections).
+// Sets the day's total. Logic lives in services/activityLogService.js (also used
+// by the AI coach). Fixed 25 Nov: the response used `glassSizeMl` without ever
+// defining it, so every successful save answered 500 (ReferenceError).
 exports.logWater = async (req, res) => {
   try {
     const { waterIntake, date } = req.body;
-    const waterAmount = Number(waterIntake);
-    if (!Number.isFinite(waterAmount) || waterAmount < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'waterIntake must be a finite number greater than or equal to 0'
-      });
-    }
-    const queryDate = date ? new Date(date) : new Date();
-    const targetDate = new Date(queryDate.toISOString().split('T')[0]);
-    targetDate.setUTCHours(0, 0, 0, 0);
-
-    // Atomic get-or-create: a plain findOne + `new Model()` + save() has a gap
-    // between the check and the insert where two concurrent requests (e.g. a
-    // double-tap) can both see "no summary yet" and both try to create one,
-    // tripping the userId+date unique index (E11000). findOneAndUpdate with
-    // upsert:true does the get-or-create as a single atomic DB operation, so
-    // only one request can ever create the document; the later .save() below
-    // is then always an update to an existing doc, never a second insert.
-    const summary = await NutritionSummary.findOneAndUpdate(
-      { userId: req.user._id, date: targetDate },
-      { $setOnInsert: { userId: req.user._id, date: targetDate } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    summary.waterIntake = waterAmount;
-    await summary.save();
-
-    // Also update DailyProgress for dashboard metrics
-    const dateStr = targetDate.toISOString().split('T')[0];
-    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, dateStr);
-    const DailyProgress = require('../models/DailyProgress');
-    await DailyProgress.findOneAndUpdate(
-      { userId: req.user._id, date: dateStr },
-      { waterIntake: waterAmount },
-      { upsert: true, new: true }
-    );
-
-    // Invalidate caches so next fetch returns fresh data
-    cache.delete(`dashboard:${req.user._id}`);
-    cache.deletePattern(`water_analytics:${req.user._id}:*`);
-
-    const gamificationResult = await gamificationService.awardPoints(req.user._id, 'water_intake', `Logged water intake`).catch(err => {
-      console.error('Gamification Error:', err);
-      return null;
-    });
+    const activityLog = require('../services/activityLogService');
+    const [{ totalMl, gamification }, glassSizeMl] = await Promise.all([
+      activityLog.setWaterTotal(req.user._id, waterIntake, date),
+      activityLog.getGlassSizeMl(req.user._id),
+    ]);
 
     res.json({
       success: true,
-      totalMl: summary.waterIntake,
-      glasses: Math.round(summary.waterIntake / glassSizeMl),
+      totalMl,
+      glasses: Math.round(totalMl / glassSizeMl),
       glassSizeMl,
-      gamification: gamificationResult,
+      gamification,
       message: 'Water intake logged successfully'
     });
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error('Log water error:', error);
     res.status(500).json({
       success: false,

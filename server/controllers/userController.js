@@ -123,7 +123,7 @@ exports.saveFoodPreferences = async (req, res) => {
 exports.analyzeFoodChoices = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
-      .select('foodPreferences profile nutritionGoal');
+      .select('foodPreferences profile');
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });

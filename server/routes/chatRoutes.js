@@ -117,7 +117,8 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
     const profile = user.profile || {};
     const lifestyle = profile.lifestyle || {};
     const medical = profile.medicalHistory || {};
-    const goals = user.nutritionGoal || {};
+    // Goal targets from HealthGoal (User.nutritionGoal removed 26 Nov).
+    const goals = (await require('../services/healthGoalService').getNutritionGoal(user._id)) || {};
 
     let dynamicContext = `User Context:
 - Name: ${user.name}
@@ -152,7 +153,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
         userLogs, recentMetrics, dashboardCache, todaysAgg, lastMeal, activePlan, latestReports,
         latestHeartRate, latestSpo2, latestBodyComp,
       ] = await Promise.all([
-        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle nutritionGoal').lean(),
+        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
         HealthMetric.find({ userId: user._id }).sort({ recordedAt: -1 }).limit(10).lean(),
         cache.get(`dashboard:${user._id}`),
         // Totals and a capped item list computed in the DB rather than pulled
@@ -217,7 +218,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       }
 
       const freshLifestyle = userLogs?.profile?.lifestyle || lifestyle;
-      const goalsFromProfile = userLogs?.nutritionGoal || goals;
+      const goalsFromProfile = goals;
       const dashGoals = dashboardCache?.goals || {
         steps: getStepGoal({ profile: { age: profile.age, lifestyle: freshLifestyle } }).goalSteps,
         sleep: getSleepGoal({ profile: { age: profile.age, lifestyle: freshLifestyle } }).goalHours,

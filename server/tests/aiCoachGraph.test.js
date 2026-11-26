@@ -61,6 +61,9 @@ function setup({ answer = 'Take it easy today.', answerError = null } = {}) {
         getProfileContext: async (userId) => buildContext(profileRepo.state.profiles[userId] || { basic: { age: 29 } }, NOW),
         profileTools: createProfileTools({ service, repo: profileRepo, sideEffects: { afterProfileChange: async () => {} }, logger: { warn: () => {}, error: () => {} } }),
         specialistDeps: {
+            nutrition: { getNutritionTrends: async () => ({ daysLogged: 0 }) },
+            medical_lab: { latestReports: async () => [] },
+            progress: { getTargets: async () => null, getActivityAnalytics: async () => ({ days: [] }), getSleepAnalytics: async () => ({ entries: [] }), loadNutritionDays: async () => [], loadWorkouts: async () => [] },
             recovery: { getRecoveryAnalytics: async () => ({ entries: [{ date: '2026-11-24', recoveryScore: 38, band: { label: 'Very low' } }], personalBaselineRange: { low: 60, high: 72 } }) },
             sleep: { getSleepAnalytics: async () => ({ entries: [{ date: '2026-11-24', totalHours: 5.2, source: 'wearable' }] }) },
             fitness: {
@@ -88,7 +91,7 @@ test('tired + gym: classify -> recovery/sleep/fitness data -> streamed answer ->
 
     assert.equal(r.final.route, 'coach');
     assert.equal(r.text, 'Recovery is low today, keep the gym light.');
-    assert.deepEqual(r.final.specialistResults.map((s) => [s.specialist, s.status]), [['recovery', 'completed'], ['sleep', 'completed'], ['fitness', 'completed']]);
+    assert.deepEqual(r.final.specialistResults.map((s) => [s.specialist, s.status]).sort(), [['fitness', 'completed'], ['recovery', 'completed'], ['sleep', 'completed']]);
 
     const dataMsg = t.calls.answerParams[0].messages.at(-1);
     assert.equal(dataMsg.role, 'system');
@@ -100,7 +103,8 @@ test('tired + gym: classify -> recovery/sleep/fitness data -> streamed answer ->
     const saved = await t.coachStateRepo.load(USER);
     assert.equal(saved.pendingQuestion.field, 'fitness.limitations');
     assert.ok(saved.askedLog['fitness.limitations']);
-    assert.deepEqual(r.final.usage.map((u) => u.feature), ['ai_coach_classify', 'ai_coach_v2']);
+    assert.deepEqual(r.final.usage.map((u) => u.feature).sort(), ['ai_coach_classify', 'ai_coach_v2']); // each counted once
+    assert.equal(r.final.timings.path, 'fast'); // rules knew the topic: answer did not wait for the classifier
 });
 
 test('red flag: fixed safety reply, no model calls, no profile question', async () => {
@@ -123,8 +127,91 @@ test('greeting: instant reply with first name, no model calls', async () => {
     const t = setup();
     const r = await t.send('hi');
     assert.equal(r.final.route, 'quick');
-    assert.equal(r.text, 'Hi Coach! How can I help you today?');
+    // First chat of the day (08:00 UTC = 13:30 IST): warm hello + day-plan offer (tests/aiCoachGreeting.test.js).
+    assert.equal(r.text, 'Hey Coach! How\'s it going?\nWant a quick plan for the rest of your day?');
     assert.equal(t.calls.classify + t.calls.answer, 0);
+});
+
+// Issue #3 (staging 24 Nov): Hinglish reply, English question at the end.
+test('language: Hinglish on the fast path gets the Hinglish question (+ the other wording); "ok" keeps Hinglish', async () => {
+    const t = setup();
+    await t.send('tired hoon, gym jaun?', classification({ topics: ['fitness'], specialists: [], language: 'english' }));
+    const data = t.calls.answerParams.at(-1).messages.at(-1).content;
+    assert.match(data, /ask this one question as the last line: "Workout ke liye koi injury ya dard/);
+    assert.match(data, /same language as the rest of your reply \(other wording: "Any injury or pain/);
+    assert.equal((await t.coachStateRepo.load(USER)).lastLanguage, 'hinglish');
+
+    await t.send('ok', classification({ intent: 'other', language: 'english' })); // classifier says english for "ok"
+    assert.equal((await t.coachStateRepo.load(USER)).lastLanguage, 'hinglish');
+});
+
+test('language: an English user keeps English questions', async () => {
+    const t = setup();
+    await t.send('feeling tired, should I go to the gym?', classification({ topics: ['fitness'], specialists: [], language: 'english' }));
+    assert.match(t.calls.answerParams.at(-1).messages.at(-1).content, /last line: "Any injury or pain/);
+    assert.equal((await t.coachStateRepo.load(USER)).lastLanguage, 'english');
+});
+
+test('prompt: questions from the data are asked in the reply\'s language', () => {
+    const { buildRequest } = require('../modules/ai-coach/response/responseGenerator');
+    const req = buildRequest({ message: 'x', classification: { language: 'hinglish' } });
+    assert.match(JSON.stringify(req.system), /always ask it in the language of your reply/);
+});
+
+// Staging 24 Nov: "haan" to "any injury?" saved "Yes, has an injury or pain (unspecified)".
+test('vague "haan" to the injury question saves nothing and asks once where exactly; the specific answer is saved', async () => {
+    const t = setup();
+    // Hinglish chat, so the neutral "haan" keeps Hinglish.
+    await t.send('thaka hua hoon, gym jaun?', classification({ topics: ['fitness'], specialists: [], language: 'hinglish' })); // coach asks about injuries
+
+    const r = await t.send('haan', classification({
+        intent: 'profile_update', language: 'hinglish',
+        facts: [{ target: 'fitness.limitations', value: 'Yes, has an injury or pain (unspecified)', none: false, statedAs: 'answer', aboutSelf: true }],
+    }));
+    assert.deepEqual(t.hp()?.fitness?.limitations || [], []);
+    assert.ok(!r.events.some((e) => e.type === 'profile_saved' || e.type === 'profile_confirm'));
+    assert.match(t.calls.answerParams.at(-1).messages.at(-1).content, /ask this one question as the last line: "Injury ya dard exactly kahan hai\?"/);
+    const state = await t.coachStateRepo.load(USER);
+    assert.equal(state.pendingQuestion.field, 'fitness.limitations');
+    assert.equal(state.pendingQuestion.followUp, true);
+
+    await t.send('left knee mein dard', classification({
+        intent: 'profile_update', language: 'hinglish',
+        facts: [{ target: 'fitness.limitations', value: 'left knee pain', none: false, statedAs: 'answer', aboutSelf: true }],
+    }));
+    assert.deepEqual(t.hp().fitness.limitations, ['left knee pain']);
+});
+
+test('bare "yes" (no fact from the classifier) also gets the follow-up; a second vague answer is let go, not asked again', async () => {
+    const t = setup();
+    await t.send('tired, gym?', classification({ topics: ['fitness'], specialists: [] }));
+    await t.send('yes', classification({ intent: 'profile_update' }));
+    let state = await t.coachStateRepo.load(USER);
+    assert.equal(state.pendingQuestion.followUp, true);
+    assert.equal(state.pendingQuestion.question, 'Where exactly is the injury or pain?');
+
+    await t.send('yes there is some', classification({
+        intent: 'profile_update',
+        facts: [{ target: 'fitness.limitations', value: 'some injury', none: false, statedAs: 'answer', aboutSelf: true }],
+    }));
+    state = await t.coachStateRepo.load(USER);
+    // Not asked about the injury again (another check-in may follow: that is issue #6).
+    assert.notEqual(state.pendingQuestion?.field, 'fitness.limitations');
+    assert.deepEqual(t.hp()?.fitness?.limitations || [], []);
+    assert.doesNotMatch(t.calls.answerParams.at(-1).messages.at(-1).content, /exactly kahan|Where exactly/);
+});
+
+test('vague medicine / allergy values are never saved or offered for confirmation', async () => {
+    const { triageFacts } = require('../modules/ai-coach/tools/profileTools');
+    const { saveNow, confirm, vague } = triageFacts([
+        { target: 'medications', value: 'medicine', none: false, statedAs: 'volunteered', aboutSelf: true },
+        { target: 'allergies', value: 'unknown', none: false, statedAs: 'answer', aboutSelf: true },
+        { target: 'medications', value: 'Metformin 500mg', none: false, statedAs: 'volunteered', aboutSelf: true },
+        { target: 'allergies', value: '', none: true, statedAs: 'answer', aboutSelf: true },
+    ], { field: 'allergies' });
+    assert.deepEqual(vague.map((f) => f.value), ['medicine', 'unknown']);
+    assert.deepEqual(confirm.map((f) => f.value), ['Metformin 500mg']);
+    assert.deepEqual(saveNow.map((f) => f.none), [true]); // "none" is a real answer
 });
 
 test('answer to the coach\'s question is saved now, then "undo" reverts it', async () => {
@@ -141,10 +228,13 @@ test('answer to the coach\'s question is saved now, then "undo" reverts it', asy
     assert.ok(savedEvent.items[0].historyId);
     assert.match(t.calls.answerParams.at(-1).messages.at(-1).content, /Just saved to their profile: injury \/ limitation: knee pain/);
 
+    const answersBefore = t.calls.answer;
     const u = await t.send('undo');
     assert.equal(u.events.find((e) => e.type === 'profile_undone').count, 1);
     assert.equal(t.hp().fitness.limitations.length, 0);
-    assert.match(t.calls.answerParams.at(-1).messages.at(-1).content, /removed 1 item/);
+    // Fixed reply naming what was removed; no answer-model call.
+    assert.equal(t.calls.answer, answersBefore);
+    assert.equal(u.text, 'Done, removed: injury / limitation: knee pain. Your profile is back to how it was.');
     assert.ok(!(await t.coachStateRepo.load(USER)).lastSaved);
 });
 

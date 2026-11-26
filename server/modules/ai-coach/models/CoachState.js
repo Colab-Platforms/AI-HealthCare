@@ -17,10 +17,53 @@ const coachStateSchema = new mongoose.Schema({
         field: String,
         question: String,
         askedAt: Date,
+        followUp: Boolean, // "what exactly?" after a vague "yes": asked once, never again
     },
-    askedLog: { type: Map, of: Date, default: {} },
+    // Language of the conversation, for short messages with no language of
+    // their own ("ok", "haan", "72"): they keep the language already in use.
+    lastLanguage: { type: String, enum: ['english', 'hindi', 'hinglish'] },
+    // Chat opener (one message when the user opens the coach screen): at most
+    // once a day, and not on a day the user already chatted.
+    lastChatAt: Date,
+    lastOpenerAt: Date,
+    // Water / sleep / smoke / alcohol entries shown for "log this? yes / no".
+    pendingLog: {
+        entries: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+        askedAt: Date,
+    },
+    // "Want me to tell you what to focus on today?" was offered (greeting):
+    // the next short "yes" asks for the day plan, "no" just closes it.
+    pendingOffer: {
+        kind: { type: String, enum: ['day_plan'] },
+        askedAt: Date,
+    },
+    // A list, not a Map: field names contain dots ("fitness.limitations") and
+    // Mongoose Map keys can't.
+    askedLog: {
+        type: [new mongoose.Schema({ field: { type: String, required: true }, askedAt: { type: Date, required: true } }, { _id: false })],
+        default: [],
+    },
     pendingConfirm: {
         facts: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+        askedAt: Date,
+    },
+    // A request paused by a blocking question ("meal generate karo" -> "pait
+    // kaisa hai?"): resumed with the user's answer on the next message.
+    pendingRequest: {
+        message: { type: String, maxlength: 2000 },
+        topics: { type: [String], default: undefined },
+        specialists: { type: [String], default: undefined },
+        recommendsFoodOrSupplement: Boolean,
+        askedAt: Date,
+    },
+    // A meal the user described, shown back with its nutrition, waiting for "save it".
+    pendingFoodLog: {
+        entry: mongoose.Schema.Types.Mixed,
+        askedAt: Date,
+    },
+    // "Add this kind of meal to your 7-day plan?" was asked: the reply it refers to.
+    pendingMealPref: {
+        replyText: { type: String, maxlength: 4000 },
         askedAt: Date,
     },
     lastSaved: {

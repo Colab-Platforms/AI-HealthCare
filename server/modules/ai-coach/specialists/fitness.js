@@ -1,20 +1,33 @@
-const { avg, dayStr, daysBetween, whenLabel, result, noData } = require('./common');
+const { avg, dayStr, daysBetween, whenLabel, result, noData, cachedLongRange, monthLabel } = require('./common');
+const { windowFor, LONG_RANGE_DAYS } = require('../context/lookback');
 
 // Activity today vs the user's usual week, plus the last few workouts (what
-// was trained and how hard): the answer to "should I train today?" depends on both.
-async function fitnessSpecialist({ userId, now = new Date(), deps = {} }) {
+// was trained and how hard): the answer to "should I train today?" depends on
+// both. Monthly averages when asked about months back.
+async function fitnessSpecialist({ userId, now = new Date(), deps = {}, lookbackDays = 0 }) {
     const getActivityAnalytics = deps.getActivityAnalytics || require('../../../services/activityAnalyticsService').getActivityAnalytics;
     const recentWorkouts = deps.recentWorkouts || defaultRecentWorkouts;
+    const long = lookbackDays > LONG_RANGE_DAYS;
+    const win = long ? windowFor(lookbackDays, now) : null;
 
-    const [activity, workouts] = await Promise.all([
+    const [activity, workouts, monthly] = await Promise.all([
         getActivityAnalytics(userId, 'daily'),
         recentWorkouts(userId, 4),
+        long ? cachedLongRange(deps, `fitness:${userId}:${win.startDate}:${win.endDate}`,
+            () => getActivityAnalytics(userId, 'monthly', win)) : null,
     ]);
     const days = activity?.days || [];
     const today = days.find((d) => d.date === dayStr(now));
     const findings = [];
     const dataUsed = [];
     const missing = [];
+
+    const trend = (monthly?.summary || []).filter((m) => m.daysLogged);
+    if (trend.length) {
+        dataUsed.push('activity_monthly');
+        findings.push(`Monthly activity averages (${win.startDate} to ${win.endDate}): ${trend.map((m) => `${monthLabel(m.period)} ${Math.round(m.avgSteps || 0)} steps/day`
+            + `${m.avgActiveMinutes ? `, ${Math.round(m.avgActiveMinutes)} active min` : ''}`).join('; ')}.`);
+    }
 
     if (today && (today.device?.steps > 0 || today.manual?.sessionsCount > 0)) {
         const stepGoal = today.goals?.steps;

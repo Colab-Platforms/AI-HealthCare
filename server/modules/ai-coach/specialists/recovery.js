@@ -1,18 +1,32 @@
-const { avg, daysBetween, whenLabel, result, noData } = require('./common');
+const { avg, daysBetween, whenLabel, result, noData, cachedLongRange, monthLabel } = require('./common');
+const { windowFor, LONG_RANGE_DAYS } = require('../context/lookback');
 
 // Readiness: today's recovery score vs the user's own usual range, recent
 // trend, safety warnings and personal patterns (e.g. "short nights are
-// followed by low mornings").
-async function recoverySpecialist({ userId, now = new Date(), deps = {} }) {
+// followed by low mornings"). Monthly averages when asked about months back.
+async function recoverySpecialist({ userId, now = new Date(), deps = {}, lookbackDays = 0 }) {
     const getRecoveryAnalytics = deps.getRecoveryAnalytics || require('../../../services/recoveryAnalyticsService').getRecoveryAnalytics;
-    const data = await getRecoveryAnalytics(userId, 'daily');
+    const long = lookbackDays > LONG_RANGE_DAYS;
+    const win = long ? windowFor(lookbackDays, now) : null;
+    const [data, monthly] = await Promise.all([
+        getRecoveryAnalytics(userId, 'daily'),
+        long ? cachedLongRange(deps, `recovery:${userId}:${win.startDate}:${win.endDate}`,
+            () => getRecoveryAnalytics(userId, 'monthly', win)) : null,
+    ]);
+    const trend = (monthly?.summary || []).filter((m) => typeof m.avgRecoveryScore === 'number');
+    const trendLine = trend.length
+        ? `Monthly recovery averages (${win.startDate} to ${win.endDate}): ${trend.map((m) => `${monthLabel(m.period)} ${Math.round(m.avgRecoveryScore)} (${m.daysLogged} days)`).join('; ')}.`
+        : null;
+
     const entries = (data?.entries || []).filter((e) => typeof e.recoveryScore === 'number');
     if (!entries.length) {
+        if (trendLine) return result('recovery', { findings: ['No recovery score in the last 30 days.', trendLine], data_used: ['recovery_monthly'], missing_data: ['recovery_recent'], confidence: 'low' });
         return noData('recovery', ['recovery_score'], 'No recovery score available (needs a wearable with heart rate / HRV data).');
     }
 
     const latest = entries[entries.length - 1];
     const findings = [];
+    if (trendLine) findings.push(trendLine);
     const band = latest.band?.label || latest.band?.key || (typeof latest.band === 'string' ? latest.band : null);
     findings.push(`Recovery score ${whenLabel(latest.date, now)}: ${Math.round(latest.recoveryScore)}/100${band ? ` (${band})` : ''}.`);
 

@@ -229,7 +229,6 @@ const LEGACY_WRITERS = {
         return {
             'profile.goals': primary.length ? primary : undefined,
             'profile.goalOther': g.other,
-            'nutritionGoal.targetWeight': g.targetWeightKg,
         };
     },
 };
@@ -251,7 +250,8 @@ const SCALAR_LEGACY_PATHS = {
         activityLevel: 'profile.activityLevel',
     },
     diet: { preference: 'profile.dietaryPreference' },
-    goals: { primary: 'profile.goals', other: 'profile.goalOther', targetWeightKg: 'nutritionGoal.targetWeight' },
+    // goals.targetWeightKg has no legacy copy: User.nutritionGoal was removed (26 Nov); HealthGoal follows it.
+    goals: { primary: 'profile.goals', other: 'profile.goalOther' },
 };
 
 // The legacy values the mirror would write for one section: { path: value },

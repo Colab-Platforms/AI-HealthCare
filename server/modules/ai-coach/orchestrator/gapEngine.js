@@ -23,17 +23,17 @@ const FIELDS = {
     allergies: {
         answered: (c) => listAnswered(c, 'allergies'),
         en: 'Do you have any food or medicine allergies?',
-        hi: 'Kya aapko kisi khane ya dawai se allergy hai?',
+        hi: 'Kisi khane ya dawai se allergy hai?',
     },
     medications: {
         answered: (c) => listAnswered(c, 'medications'),
         en: 'Are you taking any medicines or supplements right now?',
-        hi: 'Kya aap abhi koi dawai ya supplement le rahe hain?',
+        hi: 'Abhi koi dawai ya supplement chal raha hai?',
     },
     conditions: {
         answered: (c) => listAnswered(c, 'conditions'),
         en: 'Do you have any health conditions, like diabetes, BP or thyroid?',
-        hi: 'Kya aapko koi health condition hai, jaise diabetes, BP ya thyroid?',
+        hi: 'Koi health condition hai, jaise diabetes, BP ya thyroid?',
     },
     'fitness.limitations': {
         answered: (c) => has(c?.fitness?.limitations),
@@ -43,12 +43,12 @@ const FIELDS = {
     'diet.preference': {
         answered: (c) => has(c?.diet?.preference),
         en: 'Are you vegetarian, non-vegetarian, eggetarian, vegan or Jain?',
-        hi: 'Aap vegetarian hain, non-veg, eggetarian, vegan ya Jain?',
+        hi: 'Diet kaunsi hai: vegetarian, non-veg, eggetarian, vegan ya Jain?',
     },
     basics: {
         answered: (c) => has(c?.basic?.age) && has(c?.body?.heightCm) && has(c?.body?.weightKg),
         en: 'To make this more personal, could you share your age, height and weight?',
-        hi: 'Isse aur personal banane ke liye, apni age, height aur weight bata sakte hain?',
+        hi: 'Isse aur personal banane ke liye: age, height aur weight kitna hai?',
     },
 };
 
@@ -110,7 +110,8 @@ function pickGapQuestion(classification, profileContext, askedLog = {}, now = ne
     for (const field of candidates) {
         const def = FIELDS[field];
         if (!def || def.answered(profileContext) || isSnoozed(askedLog, field, now)) continue;
-        return { field, question: hinglish ? def.hi : def.en, blocking: isBlocking(field, classification) };
+        // Both wordings go to the answer model, which asks in its reply's language.
+        return { field, question: hinglish ? def.hi : def.en, questionAlt: hinglish ? def.en : def.hi, blocking: isBlocking(field, classification) };
     }
     return null;
 }

@@ -7,16 +7,14 @@
  * goal string with no instruction of what it means for the food. A user whose
  * HealthGoal said "gain" could therefore get a maintenance plan, and the reverse.
  *
- * Source of truth, in order (mirrors nutritionController.getHealthGoal, which
- * documents HealthGoal as authoritative and User.nutritionGoal as a mirror that
- * can lag):
- *   1. active HealthGoal
- *   2. User.nutritionGoal mirror
+ * Source of truth, in order:
+ *   1. active HealthGoal (the only stored goal; User.nutritionGoal removed 26 Nov)
+ *   2. old stored targets of a user not migrated yet (read-only)
  *   3. computed from the profile
  *   4. safe default
  */
 const HealthGoal = require('../models/HealthGoal');
-const { calculateNutritionGoals } = require('./nutritionGoalCalculator');
+// Fallback targets use HealthGoal.computeDraft: one formula for every target in the app.
 
 const GOAL_ALIASES = {
   maintenance: 'maintain',
@@ -95,6 +93,7 @@ async function resolveDietTargets(user) {
         carbsGoal: toNumber(hg.macroTargets?.carbs) || fallbackMacros.carbsGoal,
         fatGoal: toNumber(hg.macroTargets?.fats) || fallbackMacros.fatGoal,
         tdee: toNumber(hg.tdee),
+        targetWeight: toNumber(hg.targetWeight),
         source: 'health_goal',
       };
     }
@@ -102,8 +101,14 @@ async function resolveDietTargets(user) {
     console.warn('[DietTargets] HealthGoal lookup failed, falling back to profile mirror:', err.message);
   }
 
-  // 2. User.nutritionGoal mirror
-  const mirror = user?.nutritionGoal;
+  // 2. Old stored targets of a user the nutritionGoal migration hasn't reached
+  //    yet (read-only; User.nutritionGoal was removed 26 Nov).
+  let mirror = null;
+  try {
+    mirror = user?._id ? await require('./healthGoalService').legacyNutritionGoal(user._id) : null;
+  } catch (err) {
+    console.warn('[DietTargets] legacy goal lookup failed:', err.message);
+  }
   const mirrorCalories = toNumber(mirror?.calorieGoal);
   if (mirrorCalories) {
     return {
@@ -113,31 +118,35 @@ async function resolveDietTargets(user) {
       carbsGoal: toNumber(mirror.carbsGoal) || fallbackMacros.carbsGoal,
       fatGoal: toNumber(mirror.fatGoal) || fallbackMacros.fatGoal,
       tdee: null,
+      targetWeight: toNumber(mirror.targetWeight),
       source: 'user_mirror',
     };
   }
 
-  // 3. Compute from the profile, honouring the goal
+  // 3. Compute from the profile with the same formula as a saved HealthGoal
+  //    (nothing written), honouring the goal.
   const goal = normalizeGoal(mirror?.goal);
   try {
-    const calc = calculateNutritionGoals({
-      age: user?.profile?.age || 25,
-      gender: user?.profile?.gender || 'male',
-      weight: user?.profile?.weight || 70,
+    const draft = HealthGoal.computeDraft({
+      userId: user?._id,
+      goalType: goal,
+      currentWeight: user?.profile?.weight || 70,
+      targetWeight: toNumber(mirror?.targetWeight) || user?.profile?.weight || 70,
       height: user?.profile?.height || 170,
+      age: user?.profile?.age || 25,
+      gender: ['male', 'female', 'other'].includes(user?.profile?.gender) ? user.profile.gender : 'male',
       activityLevel: user?.profile?.activityLevel || 'moderately_active',
-      goal,
-      targetWeight: mirror?.targetWeight,
-      weeklyGoal: mirror?.weeklyGoal || 0.5,
+      weeklyGoal: toNumber(mirror?.weeklyGoal) || 0.5,
       isDiabetic,
     });
     return {
       goal,
-      calorieGoal: calc.calorieGoal,
-      proteinGoal: calc.proteinGoal,
-      carbsGoal: calc.carbsGoal,
-      fatGoal: calc.fatGoal,
-      tdee: calc.tdee,
+      calorieGoal: draft.dailyCalorieTarget,
+      proteinGoal: draft.macroTargets?.protein,
+      carbsGoal: draft.macroTargets?.carbs,
+      fatGoal: draft.macroTargets?.fats,
+      tdee: toNumber(draft.tdee) ? Math.round(draft.tdee) : null,
+      targetWeight: toNumber(mirror?.targetWeight),
       source: 'calculated',
     };
   } catch (err) {

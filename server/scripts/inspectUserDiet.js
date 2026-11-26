@@ -87,10 +87,9 @@ async function main() {
   const hg = await HealthGoal.findOne({ userId: user._id, isActive: true }).sort({ createdAt: -1 }).lean();
   const targets = await resolveDietTargets(user);
   console.log(`HealthGoal (source of truth): ${hg ? `${hg.goalType}, ${hg.dailyCalorieTarget} kcal, tdee ${hg.tdee || '-'}` : 'none'}`);
-  console.log(`User.nutritionGoal (mirror):  ${user.nutritionGoal ? `${user.nutritionGoal.goal}, ${user.nutritionGoal.calorieGoal || '-'} kcal` : 'none'}`);
-  if (hg && user.nutritionGoal?.calorieGoal && Math.abs(hg.dailyCalorieTarget - user.nutritionGoal.calorieGoal) > 50) {
-    console.log('  !! mirror and HealthGoal DISAGREE — the old generator read the mirror');
-  }
+  // User.nutritionGoal was removed 26 Nov; an old stored copy is only there until the migration unsets it.
+  const legacy = await require('../services/healthGoalService').legacyNutritionGoal(user._id);
+  console.log(`Old User.nutritionGoal:       ${legacy ? `${legacy.goal}, ${legacy.calorieGoal} kcal (not migrated yet)` : 'none'}`);
   console.log(`Generator will use: goal=${targets.goal}  ${targets.calorieGoal} kcal  (source: ${targets.source})`);
 
   // ---- active plan -----------------------------------------------------

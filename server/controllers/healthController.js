@@ -890,12 +890,15 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       });
     }
 
-    const calorieGoal = reqUser.nutritionGoal?.calorieGoal || 2100;
+    // Goal targets: HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
+    const nutritionGoal = await require('../services/healthGoalService').getNutritionGoal(reqUser._id);
+    const calorieGoal = nutritionGoal?.calorieGoal || 2100;
     // Trim the user object sent to the frontend — strip password/version/internal fields
     // reqUser is already a plain object (protect uses .lean()), so no toObject().
-    const { password, __v, ...trimmedUser } = reqUser;
+    // `nutritionGoal` is replaced: a lean read still carries the old stored field until the migration unsets it.
+    const { password, __v, nutritionGoal: _staleNutritionGoal, ...trimmedUser } = reqUser;
     const dashboardData = {
-      user: trimmedUser,
+      user: { ...trimmedUser, nutritionGoal },
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
       totalReports, recentReports: reports.slice(0, 5), reportTypeCounts, history,
       // null here means "no device/manual reading today" — distinct from a
@@ -908,7 +911,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
         steps: getStepGoal(userWithLogs).goalSteps,
         sleep: getSleepGoal(userWithLogs).goalHours,
         water: userWithLogs?.profile?.lifestyle?.waterGoalMl || 2000, // ml — directly comparable to history[].water / nutritionData.waterIntake, no glass conversion needed
-        weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65
+        weight: nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: nutritionGoal?.proteinGoal || 150, carbs: nutritionGoal?.carbsGoal || 200, fats: nutritionGoal?.fatGoal || 65
       },
       alcoholToday: alcoholSummary.today, alcoholTodayUnits: alcoholSummary.todayUnits,
       alcohol7DayAvg: alcoholSummary.avg7, alcoholSummary,
@@ -1260,68 +1263,13 @@ exports.getDrinkCatalog = async (req, res) => {
 // Unlike saveAlcoholLog (full-map replace, used for bulk/manual edit), this
 // only ever adds one session so two concurrent logs from the same user never
 // clobber each other.
+// Logic lives in services/activityLogService.js (also used by the AI coach).
 exports.logAlcoholSession = async (req, res) => {
   try {
-    const { drinkType, size, volumeMl: rawVolumeMl, abv: rawAbv, name, context, mood, notes, date } = req.body || {};
-
-    if (!drinkType || !isValidDrinkType(drinkType)) {
-      return res.status(400).json({ message: 'Invalid or missing drinkType' });
-    }
-
-    let volumeMl = rawVolumeMl;
-    let abv = rawAbv;
-
-    if (drinkType === 'other') {
-      // No catalog defaults exist for an unknown drink — refusing to guess is
-      // the whole point of 'other', so both fields are mandatory here.
-      if (volumeMl === undefined || abv === undefined) {
-        return res.status(400).json({ message: 'volumeMl and abv are required when drinkType is "other"' });
-      }
-    } else if (size) {
-      const defaults = getSizeDefaults(drinkType, size);
-      if (!defaults) {
-        return res.status(400).json({ message: `Invalid size "${size}" for drinkType "${drinkType}"` });
-      }
-      volumeMl = volumeMl ?? defaults.volumeMl;
-      abv = abv ?? defaults.defaultAbv;
-    } else if (volumeMl === undefined || abv === undefined) {
-      return res.status(400).json({ message: 'Provide either size or explicit volumeMl + abv' });
-    }
-
-    // Reject out-of-range values outright instead of silently clamping them —
-    // a client typo (abv=300) must surface as an error, never get saved as a
-    // wrong-but-plausible number.
-    const validationError = validateDrinkInput(volumeMl, abv);
-    if (validationError) {
-      return res.status(400).json({ message: validationError });
-    }
-
-    const session = sanitizeSession({ drinkType, volumeMl, abv, name, context, mood, notes, time: new Date().toISOString() });
-
-    const dateKey = date && ALCOHOL_DATE_KEY_RE.test(date) ? date : getTodayKey();
-    const path = `alcoholLog.${dateKey}`;
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        $push: { [`${path}.sessions`]: session },
-        $inc: {
-          [`${path}.count`]: 1,
-          [`${path}.units`]: session.units,
-          [`${path}.totalVolumeMl`]: session.volumeMl || 0
-        }
-      },
-      { new: true, upsert: false, runValidators: false }
-    ).select('alcoholLog');
-
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    await cache.delete(`dashboard:${req.user._id}`);
-    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
-
-    res.json({ success: true, session, alcoholLog: toPlainAlcoholLog(user.alcoholLog)[dateKey] });
+    const { session, day } = await require('../services/activityLogService').logAlcoholDrink(req.user._id, req.body || {});
+    res.json({ success: true, session, alcoholLog: day });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 

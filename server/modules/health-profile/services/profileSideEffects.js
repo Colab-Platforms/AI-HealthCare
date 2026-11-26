@@ -8,13 +8,14 @@
 // returned to the user. Every step reads the fresh User mirror, so it is safe
 // to run twice.
 
-const NUTRITION_SECTIONS = ['basic', 'body', 'goals', 'lifestyle'];
+// 'conditions': adding / removing diabetes changes the goal's calorie and carb targets.
+const NUTRITION_SECTIONS = ['basic', 'body', 'goals', 'lifestyle', 'conditions'];
 
 function createProfileSideEffects({
     User = require('../../../models/User'),
-    HealthGoal = require('../../../models/HealthGoal'),
+    HealthProfile = require('../models/HealthProfile'),
     PersonalizedDietPlan = require('../../../models/PersonalizedDietPlan'),
-    calculateNutritionGoals = require('../../../services/nutritionGoalCalculator').calculateNutritionGoals,
+    syncGoal = (userId, opts) => require('../../../services/healthGoalService').syncGoal(userId, opts),
     reconcileFoodPreferences = require('../../../utils/dietConstraints').reconcileFoodPreferences,
     normalizeDietaryPreference = require('../../../utils/dietaryPreference').normalizeDietaryPreference,
     regenerateDietPlan = (userId) => require('../../../controllers/dietRecommendationController').generateDietAfterReport(userId),
@@ -22,58 +23,27 @@ function createProfileSideEffects({
     logger = console,
 } = {}) {
 
-    // BMI + active HealthGoal + nutritionGoal targets, same rules as updateProfile.
+    // BMI + the active HealthGoal (the only stored goal and targets; it is
+    // recalculated from the profile by services/healthGoalService).
     async function syncNutrition(userId, sections) {
-        const user = await User.findById(userId).select('profile nutritionGoal').lean();
+        const user = await User.findById(userId).select('profile').lean();
         if (!user) return;
         const p = user.profile || {};
-        const $set = {};
 
         if (p.height && p.weight) {
-            $set['healthMetrics.bmi'] = Number((p.weight / Math.pow(p.height / 100, 2)).toFixed(1));
+            const bmi = Number((p.weight / Math.pow(p.height / 100, 2)).toFixed(1));
+            await User.updateOne({ _id: userId }, { $set: { 'healthMetrics.bmi': bmi } });
         }
 
-        const healthGoal = await HealthGoal.findOne({ userId, isActive: true });
-        if (healthGoal) {
-            healthGoal.height = p.height || healthGoal.height;
-            healthGoal.currentWeight = p.weight || healthGoal.currentWeight;
-            healthGoal.age = p.age || healthGoal.age;
-            healthGoal.gender = p.gender || healthGoal.gender;
-            // Target weight is a profile fact now (goals.targetWeightKg). Keep the
-            // goal in step, or the next weight log would copy the old one back.
-            const target = user.nutritionGoal?.targetWeight;
-            if (sections.includes('goals') && target > 0) healthGoal.targetWeight = target;
-            await healthGoal.save(); // pre-save hook recalculates calorie/macro targets
-            Object.assign($set, {
-                'nutritionGoal.calorieGoal': healthGoal.dailyCalorieTarget,
-                'nutritionGoal.proteinGoal': healthGoal.macroTargets?.protein || user.nutritionGoal?.proteinGoal,
-                'nutritionGoal.carbsGoal': healthGoal.macroTargets?.carbs || user.nutritionGoal?.carbsGoal,
-                'nutritionGoal.fatGoal': healthGoal.macroTargets?.fats || user.nutritionGoal?.fatGoal,
-                'nutritionGoal.lastUpdated': new Date(),
-            });
-        } else if (user.nutritionGoal?.calorieGoal && p.age && p.gender && p.height && p.weight) {
-            const ng = user.nutritionGoal;
-            const goals = calculateNutritionGoals({
-                age: p.age,
-                gender: p.gender,
-                weight: p.weight,
-                height: p.height,
-                activityLevel: p.activityLevel || 'sedentary',
-                goal: ng.goal || 'general_health',
-                targetWeight: ng.targetWeight,
-                weeklyGoal: ng.weeklyGoal || 0.5,
-                isDiabetic: p.isDiabetic === 'yes',
-            });
-            // Field by field, only the stored targets: never replace nutritionGoal
-            // as a whole (targetWeight is mirrored from the profile).
-            for (const k of ['calorieGoal', 'proteinGoal', 'carbsGoal', 'fatGoal', 'lastUpdated']) {
-                if (goals?.[k] !== undefined) $set[`nutritionGoal.${k}`] = goals[k];
-            }
+        // Target weight is a profile fact (goals.targetWeightKg). Keep the goal
+        // in step, or the next weight log would copy the old one back.
+        let targetWeight;
+        if (sections.includes('goals')) {
+            const hp = await HealthProfile.findOne({ user: userId }).select('goals.targetWeightKg').lean();
+            targetWeight = hp?.goals?.targetWeightKg;
         }
-
-        // Undefined values would make Mongo unset the path; drop them.
-        for (const k of Object.keys($set)) if ($set[k] === undefined) delete $set[k];
-        if (Object.keys($set).length) await User.updateOne({ _id: userId }, { $set });
+        // lifestyle changed (activity lives there) -> the goal follows the profile's activity.
+        await syncGoal(userId, { profile: p, targetWeight, syncActivity: sections.includes('lifestyle'), logger });
         await Promise.all([
             cache.delete(`dashboard:${userId}`),
             cache.delete(`health_goal:${userId}`),

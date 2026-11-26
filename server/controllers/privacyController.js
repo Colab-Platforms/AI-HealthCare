@@ -9,6 +9,7 @@ const ChatHistory = require('../models/ChatHistory');
 const HealthProfile = require('../modules/health-profile/models/HealthProfile');
 const ProfileHistory = require('../modules/health-profile/models/ProfileHistory');
 const CoachState = require('../modules/ai-coach/models/CoachState');
+const SymptomLog = require('../modules/ai-coach/models/SymptomLog');
 const { ZipArchive } = require('archiver');
 const emailService = require('../services/emailService');
 const Otp = require('../models/Otp');
@@ -129,7 +130,7 @@ exports.exportData = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        const [user, reports, documents, foodLogs, metrics, chatHistory, consentLogs, activityLogs, healthProfile, profileHistory, coachState] = await Promise.all([
+        const [user, reports, documents, foodLogs, metrics, chatHistory, consentLogs, activityLogs, healthProfile, profileHistory, coachState, symptomLogs] = await Promise.all([
             User.findById(userId).select('-password -resetPasswordCode -emailVerificationCode').lean(),
             HealthReport.find({ user: userId }).lean(),
             MedicalDocument.find({ userId }).lean(),
@@ -141,6 +142,7 @@ exports.exportData = async (req, res) => {
             HealthProfile.findOne({ user: userId }).lean(),
             ProfileHistory.find({ user: userId }).sort({ _id: 1 }).lean(),
             CoachState.findOne({ user: userId }).lean(),
+            SymptomLog.find({ user: userId }).sort({ startedAt: 1 }).lean(),
         ]);
 
         res.setHeader('Content-Type', 'application/zip');
@@ -164,6 +166,7 @@ exports.exportData = async (req, res) => {
         add('health_profile.json', healthProfile);
         add('health_profile_history.json', profileHistory);
         add('coach_state.json', coachState);
+        add('symptom_log.json', symptomLogs);
         add('README.txt',          `take.health Personal Data Export\nGenerated: ${new Date().toISOString()}\nThis archive contains all personal data stored for your account under DPDPA 2023.\n`);
 
         await archive.finalize();
@@ -473,6 +476,7 @@ exports.runDeletionCron = async () => {
                 HealthProfile.deleteMany({ user: uid }),
                 ProfileHistory.deleteMany({ user: uid }),
                 CoachState.deleteMany({ user: uid }),
+                SymptomLog.deleteMany({ user: uid }),
                 // NOT deleted here — DPDPA §6 evidence-of-compliance requires
                 // proof consent existed to outlive the account itself. Stamped
                 // instead; a separate cron purges these after CONSENT_LOG_RETENTION_YEARS.

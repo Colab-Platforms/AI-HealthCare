@@ -846,9 +846,13 @@ async function saveFinalInsight({ userId, date, insightType, data, composed, sou
 const OWN_SOURCE_TYPES = new Set(['sleep', 'recovery']);
 
 async function buildProfile(userId) {
-  const user = await User.findById(userId)
-    .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours profile.lifestyle.waterGoalMl profile.lifestyle.stepGoal nutritionGoal.goal')
-    .lean();
+  const [user, goal] = await Promise.all([
+    User.findById(userId)
+      .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours profile.lifestyle.waterGoalMl profile.lifestyle.stepGoal')
+      .lean(),
+    // Goal type: HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
+    require('../models/HealthGoal').findOne({ userId, isActive: true }).sort({ createdAt: -1 }).select('goalType').lean(),
+  ]);
 
   return {
     user,
@@ -859,7 +863,7 @@ async function buildProfile(userId) {
       goals: user?.profile?.goals || [],
       conditions: [...(user?.profile?.healthConditions || []), ...(user?.profile?.chronicConditions || [])],
       activityLevel: user?.profile?.activityLevel ?? null,
-      nutritionGoal: user?.nutritionGoal?.goal ?? null,
+      nutritionGoal: goal?.goalType ?? null,
     },
   };
 }

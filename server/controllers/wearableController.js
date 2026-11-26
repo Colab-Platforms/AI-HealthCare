@@ -631,111 +631,14 @@ exports.addHeartRate = async (req, res) => {
 };
 
 // Add sleep data
+// Logic lives in services/activityLogService.js (also used by the AI coach).
 exports.addSleepData = async (req, res) => {
   try {
-    const { deviceType = 'manual', sleepData } = req.body;
-
-    let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
-    if (!wearable) {
-      if (deviceType === 'manual') {
-        wearable = await WearableData.create({
-          user: req.user._id,
-          deviceType: 'manual',
-          deviceName: 'Manual Entry',
-          isConnected: false,
-          sleepData: []
-        });
-      } else {
-        return res.status(404).json({ message: 'Device not connected' });
-      }
-    }
-
-    // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
-    let targetDate;
-    if (sleepData.date && typeof sleepData.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sleepData.date)) {
-      const [y, m, d] = sleepData.date.split('-').map(Number);
-      targetDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-    } else {
-      targetDate = sleepData.date ? new Date(sleepData.date) : new Date();
-      targetDate.setUTCHours(0, 0, 0, 0);
-    }
-    const targetDateString = targetDate.toISOString().split('T')[0];
-
-    // Coerce all numeric fields to numbers before saving
-    if (sleepData.totalSleepMinutes !== undefined) sleepData.totalSleepMinutes = Number(sleepData.totalSleepMinutes) || 0;
-    if (sleepData.deepSleepMinutes !== undefined) sleepData.deepSleepMinutes = Number(sleepData.deepSleepMinutes) || 0;
-    if (sleepData.lightSleepMinutes !== undefined) sleepData.lightSleepMinutes = Number(sleepData.lightSleepMinutes) || 0;
-    if (sleepData.remSleepMinutes !== undefined) sleepData.remSleepMinutes = Number(sleepData.remSleepMinutes) || 0;
-    if (sleepData.awakeMinutes !== undefined) sleepData.awakeMinutes = Number(sleepData.awakeMinutes) || 0;
-
-    const existingIndex = wearable.sleepData.findIndex(s => {
-      const d = new Date(s.date);
-      return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
-             d.getUTCMonth() === targetDate.getUTCMonth() &&
-             d.getUTCDate() === targetDate.getUTCDate();
-    });
-
-    if (existingIndex >= 0) {
-      const existing = wearable.sleepData[existingIndex].toObject();
-      const updatedSleep = { ...existing, ...sleepData };
-
-      // If additive flag is present, add totalSleepMinutes/remSleepMinutes etc instead of replacing
-      if (req.body.isAdditive) {
-        if (sleepData.totalSleepMinutes !== undefined) updatedSleep.totalSleepMinutes = (existing.totalSleepMinutes || 0) + Number(sleepData.totalSleepMinutes);
-        if (sleepData.remSleepMinutes !== undefined) updatedSleep.remSleepMinutes = (existing.remSleepMinutes || 0) + Number(sleepData.remSleepMinutes);
-        if (sleepData.deepSleepMinutes !== undefined) updatedSleep.deepSleepMinutes = (existing.deepSleepMinutes || 0) + Number(sleepData.deepSleepMinutes);
-      }
-
-      wearable.sleepData[existingIndex] = {
-        ...updatedSleep,
-        date: targetDate
-      };
-      wearable.markModified('sleepData');
-    } else {
-      wearable.sleepData.push({ ...sleepData, date: targetDate });
-    }
-
-    await wearable.save();
-
-    // Mirror the resolved (additive-or-replace already settled above) entry
-    // into SleepSession — sleepAnalyticsService now reads from there, not
-    // the embedded array.
-    const resolvedSleep = wearable.sleepData.find(s => dateOnlyUTCFromDate(new Date(s.date)).getTime() === targetDate.getTime());
-    if (resolvedSleep) {
-      await SleepSession.findOneAndUpdate(
-        { user: req.user._id, deviceType, date: targetDate },
-        { $set: {
-            totalSleepMinutes: resolvedSleep.totalSleepMinutes,
-            deepSleepMinutes: resolvedSleep.deepSleepMinutes,
-            lightSleepMinutes: resolvedSleep.lightSleepMinutes,
-            remSleepMinutes: resolvedSleep.remSleepMinutes,
-            awakeMinutes: resolvedSleep.awakeMinutes,
-            sleepScore: resolvedSleep.sleepScore,
-            bedTime: resolvedSleep.bedTime,
-            wakeTime: resolvedSleep.wakeTime,
-            source: deviceType
-          } },
-        { upsert: true }
-      );
-    }
-
-    // Log fitness activity
-    await logActivity(req.user._id, 'LOG_SLEEP_DATA', 'fitness', {
-      deviceType,
-      totalSleepMinutes: sleepData.totalSleepMinutes,
-      remSleepMinutes: sleepData.remSleepMinutes,
-      deepSleepMinutes: sleepData.deepSleepMinutes
-    });
-
-    // Invalidate server-side dashboard cache so next fetch returns fresh data
-    cache.delete(`dashboard:${req.user._id}`);
-    cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
-    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
-    require('../utils/scoreRecompute').triggerRecoveryScoreRecompute(req.user._id, targetDateString);
-
+    const { deviceType = 'manual', sleepData, isAdditive } = req.body;
+    const wearable = await require('../services/activityLogService').saveSleep(req.user._id, { deviceType, sleepData, isAdditive: Boolean(isAdditive) });
     res.json(wearable);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 

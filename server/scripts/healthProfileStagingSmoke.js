@@ -73,7 +73,6 @@ async function main() {
             medicalHistory: { currentMedications: [] },
             lifestyle: { smoker: false, waterGoalMl: 2500, stepGoal: 8000 },
         },
-        nutritionGoal: { targetWeight: 70 },
     });
     const userId = user._id;
     console.log(`Test user: ${email} (${userId})\n`);
@@ -162,26 +161,27 @@ async function main() {
         const { mongoRepo } = require('../modules/health-profile/services/profileRepo');
         const flag = { on: true };
         const sync = createProfileSync({ service: svc, repo: mongoRepo, invalidate: async () => {}, enabled: () => flag.on });
-        const nutritionPatch = { $set: { nutritionGoal: { goal: 'weight_loss', targetWeight: 66, calorieGoal: 1700 } } };
+        // A caller's own User fields (User.nutritionGoal was removed 26 Nov; the
+        // goal lives in HealthGoal, so the caller patch here is BMI only).
+        const callerPatch = { $set: { 'healthMetrics.bmi': 25.2 } };
 
-        // 10. Health goal style write: nutritionGoal + age/height/weight/target in one transaction.
+        // 10. Health goal style write: caller patch + age/height/weight/target in one transaction.
         await sync.writeWithUser(userId, {
             basic: { age: 34 }, body: { heightCm: 177, weightKg: 79 }, goals: { targetWeightKg: 66 },
-        }, nutritionPatch, { source: 'manual' });
+        }, callerPatch, { source: 'manual' });
         p = await profile();
-        let full = await User.findById(userId).select('profile nutritionGoal').lean();
+        let full = await User.findById(userId).select('profile healthMetrics').lean();
         check('10. writeWithUser saved profile facts', p.basic.age === 34 && p.body.heightCm === 177 && p.body.weightKg === 79 && p.goals.targetWeightKg === 66);
         check('10. ...mirror + caller patch on the real User',
-            full.profile.age === 34 && full.profile.weight === 79 && full.nutritionGoal.targetWeight === 66 && full.nutritionGoal.calorieGoal === 1700,
-            JSON.stringify({ age: full.profile.age, w: full.profile.weight, ng: full.nutritionGoal }));
+            full.profile.age === 34 && full.profile.weight === 79 && full.healthMetrics?.bmi === 25.2,
+            JSON.stringify({ age: full.profile.age, w: full.profile.weight, bmi: full.healthMetrics?.bmi }));
 
-        // 11. Kill switch off: nutritionGoal + nutritionGoal.targetWeight must not
-        //     end up in one $set (real Mongo rejects that; the memory repo can't).
+        // 11. Kill switch off: legacy write + caller patch still work on real Mongo.
         flag.on = false;
         const offErr = await errorOf(() => sync.writeWithUser(userId, { body: { weightKg: 81 }, goals: { targetWeightKg: 65 } },
-            { $set: { nutritionGoal: { goal: 'weight_loss', targetWeight: 65, calorieGoal: 1650 } } }, { source: 'manual' }));
-        full = await User.findById(userId).select('profile nutritionGoal').lean();
-        check('11. kill switch off: legacy write works on real Mongo (no $set conflict)', !offErr && full.profile.weight === 81 && full.nutritionGoal.targetWeight === 65, offErr?.message);
+            { $set: { 'healthMetrics.bmi': 25.9 } }, { source: 'manual' }));
+        full = await User.findById(userId).select('profile healthMetrics').lean();
+        check('11. kill switch off: legacy write works on real Mongo (no $set conflict)', !offErr && full.profile.weight === 81 && full.healthMetrics?.bmi === 25.9, offErr?.message);
         check('11. ...and HealthProfile was not touched', (await profile()).body.weightKg === 79);
         flag.on = true;
 
@@ -240,12 +240,12 @@ async function main() {
         check('16. PATCH body with current version saved', patched.statusCode === 200 && patched.body.profile.body.weightKg === 75.5 && (await legacy()).weight === 75.5);
         check('16. ...same version again -> 409', stale409.statusCode === 409, `status ${stale409.statusCode}`);
 
-        // 17. Side effects on real models: BMI + nutrition targets recalculated (no HealthGoal, calorieGoal set by check 11)
-        full = await User.findById(userId).select('profile healthMetrics nutritionGoal').lean();
+        // 17. Side effects on real models: BMI recalculated; no User.nutritionGoal written (removed 26 Nov)
+        full = await User.findById(userId).select('profile healthMetrics').lean();
+        const rawUser = await User.collection.findOne({ _id: new mongoose.Types.ObjectId(String(userId)) }, { projection: { nutritionGoal: 1 } });
         const expectedBmi = Number((75.5 / Math.pow(full.profile.height / 100, 2)).toFixed(1));
         check('17. side effects: BMI updated from the new weight', full.healthMetrics?.bmi === expectedBmi, `bmi ${full.healthMetrics?.bmi}, expected ${expectedBmi}`);
-        check('17. ...nutrition targets recalculated, targetWeight kept', full.nutritionGoal?.calorieGoal > 0 && full.nutritionGoal.calorieGoal !== 1650 && full.nutritionGoal.targetWeight === 65,
-            JSON.stringify(full.nutritionGoal));
+        check('17. ...no User.nutritionGoal written', !rawUser?.nutritionGoal, JSON.stringify(rawUser?.nutritionGoal));
 
         // 18. POST item; forged provenance rejected
         const forged = await call('addItem', { params: { section: 'allergies' }, body: { item: { allergen: 'Shellfish', source: 'device' } } });
@@ -277,10 +277,10 @@ async function main() {
         await svc.addItem(userId, 'allergies', { allergen: 'Peanut', severity: 'severe', reaction: 'swelling' }, { source: 'chat' });
 
         // 22. Nothing changed in legacy -> nothing written (real Date/number types from Mongo).
-        //     First sync heals the drift check 11 left on purpose (kill switch off: legacy-only write).
-        const healed = await svc.syncFromLegacy(userId);
-        check('22. first sync heals earlier legacy-only drift (target weight from check 11)',
-            healed.changed && (await profile()).goals.targetWeightKg === 65, JSON.stringify(healed.sections));
+        //     The target weight has no legacy copy since 26 Nov (User.nutritionGoal removed),
+        //     so check 11's legacy-only write could not move it.
+        await svc.syncFromLegacy(userId);
+        check('22. target weight not taken from a legacy copy (none since 26 Nov)', (await profile()).goals.targetWeightKg === 66);
         const vNoop = (await profile()).version;
         const noopSync = await svc.syncFromLegacy(userId);
         check('22. sync with unchanged legacy data writes nothing', noopSync.changed === false && (await profile()).version === vNoop,
@@ -296,7 +296,7 @@ async function main() {
             JSON.stringify(legacySync.sections));
         check('23. ...Peanut kept its severity and reaction', peanutItem?.severity === 'severe' && peanutItem?.reaction === 'swelling');
         check('23. ...facts match after sync', require('../modules/health-profile/services/profileMigration').compareFacts(
-            await User.findById(userId).select('profile nutritionGoal').lean(), p).length === 0);
+            await User.findById(userId).select('profile').lean(), p).length === 0);
     } finally {
         if (KEEP) {
             console.log(`\n--keep: left user ${userId} and its profile/history on staging.`);

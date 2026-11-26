@@ -87,7 +87,7 @@ const foodLogSchema = new mongoose.Schema({
   notes: String,
   source: {
     type: String,
-    enum: ['manual', 'ai_vision', 'meal_plan'],
+    enum: ['manual', 'ai_vision', 'meal_plan', 'chat'], // chat = logged through the AI coach, after the user confirmed
     default: 'manual'
   },
   timestamp: {
