@@ -24,7 +24,7 @@ const LEGACY_PATHS = {
     'basic.age': 'profile.age',
     'body.heightCm': 'profile.height',
     'body.weightKg': 'profile.weight',
-    'goals.targetWeightKg': 'nutritionGoal.targetWeight',
+    // goals.targetWeightKg: no legacy copy (User.nutritionGoal removed 26 Nov).
 };
 
 const positiveNumber = (v) => {

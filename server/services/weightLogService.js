@@ -4,7 +4,7 @@
 // the same things:
 //   - HealthMetric 'weight' (one per UTC day, updated if it exists) -> weight graph / history
 //   - HealthProfile body.weightKg (mirrored to User.profile.weight) + healthMetrics.bmi
-//   - active HealthGoal currentWeight + weeklyWeightLogs, recalculated targets -> nutritionGoal
+//   - active HealthGoal currentWeight + weeklyWeightLogs, recalculated targets
 //   - dashboard / health-goal caches cleared
 // Input must already be validated (0 < weightKg <= 500).
 
@@ -68,27 +68,11 @@ async function logWeight({ userId, weightKg, date, notes, source = 'manual' }) {
     if (healthGoal) {
         healthGoal.currentWeight = weightKg;
         healthGoal.weeklyWeightLogs.push({ weight: weightKg, date: new Date(), notes });
-        await healthGoal.save({ maxTimeMS: 30000 }); // pre-save recalculates targets
-
-        const proteinGoal = healthGoal.macroTargets?.protein || 100;
-        const carbsGoal = healthGoal.macroTargets?.carbs || 250;
-        const fatGoal = healthGoal.macroTargets?.fats || 65;
+        await healthGoal.save({ maxTimeMS: 30000 }); // pre-save recalculates targets (the only stored targets)
 
         await profileSync.writeWithUser(userId, {
             goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
-        }, {
-            $set: {
-                nutritionGoal: {
-                    goal: healthGoal.goalType,
-                    targetWeight: healthGoal.targetWeight,
-                    calorieGoal: healthGoal.dailyCalorieTarget,
-                    proteinGoal,
-                    carbsGoal,
-                    fatGoal,
-                    lastUpdated: new Date(),
-                },
-            },
-        }, { source });
+        }, {}, { source });
     }
 
     cache.delete(`dashboard:${userId}`);

@@ -36,7 +36,7 @@ async function main() {
     const CoachState = require('../modules/ai-coach/models/CoachState');
     const { getTargets, formatTargets } = require('../modules/ai-coach/context/targets');
 
-    const user = await User.findOne({ email: EMAIL }).select('_id name createdAt profile nutritionGoal subscription').lean();
+    const user = await User.findOne({ email: EMAIL }).select('_id name createdAt profile subscription').lean();
     if (!user) {
         console.error(`No user ${EMAIL}.`);
         process.exit(1);

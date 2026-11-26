@@ -2,7 +2,7 @@
  * Test personas for the AI Coach on STAGING (used by createCoachTestUser.js).
  * Two users in different age bands, so the app's own targets differ
  * (exerciseGuidanceService: 18-64 adult vs 65+ older adult; age-based sleep
- * range; BMR-based calories from nutritionGoalCalculator):
+ * range; BMR-based calories from HealthGoal, the app's only goal):
  *
  *   a  Rahul, 24, male    muscle gain, vegetarian, peanut allergy, low Vit D / B12,
  *                        steps 5k -> 9.5k over 6 months, 2-week sick break ~2 months

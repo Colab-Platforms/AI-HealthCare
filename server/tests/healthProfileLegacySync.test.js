@@ -174,11 +174,15 @@ test('"none" is not lost when the old app sends [] back; "None of these" marks c
     assert.equal(t.hp().conditions.state, 'none');
 });
 
-test('target weight edited via nutritionGoal lands in goals.targetWeightKg', async () => {
+// 26 Nov: User.nutritionGoal is removed. The profile form's target weight goes
+// to goals.targetWeightKg through writeWithUser (authController.updateProfile),
+// not through a legacy-field sync, so a stale old field is ignored here.
+test('legacy sync ignores the old nutritionGoal.targetWeight (no legacy copy of the target weight)', async () => {
     const t = await setup();
-    t.oldAppSaves((u) => { u.nutritionGoal.targetWeight = 70; });
+    const before = t.hp().goals?.targetWeightKg;
+    t.oldAppSaves((u) => { u.nutritionGoal = { ...(u.nutritionGoal || {}), targetWeight: 70 }; });
     await t.svc.syncFromLegacy(USER);
-    assert.equal(t.hp().goals.targetWeightKg, 70);
+    assert.equal(t.hp().goals?.targetWeightKg, before);
 });
 
 test('self-healing: earlier missed syncs are all caught by the next one; facts match after', async () => {

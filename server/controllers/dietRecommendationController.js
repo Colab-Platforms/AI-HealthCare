@@ -113,7 +113,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     // as unrecognised strings.
     const targets = await resolveDietTargets(user);
     const bmiGoal = targets.goal;
-    const targetWeight = user.nutritionGoal?.targetWeight;
+    const targetWeight = targets.targetWeight; // from HealthGoal (User.nutritionGoal removed 26 Nov)
     const currentWeight = user.profile?.weight || 70;
     const height = user.profile?.height || 170;
     const heightInMeters = height / 100;

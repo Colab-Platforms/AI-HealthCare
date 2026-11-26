@@ -1,7 +1,8 @@
 // The targets the app itself has set for this user, and what is left of them
 // today. Every coach suggestion must fit inside these (no new numbers, no
 // going over the calorie target). Same sources the app screens use:
-//   calories / macros -> User.nutritionGoal (what the dashboard shows), else the active HealthGoal
+//   calories / macros -> the active HealthGoal (the only stored goal; User.nutritionGoal removed 26 Nov),
+//                        else a not-yet-migrated user's old stored targets (read-only)
 //   water             -> profile.lifestyle.waterGoalMl (default 2000, as the dashboard)
 //   steps             -> utils/stepGoal      sleep -> utils/sleepGoal
 //   weekly exercise   -> exerciseGuidanceService (age, goal type, profession)
@@ -22,24 +23,26 @@ async function defaultLoad(userId, now) {
     const start = dayStart(now);
     const end = new Date(start.getTime() + 86400000);
     const [user, healthGoal, dietPlan, today] = await Promise.all([
-        User.findById(userId).select('profile.age profile.profession profile.lifestyle nutritionGoal').lean(),
-        HealthGoal.findOne({ userId, isActive: true }).select('goalType targetWeight dailyCalorieTarget macroTargets').lean(),
+        User.findById(userId).select('profile.age profile.profession profile.lifestyle').lean(),
+        HealthGoal.findOne({ userId, isActive: true }).sort({ createdAt: -1 }).select('goalType targetWeight dailyCalorieTarget macroTargets').lean(),
         PersonalizedDietPlan.findOne({ userId, isActive: true }).select('dailyCalorieTarget macroTargets').lean(),
         NutritionSummary.findOne({ userId, date: { $gte: start, $lt: end } })
             .select('totalCalories totalProtein totalCarbs totalFats waterIntake').lean(),
     ]);
-    return { user, healthGoal, dietPlan, today };
+    // Not migrated yet (no HealthGoal): the old stored targets, read-only.
+    const legacy = healthGoal ? null : await require('../../../services/healthGoalService').legacyNutritionGoal(userId).catch(() => null);
+    return { user, healthGoal, dietPlan, today, legacy };
 }
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : null);
 
-function computeTargets({ user, healthGoal, dietPlan, today }) {
+function computeTargets({ user, healthGoal, dietPlan, today, legacy = null }) {
     if (!user) return null;
     const { getStepGoal } = require('../../../utils/stepGoal');
     const { getSleepGoal } = require('../../../utils/sleepGoal');
     const { getExerciseGuidance } = require('../../../services/exerciseGuidanceService');
 
-    const ng = user.nutritionGoal || {};
+    const ng = legacy || {};
     const age = user.profile?.age;
     const goalType = healthGoal?.goalType || ng.goal || null;
     // getExerciseGuidance(null) falls into the youth bucket (`null <= 17` is
@@ -51,10 +54,10 @@ function computeTargets({ user, healthGoal, dietPlan, today }) {
     const sleep = getSleepGoal(user);
 
     const t = {
-        calories: num(ng.calorieGoal) ?? num(healthGoal?.dailyCalorieTarget),
-        protein: num(ng.proteinGoal) ?? num(healthGoal?.macroTargets?.protein),
-        carbs: num(ng.carbsGoal) ?? num(healthGoal?.macroTargets?.carbs),
-        fat: num(ng.fatGoal) ?? num(healthGoal?.macroTargets?.fats),
+        calories: num(healthGoal?.dailyCalorieTarget) ?? num(ng.calorieGoal),
+        protein: num(healthGoal?.macroTargets?.protein) ?? num(ng.proteinGoal),
+        carbs: num(healthGoal?.macroTargets?.carbs) ?? num(ng.carbsGoal),
+        fat: num(healthGoal?.macroTargets?.fats) ?? num(ng.fatGoal),
         waterMl: num(user.profile?.lifestyle?.waterGoalMl) ?? 2000,
         steps: getStepGoal(user, age).goalSteps,
         sleepHours: sleep.goalHours,
@@ -64,7 +67,7 @@ function computeTargets({ user, healthGoal, dietPlan, today }) {
         // The app's own exercise note for this age / goal (65+: balance training).
         exerciseNote: typeof guidance.note === 'string' && guidance.note.trim() ? guidance.note.trim() : null,
         goalType,
-        targetWeightKg: num(ng.targetWeight) ?? num(healthGoal?.targetWeight),
+        targetWeightKg: num(healthGoal?.targetWeight) ?? num(ng.targetWeight),
         dietPlanCalories: num(dietPlan?.dailyCalorieTarget),
     };
     const eaten = {

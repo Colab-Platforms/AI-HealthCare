@@ -68,7 +68,9 @@ test('updateSections: several sections, one version, mirror only for changed sec
     assert.equal(profile().version, 2);
     assert.equal(profile().basic.age, 33);
     assert.equal(user().profile.age, 33);
-    assert.equal(user().nutritionGoal.targetWeight, 68);
+    assert.equal(profile().goals.targetWeightKg, 68);
+    // No legacy copy of the target weight any more (User.nutritionGoal removed 26 Nov).
+    assert.notEqual(user().nutritionGoal?.targetWeight, 68);
     // body was unchanged: no history entry, and only changed sections mirrored
     assert.deepEqual(repo.state.history.filter((h) => h.profileVersion === 2).map((h) => h.field).sort(), ['basic.age', 'goals.targetWeightKg']);
     assert.deepEqual(committed.at(-1).sort(), ['basic', 'goals']);

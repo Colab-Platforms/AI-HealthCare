@@ -82,6 +82,19 @@ From the user's own terminal chat (persona a) and a same-questions run on a (24)
 - Tests: `aiCoachRound4.test.js`, `aiCoachAge.test.js`, updated `aiCoachProfileTools` / `aiCoachOpener`.
 - Not fixed, noted: "yes" to a profile save takes ~3 s (fixed reply is ~1.3 s for undo); the vault nudge sometimes rides on unrelated answers.
 
+### 26 Nov: one stored goal (User.nutritionGoal removed)
+
+Problem: two calorie formulas. Signup wrote `User.nutritionGoal` (services/nutritionGoalCalculator, the user's picked pace), and created a HealthGoal whose hook used target ÷ 12 weeks and never got the diabetes flag; the dashboard read one, daily summaries / goal screen the other (persona b: 1625 vs 1476).
+
+- **HealthGoal is the only stored goal and daily targets.** `User.nutritionGoal` is gone from the schema; all writes go through `services/healthGoalService.syncGoal` (signup, onboarding `PUT /auth/profile`, health-profile side effects) or the goal screen / weight log (HealthGoal directly).
+- **Pace rule** (`resolveRequestedRate` in `models/HealthGoal.js`, used by the calorie target AND the consent check): target date, else the pace the user picked (`weeklyGoal`, new field; onboarding default 0.5), else 12 weeks. `isDiabetic` comes from the profile (incl. `healthConditions`).
+- **App compatibility:** login / register / `GET+PUT /auth/profile` / dashboard / admin user detail still return a `nutritionGoal` object, built from HealthGoal (`HealthGoal.toNutritionGoal`); no goal -> `{ goal: 'general_health', autoCalculated: true }` (never null).
+- **Activity:** the goal screen's activity is written to the profile too; a profile activity edit updates the goal (`syncActivity`); otherwise the goal keeps its own (staging had goal "moderate" vs profile "sedentary").
+- **Readers moved to HealthGoal:** dashboard, daily health score, daily insights, diet generator (`dietTargets`), old chat route, coach targets. Target weight has no legacy copy any more (HealthProfile `goals.targetWeightKg` -> HealthGoal).
+- **Migration** `scripts/migrateNutritionGoal.js` (dry run default; `--apply`; `--apply --unset`): adds the picked pace only where the two numbers disagreed, keeps manual targets and the goal's own activity, creates no goal for users who never had targets. Staging: applied + unset (16 users), 18/18 users consistent.
+- **Tests:** `tests/healthGoalSingleSource.test.js` (12) + updated side-effect / legacy-sync / coach / daily-score tests; full suite 878 pass (4 known vault failures). Staging e2e `scripts/nutritionGoalStagingE2E.js`: 85/85 (old users + 3 new users, cleaned up after; the auth limiter allows ~1 run per 15 min).
+- Production steps: rollout checklist item 7.
+
 ### Next: coach knows the app (agreed 25 Nov, small set first)
 
 User wants the coach to know everything about the app and the user, with create / update from chat. Phase A (read): account (plan, status, valid till, plan features, last invoice), vitals (heart rate, SpO2, BP, stress), 7-30 day water history, supplements / doses, appointments, orders, health score, a short "which screen does what" app guide; each loaded only when the question needs it. Phase B (write, always "do this? yes / no" + undo, through the app's existing services): goal change (e.g. fat loss to 60 kg), water / sleep / workout log, meal edit / delete, supplement add / stop, reminders. Phase C stays OFF in chat (decided 25 Nov): subscription cancel, payments, account / report / vault deletes: the coach only points to the screen. First: account + subscription read, goal change, heart rate + water history. Today "subscription plan" questions are answered as off_topic.
@@ -255,6 +268,7 @@ Staging note: only 14 users, all with clean data, so the "invalid legacy data" p
 4. `node scripts/migrateHealthProfile.js --prod` (dry run), review invalid users, then `--prod --apply`, then `--prod --verify`.
 5. Fix the users listed as invalid (their old data breaks the schema); until then their writes fall back to legacy-only and are logged.
 6. Note: the full `syncIndexes.js` run now also covers shop models; use `--dry-run` first and review anything it would drop.
+7. **nutritionGoal removal (26 Nov), right after the deploy:** `node scripts/migrateNutritionGoal.js --prod` (dry run: old -> new kcal per user), review, then `--apply --prod`; check the app; then `--apply --unset --prod`. Until step 7 runs, unmigrated users see their old numbers through a read-only fallback.
 
 ### Decisions made while coding
 

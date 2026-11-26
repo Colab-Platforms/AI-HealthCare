@@ -145,15 +145,7 @@ async function main() {
         process.exit(1);
     }
 
-    // Calorie / macro targets the way signup computes them (age-dependent BMR).
-    const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
     const p = PERSONA.profile;
-    const calc = calculateNutritionGoals({
-        age: p.age, gender: p.gender, weight: p.weight, height: p.height,
-        activityLevel: p.activityLevel, goal: PERSONA.goal.goal, targetWeight: PERSONA.goal.targetWeight,
-        weeklyGoal: PERSONA.goal.weeklyGoal, isDiabetic: p.isDiabetic === 'yes',
-    });
-    const nutritionGoal = { ...PERSONA.goal, ...calc, autoCalculated: true };
 
     const password = newPassword();
     const subscription = {
@@ -165,7 +157,6 @@ async function main() {
     const fields = {
         name: PERSONA.name,
         profile: p,
-        nutritionGoal,
         subscription,
         isEmailVerified: true,
         privacyPolicyAccepted: true,
@@ -177,6 +168,8 @@ async function main() {
         existing.set(fields);
         existing.password = password; // hashed by the User pre-save hook
         await existing.save();
+        // The removed User.nutritionGoal field (26 Nov) must not linger on the test user.
+        await M.User.collection.updateOne({ _id: existing._id }, { $unset: { nutritionGoal: '' } });
         user = existing;
         await removeSeed(user._id);
         await clearCoach(user._id);
@@ -200,16 +193,18 @@ async function main() {
     // plus what onboarding can't express (injuries) as a manual edit.
     const { createProfileWriteService } = require('../modules/health-profile/services/profileWriteService');
     const svc = createProfileWriteService({ afterCommit: async () => {} });
-    await svc.createFromOnboarding(user._id, user.toObject(), { source: 'manual' });
+    // The onboarding goal input (not stored on User) carries the target weight.
+    await svc.createFromOnboarding(user._id, { ...user.toObject(), nutritionGoal: { targetWeight: PERSONA.goal.targetWeight } }, { source: 'manual' });
     await svc.updateSection(user._id, 'fitness', { limitations: PERSONA.limitations.length ? PERSONA.limitations : ['none'] }, { source: 'manual' });
 
-    // Active HealthGoal, created the way signup creates it (hooks compute BMR / TDEE / macros).
+    // Active HealthGoal (the only stored goal + targets), created the way signup
+    // creates it: healthGoalService.syncGoal with the onboarding goal input.
     const startWeight = PERSONA_KEY === 'a' ? 71 : 88;
-    await M.HealthGoal.create({
-        userId: user._id, goalType: PERSONA.goal.goal, currentWeight: p.weight, startWeight,
-        targetWeight: PERSONA.goal.targetWeight, height: p.height, age: p.age, gender: p.gender,
-        activityLevel: p.activityLevel, isActive: true, startDate: dayUTC(DAYS - 1),
-    });
+    const goal = await require('../services/healthGoalService').syncGoal(user._id, { profile: p, input: PERSONA.goal, create: true });
+    if (!goal) throw new Error('HealthGoal not created for the persona');
+    goal.startWeight = startWeight;
+    goal.startDate = dayUTC(DAYS - 1);
+    await goal.save();
 
     if (!has('no-data')) await seedData(M, user._id);
 
@@ -227,7 +222,7 @@ async function main() {
     console.log(`  password: ${password}`);
     console.log(`  user id:  ${user._id}`);
     console.log(`  plan:     ${plan.key} (${plan.billingCycle || 'monthly'}), active for 90 days`);
-    console.log(`  targets:  ${calc.calorieGoal} kcal, protein ${calc.proteinGoal} g (age-based calculator)`);
+    console.log(`  targets:  ${goal.dailyCalorieTarget} kcal, protein ${goal.macroTargets?.protein} g (HealthGoal)`);
     console.log('─────────────────────────────────────────────');
     console.log('Shown once. Run with --reset to get a new one.\n');
 }

@@ -30,6 +30,9 @@ const healthGoalProfileFacts = (healthGoal) => ({
     weightKg: profileSync.positiveNumber(healthGoal.currentWeight),
   },
   goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
+  // The activity picked on the goal screen is the profile's too, so the two
+  // never disagree (staging 26 Nov: goal "moderate", profile "sedentary").
+  ...(healthGoal.activityLevel ? { lifestyle: { activityLevel: healthGoal.activityLevel } } : {}),
 });
 
 // Helper function to add timeout to all queries for Vercel compatibility
@@ -934,11 +937,14 @@ exports.setHealthGoal = async (req, res) => {
     // Warn before saving an unrealistic timeframe instead of silently capping
     // it — the calorie math still caps it regardless (see calculateCalorieTarget),
     // this only decides whether the user gets told about it up front.
+    // Same pace rule as the calorie target: no date -> the user's saved pace.
+    const savedPace = (await withTimeout(HealthGoal.findOne({ userId: req.user._id }).select('weeklyGoal').lean()))?.weeklyGoal;
     const rateCheck = HealthGoal.checkRequestedRate({
       goalType: sanitizedData.goalType,
       currentWeight: sanitizedData.currentWeight,
       targetWeight: sanitizedData.targetWeight,
       targetDate: sanitizedData.targetDate,
+      weeklyGoal: Number(req.body.weeklyGoal) || savedPace,
     });
     if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
       return res.status(422).json({
@@ -965,27 +971,9 @@ exports.setHealthGoal = async (req, res) => {
 
     await healthGoal.save({ maxTimeMS: 30000 });
     
-    // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
-    // Ensure macroTargets exist before accessing them to avoid crashes
-    const proteinGoal = healthGoal.macroTargets?.protein || 150;
-    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
-    const fatGoal = healthGoal.macroTargets?.fats || 65;
-
-    // nutritionGoal + age/height/weight/target weight in one transaction;
-    // the profile facts go through HealthProfile (mirrored to User.profile).
-    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {
-      $set: {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal: proteinGoal,
-          carbsGoal: carbsGoal,
-          fatGoal: fatGoal,
-          lastUpdated: new Date()
-        }
-      }
-    }, { source: 'manual' });
+    // HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
+    // Age / height / weight / target weight go to HealthProfile (mirrored to User.profile).
+    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {}, { source: 'manual' });
 
     // Invalidate server-side dashboard cache and the 15-min cached active goal used by
     // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
@@ -1029,9 +1017,7 @@ exports.setHealthGoal = async (req, res) => {
 // Get health goal
 exports.getHealthGoal = async (req, res) => {
   try {
-    // HealthGoal is the source of truth — User.nutritionGoal is just a best-effort mirror
-    // kept in sync by the goal-setting endpoints, and can lag behind (e.g. if a goal doc
-    // was saved by a path that forgot to update it). Prefer the real doc when it exists.
+    // HealthGoal is the only stored goal (User.nutritionGoal was removed 26 Nov).
     const healthGoal = await withTimeout(
       HealthGoal.findOne({ userId: req.user._id, isActive: true }).sort({ createdAt: -1 })
     );
@@ -1046,22 +1032,23 @@ exports.getHealthGoal = async (req, res) => {
       });
     }
 
-    // Fallback to the User.nutritionGoal mirror only when no HealthGoal doc exists at all
-    const user = await withTimeout(require('../models/User').findById(req.user._id));
+    // No HealthGoal yet: a user the nutritionGoal migration hasn't reached
+    // still has the old stored targets (read-only, services/healthGoalService).
+    const legacy = await require('../services/healthGoalService').getNutritionGoal(req.user._id);
 
-    if (user && user.nutritionGoal && user.nutritionGoal.calorieGoal) {
+    if (legacy && legacy.calorieGoal) {
       return res.json({
         success: true,
         healthGoal: {
           userId: req.user._id,
-          dailyCalorieTarget: user.nutritionGoal.calorieGoal,
+          dailyCalorieTarget: legacy.calorieGoal,
           macroTargets: {
-            protein: user.nutritionGoal.proteinGoal || 150,
-            carbs: user.nutritionGoal.carbsGoal || 200,
-            fats: user.nutritionGoal.fatGoal || 65
+            protein: legacy.proteinGoal || 150,
+            carbs: legacy.carbsGoal || 200,
+            fats: legacy.fatGoal || 65
           },
-          goal: user.nutritionGoal.goal,
-          targetWeight: user.nutritionGoal.targetWeight,
+          goal: legacy.goal,
+          targetWeight: legacy.targetWeight,
           source: 'user_profile'
         }
       });
@@ -1093,11 +1080,13 @@ exports.updateHealthGoal = async (req, res) => {
       manualCalorieTarget: undefined
     };
 
+    const savedPace = (await withTimeout(HealthGoal.findOne({ userId: req.user._id }).select('weeklyGoal').lean()))?.weeklyGoal;
     const rateCheck = HealthGoal.checkRequestedRate({
       goalType: goalData.goalType,
       currentWeight: Number(goalData.currentWeight),
       targetWeight: Number(goalData.targetWeight),
       targetDate: goalData.targetDate,
+      weeklyGoal: Number(req.body.weeklyGoal) || savedPace,
     });
     if (rateCheck.isUnsafe && req.body.acknowledgeUnsafe !== true) {
       return res.status(422).json({
@@ -1118,24 +1107,8 @@ exports.updateHealthGoal = async (req, res) => {
 
     await healthGoal.save({ maxTimeMS: 30000 });
 
-    // SYNC: Update user's nutritionGoal in User model
-    const proteinGoal = healthGoal.macroTargets?.protein || 150;
-    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
-    const fatGoal = healthGoal.macroTargets?.fats || 65;
-
-    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {
-      $set: {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal: proteinGoal,
-          carbsGoal: carbsGoal,
-          fatGoal: fatGoal,
-          lastUpdated: new Date()
-        }
-      }
-    }, { source: 'manual' });
+    // HealthGoal is the only stored goal; profile facts go to HealthProfile.
+    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {}, { source: 'manual' });
 
     // Invalidate server-side dashboard cache and the 15-min cached active goal used by
     // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
@@ -1230,28 +1203,11 @@ exports.setCalorieOverride = async (req, res) => {
     healthGoal.unsafeOverrideAcknowledged = belowFloor || exceedsRateCap;
     await healthGoal.save({ maxTimeMS: 30000 });
 
-    const proteinGoal = healthGoal.macroTargets?.protein || 150;
-    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
-    const fatGoal = healthGoal.macroTargets?.fats || 65;
-
     // targetWeight is also HealthProfile goals.targetWeightKg, so it goes
     // through the bridge too (no-op when unchanged).
     await profileSync.writeWithUser(req.user._id, {
       goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
-    }, {
-      $set: {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal,
-          carbsGoal,
-          fatGoal,
-          autoCalculated: false,
-          lastUpdated: new Date()
-        }
-      }
-    }, { source: 'manual' });
+    }, {}, { source: 'manual' });
 
     cache.delete(`dashboard:${req.user._id}`);
     cache.delete(`health_goal:${req.user._id}`);
@@ -1292,7 +1248,7 @@ exports.logWeight = async (req, res) => {
     }
 
     // Shared with the AI coach: services/weightLogService.js does every write
-    // (HealthMetric, HealthProfile + BMI, HealthGoal, nutritionGoal, caches).
+    // (HealthMetric, HealthProfile + BMI, HealthGoal, caches).
     const { metric, healthGoal } = await require('../services/weightLogService')
       .logWeight({ userId: req.user._id, weightKg, date, notes, source: 'manual' });
 

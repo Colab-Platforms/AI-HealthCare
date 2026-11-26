@@ -162,21 +162,10 @@ const userSchema = new mongoose.Schema({
     },
     hasSeenMobileTour: { type: Boolean, default: false }
   },
-  nutritionGoal: {
-    goal: {
-      type: String,
-      enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health', 'disease_management'],
-      default: 'general_health'
-    },
-    targetWeight: Number, // in kg
-    weeklyGoal: Number, // kg per week (0.25, 0.5, 1)
-    calorieGoal: Number,
-    proteinGoal: Number, // in grams
-    carbsGoal: Number, // in grams
-    fatGoal: Number, // in grams
-    autoCalculated: { type: Boolean, default: true },
-    lastUpdated: Date
-  },
+  // nutritionGoal: REMOVED 26 Nov. The goal and daily targets live only in
+  // HealthGoal (services/healthGoalService). API responses still carry a
+  // `nutritionGoal` object, built from HealthGoal (HealthGoal.toNutritionGoal).
+  // Old documents keep the stored field until scripts/migrateNutritionGoal.js --unset.
   foodPreferences: {
     region: { type: String, enum: ['north', 'south', 'east', 'west', 'northeast', 'other'], default: 'other' },
     country: { type: String, default: 'India' },

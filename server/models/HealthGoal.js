@@ -47,6 +47,9 @@ const healthGoalSchema = new mongoose.Schema({
     default: 'sedentary'
   },
   targetDate: Date,
+  // Pace the user picked at onboarding (kg/week, 0.25 / 0.5 / 1). Used when
+  // there is a target weight but no target date (resolveRequestedRate).
+  weeklyGoal: { type: Number, min: 0, max: 2 },
 
   // Calculated values
   bmr: Number, // Basal Metabolic Rate
@@ -183,16 +186,37 @@ healthGoalSchema.statics.resolveTargetDate = function ({ targetDate, targetWeeks
 // controller can warn the user about an unrealistic timeframe before saving
 // (instead of silently capping it, which is what calculateCalorieTarget()
 // still does regardless — this is purely about informing the user up front).
-healthGoalSchema.statics.checkRequestedRate = function ({ goalType, currentWeight, targetWeight, targetDate }) {
+// The weekly pace a goal asks for, in one place (calorie target + consent
+// check). Order: a real target date; else the pace the user picked
+// (weeklyGoal, onboarding); else the 12-week default. Before weeklyGoal, a
+// signup goal without a date always used 12 weeks: a 67-year-old asking for
+// 0.25 kg/week got 0.75 kg/week (staging 26 Nov).
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+function resolveRequestedRate({ currentWeight, targetWeight, targetDate, weeklyGoal }) {
+  const diff = targetWeight - currentWeight;
+  if (targetDate) {
+    const weeks = Math.max(1, (new Date(targetDate) - Date.now()) / WEEK_MS);
+    return { requestedWeeklyRate: diff / weeks, weeksUsed: weeks, timeframeReceived: true };
+  }
+  const pace = Number(weeklyGoal);
+  if (pace > 0) {
+    return {
+      requestedWeeklyRate: Math.sign(diff) * pace,
+      weeksUsed: diff ? Math.abs(diff) / pace : 0,
+      timeframeReceived: true,
+    };
+  }
+  return { requestedWeeklyRate: diff / 12, weeksUsed: 12, timeframeReceived: false };
+}
+
+healthGoalSchema.statics.checkRequestedRate = function ({ goalType, currentWeight, targetWeight, targetDate, weeklyGoal }) {
   const hasWeightGoal = ['weight_loss', 'weight_gain', 'muscle_gain'].includes(goalType);
   if (!hasWeightGoal || !targetWeight || !currentWeight) {
     return { isUnsafe: false };
   }
 
-  const weeksAvailable = targetDate
-    ? Math.max(1, (new Date(targetDate) - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-    : 12;
-  const requestedWeeklyRate = (targetWeight - currentWeight) / weeksAvailable;
+  const { requestedWeeklyRate, weeksUsed, timeframeReceived } = resolveRequestedRate({ currentWeight, targetWeight, targetDate, weeklyGoal });
+  const weeksAvailable = weeksUsed;
 
   const maxRateFraction = requestedWeeklyRate < 0
     ? MAX_WEEKLY_RATE_FRACTION.weight_loss
@@ -206,7 +230,7 @@ healthGoalSchema.statics.checkRequestedRate = function ({ goalType, currentWeigh
     // Surfaced so a missing or unreadable timeframe is visible: it silently
     // became 12 weeks, which made a 48-week goal look unsafe.
     weeksUsed: Math.round(weeksAvailable),
-    timeframeReceived: !!targetDate,
+    timeframeReceived,
   };
 };
 
@@ -243,11 +267,13 @@ healthGoalSchema.methods.calculateCalorieTarget = function () {
   if (hasWeightGoal && this.targetWeight && this.currentWeight) {
     // Derive the rate the user is IMPLICITLY asking for from targetWeight + targetDate,
     // instead of using a flat constant that ignores both entirely.
-    const weeksAvailable = this.targetDate
-      ? Math.max(1, (new Date(this.targetDate) - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-      : 12; // sane default when no timeframe was given
-
-    const requestedWeeklyRate = (this.targetWeight - this.currentWeight) / weeksAvailable;
+    // Target date, else the user's picked pace, else 12 weeks (resolveRequestedRate).
+    const { requestedWeeklyRate } = resolveRequestedRate({
+      currentWeight: this.currentWeight,
+      targetWeight: this.targetWeight,
+      targetDate: this.targetDate,
+      weeklyGoal: this.weeklyGoal,
+    });
 
     // The safety cap always follows the DIRECTION actually implied by target vs. current
     // weight, not the selected goalType label. Previously a mismatched label (e.g. "weight_loss"
@@ -461,6 +487,38 @@ healthGoalSchema.pre('save', function (next) {
 
   next();
 });
+
+// The goal in the old `User.nutritionGoal` shape. That field is gone (26 Nov:
+// HealthGoal is the only stored goal); API responses that used to carry it
+// (login, profile, dashboard) build it from here so the app sees the same keys.
+healthGoalSchema.statics.toNutritionGoal = function (goal) {
+  if (!goal) return null;
+  return {
+    goal: goal.goalType,
+    targetWeight: goal.targetWeight,
+    weeklyGoal: goal.weeklyGoal ?? undefined,
+    calorieGoal: goal.dailyCalorieTarget,
+    proteinGoal: goal.macroTargets?.protein,
+    carbsGoal: goal.macroTargets?.carbs,
+    fatGoal: goal.macroTargets?.fats,
+    bmr: goal.bmr != null ? Math.round(goal.bmr) : undefined,
+    tdee: goal.tdee != null ? Math.round(goal.tdee) : undefined,
+    autoCalculated: goal.calorieSource !== 'manual',
+    lastUpdated: goal.updatedAt,
+  };
+};
+
+// Same formula as a saved goal, nothing written (fallback targets for a user
+// without a goal, previews). `fields` = HealthGoal fields.
+healthGoalSchema.statics.computeDraft = function (fields) {
+  const draft = new this(fields);
+  draft.startWeight = draft.currentWeight;
+  draft.calculateBMR();
+  draft.calculateTDEE();
+  draft.calculateCalorieTarget();
+  draft.calculateMacros();
+  return draft;
+};
 
 healthGoalSchema.index({ userId: 1, isActive: 1 }); // fetch active goal per user
 

@@ -110,63 +110,60 @@ test('getProfileContext: never writes (no profile created); unknown user -> null
 
 // ── side effects ───────────────────────────────────────────────────────────
 
-function fakeModels({ user, healthGoal = null, hasActivePlan = false }) {
+function fakeModels({ user, healthProfile = null, hasActivePlan = false, syncGoal }) {
     const updates = [];
     const regenerated = [];
     const deleted = [];
+    const goalSyncs = [];
     const query = (value) => ({ select: () => ({ lean: async () => value }) });
     const deps = {
         User: {
             findById: () => query(user),
             updateOne: async (filter, update) => { updates.push(update); },
         },
-        HealthGoal: { findOne: async () => healthGoal },
+        HealthProfile: { findOne: () => query(healthProfile) },
         PersonalizedDietPlan: { exists: async () => hasActivePlan },
-        calculateNutritionGoals: () => ({ bmr: 1600, tdee: 2000, calorieGoal: 1800, proteinGoal: 90, carbsGoal: 200, fatGoal: 60, estimatedWeeks: 10, lastUpdated: NOW }),
+        syncGoal: syncGoal || (async (userId, opts) => { goalSyncs.push({ userId, ...opts }); return null; }),
         reconcileFoodPreferences: (diet, prefs) => ({ prefs: { ...prefs, likes: [] }, dropped: diet === 'jain' ? [] : ['Jain'] }),
         normalizeDietaryPreference: (d) => d || null,
         regenerateDietPlan: async (id) => { regenerated.push(id); },
         cache: { delete: async (k) => { deleted.push(k); } },
         logger: { error: () => {} },
     };
-    return { deps, updates, regenerated, deleted };
+    return { deps, updates, regenerated, deleted, goalSyncs };
 }
 
 const tick = () => new Promise((r) => setImmediate(r));
 
-test('side effects: body change with an active HealthGoal updates goal, BMI and targets field by field', async () => {
-    const goal = {
-        height: 170, currentWeight: 80, age: 30, gender: 'male', targetWeight: 70,
-        dailyCalorieTarget: 1900, macroTargets: { protein: 100, carbs: 210, fats: 65 },
-        saved: 0, async save() { this.saved++; },
-    };
-    const { deps, updates, deleted } = fakeModels({
-        user: { profile: { height: 175, weight: 74, age: 31, gender: 'male' }, nutritionGoal: { targetWeight: 68 } },
-        healthGoal: goal,
+// 26 Nov: HealthGoal is the only stored goal; side effects recalculate it
+// through healthGoalService.syncGoal and never write User.nutritionGoal.
+test('side effects: body + goals change -> BMI, goal re-synced with the profile and HealthProfile target weight; no nutritionGoal writes', async () => {
+    const profile = { height: 175, weight: 74, age: 31, gender: 'male' };
+    const { deps, updates, deleted, goalSyncs } = fakeModels({
+        user: { profile },
+        healthProfile: { goals: { targetWeightKg: 68 } },
     });
     await createProfileSideEffects(deps).afterProfileChange(USER, ['body', 'goals']);
 
-    assert.equal(goal.saved, 1);
-    assert.equal(goal.currentWeight, 74);
-    assert.equal(goal.height, 175);
-    assert.equal(goal.targetWeight, 68); // goals changed -> HealthGoal follows the profile
-    const $set = updates[0].$set;
-    assert.equal($set['healthMetrics.bmi'], 24.2);
-    assert.equal($set['nutritionGoal.calorieGoal'], 1900);
-    assert.equal($set.nutritionGoal, undefined); // never replaced whole
-    assert.equal($set['nutritionGoal.targetWeight'], undefined);
+    assert.equal(updates.length, 1);
+    assert.deepEqual(updates[0], { $set: { 'healthMetrics.bmi': 24.2 } });
+    assert.ok(!JSON.stringify(updates).includes('nutritionGoal'));
+    assert.equal(goalSyncs.length, 1);
+    assert.equal(goalSyncs[0].userId, USER);
+    assert.deepEqual(goalSyncs[0].profile, profile);
+    assert.equal(goalSyncs[0].targetWeight, 68);
     assert.ok(deleted.includes(`dashboard:${USER}`));
+    assert.ok(deleted.includes(`health_goal:${USER}`));
 });
 
-test('side effects: no HealthGoal -> recalculated, only stored target fields written', async () => {
-    const { deps, updates } = fakeModels({
-        user: { profile: { height: 175, weight: 74, age: 31, gender: 'male' }, nutritionGoal: { calorieGoal: 2000, goal: 'weight_loss', targetWeight: 68 } },
-    });
-    await createProfileSideEffects(deps).afterProfileChange(USER, ['body']);
-    const $set = updates[0].$set;
-    assert.equal($set['nutritionGoal.calorieGoal'], 1800);
-    assert.equal($set['nutritionGoal.bmr'], undefined);
-    assert.equal($set['nutritionGoal.estimatedWeeks'], undefined);
+test('side effects: body-only change re-syncs the goal without touching the target weight; conditions (diabetes) also re-sync', async () => {
+    const { deps, goalSyncs } = fakeModels({ user: { profile: { height: 175, weight: 74, age: 31, gender: 'male' } } });
+    const fx = createProfileSideEffects(deps);
+    await fx.afterProfileChange(USER, ['body']);
+    assert.equal(goalSyncs.length, 1);
+    assert.equal(goalSyncs[0].targetWeight, undefined);
+    await fx.afterProfileChange(USER, ['conditions']);
+    assert.equal(goalSyncs.length, 2);
 });
 
 test('side effects: diet change cleans Jain leftovers and regenerates an active plan off the request path', async () => {
@@ -182,13 +179,16 @@ test('side effects: diet change cleans Jain leftovers and regenerates an active 
 });
 
 test('side effects: list-only changes do nothing; failures are logged, never thrown', async () => {
-    const { deps, updates } = fakeModels({ user: { profile: {} } });
+    const { deps, updates, goalSyncs } = fakeModels({ user: { profile: {} } });
     await createProfileSideEffects(deps).afterProfileChange(USER, ['allergies', 'medications']);
     assert.equal(updates.length, 0);
+    assert.equal(goalSyncs.length, 0);
 
     const errors = [];
-    const broken = fakeModels({ user: { profile: { height: 175, weight: 74 } } });
-    broken.deps.HealthGoal = { findOne: async () => { throw new Error('db down'); } };
+    const broken = fakeModels({
+        user: { profile: { height: 175, weight: 74 } },
+        syncGoal: async () => { throw new Error('db down'); },
+    });
     broken.deps.logger = { error: (m) => errors.push(m) };
     await createProfileSideEffects(broken.deps).afterProfileChange(USER, ['body']);
     assert.match(errors[0], /nutrition.*db down/);

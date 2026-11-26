@@ -120,7 +120,9 @@ exports.getUserDetails = async (req, res) => {
       ...appointments.map(a => ({ type: 'appointment', title: 'Appointment Linked', date: a.date, status: a.status }))
     ].sort((a, b) => b.date - a.date).slice(0, 15);
 
-    res.json({ user, activity, reportCount: reports.length });
+    // nutritionGoal: built from HealthGoal (the stored field was removed 26 Nov).
+    const nutritionGoal = await require('../services/healthGoalService').getNutritionGoal(user._id);
+    res.json({ user: { ...user.toObject(), nutritionGoal }, activity, reportCount: reports.length });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -186,7 +188,7 @@ exports.impersonateUser = async (req, res) => {
       phone: user.phone,
       role: user.role,
       profile: user.profile,
-      nutritionGoal: user.nutritionGoal,
+      nutritionGoal: await require('../services/healthGoalService').getNutritionGoal(user._id), // from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
       healthMetrics: user.healthMetrics,

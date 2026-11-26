@@ -78,7 +78,6 @@ function amishDay(t, o) {
     selectLeanResolves(o.sleepHours ? [{ deviceType: 'whoop', totalSleepMinutes: o.sleepHours * 60 }] : []));
   t.mock.method(User, 'findById', () => selectLeanResolves({
     profile: { age: 30, gender: 'male', lifestyle: {} },
-    nutritionGoal: { calorieGoal: 2200 },
     smokeLog: o.cigarettes ? { [DATE]: { count: o.cigarettes } } : {},
     alcoholLog: o.drinks ? { [DATE]: { count: o.drinks, units: o.drinks } } : {},
   }));
@@ -86,7 +85,8 @@ function amishDay(t, o) {
   t.mock.method(ExerciseLog, 'find', (filter) => selectLeanResolves(
     filter?.category === 'strength' && o.strengthMinutes7d ? [{ duration: o.strengthMinutes7d }] : []));
   t.mock.method(ExerciseLog, 'countDocuments', async () => 0);
-  t.mock.method(HealthGoal, 'findOne', () => selectLeanResolves(null));
+  // Calorie goal lives on HealthGoal only (User.nutritionGoal removed 26 Nov).
+  t.mock.method(HealthGoal, 'findOne', () => selectLeanResolves({ dailyCalorieTarget: 2200 }));
   // Amish wears WHOOP → the trailing-window "is recovery applicable" query
   // always finds a row; today's physiology score is per scenario.
   t.mock.method(RecoveryDailySummary, 'findOne', (filter) => (typeof filter.date === 'object'

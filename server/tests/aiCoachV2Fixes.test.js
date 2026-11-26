@@ -45,16 +45,16 @@ test('CoachState: old docs (askedLog stored as an object by the Map) load as emp
 // ── targets ────────────────────────────────────────────────────────────────
 
 const loaded = (over = {}) => ({
-    user: { profile: { age: 29, profession: 'desk_job', lifestyle: { waterGoalMl: 2500, stepGoal: 9000 } }, nutritionGoal: { calorieGoal: 2400, proteinGoal: 140, carbsGoal: 280, fatGoal: 70, targetWeight: 76, goal: 'muscle_gain' } },
-    healthGoal: { goalType: 'muscle_gain', targetWeight: 76, dailyCalorieTarget: 2350 },
+    user: { profile: { age: 29, profession: 'desk_job', lifestyle: { waterGoalMl: 2500, stepGoal: 9000 } } },
+    healthGoal: { goalType: 'muscle_gain', targetWeight: 76, dailyCalorieTarget: 2400, macroTargets: { protein: 140, carbs: 280, fats: 70 } },
     dietPlan: null,
     today: { totalCalories: 650, totalProtein: 40, totalCarbs: 80, totalFats: 20, waterIntake: 1000 },
     ...over,
 });
 
-test('targets: same sources as the app (nutritionGoal first), remaining for today', () => {
+test('targets: from the active HealthGoal (the only stored goal), remaining for today', () => {
     const t = computeTargets(loaded());
-    assert.equal(t.targets.calories, 2400); // nutritionGoal wins over HealthGoal's 2350, like the dashboard
+    assert.equal(t.targets.calories, 2400);
     assert.equal(t.targets.steps, 9000);
     assert.equal(t.targets.waterMl, 2500);
     assert.equal(t.targets.strengthMinPerWeek, 120); // muscle_gain guidance
@@ -71,9 +71,17 @@ test('targets: over the goal -> 0 left (never negative); nothing logged -> full 
     assert.equal(over.remaining.waterMl, 0);
     const none = computeTargets(loaded({ today: null }));
     assert.match(formatTargets(none), /Nothing logged today yet/);
-    const noAge = computeTargets(loaded({ user: { profile: { lifestyle: {} }, nutritionGoal: {} } }));
+    const noAge = computeTargets(loaded({ user: { profile: { lifestyle: {} } } }));
     assert.equal(noAge.targets.cardioMinPerWeek, null); // not the youth 420 min/week
     assert.equal(computeTargets({ user: null }), null);
+});
+
+test('targets: no HealthGoal yet -> old stored targets of a not-yet-migrated user (read-only); HealthGoal always wins', () => {
+    const legacy = { calorieGoal: 2100, proteinGoal: 120, carbsGoal: 250, fatGoal: 60, targetWeight: 70, goal: 'weight_loss' };
+    const fromLegacy = computeTargets(loaded({ healthGoal: null, legacy }));
+    assert.equal(fromLegacy.targets.calories, 2100);
+    assert.equal(fromLegacy.targets.goalType, 'weight_loss');
+    assert.equal(computeTargets(loaded({ legacy })).targets.calories, 2400);
 });
 
 test('prompt: targets and the stay-inside-targets rule reach the model', () => {

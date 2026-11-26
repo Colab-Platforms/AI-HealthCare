@@ -13,6 +13,8 @@ const {
 } = require('./healthScoreFormulas');
 const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const { calculateDietQualityScore } = require('./dietQualityScoreService');
+// HealthGoal is the only stored goal and calorie target (User.nutritionGoal removed 26 Nov).
+const calorieGoalOf = (goal) => (goal?.dailyCalorieTarget > 0 ? goal.dailyCalorieTarget : undefined);
 const { getExerciseGuidance } = require('./exerciseGuidanceService');
 const { scoreActivity } = require('./activityScoreFormula');
 const { mergeDeviceRows, maxAcrossRows, filterPlausibleSleep } = require('../utils/wearableMerge');
@@ -136,7 +138,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     // findOne had no way to prefer the real device over the broken one).
     SleepSession.find({ user: userId, date: dayStart }).select('deviceType totalSleepMinutes sleepScore').lean(),
     User.findById(userId)
-      .select('smokeLog alcoholLog profile.age profile.gender profile.weight profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
+      .select('smokeLog alcoholLog profile.age profile.gender profile.weight profile.chronicConditions profile.lifestyle')
       .lean(),
     ExerciseLog.find({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } })
       .select('duration caloriesBurned category').lean(),
@@ -145,7 +147,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     // nutrientTargets.getAmdrRanges) — not the full doc. Falls back to
     // User.profile.age/weight (already fetched above) and no goal-type
     // override if the user hasn't set an active goal yet.
-    HealthGoal.findOne({ userId, isActive: true }).select('age goalType currentWeight').lean(),
+    HealthGoal.findOne({ userId, isActive: true }).select('age goalType currentWeight dailyCalorieTarget').lean(),
     // Rolling 7-day window, not "did they train today" — strength guidance is
     // 2-3 sessions/WEEK, not daily, so a single day's yes/no reads a correctly-
     // spaced rest day as a failure. A trailing week gives every day of a
@@ -441,7 +443,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
         const dietScoreResult = calculateDietQualityScore(nutritionSummary, {
           age: user?.profile?.age,
           gender: user?.profile?.gender,
-          calorieGoal: user?.nutritionGoal?.calorieGoal,
+          calorieGoal: calorieGoalOf(healthGoal),
           goalType: healthGoal?.goalType,
           weightKg: healthGoal?.currentWeight ?? user?.profile?.weight,
         });
@@ -465,7 +467,8 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     ];
 
     // Calories: applicable only when the user has a calorie goal.
-    const calorieGoal = user?.nutritionGoal?.calorieGoal;
+    // HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
+    const calorieGoal = calorieGoalOf(healthGoal);
     if (calorieGoal > 0) {
       raw.calorieGoal = calorieGoal;
       const totalCalories = nutritionSummary?.totalCalories || 0;

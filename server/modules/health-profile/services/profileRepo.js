@@ -57,7 +57,13 @@ const mongoRepo = {
     },
 
     async loadLegacyUser(userId, session) {
-        return User.findById(userId).select('profile nutritionGoal').session(session).lean();
+        // Raw read: `nutritionGoal` is no longer in the User schema (removed
+        // 26 Nov) but old documents still carry its targetWeight until the
+        // migration unsets it; the mapper uses it to fill goals.targetWeightKg.
+        return User.collection.findOne(
+            { _id: new mongoose.Types.ObjectId(String(userId)) },
+            { projection: { profile: 1, nutritionGoal: 1 }, ...(session ? { session } : {}) },
+        );
     },
 
     async patchUser(userId, patch, session) {

@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
-const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
+const healthGoalService = require('../services/healthGoalService');
 const cloudinary = require('../services/cloudinary');
 const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
@@ -546,7 +546,7 @@ exports.loginWithPhoneOtp = async (req, res) => {
       phone: user.phone,
       role: user.role,
       profile: user.profile,
-      nutritionGoal: user.nutritionGoal,
+      nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
       healthMetrics: user.healthMetrics,
@@ -715,27 +715,6 @@ exports.register = async (req, res) => {
     // succeeding with no diet type recorded.
     if (profile?.dietaryPreference === '') delete profile.dietaryPreference;
 
-    // Calculate nutrition goals if profile data is provided
-    let calculatedGoals = null;
-    if (profile && profile.age && profile.gender && profile.weight && profile.height && nutritionGoal) {
-      try {
-        calculatedGoals = calculateNutritionGoals({
-          age: profile.age,
-          gender: profile.gender,
-          weight: profile.weight,
-          height: profile.height,
-          activityLevel: profile.activityLevel || 'sedentary',
-          goal: nutritionGoal.goal || 'general_health',
-          targetWeight: nutritionGoal.targetWeight,
-          weeklyGoal: nutritionGoal.weeklyGoal || 0.5,
-          isDiabetic: profile.isDiabetic === 'yes'
-        });
-      } catch (calcError) {
-        console.error('Nutrition goal calculation error:', calcError.message);
-        // Continue with registration even if calculation fails
-      }
-    }
-
     // `email` is already lowercased/trimmed above (line 579), matching
     // WaitlistUserEmail's own lowercase-on-save, so this can't miss a real match on casing.
     const { waitlistEntry, isWaitlistedUser, subscription: trialSubscription } = await buildTrialGrant(email);
@@ -773,13 +752,6 @@ exports.register = async (req, res) => {
         // Only set when the client actually sent one, so an absent state keeps
         // the schema default instead of writing an explicit null.
         ...(state ? { foodPreferences: { state } } : {}),
-        nutritionGoal: calculatedGoals ? {
-          goal: nutritionGoal.goal,
-          targetWeight: nutritionGoal.targetWeight,
-          weeklyGoal: nutritionGoal.weeklyGoal,
-          ...calculatedGoals,
-          autoCalculated: true
-        } : undefined,
         isWaitlistedUser,
         subscription: trialSubscription,
       });
@@ -787,7 +759,12 @@ exports.register = async (req, res) => {
       // HealthProfile from the onboarding answers. Never throws: on failure
       // the first later profile write builds it from the same data.
       if (profile && Object.keys(profile).length) {
-        await profileSync.onSignup(user._id, user.toObject());
+        await profileSync.onSignup(user._id, {
+          ...user.toObject(),
+          // Onboarding goal input (not stored on User): its target weight
+          // becomes HealthProfile goals.targetWeightKg.
+          nutritionGoal: nutritionGoal ? { targetWeight: nutritionGoal.targetWeight } : undefined,
+        });
       }
 
       markWaitlistConverted(waitlistEntry);
@@ -822,22 +799,10 @@ exports.register = async (req, res) => {
 
       // 🆕 CREATE INITIAL HEALTHGOAL IF PROFILE PROVIDED
       if (user && profile && nutritionGoal && profile.age) {
-        try {
-          await HealthGoal.create({
-            userId: user._id,
-            goalType: nutritionGoal.goal || 'health_improvement',
-            currentWeight: profile.weight,
-            targetWeight: nutritionGoal.targetWeight || profile.weight,
-            height: profile.height,
-            age: profile.age,
-            gender: profile.gender,
-            activityLevel: profile.activityLevel || 'sedentary',
-            isActive: true
-          });
-        } catch (goalError) {
-          console.error('Failed to create initial HealthGoal:', goalError.message);
-          // Don't fail the whole registration if this fails
-        }
+        // The only stored goal + targets (services/healthGoalService). Uses the
+        // pace the user picked (weeklyGoal) and their diabetes flag. Never
+        // throws: a goal that can't be saved doesn't fail the registration.
+        await healthGoalService.syncGoal(user._id, { profile: user.profile, input: nutritionGoal, create: true });
 
         // First diet plan, generated in the background right after signup —
         // same trigger used when a diet-type change makes an existing plan
@@ -903,7 +868,7 @@ exports.register = async (req, res) => {
       phone: user.phone,
       role: user.role,
       profile: user.profile,
-      nutritionGoal: user.nutritionGoal,
+      nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       subscription: user.subscription,
       token: generateAccessToken(user._id),
       refreshToken: rawRefreshToken
@@ -1105,7 +1070,7 @@ exports.login = async (req, res) => {
         phone: user.phone,
         role: user.role,
         profile: user.profile,
-        nutritionGoal: user.nutritionGoal,
+        nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
         foodPreferences: user.foodPreferences,
         subscription: user.subscription,
         healthMetrics: user.healthMetrics,
@@ -1301,7 +1266,7 @@ exports.googleAuth = async (req, res) => {
       phone: user.phone,
       role: user.role,
       profile: user.profile,
-      nutritionGoal: user.nutritionGoal,
+      nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
       healthMetrics: user.healthMetrics,
@@ -1481,7 +1446,7 @@ exports.appleAuth = async (req, res) => {
       phone: user.phone,
       role: user.role,
       profile: user.profile,
-      nutritionGoal: user.nutritionGoal,
+      nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
       healthMetrics: user.healthMetrics,
@@ -1570,7 +1535,8 @@ exports.refresh = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password').maxTimeMS(30000);
-    res.json(user.toObject());
+    // nutritionGoal: same key as before, built from HealthGoal (the field is gone).
+    res.json({ ...user.toObject(), nutritionGoal: await healthGoalService.getNutritionGoal(user._id) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -1670,37 +1636,6 @@ exports.updateProfile = async (req, res) => {
       let bmiChanged = false;
       let newBmi = user.healthMetrics?.bmi;
 
-      // Calculate nutrition goals correctly if nutritionGoal is provided (e.g. from profile completion after register)
-      if (req.body.nutritionGoal && user.profile.age && user.profile.gender && newWeight && newHeight) {
-        try {
-          const calculatedGoals = calculateNutritionGoals({
-            age: user.profile.age,
-            gender: user.profile.gender,
-            weight: newWeight,
-            height: newHeight,
-            activityLevel: user.profile.activityLevel || 'sedentary',
-            goal: req.body.nutritionGoal.goal || 'general_health',
-            targetWeight: req.body.nutritionGoal.targetWeight,
-            weeklyGoal: req.body.nutritionGoal.weeklyGoal || 0.5,
-            isDiabetic: user.profile.isDiabetic === 'yes'
-          });
-
-          user.nutritionGoal = {
-            goal: req.body.nutritionGoal.goal,
-            targetWeight: req.body.nutritionGoal.targetWeight,
-            weeklyGoal: req.body.nutritionGoal.weeklyGoal,
-            ...calculatedGoals,
-            autoCalculated: true
-          };
-          user.markModified('nutritionGoal');
-        } catch (calcError) {
-          console.error('Nutrition goal calculation error:', calcError.message);
-        }
-      } else if (req.body.nutritionGoal) {
-        user.nutritionGoal = { ...user.nutritionGoal, ...req.body.nutritionGoal };
-        user.markModified('nutritionGoal');
-      }
-
       // Detecting changes in height, weight, age, or gender
       if (newHeight !== oldHeight || newWeight !== oldWeight || req.body.profile?.age || req.body.profile?.gender) {
         if (newHeight && newWeight) {
@@ -1711,68 +1646,6 @@ exports.updateProfile = async (req, res) => {
             bmi: newBmi
           };
           bmiChanged = true;
-        }
-
-        // Search for and update active HealthGoal - with extended timeout for Vercel
-        const healthGoal = await HealthGoal.findOne({ userId: user._id, isActive: true }).maxTimeMS(30000);
-        if (healthGoal) {
-          healthGoal.height = newHeight || healthGoal.height;
-          healthGoal.currentWeight = newWeight || healthGoal.currentWeight;
-          healthGoal.age = user.profile.age || healthGoal.age;
-          healthGoal.gender = user.profile.gender || healthGoal.gender;
-
-          // The pre-save hook in HealthGoal will handle target recalculations
-          await healthGoal.save();
-
-          // Sync recalculated calorie/macro targets back to user.nutritionGoal
-          user.nutritionGoal = {
-            ...(user.nutritionGoal?.toObject ? user.nutritionGoal.toObject() : user.nutritionGoal || {}),
-            calorieGoal: healthGoal.dailyCalorieTarget,
-            proteinGoal: healthGoal.macroTargets?.protein || user.nutritionGoal?.proteinGoal,
-            carbsGoal: healthGoal.macroTargets?.carbs || user.nutritionGoal?.carbsGoal,
-            fatGoal: healthGoal.macroTargets?.fats || user.nutritionGoal?.fatGoal,
-            lastUpdated: new Date()
-          };
-          user.markModified('nutritionGoal');
-        } else if (!req.body.nutritionGoal && user.nutritionGoal?.calorieGoal) {
-          // No HealthGoal doc but user has a saved calorieGoal — recalculate from updated profile
-          try {
-            const recalculated = calculateNutritionGoals({
-              age: user.profile.age,
-              gender: user.profile.gender,
-              weight: newWeight,
-              height: newHeight,
-              activityLevel: user.profile.activityLevel || 'sedentary',
-              goal: user.nutritionGoal.goal || 'general_health',
-              targetWeight: user.nutritionGoal.targetWeight,
-              weeklyGoal: user.nutritionGoal.weeklyGoal || 0.5,
-              isDiabetic: user.profile.isDiabetic === 'yes'
-            });
-            user.nutritionGoal = {
-              ...(user.nutritionGoal?.toObject ? user.nutritionGoal.toObject() : user.nutritionGoal || {}),
-              ...recalculated
-            };
-            user.markModified('nutritionGoal');
-          } catch (e) {
-            console.error('Profile-change nutrition recalc error:', e.message);
-          }
-        } else if (req.body.nutritionGoal) {
-          // Create initial HealthGoal record for early registration profile completion
-          try {
-            await HealthGoal.create({
-              userId: user._id,
-              goalType: req.body.nutritionGoal.goal || 'health_improvement',
-              currentWeight: newWeight,
-              targetWeight: req.body.nutritionGoal.targetWeight || newWeight,
-              height: newHeight,
-              age: user.profile.age,
-              gender: user.profile.gender,
-              activityLevel: user.profile.activityLevel || 'sedentary',
-              isActive: true
-            });
-          } catch (goalError) {
-            console.error('Failed to create initial HealthGoal:', goalError.message);
-          }
         }
       }
 
@@ -1787,6 +1660,27 @@ exports.updateProfile = async (req, res) => {
       if (req.body.profile || req.body.nutritionGoal) {
         await profileSync.syncLegacyEdit(updatedUser._id);
       }
+
+      // Goal + targets: HealthGoal is the only stored goal (services/healthGoalService).
+      // Onboarding's goal input (goal, targetWeight, weeklyGoal) creates or updates it;
+      // a plain profile edit (weight, height, age, activity, diabetes) recalculates it.
+      const goalInput = req.body.nutritionGoal && typeof req.body.nutritionGoal === 'object' ? req.body.nutritionGoal : null;
+      if (goalInput && profileSync.positiveNumber(goalInput.targetWeight)) {
+        // Target weight is a HealthProfile fact (goals.targetWeightKg).
+        await profileSync.writeWithUser(updatedUser._id, { goals: { targetWeightKg: profileSync.positiveNumber(goalInput.targetWeight) } }, {}, { source: 'manual' })
+          .catch((e) => console.error(`[Profile] target weight not synced for user ${updatedUser._id}: ${e.message}`));
+      }
+      let nutritionGoal = null;
+      if (req.body.profile || goalInput) {
+        const goal = await healthGoalService.syncGoal(updatedUser._id, {
+          profile: updatedUser.profile,
+          input: goalInput,
+          // activity sent in this edit -> the goal follows it
+          syncActivity: Boolean(req.body.profile?.activityLevel),
+        });
+        nutritionGoal = goal ? HealthGoal.toNutritionGoal(goal) : null;
+      }
+      if (!nutritionGoal) nutritionGoal = await healthGoalService.getNutritionGoal(updatedUser._id);
 
       // Diet type changed -> any already-generated plan was built for the OLD
       // preference and its 21 stored meals can include dishes that now break
@@ -1810,6 +1704,8 @@ exports.updateProfile = async (req, res) => {
       const responseBody = {
         ...updatedUser.toObject(),
         password: undefined,
+        // Same key the app always read; built from HealthGoal.
+        nutritionGoal,
         bmiChanged,
         newBmi
       };

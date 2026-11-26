@@ -890,12 +890,15 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       });
     }
 
-    const calorieGoal = reqUser.nutritionGoal?.calorieGoal || 2100;
+    // Goal targets: HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
+    const nutritionGoal = await require('../services/healthGoalService').getNutritionGoal(reqUser._id);
+    const calorieGoal = nutritionGoal?.calorieGoal || 2100;
     // Trim the user object sent to the frontend — strip password/version/internal fields
     // reqUser is already a plain object (protect uses .lean()), so no toObject().
-    const { password, __v, ...trimmedUser } = reqUser;
+    // `nutritionGoal` is replaced: a lean read still carries the old stored field until the migration unsets it.
+    const { password, __v, nutritionGoal: _staleNutritionGoal, ...trimmedUser } = reqUser;
     const dashboardData = {
-      user: trimmedUser,
+      user: { ...trimmedUser, nutritionGoal },
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
       totalReports, recentReports: reports.slice(0, 5), reportTypeCounts, history,
       // null here means "no device/manual reading today" — distinct from a
@@ -908,7 +911,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
         steps: getStepGoal(userWithLogs).goalSteps,
         sleep: getSleepGoal(userWithLogs).goalHours,
         water: userWithLogs?.profile?.lifestyle?.waterGoalMl || 2000, // ml — directly comparable to history[].water / nutritionData.waterIntake, no glass conversion needed
-        weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65
+        weight: nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: nutritionGoal?.proteinGoal || 150, carbs: nutritionGoal?.carbsGoal || 200, fats: nutritionGoal?.fatGoal || 65
       },
       alcoholToday: alcoholSummary.today, alcoholTodayUnits: alcoholSummary.todayUnits,
       alcohol7DayAvg: alcoholSummary.avg7, alcoholSummary,
