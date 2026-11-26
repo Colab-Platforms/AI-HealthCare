@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import SEO from "../hooks/useSEO";
 import { waitlistService } from "../services/api";
 
 const getCookie = (name) => {
@@ -106,6 +107,7 @@ export default function WaitlistJoin() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0d16] px-4 text-white">
+      <SEO pageName="waitlistJoin" />
       <div className="relative w-full max-w-[440px] overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,#1C2C4C_0%,#3A4D78_100%)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:p-8">
         <Link
           to="/waitlist"
@@ -120,9 +122,9 @@ export default function WaitlistJoin() {
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-3xl">
               🎉
             </span>
-            <h2 className="mt-5 text-2xl font-bold tracking-tight text-white sm:text-[28px]">
+            <h1 className="mt-5 text-2xl font-bold tracking-tight text-white sm:text-[28px]">
               You're already in!
-            </h2>
+            </h1>
             <p className="mt-3 text-sm leading-relaxed text-white/60 sm:text-base">
               {statusMessage}
             </p>
@@ -135,9 +137,9 @@ export default function WaitlistJoin() {
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">
               Get Early Access
-            </h2>
+            </h1>
             <p className="mt-3 text-sm leading-relaxed text-white/60 sm:text-base">
               Understand your health better. Make better choices every day. Join the waitlist.
             </p>

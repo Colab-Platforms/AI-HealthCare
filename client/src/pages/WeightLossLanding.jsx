@@ -1,3 +1,4 @@
+import SEO from "../hooks/useSEO";
 import Hero from "../components/weight-loss/Hero";
 import UpdatedFooter from "../components/landing/landing-components/UpdatedFooter";
 import UpdatedNavbar from "../components/landing/landing-components/UpdatedNavbar";
@@ -9,6 +10,7 @@ import FAQs from "../components/weight-loss/FAQs";
 const WeightLossLanding = () => {
   return (
     <section className="bg-white text-landing-text">
+      <SEO pageName="weightLoss" />
       <UpdatedNavbar />
       <Hero />
       <Features />

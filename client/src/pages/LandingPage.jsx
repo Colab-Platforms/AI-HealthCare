@@ -29,7 +29,7 @@ const Demo = lazy(
 const LandingPage = () => {
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body relative">
-      <SEO pageName="home" />
+      <SEO pageName="oldLanding" />
       <UpdatedNavbar />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>

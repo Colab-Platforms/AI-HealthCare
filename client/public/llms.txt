@@ -1,0 +1,35 @@
+# TAKE.Health
+
+> TAKE.Health is the health platform at https://www.take.health, operated by TAKE Solutions Limited, a company incorporated under the Companies Act 2013 and listed on the National Stock Exchange (NSE) and the Bombay Stock Exchange (BSE) of India. The registered office is in Chennai, Tamil Nadu, India.
+
+Take Health brings lab reports, daily habits and long-term trends into one place and explains what they mean. The app is currently free to use. It is on the web and on iOS and Android.
+
+Wearables: Apple Watch and WHOOP connect directly. Other wearables connect through Apple Health or Google Health Connect.
+
+The homepage also states more than 20 years in longevity science.
+
+This file describes the public website. It is not medical advice.
+
+## Public pages
+
+- [Home](https://www.take.health/): Everything your health has to say. Lab reports, daily habits and long-term trends in one place.
+- [About](https://www.take.health/about): Taking control of your health should not feel confusing. Take Health was built to change that.
+- [How it works](https://www.take.health/how-it-works): Upload diagnostic reports and lab results, read the markers, and compare past and present reports.
+- [Creator program](https://www.take.health/creator): Join the Take Creator Program and make content that helps people understand their health, habits and everyday wellbeing. No minimum follower requirement.
+- [Waitlist](https://www.take.health/waitlist): Take brings health data, habits, lifestyle and insights together.
+- [Support](https://www.take.health/support): Raise a ticket. The team replies by email.
+- [Delete your account](https://www.take.health/delete-account): Request permanent deletion of a TAKE.Health account and personal data without the app installed.
+- [Privacy policy](https://www.take.health/privacy-policy): How personal data is collected, used and protected.
+- [Terms and conditions](https://www.take.health/terms-and-conditions): Terms for using the platform.
+- [Manufacturer details](https://www.take.health/pages/manufacturers-details): Liposomal Berberine HCl is manufactured by Rhett Healthcare PVT.LTD, Plot No S-15/1 & 15/2, TSIIC Biotech Park Phase – III, Karakapatla, District - Siddipet, Telangana - 502281. FSSAI Lic. No. 13622999000067.
+- [Shop](https://shop.take.health/): The TAKE shop is a separate site.
+
+## Apps
+
+- [App Store](https://apps.apple.com/in/app/take-health/id6809424667)
+- [Google Play](https://play.google.com/store/apps/details?id=com.takehealth.app)
+
+## Contact
+
+- Support: support@takelimited.com
+- Privacy requests: support@takesolutions.com

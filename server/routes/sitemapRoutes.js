@@ -1,76 +1,45 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
 
-/**
- * Pages configuration for sitemap generation
- * Can be expanded by reading from database or environment
- */
-const sitemapPages = [
-  {
-    url: "/",
-    changefreq: "weekly",
-    priority: 1.0,
-  },
-  {
-    url: "/how-it-works",
-    changefreq: "monthly",
-    priority: 0.9,
-  },
-  {
-    url: "/about",
-    changefreq: "monthly",
-    priority: 0.9,
-  },
-  {
-    url: "/login",
-    changefreq: "yearly",
-    priority: 0.8,
-  },
-  {
-    url: "/register",
-    changefreq: "yearly",
-    priority: 0.8,
-  },
-  {
-    url: "/privacy-policy",
-    changefreq: "yearly",
-    priority: 0.6,
-  },
-  {
-    url: "/terms-and-conditions",
-    changefreq: "yearly",
-    priority: 0.6,
-  },
-  {
-    url: "/food-safety",
-    changefreq: "monthly",
-    priority: 0.7,
-  },
-];
+const DEFAULT_SITE_URL = "https://www.take.health";
+
+function siteUrl() {
+  const configured = String(process.env.FRONTEND_URL || DEFAULT_SITE_URL).trim().replace(/\/+$/, "");
+  if (!configured || /onrender\.com/i.test(configured) || /\/api$/i.test(configured)) {
+    return DEFAULT_SITE_URL;
+  }
+  return configured;
+}
+
+function catalog() {
+  const catalogPath = path.join(__dirname, "../../client/src/seo/public-routes.json");
+  return JSON.parse(fs.readFileSync(catalogPath, "utf8"));
+}
 
 /**
- * Generate XML sitemap
+ * Public sitemap. The file Google fetches is the static client/dist/sitemap.xml
+ * written at build time. This route stays in sync for /api/sitemap.xml.
  * GET /api/sitemap.xml
  */
 router.get("/sitemap.xml", (req, res) => {
-  const baseUrl = process.env.FRONTEND_URL || "https://take.health";
+  const origin = siteUrl();
+  const pages = catalog();
+  const urls = (pages.pages || []).filter((page) => page.sitemap && page.index !== false);
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
-        xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 `;
 
-  // Add each page to the sitemap
-  sitemapPages.forEach((page) => {
-    const lastmod = new Date().toISOString().split("T")[0]; // Today's date in YYYY-MM-DD format
-
+  urls.forEach((page) => {
+    const loc = page.path === "/" ? `${origin}/` : `${origin}${page.path}`;
     xml += `  <url>
-    <loc>${baseUrl}${page.url}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>${page.changefreq}</changefreq>
-    <priority>${page.priority}</priority>
+    <loc>${loc}</loc>
+    <lastmod>${pages.updated}</lastmod>
+    <changefreq>${page.changefreq || "monthly"}</changefreq>
+    <priority>${page.priority || "0.5"}</priority>
   </url>
 `;
   });
@@ -78,65 +47,24 @@ router.get("/sitemap.xml", (req, res) => {
   xml += `</urlset>`;
 
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=604800"); // Cache for 7 days
+  res.setHeader("Cache-Control", "public, max-age=3600");
   res.send(xml);
 });
 
 /**
- * Generate robots.txt
+ * Same rules as client/public/robots.txt, with the sitemap host taken from
+ * FRONTEND_URL when that is a real site origin.
  * GET /api/robots.txt
  */
 router.get("/robots.txt", (req, res) => {
-  const baseUrl = process.env.FRONTEND_URL || "https://take.health";
-
-  const robots = `User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-Disallow: /profile
-Disallow: /login
-Disallow: /register
-Disallow: /forgot-password
-Disallow: /*.json
-Disallow: /uploads/
-Disallow: /api/
-Crawl-delay: 1
-
-User-agent: Googlebot
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-Disallow: /profile
-Disallow: /login
-Disallow: /register
-Disallow: /forgot-password
-Crawl-delay: 0
-
-User-agent: Bingbot
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-Disallow: /profile
-Disallow: /login
-Disallow: /register
-Disallow: /forgot-password
-Crawl-delay: 1
-
-User-agent: Googlebot-Image
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-Disallow: /profile
-
-User-agent: ia_archiver
-Disallow: /
-
-Sitemap: ${baseUrl}/sitemap.xml
-`;
+  const robotsPath = path.join(__dirname, "../../client/public/robots.txt");
+  let robots = fs.readFileSync(robotsPath, "utf8").trim();
+  const origin = siteUrl();
+  robots = robots.replace(/Sitemap:\s+\S+/, `Sitemap: ${origin}/sitemap.xml`);
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=604800"); // Cache for 7 days
-  res.send(robots);
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send(`${robots}\n`);
 });
 
 module.exports = router;

@@ -1,6 +1,8 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import { useInViewport } from "../hooks/useInViewport";
 import SEO from "../hooks/useSEO";
+import { absoluteUrl } from "../seo/site";
 import UpdatedHero from "../components/landing/landing-components/UpdatedHero";
 import PromoPopup from "../components/landing/landing-components/PromoPopup";
 import UpdatedWellnessIntelligence from "../components/landing/landing-components/UpdatedWellnessIntelligence";
@@ -31,9 +33,18 @@ const LazySection = ({ children, id, className, minHeight = "300px", rootMargin 
 
 // ─── Updated Landing Page Component ──────────────────────────────────────────
 const UpdatedLandingPage = () => {
+  const { pathname } = useLocation();
+  const isCanonicalHome = pathname === "/";
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body relative min-h-screen">
-      <SEO pageName="home" />
+      <SEO
+        pageName="home"
+        overrides={
+          isCanonicalHome
+            ? {}
+            : { noindex: true, canonical: absoluteUrl("/") }
+        }
+      />
 
       {/* Main Content Area */}
       <main className="w-full relative z-10 overflow-hidden">

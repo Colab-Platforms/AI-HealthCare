@@ -23,11 +23,33 @@
       ]
     },
     {
+      "source": "/spa.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/robots.txt",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800, immutable"
+          "value": "public, max-age=3600"
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/llms.txt",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
         },
         {
           "key": "Content-Type",
@@ -40,7 +62,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800, immutable"
+          "value": "public, max-age=3600"
         },
         {
           "key": "Content-Type",
@@ -99,26 +121,55 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/register",
+      "destination": "/waitlist",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/r/:token",
       "destination": "/api/index.js"
     },
     {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/api/robots.txt"
-    },
-    {
       "source": "/api/:path*",
       "destination": "/api/index.js"
     },
-    {
-      "source": "/((?!assets/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/login", "destination": "/spa.html" },
+    { "source": "/forgot-password", "destination": "/spa.html" },
+    { "source": "/dashboard", "destination": "/spa.html" },
+    { "source": "/upload", "destination": "/spa.html" },
+    { "source": "/reports", "destination": "/spa.html" },
+    { "source": "/reports/:id", "destination": "/spa.html" },
+    { "source": "/reports/:id/summary", "destination": "/spa.html" },
+    { "source": "/report/:id", "destination": "/spa.html" },
+    { "source": "/challenge", "destination": "/spa.html" },
+    { "source": "/nutrition", "destination": "/spa.html" },
+    { "source": "/fitness", "destination": "/spa.html" },
+    { "source": "/glucose-log", "destination": "/spa.html" },
+    { "source": "/vital-signs", "destination": "/spa.html" },
+    { "source": "/medical-vault", "destination": "/spa.html" },
+    { "source": "/medical-vault/:path*", "destination": "/spa.html" },
+    { "source": "/supplements", "destination": "/spa.html" },
+    { "source": "/subscription", "destination": "/spa.html" },
+    { "source": "/shop", "destination": "/spa.html" },
+    { "source": "/diet-plan", "destination": "/spa.html" },
+    { "source": "/complete-analysis", "destination": "/spa.html" },
+    { "source": "/log-vitals/:metric", "destination": "/spa.html" },
+    { "source": "/step-tracker", "destination": "/spa.html" },
+    { "source": "/smoke-tracker", "destination": "/spa.html" },
+    { "source": "/alcohol-tracker", "destination": "/spa.html" },
+    { "source": "/ai-chat", "destination": "/spa.html" },
+    { "source": "/food-safety", "destination": "/spa.html" },
+    { "source": "/profile", "destination": "/spa.html" },
+    { "source": "/notification-settings", "destination": "/spa.html" },
+    { "source": "/privacy-settings", "destination": "/spa.html" },
+    { "source": "/onboarding", "destination": "/spa.html" },
+    { "source": "/admin", "destination": "/spa.html" },
+    { "source": "/admin/:path*", "destination": "/spa.html" },
+    { "source": "/doctor", "destination": "/spa.html" },
+    { "source": "/doctor/:path*", "destination": "/spa.html" }
   ]
 }

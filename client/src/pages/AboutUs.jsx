@@ -12,6 +12,7 @@ const AboutUs = () => {
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body">
       <SEO pageName="about" />
+      <h1 className="sr-only">About TAKE.Health</h1>
       <UpdatedNavbar />
       <AboutHero />
       <Suspense fallback={<div className="h-20" />}>

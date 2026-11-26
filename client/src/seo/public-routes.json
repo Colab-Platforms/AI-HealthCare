@@ -1,0 +1,295 @@
+{
+  "updated": "2026-11-26",
+  "spa": {
+    "exact": [
+      "/login",
+      "/forgot-password",
+      "/dashboard",
+      "/upload",
+      "/reports",
+      "/challenge",
+      "/nutrition",
+      "/fitness",
+      "/glucose-log",
+      "/vital-signs",
+      "/medical-vault",
+      "/supplements",
+      "/subscription",
+      "/shop",
+      "/diet-plan",
+      "/complete-analysis",
+      "/step-tracker",
+      "/smoke-tracker",
+      "/alcohol-tracker",
+      "/ai-chat",
+      "/food-safety",
+      "/profile",
+      "/notification-settings",
+      "/privacy-settings",
+      "/onboarding"
+    ],
+    "prefixes": ["/admin", "/doctor", "/medical-vault"],
+    "patterns": [
+      { "source": "/reports/:id", "regex": "^/reports/[^/]+$" },
+      { "source": "/reports/:id/summary", "regex": "^/reports/[^/]+/summary$" },
+      { "source": "/report/:id", "regex": "^/report/[^/]+$" },
+      { "source": "/log-vitals/:metric", "regex": "^/log-vitals/[^/]+$" }
+    ]
+  },
+  "pages": [
+    {
+      "pageName": "home",
+      "path": "/",
+      "title": "Everything Your Health Has to Say | TAKE.Health",
+      "description": "Take Health brings your lab reports, daily habits and long-term trends into one place, and explains what they mean.",
+      "h1": "Everything Your Health Has to Say",
+      "copy": [
+        "Take Health brings your lab reports, daily habits and long-term trends into one place, and explains what they actually mean — so you always know what to do next.",
+        "TAKE Solutions Limited is listed on the NSE and BSE. The homepage also notes more than 20 years in longevity science.",
+        "Upload your reports, and Take Health turns them into clear, easy-to-understand insights. Your data is securely handled and kept private. The app is currently free to use.",
+        "How does Take Health work? Upload your reports, and Take Health turns them into clear, easy-to-understand insights.",
+        "Can I trust this with my health data? Yes. Your data is securely handled and kept private at all times.",
+        "Do I need medical knowledge to use this? No. It is designed to be simple and understandable for everyone.",
+        "Is the app free to use? Yes. Take Health is currently free and accessible to all."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "weekly",
+      "priority": "1.0"
+    },
+    {
+      "pageName": "about",
+      "path": "/about",
+      "title": "About TAKE.Health",
+      "description": "Taking control of your health should not feel confusing. Take Health turns health data into clear, personal insights.",
+      "h1": "About TAKE.Health",
+      "copy": [
+        "Taking control of your health should not feel confusing. Take Health was built to change that.",
+        "Your health data, transformed into clear, science-backed insights personalized to help you take control and build a longer, healthier life."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.8"
+    },
+    {
+      "pageName": "howItWorks",
+      "path": "/how-it-works",
+      "title": "How TAKE.Health Works",
+      "description": "Upload diagnostic reports and lab results, read the markers in plain language, and compare past and present reports in one place.",
+      "h1": "Uncover Hidden Health Risks",
+      "copy": [
+        "1,000+ health markers analyzed.",
+        "Step 1. Drop your reports. Securely upload your diagnostic reports and lab results.",
+        "Step 2. We analyze it for you. The platform reads key markers and turns complex information into clear insights.",
+        "Step 3. Tailored wellness recommendations, focused on everyday health.",
+        "Step 4. Compare past and present reports in one place."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.8"
+    },
+    {
+      "pageName": "privacyPolicy",
+      "path": "/privacy-policy",
+      "title": "Privacy Policy | TAKE.Health",
+      "description": "Privacy policy for take.health, operated by TAKE Solutions Limited, listed on the NSE and BSE, with its registered office in Chennai, India.",
+      "h1": "Privacy Policy",
+      "copy": [
+        "Your privacy is important to us. Please read the privacy policy carefully.",
+        "Take.health is operated by TAKE Solutions Limited, a company incorporated under the Companies Act 2013 and listed on the National Stock Exchange (NSE) and Bombay Stock Exchange (BSE) of India. The registered office is in Chennai, Tamil Nadu, India.",
+        "The platform is available at www.take.health and through the iOS and Android apps. This policy explains what personal data is collected, why it is used, and what rights you have.",
+        "Where you choose to connect a wearable, Apple Watch and WHOOP connect directly. Other wearables connect through Apple Health or Google Health Connect. TAKE.Health does not sell wearable or health-platform data."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "yearly",
+      "priority": "0.4"
+    },
+    {
+      "pageName": "termsAndConditions",
+      "path": "/terms-and-conditions",
+      "title": "Terms and Conditions | TAKE.Health",
+      "description": "Terms and conditions for using the take.health platform, operated by TAKE Solutions Limited.",
+      "h1": "Terms and conditions",
+      "copy": [
+        "Please read the terms and conditions carefully before using TAKE.Health.",
+        "The full terms are published on this page and can be downloaded as a PDF."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "yearly",
+      "priority": "0.3"
+    },
+    {
+      "pageName": "manufacturerDetails",
+      "path": "/pages/manufacturers-details",
+      "title": "Manufacturer Details | TAKE.Health",
+      "description": "Manufacturer and FSSAI licence details for TAKE products, including Liposomal Berberine HCl made by Rhett Healthcare PVT.LTD.",
+      "h1": "Manufacturer Details",
+      "copy": [
+        "Liposomal Berberine HCl is manufactured by Rhett Healthcare PVT.LTD.",
+        "Address: Plot No S-15/1 & 15/2, TSIIC Biotech Park Phase – III, Karakapatla, District - Siddipet, Telangana - 502281.",
+        "FSSAI Lic. No. 13622999000067."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "yearly",
+      "priority": "0.4"
+    },
+    {
+      "pageName": "support",
+      "path": "/support",
+      "title": "Support | TAKE.Health",
+      "description": "Raise a support ticket with TAKE.Health. Tell us what is going on and the team will reply by email.",
+      "h1": "Raise a Support Ticket",
+      "copy": [
+        "Tell us what is going on and the team will get back to you by email.",
+        "You can write about general help, a bug, an account issue, or something else. Email support@takelimited.com."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.5"
+    },
+    {
+      "pageName": "deleteAccount",
+      "path": "/delete-account",
+      "title": "Delete Your Account | TAKE.Health",
+      "description": "Request permanent deletion of your TAKE.Health account and personal data, with or without the app installed.",
+      "h1": "Delete Your Take Health Account",
+      "copy": [
+        "If you would like to permanently delete your Take Health account and associated personal data, submit a request on this page — even if you no longer have the app installed.",
+        "TAKE.Health confirms the request by email before anything is deleted."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "yearly",
+      "priority": "0.3"
+    },
+    {
+      "pageName": "waitlist",
+      "path": "/waitlist",
+      "title": "Join the Waitlist | TAKE.Health",
+      "description": "Take brings your health data, habits, lifestyle and insights together. Join the TAKE.Health waitlist.",
+      "h1": "Your Health Is About To Get Smarter",
+      "copy": [
+        "Take brings your health data, habits, lifestyle and insights together — turning them into a clear picture of where you are today.",
+        "Be among the first to request access."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.6"
+    },
+    {
+      "pageName": "waitlistJoin",
+      "path": "/waitlist/join",
+      "title": "Request Early Access | TAKE.Health",
+      "description": "Request early access to TAKE.Health with your name and email.",
+      "h1": "Get Early Access",
+      "copy": [
+        "Leave your name and email to request early access to TAKE.Health."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.4"
+    },
+    {
+      "pageName": "waitlistThankYou",
+      "path": "/waitlist/thank-you",
+      "title": "Waitlist Request Received | TAKE.Health",
+      "description": "Your TAKE.Health waitlist request was received.",
+      "h1": "Congratulations",
+      "copy": [
+        "Your waitlist request was received."
+      ],
+      "index": false,
+      "sitemap": false
+    },
+    {
+      "pageName": "creator",
+      "path": "/creator",
+      "title": "Creator Program | TAKE.Health",
+      "description": "Join the Take Creator Program and make content that helps people understand their health, habits and everyday wellbeing.",
+      "h1": "Create Content. Shape Better Health.",
+      "copy": [
+        "Join the Take Creator Program and turn your creativity into content that helps people understand their health, habits and everyday wellbeing better.",
+        "There is no minimum follower requirement."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.5"
+    },
+    {
+      "pageName": "demo",
+      "path": "/demo",
+      "title": "Demo Preview | TAKE.Health",
+      "description": "Sample screens of the TAKE.Health app. Names and figures on this page are examples, not a patient record.",
+      "h1": "Demo preview",
+      "copy": [
+        "This page shows sample screens of the TAKE.Health app. The names and figures are examples, not a real patient record."
+      ],
+      "index": false,
+      "sitemap": false
+    },
+    {
+      "pageName": "diabetesLanding",
+      "path": "/diabetes-landing",
+      "title": "Diabetes | TAKE.Health",
+      "description": "TAKE.Health page: India's 1st Diabetes Reversal Tool At No Cost.",
+      "h1": "India's 1st Diabetes Reversal Tool At No Cost",
+      "copy": [
+        "India's 1st Diabetes Reversal Tool At No Cost."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.5"
+    },
+    {
+      "pageName": "weightLoss",
+      "path": "/weight-loss",
+      "title": "Weight Loss | TAKE.Health",
+      "description": "TAKE.Health page: Feel Better and Live Longer With Free Weight Loss Management.",
+      "h1": "Feel Better & Live Longer With Free Weight Loss Management",
+      "copy": [
+        "Feel Better & Live Longer With Free Weight Loss Management."
+      ],
+      "index": true,
+      "sitemap": true,
+      "changefreq": "monthly",
+      "priority": "0.5"
+    },
+    {
+      "pageName": "updatedLanding",
+      "path": "/updated-landing",
+      "title": "Everything Your Health Has to Say | TAKE.Health",
+      "description": "Take Health brings your lab reports, daily habits and long-term trends into one place, and explains what they mean.",
+      "h1": "Everything Your Health Has to Say",
+      "copy": [
+        "This address shows the TAKE.Health homepage. The canonical page is https://www.take.health/."
+      ],
+      "index": false,
+      "sitemap": false,
+      "canonicalPath": "/"
+    },
+    {
+      "pageName": "oldLanding",
+      "path": "/old-landing",
+      "title": "Live Longer, Better | TAKE.Health",
+      "description": "An earlier TAKE.Health marketing page. The current homepage is https://www.take.health/.",
+      "h1": "Live Longer, Better",
+      "copy": [
+        "Access personalized health insights through the TAKE.Health platform.",
+        "The current homepage is https://www.take.health/."
+      ],
+      "index": false,
+      "sitemap": false,
+      "canonicalPath": "/"
+    }
+  ]
+}

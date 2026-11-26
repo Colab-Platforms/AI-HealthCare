@@ -59,9 +59,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['lucide-react', 'recharts']
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          // Only the React runtime is pulled into a shared chunk. Forcing
+          // Three, Firebase, PDF, charts or canvas libraries into their own
+          // chunks made the homepage statically import those chunks.
+          if (/node_modules\/(react-dom|react-router|scheduler)\//.test(id) || /node_modules\/react\//.test(id)) {
+            return "vendor";
+          }
         }
       }
     },

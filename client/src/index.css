@@ -1,16 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
-@import url('https://fonts.cdnfonts.com/css/vipnagorgialla');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Vipnagorgialla ships in this repo as OTF. The previous @font-face rules
+   pointed at woff2 files that were never added, so those requests 404'd. */
 @font-face {
-  font-family: "ABC Diatype Expanded Unlicensed Trial";
-  src: url("/assets/fonts/abc-diatype-expanded.woff2") format("woff2");
-  font-weight: 500;
+  font-family: "Vipnagorgialla";
+  src: url("/assets/fonts/Vipnagorgialla%20Rg.otf") format("opentype");
+  font-weight: 400;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vipnagorgialla";
+  src: url("/assets/fonts/Vipnagorgialla%20Rg%20It.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vipnagorgialla";
+  src: url("/assets/fonts/Vipnagorgialla%20Bd.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vipnagorgialla";
+  src: url("/assets/fonts/Vipnagorgialla%20Bd%20It.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
   font-display: swap;
 }
 
@@ -24,22 +46,6 @@
   -webkit-text-fill-color: var(--autofill-text, #ffffff);
   -webkit-box-shadow: 0 0 0px 1000px var(--autofill-bg, #2C2A28) inset;
   transition: background-color 9999s ease-in-out 0s;
-}
-
-@font-face {
-  font-family: "Founders Grotesk";
-  src: url("/assets/fonts/founders-grotesk.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Mono";
-  src: url("/assets/fonts/geist-mono.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
 }
 
 .font-brand-logo {

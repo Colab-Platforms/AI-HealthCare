@@ -14,14 +14,14 @@ const UpdatedHero = () => {
 
         {/* Optimized Responsive Hero Background Image */}
         <picture className="absolute inset-0 w-full h-full pointer-events-none z-0">
-          <source media="(max-width: 639px)" srcSet="/updated-landing/Hero_Section_2.png" />
-          <source media="(min-width: 640px)" srcSet="/updated-landing/Hero_Banner_3.png" />
+          <source media="(min-width: 640px)" srcSet="/updated-landing/hero-desktop.webp" type="image/webp" />
           <img
-            src="/updated-landing/Hero_Banner_3.png"
-            alt="Hero Background"
+            src="/updated-landing/hero-mobile.webp"
+            alt=""
+            width="1080"
+            height="2544"
             decoding="async"
-            loading="eager"
-            fetchpriority="high"
+            fetchPriority="high"
             className="w-full h-full object-cover object-bottom pointer-events-none"
           />
         </picture>
