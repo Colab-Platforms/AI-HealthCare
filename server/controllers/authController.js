@@ -18,6 +18,7 @@ const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const NotificationPreference = require('../models/NotificationPreference');
 const { normalizeDietaryPreference } = require('../utils/dietaryPreference');
 const { reconcileFoodPreferences } = require('../utils/dietConstraints');
+const profileSync = require('../modules/health-profile/services/profileSync');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -172,6 +173,14 @@ const getIncomingDeviceId = (req) => {
   const value = typeof raw === 'string' ? raw.trim() : (raw ? String(raw) : '');
   return value || null;
 };
+
+// emailService.sendEmail never throws — it returns { success: false } — so a
+// failed code email used to answer "code sent" while nothing was delivered.
+const emailSendFailed = (res) => res.status(503).json({
+  success: false,
+  code: 'EMAIL_SEND_FAILED',
+  message: 'We could not send the code to your email right now. Please try again in a few minutes.',
+});
 
 // Same snake_case/camelCase split as device_id — mobile sends fcm_token, web sends fcmToken.
 const getIncomingFcmToken = (req) => {
@@ -345,7 +354,8 @@ exports.requestGuardianConsentOtp = async (req, res) => {
     );
 
     const emailService = require('../services/emailService');
-    await emailService.sendGuardianConsentCode(guardianEmail, req.user.name || 'A Take Health user', code);
+    const sent = await emailService.sendGuardianConsentCode(guardianEmail, req.user.name || 'A Take Health user', code);
+    if (!sent?.success) return emailSendFailed(res);
 
     res.json({ success: true, message: 'Verification code sent to guardian email' });
   } catch (error) {
@@ -443,7 +453,8 @@ exports.requestRegistrationOtp = async (req, res) => {
 
     // Send email
     const emailService = require('../services/emailService');
-    await emailService.sendVerificationCode(email, name || 'User', code);
+    const sent = await emailService.sendVerificationCode(email, name || 'User', code);
+    if (!sent?.success) return emailSendFailed(res);
 
     res.json({ success: true, message: 'Verification code sent' });
   } catch (error) {
@@ -772,6 +783,12 @@ exports.register = async (req, res) => {
         isWaitlistedUser,
         subscription: trialSubscription,
       });
+
+      // HealthProfile from the onboarding answers. Never throws: on failure
+      // the first later profile write builds it from the same data.
+      if (profile && Object.keys(profile).length) {
+        await profileSync.onSignup(user._id, user.toObject());
+      }
 
       markWaitlistConverted(waitlistEntry);
       // Bought from the Shopify store with this email? 30-day trial instead of 14.
@@ -1765,6 +1782,12 @@ exports.updateProfile = async (req, res) => {
 
       const updatedUser = await user.save();
 
+      // Old app versions still edit the profile here: bring the change into
+      // HealthProfile (master copy). Never fails the request.
+      if (req.body.profile || req.body.nutritionGoal) {
+        await profileSync.syncLegacyEdit(updatedUser._id);
+      }
+
       // Diet type changed -> any already-generated plan was built for the OLD
       // preference and its 21 stored meals can include dishes that now break
       // the new one (e.g. non-veg dishes left over after switching to veg —
@@ -1973,7 +1996,8 @@ exports.forgotPassword = async (req, res) => {
 
     // Send email
     const emailService = require('../services/emailService');
-    await emailService.sendPasswordResetCode(user.email, user.name, resetCode);
+    const sent = await emailService.sendPasswordResetCode(user.email, user.name, resetCode);
+    if (!sent?.success) return emailSendFailed(res);
 
     res.json({ success: true, message: 'Verification code sent to your email' });
   } catch (error) {
@@ -2122,7 +2146,8 @@ exports.resendVerificationCode = async (req, res) => {
     await user.save();
 
     const emailService = require('../services/emailService');
-    await emailService.sendVerificationCode(user.email, user.name, verificationCode);
+    const sent = await emailService.sendVerificationCode(user.email, user.name, verificationCode);
+    if (!sent?.success) return emailSendFailed(res);
 
     res.json({ success: true, message: 'Verification code resent' });
   } catch (error) {

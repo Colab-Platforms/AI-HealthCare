@@ -10,6 +10,9 @@ const MODEL_PRICING = {
     'claude-3-5-haiku-latest': { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-4-haiku-latest':   { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-opus-4-8':         { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25 },
+    // AI Coach V2 (modules/ai-coach). Cache write = 1.25x input (5-min TTL).
+    'claude-sonnet-5-5':       { input: 2.00,  output: 10.00, cacheRead: 0.10,  cacheWrite: 2.50 },
+    'claude-haiku-5-5':        { input: 0.10,  output: 0.50,  cacheRead: 0.01,  cacheWrite: 0.125 },
     // OpenRouter models — verify against https://openrouter.ai/models before relying on cost totals
     'google/gemini-2.5-flash':      { input: 0.30, output: 2.50, cacheRead: 0.075, cacheWrite: 0 },
     'google/gemini-2.5-flash-lite': { input: 0.10, output: 0.40, cacheRead: 0.025, cacheWrite: 0 },
@@ -41,6 +44,8 @@ const usageLogSchema = new mongoose.Schema({
     feature:           { type: String, required: true, enum: [
         'validate_report', 'analyze_report', 'reanalyze_report',
         'ai_chat', 'chat_about_report', 'metric_info',
+        // AI Coach V2: the answer, and the classify/extract call
+        'ai_coach_v2', 'ai_coach_classify',
         'compare_reports', 'health_dna', 'vitals_insights',
         'diet_plan', 'translate', 'nutrition_analysis',
         // Follow-up push nudge copy (nudgeService.js)

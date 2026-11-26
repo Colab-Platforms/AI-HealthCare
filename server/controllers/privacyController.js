@@ -6,6 +6,9 @@ const FoodLog = require('../models/FoodLog');
 const HealthMetric = require('../models/HealthMetric');
 const ActivityLog = require('../models/ActivityLog');
 const ChatHistory = require('../models/ChatHistory');
+const HealthProfile = require('../modules/health-profile/models/HealthProfile');
+const ProfileHistory = require('../modules/health-profile/models/ProfileHistory');
+const CoachState = require('../modules/ai-coach/models/CoachState');
 const { ZipArchive } = require('archiver');
 const emailService = require('../services/emailService');
 const Otp = require('../models/Otp');
@@ -126,7 +129,7 @@ exports.exportData = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        const [user, reports, documents, foodLogs, metrics, chatHistory, consentLogs, activityLogs] = await Promise.all([
+        const [user, reports, documents, foodLogs, metrics, chatHistory, consentLogs, activityLogs, healthProfile, profileHistory, coachState] = await Promise.all([
             User.findById(userId).select('-password -resetPasswordCode -emailVerificationCode').lean(),
             HealthReport.find({ user: userId }).lean(),
             MedicalDocument.find({ userId }).lean(),
@@ -135,6 +138,9 @@ exports.exportData = async (req, res) => {
             ChatHistory.find({ userId }).lean(),   // ChatHistory uses userId
             ConsentLog.find({ userId }).lean(),
             ActivityLog.find({ user: userId }).lean(), // ActivityLog uses 'user' not 'userId'
+            HealthProfile.findOne({ user: userId }).lean(),
+            ProfileHistory.find({ user: userId }).sort({ _id: 1 }).lean(),
+            CoachState.findOne({ user: userId }).lean(),
         ]);
 
         res.setHeader('Content-Type', 'application/zip');
@@ -155,6 +161,9 @@ exports.exportData = async (req, res) => {
         add('chat_history.json',   chatHistory);
         add('consent_logs.json',   consentLogs);
         add('activity_logs.json',  activityLogs);
+        add('health_profile.json', healthProfile);
+        add('health_profile_history.json', profileHistory);
+        add('coach_state.json', coachState);
         add('README.txt',          `take.health Personal Data Export\nGenerated: ${new Date().toISOString()}\nThis archive contains all personal data stored for your account under DPDPA 2023.\n`);
 
         await archive.finalize();
@@ -461,6 +470,9 @@ exports.runDeletionCron = async () => {
                 HealthMetric.deleteMany({ userId: uid }),
                 ChatHistory.deleteMany({ userId: uid }),
                 ActivityLog.deleteMany({ user: uid }), // ActivityLog's field is `user`, not `userId`
+                HealthProfile.deleteMany({ user: uid }),
+                ProfileHistory.deleteMany({ user: uid }),
+                CoachState.deleteMany({ user: uid }),
                 // NOT deleted here — DPDPA §6 evidence-of-compliance requires
                 // proof consent existed to outlive the account itself. Stamped
                 // instead; a separate cron purges these after CONSENT_LOG_RETENTION_YEARS.

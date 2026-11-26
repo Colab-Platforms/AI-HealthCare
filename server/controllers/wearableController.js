@@ -571,6 +571,12 @@ exports.syncOsHealthData = async (req, res) => {
     await wearableIngest.applyVitalsSamples(req.user._id, provider, source, metrics.vitals || []);
     if (metrics.bloodOxygen?.length) await wearable.save();
 
+    // A smart-scale weight may have updated the HealthProfile inside the
+    // transaction above; its caches can only be cleared after the commit.
+    if (metrics.bodyComposition?.some((s) => s?.weightKg != null)) {
+      await require('../modules/health-profile/services/profileSync').invalidate(req.user._id);
+    }
+
     cache.delete(`dashboard:${req.user._id}`);
     cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
     cache.deletePattern(`activity_analytics:${req.user._id}:*`);

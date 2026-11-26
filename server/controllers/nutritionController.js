@@ -20,6 +20,18 @@ const { buildNutritionInsight, buildNotLoggedInsight } = require('../services/nu
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getNutritionTrends: getNutritionTrendsData, NutritionTrendInputError } = require('../services/nutritionTrendService');
 const foodController = require('./foodController');
+const profileSync = require('../modules/health-profile/services/profileSync');
+
+// HealthGoal -> HealthProfile facts. A missing/zero/invalid value is left out
+// (it used to be written as 0), so it never overwrites a real value.
+const healthGoalProfileFacts = (healthGoal) => ({
+  basic: { age: profileSync.positiveNumber(healthGoal.age) },
+  body: {
+    heightCm: profileSync.positiveNumber(healthGoal.height),
+    weightKg: profileSync.positiveNumber(healthGoal.currentWeight),
+  },
+  goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
+});
 
 // Food photos are switched off: scan photos are still stored on QuickFoodCheck/FoodLog, but no
 // history read ever sends them back to the apps.
@@ -971,20 +983,21 @@ exports.setHealthGoal = async (req, res) => {
     const carbsGoal = healthGoal.macroTargets?.carbs || 200;
     const fatGoal = healthGoal.macroTargets?.fats || 65;
 
-    await User.findByIdAndUpdate(req.user._id, {
-      nutritionGoal: {
-        goal: healthGoal.goalType,
-        targetWeight: healthGoal.targetWeight,
-        calorieGoal: healthGoal.dailyCalorieTarget,
-        proteinGoal: proteinGoal,
-        carbsGoal: carbsGoal,
-        fatGoal: fatGoal,
-        lastUpdated: new Date()
-      },
-      'profile.age': Number(healthGoal.age) || 0,
-      'profile.height': Number(healthGoal.height) || 0,
-      'profile.weight': Number(healthGoal.currentWeight) || 0
-    });
+    // nutritionGoal + age/height/weight/target weight in one transaction;
+    // the profile facts go through HealthProfile (mirrored to User.profile).
+    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {
+      $set: {
+        nutritionGoal: {
+          goal: healthGoal.goalType,
+          targetWeight: healthGoal.targetWeight,
+          calorieGoal: healthGoal.dailyCalorieTarget,
+          proteinGoal: proteinGoal,
+          carbsGoal: carbsGoal,
+          fatGoal: fatGoal,
+          lastUpdated: new Date()
+        }
+      }
+    }, { source: 'manual' });
 
     // Invalidate server-side dashboard cache and the 15-min cached active goal used by
     // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
@@ -1122,20 +1135,19 @@ exports.updateHealthGoal = async (req, res) => {
     const carbsGoal = healthGoal.macroTargets?.carbs || 200;
     const fatGoal = healthGoal.macroTargets?.fats || 65;
 
-    await User.findByIdAndUpdate(req.user._id, {
-      nutritionGoal: {
-        goal: healthGoal.goalType,
-        targetWeight: healthGoal.targetWeight,
-        calorieGoal: healthGoal.dailyCalorieTarget,
-        proteinGoal: proteinGoal,
-        carbsGoal: carbsGoal,
-        fatGoal: fatGoal,
-        lastUpdated: new Date()
-      },
-      'profile.age': Number(healthGoal.age),
-      'profile.height': Number(healthGoal.height),
-      'profile.weight': Number(healthGoal.currentWeight)
-    });
+    await profileSync.writeWithUser(req.user._id, healthGoalProfileFacts(healthGoal), {
+      $set: {
+        nutritionGoal: {
+          goal: healthGoal.goalType,
+          targetWeight: healthGoal.targetWeight,
+          calorieGoal: healthGoal.dailyCalorieTarget,
+          proteinGoal: proteinGoal,
+          carbsGoal: carbsGoal,
+          fatGoal: fatGoal,
+          lastUpdated: new Date()
+        }
+      }
+    }, { source: 'manual' });
 
     // Invalidate server-side dashboard cache and the 15-min cached active goal used by
     // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
@@ -1234,18 +1246,24 @@ exports.setCalorieOverride = async (req, res) => {
     const carbsGoal = healthGoal.macroTargets?.carbs || 200;
     const fatGoal = healthGoal.macroTargets?.fats || 65;
 
-    await User.findByIdAndUpdate(req.user._id, {
-      nutritionGoal: {
-        goal: healthGoal.goalType,
-        targetWeight: healthGoal.targetWeight,
-        calorieGoal: healthGoal.dailyCalorieTarget,
-        proteinGoal,
-        carbsGoal,
-        fatGoal,
-        autoCalculated: false,
-        lastUpdated: new Date()
+    // targetWeight is also HealthProfile goals.targetWeightKg, so it goes
+    // through the bridge too (no-op when unchanged).
+    await profileSync.writeWithUser(req.user._id, {
+      goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
+    }, {
+      $set: {
+        nutritionGoal: {
+          goal: healthGoal.goalType,
+          targetWeight: healthGoal.targetWeight,
+          calorieGoal: healthGoal.dailyCalorieTarget,
+          proteinGoal,
+          carbsGoal,
+          fatGoal,
+          autoCalculated: false,
+          lastUpdated: new Date()
+        }
       }
-    });
+    }, { source: 'manual' });
 
     cache.delete(`dashboard:${req.user._id}`);
     cache.delete(`health_goal:${req.user._id}`);
@@ -1274,6 +1292,14 @@ exports.logWeight = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Weight value is required'
+      });
+    }
+    // Same range as User.profile.weight / HealthProfile body.weightKg.
+    const weightKg = Number(weight);
+    if (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Weight must be a number between 0 and 500 kg'
       });
     }
 
@@ -1313,23 +1339,14 @@ exports.logWeight = async (req, res) => {
 
     await metric.save({ maxTimeMS: 30000 });
 
-    // Also update user profile weight and BMI
-    const user = await withTimeout(User.findById(req.user._id));
+    // Also update profile weight (through HealthProfile) and BMI, together.
+    const user = await withTimeout(User.findById(req.user._id).select('profile.height').lean());
     if (user) {
-      user.profile = user.profile || {};
-      user.profile.weight = Number(weight);
-
-      // Recalculate BMI if height exists
-      if (user.profile.height) {
-        const heightInMeters = user.profile.height / 100;
-        const bmi = Number((Number(weight) / (heightInMeters * heightInMeters)).toFixed(1));
-        user.healthMetrics = user.healthMetrics || {};
-        user.healthMetrics.bmi = bmi;
-      }
-
-      user.markModified('profile');
-      user.markModified('healthMetrics');
-      await user.save({ maxTimeMS: 30000 });
+      const height = user.profile?.height;
+      const bmiPatch = height
+        ? { $set: { 'healthMetrics.bmi': Number((weightKg / Math.pow(height / 100, 2)).toFixed(1)) } }
+        : {};
+      await profileSync.writeWithUser(req.user._id, { body: { weightKg } }, bmiPatch, { source: 'manual' });
     }
 
     // Update health goal if exists
@@ -1350,17 +1367,21 @@ exports.logWeight = async (req, res) => {
       const carbsGoal = healthGoal.macroTargets?.carbs || 250;
       const fatGoal = healthGoal.macroTargets?.fats || 65;
 
-      await User.findByIdAndUpdate(req.user._id, {
-        nutritionGoal: {
-          goal: healthGoal.goalType,
-          targetWeight: healthGoal.targetWeight,
-          calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal: proteinGoal,
-          carbsGoal: carbsGoal,
-          fatGoal: fatGoal,
-          lastUpdated: new Date()
+      await profileSync.writeWithUser(req.user._id, {
+        goals: { targetWeightKg: profileSync.positiveNumber(healthGoal.targetWeight) },
+      }, {
+        $set: {
+          nutritionGoal: {
+            goal: healthGoal.goalType,
+            targetWeight: healthGoal.targetWeight,
+            calorieGoal: healthGoal.dailyCalorieTarget,
+            proteinGoal: proteinGoal,
+            carbsGoal: carbsGoal,
+            fatGoal: fatGoal,
+            lastUpdated: new Date()
+          }
         }
-      });
+      }, { source: 'manual' });
     }
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data

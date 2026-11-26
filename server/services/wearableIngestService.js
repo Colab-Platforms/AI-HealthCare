@@ -264,14 +264,17 @@ async function applyBodyComposition(userId, deviceType, source, samples, { sessi
 }
 
 async function syncProfileWeightIfLatest(userId, weightKg, timestamp, session) {
-  const User = require('../models/User');
   const HealthMetric = require('../models/HealthMetric');
   const [newerDeviceReading, newerManualReading] = await Promise.all([
     BodyCompositionSample.exists({ user: userId, weightKg: { $ne: null }, timestamp: { $gt: timestamp } }).session(session || null),
     HealthMetric.exists({ userId, type: 'weight', recordedAt: { $gt: timestamp } }).session(session || null),
   ]);
   if (newerDeviceReading || newerManualReading) return;
-  await User.updateOne({ _id: userId }, { $set: { 'profile.weight': weightKg } }, { session: session || undefined });
+  // Through HealthProfile (mirrored to User.profile.weight), inside the same
+  // session. A reading outside the valid range is skipped, never fails the
+  // sync. With a session, the caller clears profile caches after its commit.
+  await require('../modules/health-profile/services/profileSync')
+    .setDeviceWeight(userId, weightKg, { session: session || undefined });
 }
 
 // --- Workouts ------------------------------------------------------------

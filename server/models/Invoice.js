@@ -32,7 +32,8 @@ const invoiceSchema = new mongoose.Schema({
     pdfPublicId: String,
     pdfStatus: { type: String, enum: ['pending', 'uploaded', 'failed'], default: 'pending' },
 
-    emailStatus: { type: String, enum: ['pending', 'sent', 'failed'], default: 'pending' },
+    // 'skipped' = deliberately not emailed (test/admin-issued); never retried.
+    emailStatus: { type: String, enum: ['pending', 'sent', 'failed', 'skipped'], default: 'pending' },
     emailSentAt: Date,
 
     // Delivery bookkeeping: a short lease stops the QStash job and the cron sweep
