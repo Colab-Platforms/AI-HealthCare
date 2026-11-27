@@ -88,7 +88,7 @@ test('phone-only user (no HRV ever): recovery is N/A, the 3 remaining pillars sh
 });
 
 test('water-only day: nutrition is computed from hydration alone, food parts count 0', async (t) => {
-  mockDay(t, { nutrition: { waterIntake: 8, totalFoodsCount: 0 }, hasRecentRecovery: false });
+  mockDay(t, { nutrition: { waterIntake: 2000, totalFoodsCount: 0 }, hasRecentRecovery: false });
   const r = await calculateDailyScore('u1', DATE, { config: CONFIG });
 
   // No calorie goal → calories N/A. logging 0, quality 0, hydration 100.
@@ -99,7 +99,7 @@ test('water-only day: nutrition is computed from hydration alone, food parts cou
 
 test('fluid-restricted user: hydration removed from nutrition, not scored as 0', async (t) => {
   mockDay(t, {
-    nutrition: { waterIntake: 2, totalFoodsCount: 3, mealsLogged: { breakfast: true, lunch: true, dinner: true }, averageHealthScore: 80 },
+    nutrition: { waterIntake: 500, totalFoodsCount: 3, mealsLogged: { breakfast: true, lunch: true, dinner: true }, averageHealthScore: 80 },
     user: { profile: { chronicConditions: ['Kidney Disease'] } }, // no age/gender → diet score falls back to averageHealthScore
   });
   const r = await calculateDailyScore('u1', DATE, { config: CONFIG });
@@ -146,4 +146,28 @@ test('alcoholPenalty: guideline limit, NIAAA binge and high-intensity anchors', 
   assert.equal(alcoholPenalty(4, 'female'), 20); // NIAAA binge (women)
   assert.equal(alcoholPenalty(10, 'male'), 25); // high-intensity (men)
   assert.equal(alcoholPenalty(8, 'female'), 25); // high-intensity (women)
+});
+
+// waterIntake is ml. It used to be scored as a glass count against 8, so a
+// 100 ml log read as "100 glasses" and hydration scored 100 (real user, 27 Nov).
+test('water is scored in ml: 100 ml of a 2,000 ml goal is nowhere near 100', async (t) => {
+  mockDay(t, { nutrition: { waterIntake: 100, totalFoodsCount: 0 }, hasRecentRecovery: false });
+  const r = await calculateDailyScore('u1', DATE, { config: CONFIG });
+  assert.ok(r.components.hydration < 10, `got ${r.components.hydration}`);
+  assert.ok(r.components.nutrition < 2, `got ${r.components.nutrition}`);
+  assert.equal(r.raw.waterMl, 100);
+  assert.equal(r.raw.waterGoalMl, 2000);
+  assert.equal(r.raw.waterGlasses, 0.4);
+  assert.equal(r.raw.waterGoalGlasses, 8);
+});
+
+test("water uses the user's own ml goal", async (t) => {
+  mockDay(t, {
+    nutrition: { waterIntake: 3000, totalFoodsCount: 0 },
+    hasRecentRecovery: false,
+    user: { profile: { age: 30, gender: 'male', lifestyle: { waterGoalMl: 3000 } } },
+  });
+  const r = await calculateDailyScore('u1', DATE, { config: CONFIG });
+  assert.equal(r.components.hydration, 100);
+  assert.equal(r.raw.waterGoalMl, 3000);
 });

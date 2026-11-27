@@ -107,7 +107,7 @@ const PERFECT_DAY = {
   ...WHOOP_MORNING,
   food: { meals: 3, mealsLogged: ALL_MEALS, kcal: 2150 },
   diet: 75,
-  water: 8,
+  water: 2000, // ml (8 glasses)
   steps: 9000,
   strengthMinutes7d: 60,
 };
@@ -122,7 +122,7 @@ test('2. Noon, partial day: 65.0 (was 69.0) — score climbs as he logs', async 
   const r = await amishDay(t, {
     ...WHOOP_MORNING,
     food: { meals: 2, mealsLogged: { breakfast: true, lunch: true }, kcal: 1300 },
-    water: 3,
+    water: 750, // ml (3 glasses)
     steps: 4000,
   });
   near(r.finalScore, 65.0, 'score');
@@ -136,7 +136,7 @@ test('3. Perfect day: 91.9 (was 92.7) — a fully-logged day scores about the sa
 });
 
 test('4. Lazy day, only water: 1.4 (was 33.7)', async (t) => {
-  const r = await amishDay(t, { water: 3 });
+  const r = await amishDay(t, { water: 750 }); // ml (3 glasses)
   near(r.finalScore, 1.4, 'score');
 });
 

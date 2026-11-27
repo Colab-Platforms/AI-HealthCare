@@ -39,7 +39,14 @@ const { getStepGoal } = require('../utils/stepGoal');
 // file's comment) — a real target, not a self-learning one, so the
 // "don't reward a bad habit" concern above doesn't apply to it.
 const POPULATION_NORMS = { sleepHours: 7.5 };
-const FIXED_GOALS = { waterGlasses: 8 };
+// Water is stored and goal-set in ml; glasses are display-only (250 ml, the
+// same glass size waterAnalyticsService uses).
+const ML_PER_GLASS = 250;
+const DEFAULT_WATER_GOAL_ML = 2000;
+const waterGoalMlOf = (user) => {
+  const goal = Number(user?.profile?.lifestyle?.waterGoalMl);
+  return Number.isFinite(goal) && goal > 0 ? goal : DEFAULT_WATER_GOAL_ML;
+};
 
 // The four weighted pillars of the Daily Score (config v2+). Everything else
 // in `components` (hydration, smoking, alcohol) is display-only.
@@ -227,7 +234,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   }
 
   // --- Activity (steps) — scored against the app's fixed step goal, not a
-  // self-learning baseline (see FIXED_GOALS comment above).
+  // self-learning baseline.
   //
   // Same "hit the goal, then plateau" curve as hydration. A plain sigmoid was
   // wrong in both directions here: hitting the 10,000-step goal the app shows
@@ -394,11 +401,18 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
   // v2: hydration is a sub-part of nutrition, not its own weighted pillar.
   // `components.hydration` is still written as a display-only 0-100 value so
   // existing app versions (and the breakdown screen) keep showing it.
+  // NutritionSummary.waterIntake is MILLILITRES. It used to be scored as a
+  // glass count against 8, so 100 ml read as "100 glasses" and scored 100.
+  // Scored in ml against the user's own goal (the one the water screen shows).
+  const waterGoalMl = waterGoalMlOf(user);
   let hydrationScore = null;
   if (!fluidRestricted && nutritionSummary && nutritionSummary.waterIntake > 0) {
-    raw.waterGlasses = nutritionSummary.waterIntake;
-    raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
-    hydrationScore = saturatingToGoal(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses);
+    const waterMl = nutritionSummary.waterIntake;
+    raw.waterMl = waterMl;
+    raw.waterGoalMl = waterGoalMl;
+    raw.waterGlasses = Math.round((waterMl / ML_PER_GLASS) * 10) / 10;
+    raw.waterGoalGlasses = Math.round((waterGoalMl / ML_PER_GLASS) * 10) / 10;
+    hydrationScore = saturatingToGoal(waterMl, waterGoalMl);
     components.hydration = hydrationScore;
   }
 
@@ -480,7 +494,10 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
 
     // Hydration: applicable unless fluid-restricted; not logged → 0.
     if (!fluidRestricted) {
-      if (raw.waterGoalGlasses == null) raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
+      if (raw.waterGoalMl == null) {
+        raw.waterGoalMl = waterGoalMl;
+        raw.waterGoalGlasses = Math.round((waterGoalMl / ML_PER_GLASS) * 10) / 10;
+      }
       parts.push({ w: nw.hydration, v: hydrationScore != null ? hydrationScore / 100 : 0 });
     }
 

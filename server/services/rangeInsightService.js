@@ -141,7 +141,9 @@ async function collectNutritionRange(userId, startDate, endDate) {
   const daysWithWater = rows.filter((r) => (r.waterIntake || 0) > 0);
   const hydration = daysWithWater.length ? {
     daysLogged: daysWithWater.length,
-    avgGlasses: average(daysWithWater.map((r) => r.waterIntake)),
+    // waterIntake is ml; it used to be passed to the AI as a glass count.
+    avgMl: average(daysWithWater.map((r) => r.waterIntake)),
+    avgGlasses: average(daysWithWater.map((r) => r.waterIntake / 250)),
     trend: trendDirection(daysWithWater.map((r) => r.waterIntake)),
   } : null;
 
