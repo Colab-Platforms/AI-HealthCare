@@ -22,6 +22,7 @@ const { getStepGoal } = require('../utils/stepGoal');
 const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
 const UsageLog = require('../models/UsageLog');
 const { handleCoachV2 } = require('../modules/ai-coach/chatHandler');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 // Caps so a heavy user's history can't silently balloon the prompt.
 const MAX_LISTED_ITEMS = 8;
@@ -153,7 +154,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
         userLogs, recentMetrics, dashboardCache, todaysAgg, lastMeal, activePlan, latestReports,
         latestHeartRate, latestSpo2, latestBodyComp,
       ] = await Promise.all([
-        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
+        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle').lean().then(withProfile),
         HealthMetric.find({ userId: user._id }).sort({ recordedAt: -1 }).limit(10).lean(),
         cache.get(`dashboard:${user._id}`),
         // Totals and a capped item list computed in the DB rather than pulled

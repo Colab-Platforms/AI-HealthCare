@@ -3,6 +3,7 @@ const writeService = require('./profileWriteService');
 const { mongoRepo, VersionConflictError } = require('./profileRepo');
 const { fromLegacyUser } = require('./profileMapper');
 const { computeCompleteness } = require('./completeness');
+const { buildSafetyConstraints, foodRulesText, exerciseRulesText } = require('./safetyConstraints');
 
 // The read side of the health profile.
 //
@@ -11,12 +12,12 @@ const { computeCompleteness } = require('./completeness');
 //                              feature reads the profile through this, never
 //                              User.profile directly.
 //
-// Cache: `profile:ctx:{userId}:v1`, cleared by ProfileWriteService after every
+// Cache: `profile:ctx:{userId}:v2`, cleared by ProfileWriteService after every
 // committed write (pattern `profile:ctx:{userId}:*`). The TTL is a backstop for
 // the rare read-before-invalidate race, not the main freshness mechanism.
 
 const CONTEXT_TTL_SECONDS = 15 * 60;
-const contextKey = (userId) => `profile:ctx:${userId}:v1`;
+const contextKey = (userId) => `profile:ctx:${userId}:v3`; // v3 (26 Nov): diabetes / diet / fitness details + safety rules
 
 const { SCALAR_SECTIONS, LIST_SECTIONS } = HealthProfile;
 const SECTIONS = [...SCALAR_SECTIONS, ...LIST_SECTIONS];
@@ -84,10 +85,14 @@ function buildContext(doc, now = new Date()) {
         allergies: items(doc.allergies, (a) => ({ allergen: a.allergen, type: a.type, severity: a.severity, reaction: a.reaction })),
         surgeries: items(doc.surgeries, (s) => ({ name: s.name, year: s.year })),
         familyHistory: items(doc.familyHistory, (f) => ({ relation: f.relation, condition: f.condition })),
+        disabilities: items(doc.disabilities, (d) => ({ name: d.name, area: d.area, severity: d.severity, aid: d.aid, notes: d.notes })),
+        intolerances: items(doc.intolerances, (i) => ({ name: i.name, severity: i.severity, reaction: i.reaction })),
+        mentalHealth: items(doc.mentalHealth, (m) => ({ name: m.name, status: m.status, treatment: m.treatment, since: m.since })),
         lifestyle: stripMeta(doc.lifestyle),
         diet: stripMeta(doc.diet),
         fitness: stripMeta(doc.fitness),
         goals: stripMeta(doc.goals),
+        diabetes: stripMeta(doc.diabetes),
         coachPreferences: stripMeta(doc.coachPreferences),
     };
     // A medication list whose only items are inactive reads as "none current".
@@ -106,7 +111,26 @@ function buildContext(doc, now = new Date()) {
         listLine('Surgeries', ctx.surgeries, (i) => `${i.name}${i.year ? ` (${i.year})` : ''}`),
         listLine('Family history', ctx.familyHistory, (i) => (i.relation ? `${i.relation}: ${i.condition}` : i.condition)),
     ];
-    if (ctx.diet?.preference) lines.push(`Diet: ${ctx.diet.preference}`);
+    if (ctx.diet) {
+        const d = ctx.diet;
+        const parts = [d.preference, d.cuisinePreference && `cuisine ${d.cuisinePreference}`, d.mealsPerDay && `${d.mealsPerDay} meals a day`,
+            d.restrictions?.length && `restrictions: ${d.restrictions.join(', ')}`,
+            d.dietaryRestrictions?.length && `also avoids for health / religion: ${d.dietaryRestrictions.join(', ')}`,
+            d.dislikes?.length && `does not want: ${d.dislikes.join(', ')}`, d.likes?.length && `likes: ${d.likes.join(', ')}`,
+            d.region && `${d.region} Indian food`].filter(Boolean);
+        if (parts.length) lines.push(`Diet: ${parts.join(', ')}`);
+    }
+    if (ctx.diabetes) {
+        const d = ctx.diabetes;
+        const parts = [d.type, d.status && d.status.toLowerCase(), d.diagnosisYear && `since ${d.diagnosisYear}`,
+            d.hba1c != null && `HbA1c ${d.hba1c}% (self-reported)`,
+            d.onMedication === true && `on medication${d.medicationType?.length ? ` (${d.medicationType.join(', ')})` : ''}`,
+            d.onMedication === false && 'no diabetes medication', d.insulinTiming && `insulin ${d.insulinTiming}`,
+            d.glucoseMonitoring && `monitors with ${d.glucoseMonitoring}`, d.testingFrequency && `tests ${d.testingFrequency}`,
+            d.fastingGlucose && `usual fasting sugar ${d.fastingGlucose}`, d.postMealGlucose && `after meals ${d.postMealGlucose}`,
+            d.recentDosageChange === true && 'dose changed recently'].filter(Boolean);
+        if (parts.length) lines.push(`Diabetes: ${parts.join(', ')}`);
+    }
     if (ctx.lifestyle) {
         const l = ctx.lifestyle;
         const parts = [
@@ -116,13 +140,34 @@ function buildContext(doc, now = new Date()) {
         ].filter(Boolean);
         if (parts.length) lines.push(`Lifestyle: ${parts.join(', ')}`);
     }
+    // Said only once asked (no "not asked yet" line for everyone).
+    if (ctx.intolerances?.state === 'none') lines.push('Food intolerances: none');
+    else if (ctx.intolerances?.items?.length) {
+        lines.push(`Food intolerances: ${ctx.intolerances.items.map((i) => [i.name, i.severity && i.severity !== 'unknown' && i.severity, i.reaction && `(${i.reaction})`].filter(Boolean).join(' ')).join('; ')}`);
+    }
+    if (ctx.mentalHealth?.items?.length) {
+        lines.push(`Mental health (bring up only if the user does; be gentle, never diagnose): ${ctx.mentalHealth.items.map((m) => [m.name, m.status && m.status !== 'unknown' && m.status, m.treatment && !['unknown', 'none'].includes(m.treatment) && `on ${m.treatment}`].filter(Boolean).join(', ')).join('; ')}`);
+    }
+    if (ctx.disabilities?.state === 'none') lines.push('Physical disabilities: none');
+    else if (ctx.disabilities?.items?.length) {
+        lines.push(`Physical disabilities: ${ctx.disabilities.items.map((d) => [d.name, d.severity && d.severity !== 'unknown' && d.severity, d.aid && `uses ${d.aid}`].filter(Boolean).join(', ')).join('; ')}`);
+    }
     if (ctx.fitness?.limitations?.length) lines.push(`Exercise limitations: ${ctx.fitness.limitations.join(', ')}`);
+    if (ctx.fitness) {
+        const f = ctx.fitness;
+        const parts = [f.preferredExercise?.length && `likes ${f.preferredExercise.join(', ')}`, f.experience && `${f.experience} level`,
+            f.primaryGoal && `fitness goal: ${f.primaryGoal}`, f.biggestChallenge && `biggest challenge: ${f.biggestChallenge}`].filter(Boolean);
+        if (parts.length) lines.push(`Fitness: ${parts.join(', ')}`);
+    }
     if (ctx.goals) {
         const g = ctx.goals;
-        const parts = [...(g.primary || []), g.other, g.targetWeightKg && `target weight ${g.targetWeightKg} kg`].filter(Boolean);
+        const parts = [...(g.primary || []), g.other, g.targetWeightKg && `target weight ${g.targetWeightKg} kg`, g.timeline && `timeline ${g.timeline}`].filter(Boolean);
         if (parts.length) lines.push(`Goals: ${parts.join(', ')}`);
     }
     ctx.summary = lines.join('\n');
+    // The same safety rules the meal plan uses (services/safetyConstraints).
+    const sc = buildSafetyConstraints(doc, { age: ctx.basic.age });
+    ctx.safety = { food: foodRulesText(sc), exercise: exerciseRulesText(sc) };
     return ctx;
 }
 

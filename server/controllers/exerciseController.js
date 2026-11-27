@@ -15,6 +15,9 @@ const { calculateDailyScore } = require('../services/dailyHealthScoreService');
 const { getExerciseAdherence, ExerciseAdherenceInputError } = require('../services/exerciseAdherenceService');
 const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
 const HealthGoal = require('../models/HealthGoal');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
+// Lines of exercise precautions ([] when none or unavailable): additive to the response.
+const { exercisePrecautions } = require('../modules/health-profile/services/safetyConstraints');
 
 const DEFAULT_WEEKLY_GOAL = { weeklyMinutesTarget: 150, weeklyCaloriesTarget: 2000, weeklyDistanceKmTarget: 10 };
 
@@ -22,7 +25,7 @@ async function getCachedUserAge(userId) {
   const cacheKey = `user_age:${userId}`;
   const cached = await cache.get(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
-  const user = await User.findById(userId).select('profile.age').lean();
+  const user = await User.findById(userId).select('profile.age').lean().then(withProfile);
   const age = user?.profile?.age || 0;
   await cache.set(cacheKey, age, 15 * 60);
   return age;
@@ -81,7 +84,7 @@ async function getCachedUserWeight(userId) {
   const cacheKey = `user_weight:${userId}`;
   const cached = await cache.get(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
-  const user = await User.findById(userId).select('profile.weight').lean();
+  const user = await User.findById(userId).select('profile.weight').lean().then(withProfile);
   const weight = user?.profile?.weight || 0;
   await cache.set(cacheKey, weight, 15 * 60);
   return weight;
@@ -302,7 +305,7 @@ exports.getExerciseAdherenceData = async (req, res) => {
     if (!healthGoal) {
       return res.status(404).json({ success: false, message: 'Set your fitness goal first to get exercise targets' });
     }
-    const user = await User.findById(req.user._id).select('profile.profession').lean();
+    const user = await User.findById(req.user._id).select('profile.profession').lean().then(withProfile);
     const guidance = getExerciseGuidance(healthGoal.age, healthGoal.goalType, user?.profile?.profession || null);
 
     const data = await getExerciseAdherence(req.user._id, range, { date, startDate, endDate }, {
@@ -310,7 +313,9 @@ exports.getExerciseAdherenceData = async (req, res) => {
       strengthMinutesPerWeek: guidance.strengthMinutesPerWeek,
     });
 
-    res.json({ success: true, ...data });
+    // Exercise precautions from the health profile (injuries, disabilities, conditions, age 65+).
+    const precautions = await exercisePrecautions(req.user._id);
+    res.json({ success: true, ...data, precautions });
   } catch (error) {
     if (error instanceof ExerciseAdherenceInputError) {
       return res.status(400).json({ success: false, message: error.message });

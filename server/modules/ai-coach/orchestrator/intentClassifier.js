@@ -25,7 +25,7 @@ const LOG_UNITS = ['glass', 'ml', 'litre', 'bottle', 'hours', 'minutes', 'count'
 const DRINK_SIZES = ['small', 'medium', 'large', 'unknown'];
 const LOG_WHEN = ['today', 'last_night', 'yesterday'];
 const FACT_TARGETS = [
-    'allergies', 'medications', 'conditions', 'surgeries', 'familyHistory', 'fitness.limitations',
+    'allergies', 'medications', 'conditions', 'surgeries', 'familyHistory', 'disabilities', 'intolerances', 'mentalHealth', 'fitness.limitations',
     'diet.preference', 'basic.age', 'body.heightCm', 'body.weightKg',
     'lifestyle.smoking', 'lifestyle.alcohol', 'lifestyle.sleepHours', 'lifestyle.stressLevel',
 ];
@@ -129,7 +129,7 @@ Fields:
 - language: the language of the user's message. Hinglish = Hindi written in Latin letters, often mixed with English.
 - recommendsFoodOrSupplement: true if a good answer would recommend specific foods, meals, a diet plan or supplements.
 - mealLog: (water and alcoholic drinks are NOT meals: they go in activityLogs; a milk / juice / lassi / chai is a meal) isLogging = true when the user tells you what they ATE or DRANK (past or just now: "maine 2 roti dal khayi", "had oats for breakfast", "lunch was 500 kcal with 30 g protein"), not when asking what to eat. mealType as they said it, else "unknown". description = the food and quantities in short English ("2 roti, 1 bowl dal"). stated* = numbers the user SAID for the whole meal (kcal, grams), else -1. Never estimate them yourself. When isLogging is false: mealType "unknown", description "", all stated* -1.
-- facts: lasting facts about the user's own health in THIS message that belong in their profile (allergies, medicines, conditions, surgeries, family history, injuries/limitations, diet type, age, height, weight, smoking, alcohol, usual sleep hours, stress level). Not today's symptoms, not moods, not one-off meals.
+- facts: lasting facts about the user's own health in THIS message that belong in their profile (allergies, medicines, conditions, surgeries, family history, food intolerances (lactose, gluten: not allergies), mental health conditions the user says they have (anxiety, depression), physical disabilities (lasting: amputation, paralysis, polio, wheelchair user, low vision, hearing loss) vs injuries/limitations (pain or an injury that may heal), diet type, age, height, weight, smoking, alcohol, usual sleep hours, stress level). Not today's symptoms, not moods, not one-off meals.
   - target: where it goes. value: the fact in short English ("Peanut", "Metformin 500mg", "Type 2 Diabetes", "knee pain", "vegetarian", "32", "170", "68.5", "current", "6", "high"). Units: age in years, height in cm, weight in kg (convert if given otherwise).
   - none: true if the user says they have none ("no allergies", "koi dawai nahi") - then value is "".
   - Only a specific value counts ("knee pain", "Metformin", "Peanut"). If the user only says yes / that they have one without saying what ("haan", "yes I have an injury", "ek dawai leta hoon"), return NO fact for it. Never write "unspecified", "unknown" or "yes" as a value.

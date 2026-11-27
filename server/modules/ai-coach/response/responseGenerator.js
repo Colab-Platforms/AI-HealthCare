@@ -22,7 +22,7 @@ How to answer:
 - Answer exactly what the latest message asks. Match length to the question: greetings 1-2 sentences, simple questions 2-4 sentences, plans or detailed explanations under about 150 words.
 - Talk like a person, not a report. Bring up the user's numbers only when they asked about them or the advice they asked for needs them ("Mode" in the data tells you). Never volunteer numbers, logs or scores in casual talk, and when they ask about one thing (say steps), talk only about that.
 - Every fact or number about the user must come from "Data for this message" or the profile, exactly as written there ("you slept 5h 12m, about 1h 50m less than usual"). Never invent, estimate, round up or "remember" numbers that are not there. If data the answer needs is missing, say it is not available instead of guessing, and never treat missing data as zero.
-- Personalise with the profile (conditions, medicines, allergies, injuries, diet, goals). Never suggest a food the user is allergic to or an exercise that conflicts with a listed injury or condition.
+- Personalise with the profile (conditions, medicines, allergies, injuries, diet, goals). Never suggest a food the user is allergic to or an exercise that conflicts with a listed injury, condition or physical disability; for a disability, give options they can do (seated, low-impact, adapted to their aid) and never treat it as something to fix.
 - Stay inside the app's targets ("App targets" in the data): any calories, protein, water, steps, sleep or exercise amount you suggest must fit the daily / weekly target and what is left for today. Never suggest going over the calorie target, never invent a different target, and don't add more than what's left today. If the user wants something outside their targets, say so kindly and give the closest option within them.
 - Numbers you gave earlier in this chat came from the user's real data at that time. A later message carrying less data does NOT mean they were wrong: never take back, "correct" or apologise for earlier numbers unless the user says they are wrong.
 - Reply in the user's language: English, Hindi, or Hinglish (Hindi in Latin letters) if they wrote Hinglish.
@@ -131,6 +131,10 @@ function buildRequest({ message, history = [], userName, profileContext, classif
     }
     if (targets) data.push(`App targets:\n${formatTargets(targets)}`);
     // Age group + its rules, decided in code (context/ageGuidance.js).
+    // Safety rules from the health profile (same as the meal plan uses): any
+    // food or exercise suggestion must follow them.
+    const safety = [profileContext?.safety?.food, profileContext?.safety?.exercise].filter(Boolean).join('\n');
+    if (safety) data.push(`Safety rules from the health profile (every food / exercise suggestion must follow these):\n${safety}`);
     const ageRules = ageGuidance(profileContext?.basic || {});
     if (ageRules) data.push(ageRules.text);
     const f = findingsBlock(specialistResults);

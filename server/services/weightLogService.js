@@ -13,6 +13,7 @@ const HealthGoal = require('../models/HealthGoal');
 const User = require('../models/User');
 const cache = require('../utils/cache');
 const profileSync = require('../modules/health-profile/services/profileSync');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 // "2026-03-13" is taken as that UTC day (no timezone shift); anything else as a Date.
 function parseRecordedDate(date) {
@@ -55,7 +56,7 @@ async function logWeight({ userId, weightKg, date, notes, source = 'manual' }) {
     await metric.save({ maxTimeMS: 30000 });
 
     // Profile weight (through HealthProfile) and BMI, together.
-    const user = await User.findById(userId).select('profile.height').lean().maxTimeMS(30000);
+    const user = await User.findById(userId).select('profile.height').lean().maxTimeMS(30000).then(withProfile);
     if (user) {
         const height = user.profile?.height;
         const bmiPatch = height

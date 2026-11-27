@@ -399,4 +399,8 @@ userSchema.post(
   }
 );
 
+// Health facts in `profile` come from HealthProfile on every read, and are not
+// written here when HEALTH_PROFILE_ONLY=true (modules/health-profile/services/userProfilePlugin).
+userSchema.plugin(require('../modules/health-profile/services/userProfilePlugin').userProfilePlugin);
+
 module.exports = mongoose.model('User', userSchema);

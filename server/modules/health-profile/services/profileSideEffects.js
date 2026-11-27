@@ -20,13 +20,16 @@ function createProfileSideEffects({
     normalizeDietaryPreference = require('../../../utils/dietaryPreference').normalizeDietaryPreference,
     regenerateDietPlan = (userId) => require('../../../controllers/dietRecommendationController').generateDietAfterReport(userId),
     cache = require('../../../utils/cache'),
+    // health facts read from HealthProfile (the only source)
+    withProfile = (u) => require('./profileReadService').withProfile(u),
+    syncFoodPreferences = (userId, legacy) => require('./profileWriteService').syncFromLegacy(userId, { source: 'manual', legacy }),
     logger = console,
 } = {}) {
 
     // BMI + the active HealthGoal (the only stored goal and targets; it is
     // recalculated from the profile by services/healthGoalService).
     async function syncNutrition(userId, sections) {
-        const user = await User.findById(userId).select('profile').lean();
+        const user = await User.findById(userId).select('profile').lean().then(withProfile);
         if (!user) return;
         const p = user.profile || {};
 
@@ -53,13 +56,14 @@ function createProfileSideEffects({
     // Diet type changed: drop Jain leftovers from food preferences and rebuild
     // an active plan made for the old diet, same as updateProfile.
     async function onDietChanged(userId) {
-        const user = await User.findById(userId).select('profile.dietaryPreference foodPreferences').lean();
+        const user = await User.findById(userId).select('profile.dietaryPreference foodPreferences').lean().then(withProfile);
         const diet = normalizeDietaryPreference(user?.profile?.dietaryPreference);
         if (!diet) return;
 
         if (user.foodPreferences) {
             const { prefs, dropped } = reconcileFoodPreferences(diet, user.foodPreferences);
-            if (dropped.length) await User.updateOne({ _id: userId }, { $set: { foodPreferences: prefs } });
+            // Food preferences live in HealthProfile (26 Nov): only the changed lists are written.
+            if (dropped.length) await syncFoodPreferences(userId, { _id: userId, profile: user.profile, foodPreferences: prefs });
         }
 
         const hasActivePlan = await PersonalizedDietPlan.exists({ userId, isActive: true, status: 'completed' });

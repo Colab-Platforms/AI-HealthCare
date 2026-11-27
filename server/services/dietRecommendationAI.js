@@ -260,7 +260,7 @@ USER DATA:
 - Alcohol / Lifestyle: ${alcoholLine}
 - Profile alcohol flag: ${lifestyle?.alcohol ? `Yes (${lifestyle.alcoholFrequency || 'unspecified'})` : 'No or not set'}
 - Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
-- Dietary Type: ${dietaryPreference}${prefContext}${regionCountryInstructions}
+- Dietary Type: ${dietaryPreference}${prefContext}${regionCountryInstructions}${userData.safetyRules ? `\n- SAFETY RULES (from the health profile; hard constraints that win over every preference, favourite or regional dish):\n${userData.safetyRules}` : ''}
 
 REQUIREMENTS:
 1. CRITICAL CALORIE RULE: Each breakfast+lunch+dinner COMBO (same array index across all three meals) MUST total exactly ${dailyCalories} kcal ± 50 kcal. So breakfast[0].calories + lunch[0].calories + dinner[0].calories = target. Same for index 1, 2, 3, 4, 5, 6. This is the user's goal target — follow the GOAL line above: never push a day toward the wrong side of the target. ${slotBudget}
@@ -588,7 +588,7 @@ NUTRIENT PRECISION (MANDATORY): Include real, non-zero-unless-genuinely-absent e
 REQUIREMENTS:
 1. CRITICAL: calories must equal ${remainingCalories} kcal, within ±30 kcal. This is fixed by the OTHER two meals already planned for this day — do not deviate.
 2. Dietary Type: ${dietTypeInstruction}${jain ? ` ${JAIN_SYSTEM_RULE}` : ''}
-3. Allergies — NEVER include: ${allergies?.join(', ') || 'None'}
+3. Allergies — NEVER include: ${allergies?.join(', ') || 'None'}${userData.safetyRules ? `\n   SAFETY RULES (hard constraints, they win over favourites):\n${userData.safetyRules}` : ''}
 4. Medical conditions to keep in mind: ${medicalConditions?.join(', ') || 'None'}
 5. LOCATION:${locationBlock || ' not specified — rely on the dietary preference and favourites below.'}
 6. ${neverLine}
@@ -649,7 +649,14 @@ JSON output ONLY. No markdown. Exact calorie match is mandatory.`;
 
   async generateSupplementRecommendations(userData) {
     const { deficiencies, age, gender } = userData;
-    const prompt = `Suggest supplements for: ${deficiencies.map(d => d.nutrient).join(', ')}. JSON: {"supplements": [{"name": ""}]}`;
+    // Safety (26 Nov): the supplement list used to ignore medicines, conditions and allergies.
+    const safety = [
+      userData.currentMedications?.length && `Current medicines: ${userData.currentMedications.join(', ')}`,
+      userData.medicalConditions?.length && `Conditions: ${userData.medicalConditions.join(', ')}`,
+      userData.allergies?.length && `Allergies: ${userData.allergies.join(', ')}`,
+      userData.safetyRules,
+    ].filter(Boolean).join('\n');
+    const prompt = `Suggest supplements for: ${deficiencies.map(d => d.nutrient).join(', ')}.${safety ? `\nUser health profile (leave out any supplement that may interact with a listed medicine or condition, or contains a listed allergen; no doses; if unsure add "ask your doctor first" to its name):\n${safety}` : ''}\nJSON: {"supplements": [{"name": ""}]}`;
     try {
       const aiResponse = await this.makeAIRequest({
         max_tokens: 1000,

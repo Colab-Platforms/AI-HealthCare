@@ -34,6 +34,7 @@ const {
 } = require('../utils/alcoholLog');
 const { DRINK_CATALOG, isValidDrinkType, getSizeDefaults } = require('../config/drinkCatalog');
 const { getAlcoholAnalytics: getAlcoholAnalyticsService, AlcoholAnalyticsInputError } = require('../services/alcoholAnalyticsService');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 const withTimeout = (query, timeoutMs = 45000) => {
   return query.maxTimeMS(timeoutMs);
@@ -774,7 +775,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       FoodLog.find({ userId: reqUser._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).lean(),
       NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
       NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
-      User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle profile.age').lean(),
+      User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle profile.age').lean().then(withProfile),
       // Connection status only now — the actual day-by-day numbers live in
       // DailyActivityMetric/SleepSession below, not the legacy embedded arrays
       // here (those can carry duplicate/stale per-device entries for the same

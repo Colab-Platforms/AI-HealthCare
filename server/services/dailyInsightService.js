@@ -37,6 +37,7 @@ const { getNativeSleepScoresByDate, resolveSleepQualityScore } = require('./slee
 const { getActivityInsight } = require('./activityInsightService');
 const { getStepGoal } = require('../utils/stepGoal');
 const { mergeDeviceRows, filterPlausibleSleep, collapseToOnePerDay } = require('../utils/wearableMerge');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 // Free tiers cap requests per minute, and each user costs 2 calls — keep the
 // fan-out small and pause between batches rather than burning the quota in
@@ -849,7 +850,7 @@ async function buildProfile(userId) {
   const [user, goal] = await Promise.all([
     User.findById(userId)
       .select('name profile.age profile.gender profile.goals profile.healthConditions profile.chronicConditions profile.activityLevel profile.lifestyle.sleepGoalHours profile.lifestyle.waterGoalMl profile.lifestyle.stepGoal')
-      .lean(),
+      .lean().then(withProfile),
     // Goal type: HealthGoal is the only stored goal (User.nutritionGoal removed 26 Nov).
     require('../models/HealthGoal').findOne({ userId, isActive: true }).sort({ createdAt: -1 }).select('goalType').lean(),
   ]);

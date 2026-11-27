@@ -20,6 +20,9 @@
  *   node scripts/createCoachTestUser.js --persona=a --reset   (and b)
  */
 process.env.VERCEL = '1'; // server.js: export the app, no crons, no listen
+// --health-only: run as with HEALTH_PROFILE_ONLY=true (User keeps no health keys).
+if (process.argv.includes('--health-only')) process.env.HEALTH_PROFILE_ONLY = 'true';
+const HEALTH_ONLY = process.env.HEALTH_PROFILE_ONLY === 'true';
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
@@ -98,6 +101,31 @@ async function consistency(label, userId, token) {
     return goal;
 }
 
+// Health facts: what the app reads (GET /auth/profile, dashboard) must equal
+// HealthProfile; with HEALTH_ONLY the User document must hold none of them.
+async function profileCheck(label, userId, token, { written = false } = {}) {
+    const User = require('../models/User');
+    const { MIRROR_PATHS } = require('../modules/health-profile/services/userProfilePlugin');
+    const h = await hp(userId);
+    const me = await api('GET', '/api/auth/profile', { token });
+    const dash = await api('GET', '/api/health/dashboard', { token });
+    const p = me.body?.profile || {};
+    const want = { age: h?.basic?.age, gender: h?.basic?.gender, weight: h?.body?.weightKg, allergies: (h?.allergies?.items || []).map((a) => a.allergen).sort().join('|') };
+    const got = { age: p.age, gender: p.gender, weight: p.weight, allergies: (p.allergies || []).slice().sort().join('|') };
+    check(`${label}: profile in GET /auth/profile = HealthProfile`, JSON.stringify(want) === JSON.stringify(got), JSON.stringify({ want, got }));
+    check(`${label}: dashboard user.profile = HealthProfile`, dash.body?.user?.profile?.age === want.age && dash.body?.user?.profile?.weight === want.weight,
+        JSON.stringify({ age: dash.body?.user?.profile?.age, weight: dash.body?.user?.profile?.weight }));
+    if (HEALTH_ONLY && written) {
+        const raw = await User.collection.findOne({ _id: new mongoose.Types.ObjectId(String(userId)) }, { projection: { profile: 1, foodPreferences: 1 } });
+        const get = (o, k) => k.split('.').reduce((a, x) => (a == null ? undefined : a[x]), o);
+        // Only the roots this step wrote (an old user keeps a stored foodPreferences copy
+        // until migrateProfileMirror.js runs, if the step never touched it).
+        const roots = written === true ? ['profile', 'foodPreferences'] : [].concat(written);
+        const left = MIRROR_PATHS.filter((k) => roots.includes(k.split('.')[0]) && get(raw, k) !== undefined);
+        check(`${label}: User document holds no health keys`, left.length === 0, left.join(','));
+    }
+}
+
 async function hp(userId) {
     const HealthProfile = require('../modules/health-profile/models/HealthProfile');
     return HealthProfile.findOne({ user: userId }).lean();
@@ -129,6 +157,67 @@ async function oldUser(email) {
     const g0 = await HealthGoal.findOne({ userId, isActive: true }).lean();
     check('login response nutritionGoal = HealthGoal', li.body?.nutritionGoal?.calorieGoal === g0?.dailyCalorieTarget, `${li.body?.nutritionGoal?.calorieGoal} vs ${g0?.dailyCalorieTarget}`);
     await consistency('start', userId, token);
+    await profileCheck('start', userId, token);
+
+    // Old app profile edit: allergy + weight through PUT /auth/profile
+    const h0 = await hp(userId);
+    const allergies = [...(h0?.allergies?.items || []).map((a) => a.allergen), 'Shellfish'];
+    const pe = await api('PUT', '/api/auth/profile', { token, body: { profile: { allergies } } });
+    const h1 = await hp(userId);
+    check('old-app edit: allergy lands in HealthProfile', pe.status === 200 && (h1?.allergies?.items || []).some((a) => a.allergen === 'Shellfish'), `${pe.status}`);
+    check('...response profile shows it', (pe.body?.profile?.allergies || []).includes('Shellfish'), JSON.stringify(pe.body?.profile?.allergies));
+    check('...other facts untouched (age, conditions)', h1?.basic?.age === h0?.basic?.age && (h1?.conditions?.items || []).length === (h0?.conditions?.items || []).length,
+        JSON.stringify({ age: [h0?.basic?.age, h1?.basic?.age], cond: [(h0?.conditions?.items || []).length, (h1?.conditions?.items || []).length] }));
+    await profileCheck('after old-app edit', userId, token, { written: 'profile' });
+
+    // New profile API: add an item, read it back at once (caches cleared)
+    const v = (await api('GET', '/api/health-profile', { token })).body?.version;
+    const add = await api('POST', '/api/health-profile/allergies/items', { token, body: { item: { allergen: 'Dust' }, version: v } });
+    const me2 = await api('GET', '/api/auth/profile', { token });
+    check('health-profile API item add -> GET /auth/profile shows it immediately', add.status === 200 && (me2.body?.profile?.allergies || []).includes('Dust'),
+        `${add.status} ${JSON.stringify(me2.body?.profile?.allergies)}`);
+    await profileCheck('after health-profile API', userId, token, { written: 'profile' });
+
+    // Moved keys (26 Nov): diabetes / diet / fitness details through the old app
+    const moved = {
+      diabetesProfile: { type: 'Type 2', hba1c: 7.2, onMedication: true, medicationType: ['Metformin'], insulinTiming: 'none' },
+      dietPreferences: { mealsPerDay: '4', restrictions: ['no sugar'] },
+      fitnessProfile: { primaryGoal: 'stay active', timeframe: '6 months', biggestChallenge: 'time' },
+    };
+    const me0 = (await api('GET', '/api/auth/profile', { token })).body?.profile || {};
+    const mv = await api('PUT', '/api/auth/profile', { token, body: { profile: { ...me0, ...moved } } });
+    const hm = await hp(userId);
+    check('old-app edit of diabetes / diet / fitness details lands in HealthProfile', mv.status === 200 && hm?.diabetes?.hba1c === 7.2 && hm?.diabetes?.type === 'Type 2'
+        && hm?.diet?.mealsPerDay === '4' && hm?.fitness?.biggestChallenge === 'time' && hm?.goals?.timeline === '6 months',
+        JSON.stringify({ d: hm?.diabetes, meals: hm?.diet?.mealsPerDay, f: hm?.fitness?.biggestChallenge, t: hm?.goals?.timeline }));
+    const me3 = (await api('GET', '/api/auth/profile', { token })).body?.profile || {};
+    check('...GET /auth/profile shows them in the old shape', me3.diabetesProfile?.hba1c === 7.2 && me3.dietPreferences?.mealsPerDay === '4' && me3.fitnessProfile?.timeframe === '6 months',
+        JSON.stringify({ d: me3.diabetesProfile, dp: me3.dietPreferences, fp: me3.fitnessProfile }));
+    const { getProfileContext } = require('../modules/health-profile/services/profileContextService');
+    const ctx = await getProfileContext(userId);
+    check('...the coach sees the diabetes details', /Diabetes: Type 2.*HbA1c 7\.2%/.test(ctx?.summary || ''), (ctx?.summary || '').split('\n').find((l) => l.startsWith('Diabetes')));
+    await profileCheck('after moved-keys edit', userId, token, { written: 'profile' });
+
+    // Food preferences screen (26 Nov: User.foodPreferences -> HealthProfile basic + diet)
+    const fp = await api('POST', '/api/users/food-preferences', { token, body: {
+      state: 'Kerala', city: 'Kochi', preferredFoods: ['appam'], foodsToAvoid: ['bhindi'], dietaryRestrictions: ['no beef'],
+      mealPreferences: { breakfast: ['idli'], lunch: [], snacks: [], dinner: ['roti sabzi'] },
+    } });
+    const hf = await hp(userId);
+    check('food preferences save lands in HealthProfile (location + diet)', fp.status === 200 && hf?.basic?.state === 'Kerala' && hf?.basic?.city === 'Kochi'
+        && hf?.diet?.region === 'south' && (hf?.diet?.likes || []).includes('appam') && (hf?.diet?.dislikes || []).includes('bhindi')
+        && (hf?.diet?.dietaryRestrictions || []).includes('no beef') && (hf?.diet?.mealPatterns?.breakfast || []).includes('idli'),
+        JSON.stringify({ s: fp.status, basic: { st: hf?.basic?.state, c: hf?.basic?.city }, diet: hf?.diet }));
+    const gfp = await api('GET', '/api/users/food-preferences', { token });
+    const fpd = gfp.body?.data || {};
+    check('...GET food-preferences returns them in the old shape', fpd.state === 'Kerala' && (fpd.foodsToAvoid || []).includes('bhindi') && (fpd.mealPreferences?.dinner || []).includes('roti sabzi'),
+        JSON.stringify(fpd));
+    const meFood = (await api('GET', '/api/auth/profile', { token })).body?.foodPreferences || {};
+    check('...GET /auth/profile foodPreferences from HealthProfile', meFood.city === 'Kochi' && (meFood.preferredFoods || []).includes('appam'), JSON.stringify(meFood));
+    const ctxF = await require('../modules/health-profile/services/profileContextService').getProfileContext(userId);
+    check('...the coach sees dislikes and region', /does not want: bhindi/.test(ctxF?.summary || '') && /south Indian food/.test(ctxF?.summary || ''),
+        (ctxF?.summary || '').split('\n').find((l) => l.startsWith('Diet')));
+    await profileCheck('after food preferences', userId, token, { written: true });
 
     // Profile edit (old app path): weight +1
     const w1 = (g0?.currentWeight || 70) + 1;
@@ -188,7 +277,8 @@ async function newUsers() {
     await Otp.create({ email: NEW_EMAILS[0], code });
     const reg = await api('POST', '/api/auth/register', { body: {
         name: 'E2E Goal Full', email: NEW_EMAILS[0], password: PASSWORD, otp: code, privacyPolicyAccepted: true,
-        profile: { age: 52, gender: 'female', height: 160, weight: 82, activityLevel: 'lightly_active', isDiabetic: 'yes' },
+        profile: { age: 52, gender: 'female', height: 160, weight: 82, activityLevel: 'lightly_active', isDiabetic: 'yes', allergies: ['Peanut'],
+          diabetesProfile: { type: 'Type 2', status: 'Controlled', hba1c: 6.9 }, dietPreferences: { mealsPerDay: '3' } },
         nutritionGoal: { goal: 'weight_loss', targetWeight: 72, weeklyGoal: 0.25 },
     } });
     check('register 201', reg.status === 201, `${reg.status} ${JSON.stringify(reg.body)?.slice(0, 200)}`);
@@ -200,6 +290,13 @@ async function newUsers() {
     check('...register response nutritionGoal = HealthGoal', reg.body?.nutritionGoal?.calorieGoal === g1?.dailyCalorieTarget, `${reg.body?.nutritionGoal?.calorieGoal}`);
     check('...HealthProfile target weight 72', (await hp(u1._id))?.goals?.targetWeightKg === 72);
     await consistency('new user (full form)', u1._id, reg.body?.token);
+    const h1n = await hp(u1._id);
+    check('...HealthProfile has the onboarding facts (age, diabetes, allergy)', h1n?.basic?.age === 52 && (h1n?.conditions?.items || []).some((c) => /diabet/i.test(c.name)) && (h1n?.allergies?.items || []).some((a) => a.allergen === 'Peanut'),
+        JSON.stringify({ age: h1n?.basic?.age, cond: (h1n?.conditions?.items || []).map((c) => c.name), all: (h1n?.allergies?.items || []).map((a) => a.allergen) }));
+    check('...register response profile from HealthProfile', reg.body?.profile?.age === 52 && (reg.body?.profile?.allergies || []).includes('Peanut'), JSON.stringify(reg.body?.profile));
+    check('...onboarding diabetes details in HealthProfile + response', h1n?.diabetes?.hba1c === 6.9 && h1n?.diabetes?.status === 'Controlled' && h1n?.diet?.mealsPerDay === '3'
+        && reg.body?.profile?.diabetesProfile?.hba1c === 6.9, JSON.stringify({ hp: h1n?.diabetes, resp: reg.body?.profile?.diabetesProfile }));
+    await profileCheck('new user (full form)', u1._id, reg.body?.token, { written: true });
     // later weight log keeps everything in step
     await api('POST', '/api/nutrition/log-weight', { token: reg.body?.token, body: { weight: 81 } });
     await consistency('new user after weight log', u1._id, reg.body?.token);
@@ -221,6 +318,7 @@ async function newUsers() {
     check('...response nutritionGoal = HealthGoal', onb.body?.nutritionGoal?.calorieGoal === g2?.dailyCalorieTarget);
     check('...HealthProfile target weight 70', (await hp(u2._id))?.goals?.targetWeightKg === 70);
     await consistency('onboarded later', u2._id, reg2.body?.token);
+    await profileCheck('onboarded later', u2._id, reg2.body?.token, { written: true });
     // change the goal from the profile form
     const chg = await api('PUT', '/api/auth/profile', { token: reg2.body?.token, body: { nutritionGoal: { goal: 'weight_gain', targetWeight: 74, weeklyGoal: 0.25 } } });
     const g2b = await HealthGoal.findOne({ userId: u2._id, isActive: true }).lean();

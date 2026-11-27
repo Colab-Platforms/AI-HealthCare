@@ -11,7 +11,7 @@
 
 const writeService = require('../../health-profile/services/profileWriteService');
 
-const LIST_TARGETS = ['allergies', 'medications', 'conditions', 'surgeries', 'familyHistory'];
+const LIST_TARGETS = ['allergies', 'medications', 'conditions', 'surgeries', 'familyHistory', 'disabilities', 'intolerances', 'mentalHealth'];
 const SCALAR_TARGETS = {
     'diet.preference': ['diet', 'preference', 'string'],
     'basic.age': ['basic', 'age', 'number'],
@@ -68,6 +68,9 @@ const SPECIFY_QUESTIONS = {
     conditions: { en: 'Which health condition is it?', hi: 'Kaunsi health condition hai?' },
     surgeries: { en: 'Which surgery was it?', hi: 'Kaunsi surgery hui thi?' },
     familyHistory: { en: 'Which condition runs in your family?', hi: 'Family mein kaunsi bimari hai?' },
+    disabilities: { en: 'Which disability is it?', hi: 'Kaunsi disability hai?' },
+    intolerances: { en: 'Which food doesn\'t suit you?', hi: 'Kaunsa khana suit nahi karta?' },
+    mentalHealth: { en: 'What would you like me to note?', hi: 'Kya note karun?' },
 };
 function specifyQuestion(field, hinglish = false) {
     const q = SPECIFY_QUESTIONS[field];
@@ -117,7 +120,7 @@ function listItem(target, value) {
 function describeFact(f, hinglish = false) {
     const label = {
         allergies: hinglish ? 'allergy' : 'allergy', medications: hinglish ? 'dawai' : 'medicine',
-        conditions: 'health condition', surgeries: 'surgery', familyHistory: 'family history',
+        conditions: 'health condition', surgeries: 'surgery', familyHistory: 'family history', disabilities: 'physical disability', intolerances: 'food intolerance', mentalHealth: 'mental health',
         'fitness.limitations': hinglish ? 'injury / limitation' : 'injury / limitation',
         'diet.preference': 'diet', 'basic.age': 'age', 'body.heightCm': 'height (cm)', 'body.weightKg': 'weight (kg)',
         'lifestyle.smoking': 'smoking', 'lifestyle.alcohol': 'alcohol', 'lifestyle.sleepHours': 'usual sleep (hours)',

@@ -40,6 +40,9 @@ const ITEM_KEY = {
     allergies: 'allergen',
     surgeries: 'name',
     familyHistory: 'condition',
+    disabilities: 'name',
+    intolerances: 'name',
+    mentalHealth: 'name',
 };
 
 // Settable keys per scalar section, read from the schema so the two can't drift.
@@ -47,7 +50,9 @@ const SCALAR_KEYS = Object.fromEntries(SCALAR_SECTIONS.map((section) => {
     const keys = Object.keys(HealthProfile.schema.paths)
         .filter((p) => p.startsWith(`${section}.`) && !p.startsWith(`${section}.meta`))
         .map((p) => p.slice(section.length + 1));
-    return [section, keys];
+    // A nested group (diet.mealPatterns) is set as one object: its parent key counts.
+    const parents = keys.filter((k) => k.includes('.')).map((k) => k.split('.')[0]);
+    return [section, [...new Set([...keys, ...parents])]];
 }));
 
 const getPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -375,10 +380,18 @@ function createProfileWriteService({ repo = mongoRepo, afterCommit = defaultAfte
     //   - lossy values keep their detail when unchanged (smoking "never" stays
     //     "never" while the legacy boolean is still false).
     // Idempotent and self-healing: any earlier drift is fixed by the next call.
-    async function syncFromLegacy(userId, { source = 'manual', session } = {}) {
+    // `legacy`: the old-app profile as the request left it ({ profile }). Needed once
+    // HEALTH_PROFILE_ONLY=true: User no longer stores the health keys, so reading
+    // them back would look like every fact was removed.
+    async function syncFromLegacy(userId, { source = 'manual', session, legacy: given } = {}) {
         assertSource(source);
+        // Safety net: with HEALTH_PROFILE_ONLY=true the stored User holds no health
+        // keys, so a sync from it would delete every fact. Only a given profile counts.
+        if (!given && process.env.HEALTH_PROFILE_ONLY === 'true') {
+            return { changed: false, sections: [], skipped: 'health_profile_only' };
+        }
         return write(userId, { source, session }, async (profile, ctx) => {
-            const legacy = await repo.loadLegacyUser(userId, ctx.session);
+            const legacy = given || await repo.loadLegacyUser(userId, ctx.session);
             if (!legacy) throw new ProfileNotFoundError('User not found');
             const candidate = fromLegacyUser(legacy, source, ctx.now);
             const sections = [];
@@ -393,7 +406,7 @@ function createProfileWriteService({ repo = mongoRepo, afterCommit = defaultAfte
                     const current = profile[section] || {};
                     let touched = false;
                     for (const [key, legacyPath] of Object.entries(SCALAR_LEGACY_PATHS[section])) {
-                        if (!changedPaths.includes(legacyPath)) continue;
+                        if (!changedPaths.some((p) => p === legacyPath || p.startsWith(`${legacyPath}.`))) continue;
                         let next = candidate[section]?.[key];
                         // Goals the onboarding list can't hold (from chat) are kept.
                         if (section === 'goals' && key === 'primary') {
@@ -468,6 +481,7 @@ function createProfileWriteService({ repo = mongoRepo, afterCommit = defaultAfte
 async function defaultAfterCommit(userId) {
     try {
         require('../../../utils/userCache').invalidate(userId);
+        require('./profileReadService').invalidateProfileCache(userId);
         const cache = require('../../../utils/cache');
         const { invalidateUserHealthCache } = require('../../../utils/cacheKeys');
         await Promise.all([

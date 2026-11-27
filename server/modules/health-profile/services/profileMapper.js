@@ -58,6 +58,17 @@ function compact(obj) {
     return out;
 }
 
+// The food screen's meal patterns ({ breakfast: [...], ... }), undefined when none given.
+function mealPatternsFrom(m) {
+    if (!m || typeof m !== 'object') return undefined;
+    const out = {};
+    for (const k of ['breakfast', 'lunch', 'snacks', 'dinner']) if (Array.isArray(m[k])) out[k] = dedupe(strings(m[k]));
+    return Object.keys(out).length ? out : undefined;
+}
+
+// A string list as sent (an explicit [] is kept: the user cleared it), else undefined.
+const listOrUndefined = (arr) => (Array.isArray(arr) ? dedupe(strings(arr)) : undefined);
+
 function scalarSection(fields, source, at) {
     const data = compact(fields);
     if (Object.keys(data).length === 0) return undefined;
@@ -117,6 +128,10 @@ function fromLegacyUser(user, source = 'migration', at = new Date()) {
     const medical = p.medicalHistory || {};
     const life = p.lifestyle || {};
     const ng = (user && user.nutritionGoal) || {};
+    const dp = p.diabetesProfile || {};
+    const dietPref = p.dietPreferences || {};
+    const fit = p.fitnessProfile || {};
+    const food = (user && user.foodPreferences) || {};
 
     const sections = {
         basic: scalarSection({
@@ -124,6 +139,10 @@ function fromLegacyUser(user, source = 'migration', at = new Date()) {
             dateOfBirth: p.dateOfBirth,
             gender: p.gender,
             bloodGroup: clean(p.bloodGroup),
+            // location: the food preferences screen held it (User.foodPreferences)
+            state: clean(food.state) || undefined,
+            city: clean(food.city) || undefined,
+            country: clean(food.country) || undefined,
         }, source, at),
         body: scalarSection({ heightCm: p.height, weightKg: p.weight }, source, at),
         conditions: mapConditions(p, source, at),
@@ -141,11 +160,43 @@ function fromLegacyUser(user, source = 'migration', at = new Date()) {
             profession: p.profession,
             activityLevel: p.activityLevel,
         }, source, at),
-        diet: scalarSection({ preference: p.dietaryPreference }, source, at),
+        diet: scalarSection({
+            preference: p.dietaryPreference,
+            cuisinePreference: clean(dietPref.cuisinePreference),
+            mealsPerDay: clean(dietPref.mealsPerDay),
+            restrictions: listOrUndefined(dietPref.restrictions),
+            region: clean(food.region) || undefined,
+            likes: listOrUndefined(food.preferredFoods),
+            dislikes: listOrUndefined(food.foodsToAvoid),
+            dietaryRestrictions: listOrUndefined(food.dietaryRestrictions),
+            dietaryDo: listOrUndefined(food.dietaryDo),
+            dietaryDont: listOrUndefined(food.dietaryDont),
+            mealPatterns: mealPatternsFrom(food.mealPreferences),
+        }, source, at),
+        fitness: scalarSection({
+            preferredExercise: listOrUndefined(fit.exercisePreference),
+            primaryGoal: clean(fit.primaryGoal),
+            biggestChallenge: clean(fit.biggestChallenge),
+        }, source, at),
         goals: scalarSection({
             primary: strings(p.goals).length ? strings(p.goals) : undefined,
             other: clean(p.goalOther),
             targetWeightKg: ng.targetWeight,
+            timeline: clean(fit.timeframe),
+        }, source, at),
+        diabetes: scalarSection({
+            type: dp.type,
+            diagnosisYear: dp.diagnosisYear,
+            status: dp.status,
+            hba1c: dp.hba1c,
+            glucoseMonitoring: clean(dp.glucoseMonitoring),
+            fastingGlucose: clean(dp.fastingGlucose),
+            postMealGlucose: clean(dp.postMealGlucose),
+            testingFrequency: clean(dp.testingFrequency),
+            onMedication: dp.onMedication,
+            medicationType: listOrUndefined(dp.medicationType),
+            insulinTiming: clean(dp.insulinTiming),
+            recentDosageChange: dp.recentDosageChange,
         }, source, at),
     };
 
@@ -165,12 +216,19 @@ function canonicalOnboardingCondition(name) {
 
 // Each entry returns the legacy fields for one section. A value of undefined
 // means "unset this legacy path".
+// The diabetes details, same names in HealthProfile.diabetes and User.profile.diabetesProfile.
+const DIABETES_KEYS = ['type', 'diagnosisYear', 'status', 'hba1c', 'glucoseMonitoring', 'fastingGlucose', 'postMealGlucose',
+    'testingFrequency', 'onMedication', 'medicationType', 'insulinTiming', 'recentDosageChange'];
+
 const LEGACY_WRITERS = {
     basic: (hp) => ({
         'profile.age': hp.basic && hp.basic.age,
         'profile.dateOfBirth': hp.basic && hp.basic.dateOfBirth,
         'profile.gender': hp.basic && hp.basic.gender,
         'profile.bloodGroup': hp.basic && hp.basic.bloodGroup,
+        'foodPreferences.state': hp.basic && hp.basic.state,
+        'foodPreferences.city': hp.basic && hp.basic.city,
+        'foodPreferences.country': hp.basic && hp.basic.country,
     }),
     body: (hp) => ({
         'profile.height': hp.body && hp.body.heightCm,
@@ -222,14 +280,45 @@ const LEGACY_WRITERS = {
             'profile.activityLevel': l.activityLevel,
         };
     },
-    diet: (hp) => ({ 'profile.dietaryPreference': hp.diet && hp.diet.preference }),
+    diet: (hp) => {
+        const d = hp.diet || {};
+        return {
+            'profile.dietaryPreference': d.preference,
+            'profile.dietPreferences.cuisinePreference': d.cuisinePreference,
+            'profile.dietPreferences.mealsPerDay': d.mealsPerDay,
+            'profile.dietPreferences.restrictions': d.restrictions,
+            'foodPreferences.region': d.region,
+            'foodPreferences.preferredFoods': d.likes,
+            'foodPreferences.foodsToAvoid': d.dislikes,
+            'foodPreferences.dietaryRestrictions': d.dietaryRestrictions,
+            'foodPreferences.dietaryDo': d.dietaryDo,
+            'foodPreferences.dietaryDont': d.dietaryDont,
+            'foodPreferences.mealPreferences.breakfast': d.mealPatterns && d.mealPatterns.breakfast,
+            'foodPreferences.mealPreferences.lunch': d.mealPatterns && d.mealPatterns.lunch,
+            'foodPreferences.mealPreferences.snacks': d.mealPatterns && d.mealPatterns.snacks,
+            'foodPreferences.mealPreferences.dinner': d.mealPatterns && d.mealPatterns.dinner,
+        };
+    },
+    fitness: (hp) => {
+        const f = hp.fitness || {};
+        return {
+            'profile.fitnessProfile.exercisePreference': f.preferredExercise,
+            'profile.fitnessProfile.primaryGoal': f.primaryGoal,
+            'profile.fitnessProfile.biggestChallenge': f.biggestChallenge,
+        };
+    },
     goals: (hp) => {
         const g = hp.goals || {};
         const primary = strings(g.primary).filter((x) => ONBOARDING_GOALS.includes(x));
         return {
             'profile.goals': primary.length ? primary : undefined,
             'profile.goalOther': g.other,
+            'profile.fitnessProfile.timeframe': g.timeline,
         };
+    },
+    diabetes: (hp) => {
+        const d = hp.diabetes || {};
+        return Object.fromEntries(DIABETES_KEYS.map((k) => [`profile.diabetesProfile.${k}`, d[k]]));
     },
 };
 
@@ -237,7 +326,10 @@ const LEGACY_WRITERS = {
 // not listed (basic.city, body.waistCm, lifestyle.workShift, diet.region,
 // goals.timeline, ...) have no legacy copy and are never touched by a legacy sync.
 const SCALAR_LEGACY_PATHS = {
-    basic: { age: 'profile.age', dateOfBirth: 'profile.dateOfBirth', gender: 'profile.gender', bloodGroup: 'profile.bloodGroup' },
+    basic: {
+        age: 'profile.age', dateOfBirth: 'profile.dateOfBirth', gender: 'profile.gender', bloodGroup: 'profile.bloodGroup',
+        state: 'foodPreferences.state', city: 'foodPreferences.city', country: 'foodPreferences.country',
+    },
     body: { heightCm: 'profile.height', weightKg: 'profile.weight' },
     lifestyle: {
         smoking: 'profile.lifestyle.smoker',
@@ -249,9 +341,27 @@ const SCALAR_LEGACY_PATHS = {
         profession: 'profile.profession',
         activityLevel: 'profile.activityLevel',
     },
-    diet: { preference: 'profile.dietaryPreference' },
+    diet: {
+        preference: 'profile.dietaryPreference',
+        cuisinePreference: 'profile.dietPreferences.cuisinePreference',
+        mealsPerDay: 'profile.dietPreferences.mealsPerDay',
+        restrictions: 'profile.dietPreferences.restrictions',
+        region: 'foodPreferences.region',
+        likes: 'foodPreferences.preferredFoods',
+        dislikes: 'foodPreferences.foodsToAvoid',
+        dietaryRestrictions: 'foodPreferences.dietaryRestrictions',
+        dietaryDo: 'foodPreferences.dietaryDo',
+        dietaryDont: 'foodPreferences.dietaryDont',
+        mealPatterns: 'foodPreferences.mealPreferences', // an object: its four lists
+    },
+    fitness: {
+        preferredExercise: 'profile.fitnessProfile.exercisePreference',
+        primaryGoal: 'profile.fitnessProfile.primaryGoal',
+        biggestChallenge: 'profile.fitnessProfile.biggestChallenge',
+    },
     // goals.targetWeightKg has no legacy copy: User.nutritionGoal was removed (26 Nov); HealthGoal follows it.
-    goals: { primary: 'profile.goals', other: 'profile.goalOther' },
+    goals: { primary: 'profile.goals', other: 'profile.goalOther', timeline: 'profile.fitnessProfile.timeframe' },
+    diabetes: Object.fromEntries(DIABETES_KEYS.map((k) => [k, `profile.diabetesProfile.${k}`])),
 };
 
 // The legacy values the mirror would write for one section: { path: value },
@@ -285,6 +395,23 @@ function mirrorKey(section, item) {
 }
 
 // Sections with no legacy counterpart (fitness, coachPreferences) are ignored.
+// The 19 keys moved on 26 Nov (diabetesProfile, dietPreferences, fitnessProfile).
+// Until the backfill fills them in HealthProfile, an empty HealthProfile value
+// means "not moved yet", not "removed": the mirror never unsets them and
+// reads keep the stored value (profileReadService).
+const KEEP_STORED_PATHS = new Set([
+    ...DIABETES_KEYS.map((k) => `profile.diabetesProfile.${k}`),
+    'profile.dietPreferences.cuisinePreference', 'profile.dietPreferences.mealsPerDay', 'profile.dietPreferences.restrictions',
+    'profile.fitnessProfile.exercisePreference', 'profile.fitnessProfile.primaryGoal', 'profile.fitnessProfile.biggestChallenge',
+    'profile.fitnessProfile.timeframe',
+    // User.foodPreferences (moved 26 Nov)
+    'foodPreferences.state', 'foodPreferences.city', 'foodPreferences.country', 'foodPreferences.region',
+    'foodPreferences.preferredFoods', 'foodPreferences.foodsToAvoid', 'foodPreferences.dietaryRestrictions',
+    'foodPreferences.dietaryDo', 'foodPreferences.dietaryDont',
+    'foodPreferences.mealPreferences.breakfast', 'foodPreferences.mealPreferences.lunch',
+    'foodPreferences.mealPreferences.snacks', 'foodPreferences.mealPreferences.dinner',
+]);
+
 function toLegacyPatch(healthProfile, sections) {
     const $set = {};
     const $unset = {};
@@ -293,7 +420,7 @@ function toLegacyPatch(healthProfile, sections) {
         if (!writer) continue;
         for (const [path, value] of Object.entries(writer(healthProfile || {}))) {
             if (has(value)) $set[path] = value;
-            else $unset[path] = '';
+            else if (!KEEP_STORED_PATHS.has(path)) $unset[path] = '';
         }
     }
     const patch = {};
@@ -310,6 +437,8 @@ module.exports = {
     isMirrored,
     MIRRORED_SECTIONS: Object.keys(LEGACY_WRITERS),
     SCALAR_LEGACY_PATHS,
+    KEEP_STORED_PATHS,
+    DIABETES_KEYS,
     ONBOARDING_CONDITIONS,
     ONBOARDING_GOALS,
 };

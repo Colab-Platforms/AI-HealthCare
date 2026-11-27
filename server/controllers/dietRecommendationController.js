@@ -12,6 +12,41 @@ const { normalizePlanCalories } = require('../utils/mealPlanCalories');
 const { slotCalorieRange } = require('../config/indianMealSlots');
 const notificationService = require('../services/notificationService');
 const emailService = require('../services/emailService');
+const { withProfile } = require('../modules/health-profile/services/profileReadService');
+const { getSafetyConstraints, foodRulesText } = require('../modules/health-profile/services/safetyConstraints');
+
+// The user's food safety rules from HealthProfile (allergies, intolerances,
+// restrictions, condition and medicine rules). Never throws: a failed read
+// gives '' and the prompt still carries allergies / conditions on its own.
+async function safetyRulesFor(userId) {
+  try {
+    return foodRulesText(await getSafetyConstraints(userId));
+  } catch (err) {
+    console.error(`[DietPlan] safety rules unavailable for user ${userId}: ${err.message}`);
+    return '';
+  }
+}
+
+// A dish the user rejected goes to HealthProfile diet.dislikes (the old
+// foodPreferences.foodsToAvoid). Retries on a version conflict (two quick
+// rejections), never throws: a failed save must not block the swap.
+async function addFoodToAvoid(userId, name) {
+  const writeService = require('../modules/health-profile/services/profileWriteService');
+  const HealthProfile = require('../modules/health-profile/models/HealthProfile');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const hp = await HealthProfile.findOne({ user: userId }).select('diet.dislikes version').lean();
+      const current = hp?.diet?.dislikes || [];
+      if (current.some((f) => String(f).trim().toLowerCase() === name.trim().toLowerCase())) return;
+      await writeService.updateSection(userId, 'diet', { dislikes: [...current, name] }, { source: 'manual', expectedVersion: hp?.version });
+      return;
+    } catch (err) {
+      if (err instanceof writeService.VersionConflictError && attempt < 2) continue;
+      console.error(`[DietPlan] could not save rejected dish for user ${userId}: ${err.message}`);
+      return;
+    }
+  }
+}
 
 /**
  * Why a user rejected a suggested meal, sent with a regenerate-meal request.
@@ -35,7 +70,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const userId = req.user._id;
 
     // Get user profile
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).lean().then(withProfile); // health facts from HealthProfile
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -168,6 +203,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // Prepare user data for AI
     const userData = {
+      safetyRules: await safetyRulesFor(userId),
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',
       weight: currentWeight,
@@ -329,7 +365,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 async function processDietInternal(userId, dietPlanId, userData, promptEx) {
   console.log(`🔄 [BG-DIET] Starting generation for ${dietPlanId}...`);
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).lean().then(withProfile); // health facts from HealthProfile
     if (!user) throw new Error('User not found');
 
     let aiDietPlan;
@@ -567,14 +603,11 @@ exports.regenerateMealSlot = async (req, res) => {
 
       if (!alreadyAvoided) {
         foodsToAvoid = [...foodsToAvoid, rejectedName];
-        // Targeted $addToSet rather than a read-modify-save: req.user comes from
-        // a cached .lean() read (see middleware/auth), so it is not a live
-        // document, and two quick rejections would otherwise race and lose one.
-        // The post('updateOne') hook in models/User.js drops the cached copy.
-        await User.updateOne(
-          { _id: userId },
-          { $addToSet: { 'foodPreferences.foodsToAvoid': rejectedName } }
-        );
+        // Foods to avoid live in HealthProfile (diet.dislikes = old
+        // foodPreferences.foodsToAvoid, 26 Nov). Read-modify-write on the fresh
+        // profile with its version check; two quick rejections racing retry
+        // instead of losing one.
+        await addFoodToAvoid(userId, rejectedName);
         console.log(`[DietPlan] User ${userId} rejected "${rejectedName}" (${reason}) — added to foodsToAvoid`);
       }
     }
@@ -588,6 +621,7 @@ exports.regenerateMealSlot = async (req, res) => {
     const targets = await resolveDietTargets(req.user);
 
     const userData = {
+      safetyRules: await safetyRulesFor(userId),
       dietaryPreference: diet.value,
       // Current profile first; the plan's snapshot only if the profile is empty.
       allergies: req.user.profile?.allergies?.length ? req.user.profile.allergies : dietPlan.inputData?.allergies,
@@ -879,7 +913,7 @@ exports.generateSupplementRecommendations = async (req, res) => {
     const userId = req.user._id;
 
     // Get user profile
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).lean().then(withProfile); // health facts from HealthProfile
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -918,8 +952,12 @@ exports.generateSupplementRecommendations = async (req, res) => {
       age: user.profile?.age || user.age,
       gender: user.profile?.gender || user.gender,
       dietaryPreference: resolveDietaryPreference(user).value,
-      medicalConditions: user.profile?.medicalConditions || [],
-      currentMedications: user.profile?.currentMedications || []
+      // Real paths (profile.medicalConditions / currentMedications never existed,
+      // so supplements were suggested blind to medicines and conditions).
+      medicalConditions: [...(user.profile?.healthConditions || []), ...(user.profile?.chronicConditions || [])].filter((c) => c && c !== 'None of these'),
+      currentMedications: user.profile?.medicalHistory?.currentMedications || [],
+      allergies: user.profile?.allergies || [],
+      safetyRules: await safetyRulesFor(userId),
     };
 
     // Generate AI-powered supplement recommendations
@@ -1083,7 +1121,7 @@ exports.trackSupplementUsage = async (req, res) => {
 exports.generateDietAfterReport = async (userId) => {
   console.log(`[AutoDiet] Starting auto diet generation for user ${userId}...`);
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).lean().then(withProfile); // health facts from HealthProfile
     if (!user) throw new Error('User not found');
 
     // --- Diabetes detection ---
@@ -1138,6 +1176,7 @@ exports.generateDietAfterReport = async (userId) => {
     }
 
     const userData = {
+      safetyRules: await safetyRulesFor(userId),
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',
       weight: currentWeight,

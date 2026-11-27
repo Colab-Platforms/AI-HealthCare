@@ -180,10 +180,10 @@ function createProfileSync({
     // User.profile; bring the change into HealthProfile. Never throws: the
     // user's save succeeded, and the next sync (any later edit) self-heals a
     // missed one. The caller keeps its own BMI / nutrition / diet-plan logic.
-    async function syncLegacyEdit(userId) {
+    async function syncLegacyEdit(userId, { legacy } = {}) {
         if (!enabled()) return { synced: false };
         try {
-            const res = await service.syncFromLegacy(userId, { source: 'manual' });
+            const res = await service.syncFromLegacy(userId, { source: 'manual', legacy });
             return { synced: true, sections: res.changed ? res.sections : [] };
         } catch (err) {
             const level = err instanceof ProfileInputError ? 'legacy data does not fit the schema' : 'sync failed';

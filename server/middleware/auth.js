@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const userCache = require('../utils/userCache');
+const { loadProfile, userView } = require('../modules/health-profile/services/profileReadService');
 
 /**
  * Load the request's user, hitting Mongo at most once per user per cache TTL.
@@ -15,7 +16,16 @@ async function loadUser(userId) {
   const cached = userCache.get(userId);
   if (cached) return cached;
 
-  const user = await User.findById(userId).select('-password').lean().maxTimeMS(15000);
+  // Health facts in req.user.profile come from HealthProfile (the only source,
+  // 26 Nov), in the same shape as before. Both reads run in PARALLEL (the id is
+  // known from the token), so this costs one round trip, not two; the User hook
+  // is skipped for this query because the overlay is done here.
+  const [stored, healthProfile] = await Promise.all([
+    User.findById(userId).select('-password').setOptions({ skipProfileOverlay: true }).lean().maxTimeMS(15000),
+    loadProfile(userId),
+  ]);
+  const user = stored ? userView(stored, healthProfile) : stored; // profile + foodPreferences health keys
+  // Cached together; a HealthProfile write clears this cache (profileWriteService afterCommit).
   if (user) userCache.set(userId, user);
   return user;
 }

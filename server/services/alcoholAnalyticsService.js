@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { toPlainAlcoholLog, DATE_KEY_RE } = require('../utils/alcoholLog');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 const MAX_SPAN_DAYS = 365 * 5;
 
@@ -106,7 +107,7 @@ function enrichEntry(dateKey, val) {
 async function getAlcoholAnalytics(userId, range = 'daily', options = {}) {
   const { matchStart, matchEnd } = resolveWindow(range, options);
 
-  const user = await User.findById(userId).select('alcoholLog profile.gender lifestyle.alcohol').lean();
+  const user = await User.findById(userId).select('alcoholLog profile.gender lifestyle.alcohol').lean().then(withProfile);
   if (!user) throw new AlcoholAnalyticsInputError('User not found');
 
   const plain = toPlainAlcoholLog(user.alcoholLog);

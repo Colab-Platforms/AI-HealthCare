@@ -22,6 +22,8 @@ const HEALTH_KEYS = [
     'allergies', 'chronicConditions', 'healthConditions', 'healthConditionOther', 'isDiabetic',
     'dietaryPreference', 'activityLevel', 'profession', 'goals', 'goalOther',
     'medicalHistory(?:\\.\\w+)?',
+    // moved to HealthProfile on 26 Nov
+    'diabetesProfile(?:\\.\\w+)?', 'dietPreferences(?:\\.\\w+)?', 'fitnessProfile(?:\\.\\w+)?',
     'lifestyle\\.(?:smoker|smokingFrequency|alcohol|alcoholFrequency|sleepHours|stressLevel)',
 ].join('|');
 

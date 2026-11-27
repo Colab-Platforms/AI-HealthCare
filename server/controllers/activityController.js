@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
+const { withProfiles } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
+const HealthProfile = require('../modules/health-profile/models/HealthProfile');
+const { userIdsMatching } = require('../modules/health-profile/services/profileReadService');
+// A HealthProfile with an active (not resolved) condition named like diabetes.
+const diabetesIn = (items) => ({ $anyElementTrue: [{ $map: { input: { $ifNull: [items, []] }, as: 'c', in: { $and: [{ $regexMatch: { input: { $ifNull: ['$$c.name', ''] }, regex: /diabet/i } }, { $ne: ['$$c.status', 'resolved'] }] } } }] });
+const HAS_DIABETES = diabetesIn('$conditions.items');
+const HAS_DIABETES_HP = diabetesIn('$hp.conditions.items');
 
 // @desc    Get all activity logs (Admin only)
 // @route   GET /api/activity
@@ -66,9 +73,10 @@ exports.getActivityLogs = async (req, res) => {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
-          { 'profile.gender': { $regex: `^${search}$`, $options: 'i' } }
         ]
       }).select('_id');
+      // Gender is a health fact: matched in HealthProfile (the only source).
+      users.push(...((await userIdsMatching({ genderExact: search })) || []).map((_id) => ({ _id })));
       
       const userIds = users.map(u => u._id);
       query.$or = [
@@ -126,9 +134,10 @@ exports.getActivityStats = async (req, res) => {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
-          { 'profile.gender': { $regex: `^${search}$`, $options: 'i' } }
         ]
       }).select('_id');
+      // Gender is a health fact: matched in HealthProfile (the only source).
+      users.push(...((await userIdsMatching({ genderExact: search })) || []).map((_id) => ({ _id })));
       const userIds = users.map(u => u._id);
       filter.$or = [
         { user: { $in: userIds } },
@@ -161,13 +170,14 @@ exports.getActivityStats = async (req, res) => {
 
     // Demographic Intelligence (Gender & Diabetic Status - Scoped to filtered users)
     const [genderStats, diabeticStats] = await Promise.all([
-      User.aggregate([
-        { $match: { _id: { $in: activeFilterUserIds }, profile: { $exists: true } } },
-        { $group: { _id: '$profile.gender', count: { $sum: 1 } } }
+      // Health facts come from HealthProfile (the only source).
+      HealthProfile.aggregate([
+        { $match: { user: { $in: activeFilterUserIds } } },
+        { $group: { _id: '$basic.gender', count: { $sum: 1 } } }
       ]),
-      User.aggregate([
-        { $match: { _id: { $in: activeFilterUserIds }, profile: { $exists: true } } },
-        { $group: { _id: '$profile.isDiabetic', count: { $sum: 1 } } }
+      HealthProfile.aggregate([
+        { $match: { user: { $in: activeFilterUserIds } } },
+        { $group: { _id: { $cond: [HAS_DIABETES, 'yes', 'no'] }, count: { $sum: 1 } } }
       ])
     ]);
 
@@ -205,21 +215,22 @@ exports.getActivityStats = async (req, res) => {
     const rawTimelineStats = await ActivityLog.aggregate([
       { $match: { ...filterWithoutTime, timestamp: { $gte: windowStart, $lte: windowEnd } } },
       {
+        // Health facts come from HealthProfile (the only source).
         $lookup: {
-          from: 'users',
+          from: 'health_profiles',
           localField: 'user',
-          foreignField: '_id',
-          as: 'userData'
+          foreignField: 'user',
+          as: 'hp'
         }
       },
-      { $unwind: { path: '$userData', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$hp', preserveNullAndEmptyArrays: true } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
           total: { $sum: 1 },
-          diabetic: { $sum: { $cond: [{ $eq: ['$userData.profile.isDiabetic', true] }, 1, 0] } },
-          male: { $sum: { $cond: [{ $eq: ['$userData.profile.gender', 'male'] }, 1, 0] } },
-          female: { $sum: { $cond: [{ $eq: ['$userData.profile.gender', 'female'] }, 1, 0] } }
+          diabetic: { $sum: { $cond: [HAS_DIABETES_HP, 1, 0] } },
+          male: { $sum: { $cond: [{ $eq: ['$hp.basic.gender', 'male'] }, 1, 0] } },
+          female: { $sum: { $cond: [{ $eq: ['$hp.basic.gender', 'female'] }, 1, 0] } }
         }
       },
       { $sort: { _id: 1 } }
@@ -344,9 +355,10 @@ exports.exportActivityLogs = async (req, res) => {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
-          { 'profile.gender': { $regex: `^${search}`, $options: 'i' } }
         ]
       }).select('_id');
+      // Gender is a health fact: matched in HealthProfile (the only source).
+      users.push(...((await userIdsMatching({ genderPrefix: search })) || []).map((_id) => ({ _id })));
       
       const userIds = users.map(u => u._id);
       query.$or = [
@@ -400,7 +412,7 @@ exports.exportUsers = async (req, res) => {
     const users = await User.find({})
       .select('name email phone role profile subscription createdAt isEmailVerified lastLogin')
       .sort({ createdAt: -1 })
-      .lean();
+      .lean().then(withProfiles);
 
     const headers = [
       'Name', 'Email', 'Phone', 'Role',

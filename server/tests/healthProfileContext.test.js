@@ -115,6 +115,7 @@ function fakeModels({ user, healthProfile = null, hasActivePlan = false, syncGoa
     const regenerated = [];
     const deleted = [];
     const goalSyncs = [];
+    const foodSyncs = [];
     const query = (value) => ({ select: () => ({ lean: async () => value }) });
     const deps = {
         User: {
@@ -123,6 +124,7 @@ function fakeModels({ user, healthProfile = null, hasActivePlan = false, syncGoa
         },
         HealthProfile: { findOne: () => query(healthProfile) },
         PersonalizedDietPlan: { exists: async () => hasActivePlan },
+        syncFoodPreferences: async (userId, legacy) => { foodSyncs.push(legacy); },
         syncGoal: syncGoal || (async (userId, opts) => { goalSyncs.push({ userId, ...opts }); return null; }),
         reconcileFoodPreferences: (diet, prefs) => ({ prefs: { ...prefs, likes: [] }, dropped: diet === 'jain' ? [] : ['Jain'] }),
         normalizeDietaryPreference: (d) => d || null,
@@ -130,7 +132,7 @@ function fakeModels({ user, healthProfile = null, hasActivePlan = false, syncGoa
         cache: { delete: async (k) => { deleted.push(k); } },
         logger: { error: () => {} },
     };
-    return { deps, updates, regenerated, deleted, goalSyncs };
+    return { deps, updates, regenerated, deleted, goalSyncs, foodSyncs };
 }
 
 const tick = () => new Promise((r) => setImmediate(r));
@@ -167,12 +169,13 @@ test('side effects: body-only change re-syncs the goal without touching the targ
 });
 
 test('side effects: diet change cleans Jain leftovers and regenerates an active plan off the request path', async () => {
-    const { deps, updates, regenerated } = fakeModels({
+    const { deps, regenerated, foodSyncs } = fakeModels({
         user: { profile: { dietaryPreference: 'vegan' }, foodPreferences: { likes: ['Jain thali'] } },
         hasActivePlan: true,
     });
     await createProfileSideEffects(deps).afterProfileChange(USER, ['diet']);
-    assert.deepEqual(updates[0].$set.foodPreferences.likes, []);
+    // food preferences are written through HealthProfile (26 Nov), only the cleaned lists
+    assert.deepEqual(foodSyncs[0].foodPreferences.likes, []);
     assert.deepEqual(regenerated, []); // not yet: scheduled
     await tick();
     assert.deepEqual(regenerated, [USER]);

@@ -112,9 +112,34 @@ test('toLegacyPatch: never touches app settings under User.profile', () => {
     const hp = fromLegacyUser(rahul(), 'migration', AT);
     const patch = toLegacyPatch(hp, MIRRORED_SECTIONS);
     const paths = [...Object.keys(patch.$set || {}), ...Object.keys(patch.$unset || {})];
-    for (const forbidden of ['waterGoalMl', 'waterGlassSizeMl', 'stepGoal', 'sleepGoalHours', 'avatar', 'diabetesProfile', 'foodPreferences']) {
+    for (const forbidden of ['waterGoalMl', 'waterGlassSizeMl', 'stepGoal', 'sleepGoalHours', 'avatar', 'foodPreferences']) {
         assert.ok(!paths.some((p) => p.includes(forbidden)), `mirror touched ${forbidden}`);
     }
+});
+
+// 26 Nov: diabetesProfile, dietPreferences and fitnessProfile moved to HealthProfile.
+test('the 19 moved keys round-trip: User.profile -> HealthProfile -> same legacy values; never unset while empty', () => {
+    const { KEEP_STORED_PATHS } = require('../modules/health-profile/services/profileMapper');
+    const legacy = {
+        profile: {
+            diabetesProfile: { type: 'Type 2', diagnosisYear: 2019, status: 'Controlled', hba1c: 7.6, glucoseMonitoring: 'glucometer', fastingGlucose: '110-130', postMealGlucose: '150-180', testingFrequency: 'daily', onMedication: true, medicationType: ['Metformin'], insulinTiming: 'none', recentDosageChange: false },
+            dietPreferences: { cuisinePreference: 'North Indian', mealsPerDay: '3', restrictions: ['no onion'] },
+            fitnessProfile: { exercisePreference: ['walking', 'yoga'], primaryGoal: 'stay active', timeframe: '3 months', biggestChallenge: 'time' },
+        },
+    };
+    const hp = fromLegacyUser(legacy, 'migration', AT);
+    assert.equal(hp.diabetes.hba1c, 7.6);
+    assert.equal(hp.diabetes.onMedication, true);
+    assert.equal(hp.diabetes.recentDosageChange, false);
+    assert.deepEqual(hp.fitness.preferredExercise, ['walking', 'yoga']);
+    assert.equal(hp.goals.timeline, '3 months');
+    const { $set } = toLegacyPatch(hp, MIRRORED_SECTIONS);
+    for (const [group, obj] of Object.entries(legacy.profile)) {
+        for (const [k, v] of Object.entries(obj)) assert.deepEqual($set[`profile.${group}.${k}`], v, `${group}.${k}`);
+    }
+    assert.equal(KEEP_STORED_PATHS.size, 32); // 19 profile keys + 13 foodPreferences keys
+    const empty = toLegacyPatch({ fitness: { limitations: ['knee'] }, diet: { preference: 'vegetarian' } }, ['fitness', 'diet', 'goals', 'diabetes']);
+    assert.ok(!Object.keys(empty.$unset || {}).some((p) => KEEP_STORED_PATHS.has(p)), JSON.stringify(empty));
 });
 
 test('toLegacyPatch: conditions layout keeps legacy enum valid and isDiabetic correct', () => {

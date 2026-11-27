@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const profileSync = require('../modules/health-profile/services/profileSync');
+const { viewOf } = require('../modules/health-profile/services/profileReadService');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
 const { deriveRegionFromState, canonicalizeStateName } = require('../config/indiaRegions');
 const { normalizeToken, upsertToken, syncLegacyField } = require('../services/fcmTokenService');
@@ -105,13 +107,18 @@ exports.saveFoodPreferences = async (req, res) => {
     });
 
     user.markModified('foodPreferences');
+    // HealthProfile is the only source of food preferences (26 Nov): what was
+    // sent goes there (location -> basic, the rest -> diet). With
+    // HEALTH_PROFILE_ONLY=true the User save below drops these keys.
+    const sent = { _id: user._id, profile: structuredClone(user.toObject().profile || {}), foodPreferences: structuredClone(user.toObject().foodPreferences || {}) };
     await user.save();
+    await profileSync.syncLegacyEdit(user._id, { legacy: sent });
     console.log('[UserPrefs] Successfully saved for user:', req.user._id);
 
     res.json({
       success: true,
       message: 'Food preferences saved successfully',
-      data: user.foodPreferences
+      data: (await viewOf(user)).foodPreferences
     });
   } catch (error) {
     console.error('Save food preferences error:', error);

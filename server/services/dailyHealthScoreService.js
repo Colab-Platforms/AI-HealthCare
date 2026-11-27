@@ -54,6 +54,7 @@ const PILLARS = ['sleep', 'nutrition', 'activity', 'recovery'];
 const DEFAULT_NUTRITION_WEIGHTS = { logging: 0.25, quality: 0.41, calories: 0.17, hydration: 0.17 };
 
 const { getActiveScoreConfig } = require('../utils/scoreConfig');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 ``
 // Reads (and lazily creates) the user's per-metric running baseline doc,
 // updates the given metric with today's value, and returns the personalized
@@ -146,7 +147,7 @@ async function calculateDailyScore(userId, dateStr, ctx = {}) {
     SleepSession.find({ user: userId, date: dayStart }).select('deviceType totalSleepMinutes sleepScore').lean(),
     User.findById(userId)
       .select('smokeLog alcoholLog profile.age profile.gender profile.weight profile.chronicConditions profile.lifestyle')
-      .lean(),
+      .lean().then(withProfile),
     ExerciseLog.find({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } })
       .select('duration caloriesBurned category').lean(),
     // age + goalType for getExerciseGuidance() below; currentWeight added for

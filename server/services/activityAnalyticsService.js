@@ -10,6 +10,7 @@ const { getStepGoal } = require('../utils/stepGoal');
 const { buildActivityInsight, activityBreakdown } = require('./activityScoreInsightService');
 const { mergeDeviceRows } = require('../utils/wearableMerge');
 const { strengthGoalPerDay } = require('./activityScoreFormula');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 365 * 5;
@@ -128,7 +129,7 @@ async function getActivityAnalytics(userId, range = 'daily', options = {}) {
     DailyHealthScore.find({ userId, date: { $gte: startStr, $lte: endStr } }).select('date components.activity').lean(),
     ExerciseLog.find({ userId, timestamp: { $gte: exerciseLogWindowStart, $lte: dateMatch.$lte || new Date() } })
       .select('duration category caloriesBurned timestamp').lean(),
-    User.findById(userId).select('profile.age profile.lifestyle.stepGoal').lean(),
+    User.findById(userId).select('profile.age profile.lifestyle.stepGoal').lean().then(withProfile),
     HealthGoal.findOne({ userId, isActive: true }).select('age goalType').lean(),
   ]);
 

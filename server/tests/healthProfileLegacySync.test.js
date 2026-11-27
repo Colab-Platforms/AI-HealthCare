@@ -215,3 +215,30 @@ test('bridge: never throws (unknown user, bad legacy data, kill switch off)', as
     assert.equal(res.synced, true);
     assert.deepEqual(res.sections, ['body']);
 });
+
+// 26 Nov, HEALTH_PROFILE_ONLY=true: the User document holds no health keys.
+test('health-profile-only: a sync without the sent profile never wipes facts (staging bug: goal-only edit cleared age / height / weight)', async (t) => {
+    const prev = process.env.HEALTH_PROFILE_ONLY;
+    process.env.HEALTH_PROFILE_ONLY = 'true';
+    t.after(() => { if (prev === undefined) delete process.env.HEALTH_PROFILE_ONLY; else process.env.HEALTH_PROFILE_ONLY = prev; });
+    const s = await setup();
+    s.oldAppSaves((u) => { u.profile = { lifestyle: { waterGoalMl: 2500 } }; }); // what User looks like now
+    const res = await s.svc.syncFromLegacy(USER);
+    assert.equal(res.changed, false);
+    assert.equal(s.hp().basic.age, 45);
+    assert.equal(s.hp().body.weightKg, 80);
+    assert.equal(s.hp().allergies.items.length, 1);
+});
+
+test('health-profile-only: the old app edit syncs from what it sent (only the changed fact moves)', async (t) => {
+    const prev = process.env.HEALTH_PROFILE_ONLY;
+    process.env.HEALTH_PROFILE_ONLY = 'true';
+    t.after(() => { if (prev === undefined) delete process.env.HEALTH_PROFILE_ONLY; else process.env.HEALTH_PROFILE_ONLY = prev; });
+    const s = await setup();
+    const sent = { ...structuredClone(s.legacyProfile()), allergies: ['Peanut', 'Shellfish'], weight: 78 };
+    s.oldAppSaves((u) => { u.profile = { lifestyle: { waterGoalMl: 2500 } }; });
+    await s.svc.syncFromLegacy(USER, { legacy: { _id: USER, profile: sent } });
+    assert.deepEqual(s.hp().allergies.items.map((a) => a.allergen).sort(), ['Peanut', 'Shellfish']);
+    assert.equal(s.hp().body.weightKg, 78);
+    assert.equal(s.hp().basic.age, 45);
+});

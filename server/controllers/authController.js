@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
 const healthGoalService = require('../services/healthGoalService');
+const { profileOf, viewOf } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 const cloudinary = require('../services/cloudinary');
 const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
@@ -545,7 +546,7 @@ exports.loginWithPhoneOtp = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      profile: user.profile,
+      profile: await profileOf(user), // health facts from HealthProfile
       nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
@@ -759,8 +760,14 @@ exports.register = async (req, res) => {
       // HealthProfile from the onboarding answers. Never throws: on failure
       // the first later profile write builds it from the same data.
       if (profile && Object.keys(profile).length) {
+        const stored = user.toObject();
         await profileSync.onSignup(user._id, {
-          ...user.toObject(),
+          ...stored,
+          // The onboarding answers as sent: with HEALTH_PROFILE_ONLY=true the
+          // User document no longer keeps the health keys.
+          profile: { ...(stored.profile || {}), ...profile },
+          // location from the onboarding form (foodPreferences.state) -> HealthProfile basic.state
+          foodPreferences: { ...(stored.foodPreferences || {}), ...(state ? { state } : {}) },
           // Onboarding goal input (not stored on User): its target weight
           // becomes HealthProfile goals.targetWeightKg.
           nutritionGoal: nutritionGoal ? { targetWeight: nutritionGoal.targetWeight } : undefined,
@@ -802,7 +809,7 @@ exports.register = async (req, res) => {
         // The only stored goal + targets (services/healthGoalService). Uses the
         // pace the user picked (weeklyGoal) and their diabetes flag. Never
         // throws: a goal that can't be saved doesn't fail the registration.
-        await healthGoalService.syncGoal(user._id, { profile: user.profile, input: nutritionGoal, create: true });
+        await healthGoalService.syncGoal(user._id, { profile, input: nutritionGoal, create: true }); // the onboarding answers
 
         // First diet plan, generated in the background right after signup —
         // same trigger used when a diet-type change makes an existing plan
@@ -867,7 +874,7 @@ exports.register = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      profile: user.profile,
+      profile: await profileOf(user), // health facts from HealthProfile
       nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       subscription: user.subscription,
       token: generateAccessToken(user._id),
@@ -1069,7 +1076,7 @@ exports.login = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
-        profile: user.profile,
+        profile: await profileOf(user), // health facts from HealthProfile
         nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
         foodPreferences: user.foodPreferences,
         subscription: user.subscription,
@@ -1265,7 +1272,7 @@ exports.googleAuth = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      profile: user.profile,
+      profile: await profileOf(user), // health facts from HealthProfile
       nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
@@ -1445,7 +1452,7 @@ exports.appleAuth = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      profile: user.profile,
+      profile: await profileOf(user), // health facts from HealthProfile
       nutritionGoal: await healthGoalService.getNutritionGoal(user._id), // built from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
@@ -1536,7 +1543,7 @@ exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password').maxTimeMS(30000);
     // nutritionGoal: same key as before, built from HealthGoal (the field is gone).
-    res.json({ ...user.toObject(), nutritionGoal: await healthGoalService.getNutritionGoal(user._id) });
+    res.json({ ...user.toObject(), profile: await profileOf(user), nutritionGoal: await healthGoalService.getNutritionGoal(user._id) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -1549,6 +1556,7 @@ exports.updateProfile = async (req, res) => {
       const oldHeight = user.profile?.height;
       const oldWeight = user.profile?.weight;
       const oldDietaryPreference = normalizeDietaryPreference(user.profile?.dietaryPreference);
+      let legacyEdit = null;
 
       captureFcmToken(user, req);
 
@@ -1581,6 +1589,9 @@ exports.updateProfile = async (req, res) => {
         }
 
         user.profile = mergedProfile;
+        // What the old app sent, merged: goes to HealthProfile below. With
+        // HEALTH_PROFILE_ONLY=true the User save drops these health keys.
+        legacyEdit = { _id: user._id, profile: structuredClone(mergedProfile) };
       }
 
       // Handle foodPreferences update
@@ -1649,6 +1660,13 @@ exports.updateProfile = async (req, res) => {
         }
       }
 
+      // What the old app sent (profile and / or food preferences), merged: goes to
+      // HealthProfile below. With HEALTH_PROFILE_ONLY=true the User save drops these keys.
+      if (req.body.profile || req.body.foodPreferences) {
+        const plain = user.toObject();
+        legacyEdit = { _id: user._id, profile: structuredClone(plain.profile || {}), foodPreferences: structuredClone(plain.foodPreferences || {}) };
+      }
+
       // Mark profile as modified to ensure Mongoose saves it
       user.markModified('profile');
       if (bmiChanged) user.markModified('healthMetrics');
@@ -1657,8 +1675,12 @@ exports.updateProfile = async (req, res) => {
 
       // Old app versions still edit the profile here: bring the change into
       // HealthProfile (master copy). Never fails the request.
-      if (req.body.profile || req.body.nutritionGoal) {
-        await profileSync.syncLegacyEdit(updatedUser._id);
+      // Only when profile facts were sent, and always from what was sent: the
+      // stored User has no health keys with HEALTH_PROFILE_ONLY=true, and syncing
+      // from it would read as "every fact removed" (a goal-only edit wiped age /
+      // height / weight on staging, 26 Nov).
+      if (legacyEdit) {
+        await profileSync.syncLegacyEdit(updatedUser._id, { legacy: legacyEdit });
       }
 
       // Goal + targets: HealthGoal is the only stored goal (services/healthGoalService).
@@ -1673,7 +1695,7 @@ exports.updateProfile = async (req, res) => {
       let nutritionGoal = null;
       if (req.body.profile || goalInput) {
         const goal = await healthGoalService.syncGoal(updatedUser._id, {
-          profile: updatedUser.profile,
+          // no profile passed: read back through the User hook = HealthProfile (the saved document lost its health keys)
           input: goalInput,
           // activity sent in this edit -> the goal follows it
           syncActivity: Boolean(req.body.profile?.activityLevel),
@@ -1689,7 +1711,10 @@ exports.updateProfile = async (req, res) => {
       // fixes the slot touched, so the whole plan is rebuilt in the background
       // instead. Only fires when there's an active plan to replace, and only
       // on a REAL change (not every profile save) to avoid needless AI spend.
-      const newDietaryPreference = normalizeDietaryPreference(updatedUser.profile?.dietaryPreference);
+      // From HealthProfile: the saved document has no health keys with HEALTH_PROFILE_ONLY=true.
+      const savedView = await viewOf(updatedUser);
+      const savedProfile = savedView.profile;
+      const newDietaryPreference = normalizeDietaryPreference(savedProfile?.dietaryPreference);
       if (newDietaryPreference && newDietaryPreference !== oldDietaryPreference) {
         PersonalizedDietPlan.exists({ userId: updatedUser._id, isActive: true, status: 'completed' })
           .then((hasActivePlan) => {
@@ -1703,6 +1728,8 @@ exports.updateProfile = async (req, res) => {
 
       const responseBody = {
         ...updatedUser.toObject(),
+        profile: savedProfile, // health facts from HealthProfile
+        foodPreferences: savedView.foodPreferences,
         password: undefined,
         // Same key the app always read; built from HealthGoal.
         nutritionGoal,

@@ -105,7 +105,8 @@ async function syncGoal(userId, { profile, input = null, targetWeight, create, s
     if (!profile) {
         let q = User.findById(userId).select('profile');
         if (session) q = q.session(session);
-        profile = (await q.lean())?.profile || {};
+        // Health facts from HealthProfile (the only source).
+        profile = (await q.lean().then((u) => require('../modules/health-profile/services/profileReadService').withProfile(u)))?.profile || {};
     }
     const body = bodyFrom(profile);
     if (!body.age || !body.gender || !body.height || !body.currentWeight) return null;

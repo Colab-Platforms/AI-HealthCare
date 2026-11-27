@@ -20,6 +20,7 @@ const { buildNutritionInsight, buildNotLoggedInsight } = require('../services/nu
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getNutritionTrends: getNutritionTrendsData, NutritionTrendInputError } = require('../services/nutritionTrendService');
 const profileSync = require('../modules/health-profile/services/profileSync');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 // HealthGoal -> HealthProfile facts. A missing/zero/invalid value is left out
 // (it used to be written as 0), so it never overwrites a real value.
@@ -1024,11 +1025,13 @@ exports.getHealthGoal = async (req, res) => {
 
     if (healthGoal) {
       const { getExerciseGuidance } = require('../services/exerciseGuidanceService');
-      const userProfession = await User.findById(req.user._id).select('profile.profession').lean();
+      const userProfession = await User.findById(req.user._id).select('profile.profession').lean().then(withProfile);
       return res.json({
         success: true,
         healthGoal,
         exerciseGuidance: getExerciseGuidance(healthGoal.age, healthGoal.goalType, userProfession?.profile?.profession || null),
+        // Exercise precautions from the health profile (additive field).
+        precautions: await require('../modules/health-profile/services/safetyConstraints').exercisePrecautions(req.user._id),
       });
     }
 
@@ -1278,7 +1281,7 @@ exports.logWeight = async (req, res) => {
 // touch the existing HealthGoal weight/calorie flow.
 exports.getLifestyleGoals = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('profile.lifestyle profile.age').lean();
+    const user = await User.findById(req.user._id).select('profile.lifestyle profile.age').lean().then(withProfile);
     const lifestyle = user?.profile?.lifestyle || {};
     res.json({
       success: true,
@@ -1578,7 +1581,7 @@ async function computeNutritionScorePeriod(userId, range, { startDate: customSta
   }
 
   const [user, healthGoal, summaries] = await Promise.all([
-    User.findById(userId).select('profile.age profile.gender profile.weight').lean(),
+    User.findById(userId).select('profile.age profile.gender profile.weight').lean().then(withProfile),
     HealthGoal.findOne({ userId, isActive: true }).select('goalType currentWeight').lean(),
     NutritionSummary.find({
       userId,
@@ -1653,7 +1656,7 @@ async function getNutritionScoreRange(req, res) {
   end.setUTCHours(0, 0, 0, 0);
 
   const [user, summaries] = await Promise.all([
-    User.findById(req.user._id).select('profile.age profile.gender').lean(),
+    User.findById(req.user._id).select('profile.age profile.gender').lean().then(withProfile),
     NutritionSummary.find({
       userId: req.user._id,
       date: { $gte: start, $lte: end }
@@ -1760,7 +1763,7 @@ exports.getNutritionScore = async (req, res) => {
     }
 
     const [user, healthGoal] = await Promise.all([
-      User.findById(req.user._id).select('profile.age profile.gender profile.weight').lean(),
+      User.findById(req.user._id).select('profile.age profile.gender profile.weight').lean().then(withProfile),
       HealthGoal.findOne({ userId: req.user._id, isActive: true }).select('goalType currentWeight').lean(),
     ]);
     const profile = {

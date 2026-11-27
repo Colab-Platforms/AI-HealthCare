@@ -69,13 +69,15 @@ function mergePatterns(existing = {}, patterns = []) {
 }
 
 function createMealPrefTools({
+    // Meal patterns live in HealthProfile diet.mealPatterns (the old
+    // foodPreferences.mealPreferences, 26 Nov).
     loadPrefs = async (userId) => {
-        const User = require('../../../models/User');
-        return (await User.findById(userId).select('foodPreferences.mealPreferences').lean())?.foodPreferences?.mealPreferences || {};
+        const HealthProfile = require('../../health-profile/models/HealthProfile');
+        return (await HealthProfile.findOne({ user: userId }).select('diet.mealPatterns').lean())?.diet?.mealPatterns || {};
     },
     savePrefs = async (userId, mealPreferences) => {
-        const User = require('../../../models/User');
-        await User.updateOne({ _id: userId }, { $set: { 'foodPreferences.mealPreferences': mealPreferences, 'foodPreferences.lastUpdated': new Date() } });
+        const writeService = require('../../health-profile/services/profileWriteService');
+        await writeService.updateSection(userId, 'diet', { mealPatterns: mealPreferences }, { source: 'chat' });
     },
     logger = console,
 } = {}) {

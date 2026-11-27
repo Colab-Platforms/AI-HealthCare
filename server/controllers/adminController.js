@@ -13,6 +13,7 @@ const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const Otp = require('../models/Otp');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
+const { withProfiles, profileOf, userIdsMatching } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 // User Management
 exports.getAllUsers = async (req, res) => {
@@ -66,24 +67,14 @@ exports.getAllUsers = async (req, res) => {
       }
     }
 
-    // Add advanced filters
-    if (ageMin || ageMax) {
-      filter['profile.age'] = {};
-      if (ageMin) filter['profile.age'].$gte = parseInt(ageMin);
-      if (ageMax) filter['profile.age'].$lte = parseInt(ageMax);
-    }
-
-    if (gender && gender !== 'all') {
-      filter['profile.gender'] = gender;
-    }
-
-    if (isDiabetic && isDiabetic !== 'all') {
-      filter['profile.isDiabetic'] = isDiabetic;
-    }
-
-    if (dietaryPreference && dietaryPreference !== 'all') {
-      filter['profile.dietaryPreference'] = dietaryPreference;
-    }
+    // Health-fact filters: matched in HealthProfile (the only source of health facts).
+    const healthIds = await userIdsMatching({
+      ageMin, ageMax,
+      gender: gender && gender !== 'all' ? gender : undefined,
+      isDiabetic: isDiabetic && isDiabetic !== 'all' ? isDiabetic : undefined,
+      dietaryPreference: dietaryPreference && dietaryPreference !== 'all' ? dietaryPreference : undefined,
+    });
+    if (healthIds) filter._id = { $in: healthIds };
 
     if (isActive !== undefined && isActive !== 'all') {
       filter.isActive = isActive === 'true';
@@ -122,7 +113,7 @@ exports.getUserDetails = async (req, res) => {
 
     // nutritionGoal: built from HealthGoal (the stored field was removed 26 Nov).
     const nutritionGoal = await require('../services/healthGoalService').getNutritionGoal(user._id);
-    res.json({ user: { ...user.toObject(), nutritionGoal }, activity, reportCount: reports.length });
+    res.json({ user: { ...user.toObject(), profile: await profileOf(user), nutritionGoal }, activity, reportCount: reports.length });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -187,7 +178,7 @@ exports.impersonateUser = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      profile: user.profile,
+      profile: await profileOf(user), // health facts from HealthProfile
       nutritionGoal: await require('../services/healthGoalService').getNutritionGoal(user._id), // from HealthGoal (field removed 26 Nov)
       foodPreferences: user.foodPreferences,
       subscription: user.subscription,
@@ -750,27 +741,15 @@ exports.getFilteredUsers = async (req, res) => {
     // Build filter object
     const filter = {};
 
-    // Age range filter
-    if (ageMin || ageMax) {
-      filter['profile.age'] = {};
-      if (ageMin) filter['profile.age'].$gte = parseInt(ageMin);
-      if (ageMax) filter['profile.age'].$lte = parseInt(ageMax);
-    }
-
-    // Gender filter
-    if (gender && gender !== 'all') {
-      filter['profile.gender'] = gender;
-    }
-
-    // Activity level filter
-    if (activityLevel && activityLevel !== 'all') {
-      filter['profile.activityLevel'] = activityLevel;
-    }
-
-    // Diabetic status filter
-    if (isDiabetic && isDiabetic !== 'all') {
-      filter['profile.isDiabetic'] = isDiabetic;
-    }
+    // Health-fact filters: matched in HealthProfile (the only source of health facts).
+    const healthIds = await userIdsMatching({
+      ageMin, ageMax,
+      gender: gender && gender !== 'all' ? gender : undefined,
+      activityLevel: activityLevel && activityLevel !== 'all' ? activityLevel : undefined,
+      isDiabetic: isDiabetic && isDiabetic !== 'all' ? isDiabetic : undefined,
+      dietaryPreference: dietaryPreference && dietaryPreference !== 'all' ? dietaryPreference : undefined,
+    });
+    if (healthIds) filter._id = { $in: healthIds };
 
     // Role filter
     if (role && role !== 'all') {
@@ -782,10 +761,7 @@ exports.getFilteredUsers = async (req, res) => {
       filter.isActive = isActive === 'true';
     }
 
-    // Dietary preference filter
-    if (dietaryPreference && dietaryPreference !== 'all') {
-      filter['profile.dietaryPreference'] = dietaryPreference;
-    }
+    // Dietary preference: part of the HealthProfile filter above.
 
     // Search filter (name or email)
     if (search) {
@@ -817,7 +793,7 @@ exports.getFilteredUsers = async (req, res) => {
       .sort({ [sortBy]: parseInt(sortOrder) })
       .skip(skip)
       .limit(parseInt(limit))
-      .lean();
+      .lean().then(withProfiles);
 
     // Get total count for pagination
     const total = await User.countDocuments(filter);

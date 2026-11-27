@@ -18,6 +18,7 @@ const SupportTicket = require('../models/SupportTicket');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const { purgeInvoicesBefore } = require('../services/invoiceDeliveryService');
+const { withProfile } = require('../modules/health-profile/services/profileReadService');
 
 const CONSENT_VERSION = '1.0';
 
@@ -131,7 +132,7 @@ exports.exportData = async (req, res) => {
         const userId = req.user._id;
 
         const [user, reports, documents, foodLogs, metrics, chatHistory, consentLogs, activityLogs, healthProfile, profileHistory, coachState, symptomLogs] = await Promise.all([
-            User.findById(userId).select('-password -resetPasswordCode -emailVerificationCode').lean(),
+            User.findById(userId).select('-password -resetPasswordCode -emailVerificationCode').lean().then(withProfile),
             HealthReport.find({ user: userId }).lean(),
             MedicalDocument.find({ userId }).lean(),
             FoodLog.find({ userId }).lean(),

@@ -1,3 +1,4 @@
+const { withProfile } = require('../../health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 // The targets the app itself has set for this user, and what is left of them
 // today. Every coach suggestion must fit inside these (no new numbers, no
 // going over the calorie target). Same sources the app screens use:
@@ -23,7 +24,7 @@ async function defaultLoad(userId, now) {
     const start = dayStart(now);
     const end = new Date(start.getTime() + 86400000);
     const [user, healthGoal, dietPlan, today] = await Promise.all([
-        User.findById(userId).select('profile.age profile.profession profile.lifestyle').lean(),
+        User.findById(userId).select('profile.age profile.profession profile.lifestyle').lean().then(withProfile),
         HealthGoal.findOne({ userId, isActive: true }).sort({ createdAt: -1 }).select('goalType targetWeight dailyCalorieTarget macroTargets').lean(),
         PersonalizedDietPlan.findOne({ userId, isActive: true }).select('dailyCalorieTarget macroTargets').lean(),
         NutritionSummary.findOne({ userId, date: { $gte: start, $lt: end } })

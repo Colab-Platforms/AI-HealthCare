@@ -29,6 +29,7 @@ function dateOnlyUTCFromDate(d) {
 
 const { disconnectOtherDevices } = require('../utils/wearableConnection');
 const { getSleepGoal } = require('../utils/sleepGoal');
+const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
 // Rolls one HR sample into that day's running avg/min/max. Raw samples live in
 // HeartRateSample; this permanent rollup powers long-term trends. Mutates
@@ -864,7 +865,7 @@ exports.getSleepInsightData = async (req, res) => {
     const User = require('../models/User');
     const user = await User.findById(req.user._id)
       .select('profile.age profile.lifestyle.sleepGoalHours')
-      .lean();
+      .lean().then(withProfile);
     const sleepGoalHours = getSleepGoal(user).goalHours;
     const age = user?.profile?.age ?? null;
 
@@ -893,7 +894,7 @@ exports.getSleepSummaryData = async (req, res) => {
 
     const user = await User.findById(req.user._id)
       .select('profile.age profile.lifestyle.sleepGoalHours')
-      .lean();
+      .lean().then(withProfile);
     const sleepGoalHours = getSleepGoal(user).goalHours;
     const age = user?.profile?.age ?? null;
 
@@ -918,7 +919,7 @@ exports.getActivityInsightData = async (req, res) => {
   try {
     const User = require('../models/User');
     const { getStepGoal } = require('../utils/stepGoal');
-    const user = await User.findById(req.user._id).select('profile.age profile.lifestyle.stepGoal').lean();
+    const user = await User.findById(req.user._id).select('profile.age profile.lifestyle.stepGoal').lean().then(withProfile);
     // Same goal the Activity ring and scoreComponents.activity are computed
     // against (utils/stepGoal.js) — this endpoint once read the stored
     // 10,000 default instead, so its "X of your goal" message disagreed with
