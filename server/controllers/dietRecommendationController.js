@@ -3,6 +3,8 @@ const SupplementRecommendation = require('../models/SupplementRecommendation');
 const HealthReport = require('../models/HealthReport');
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
+const dietPlanGenerator = require('../services/foodDb/dietPlanGenerator');
+const hybridPlan = require('../services/foodDb/hybridPlan');
 const { resolveDietTargets, normalizeGoal } = require('../services/dietTargets');
 const queueService = require('../services/queueService');
 const cache = require('../utils/cache');
@@ -30,15 +32,19 @@ async function safetyRulesFor(userId) {
 // A dish the user rejected goes to HealthProfile diet.dislikes (the old
 // foodPreferences.foodsToAvoid). Retries on a version conflict (two quick
 // rejections), never throws: a failed save must not block the swap.
-async function addFoodToAvoid(userId, name) {
+async function addFoodToAvoid(userId, names) {
   const writeService = require('../modules/health-profile/services/profileWriteService');
   const HealthProfile = require('../modules/health-profile/models/HealthProfile');
+  const list = (Array.isArray(names) ? names : [names]).map((n) => String(n || '').trim()).filter(Boolean);
+  if (!list.length) return;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const hp = await HealthProfile.findOne({ user: userId }).select('diet.dislikes version').lean();
       const current = hp?.diet?.dislikes || [];
-      if (current.some((f) => String(f).trim().toLowerCase() === name.trim().toLowerCase())) return;
-      await writeService.updateSection(userId, 'diet', { dislikes: [...current, name] }, { source: 'manual', expectedVersion: hp?.version });
+      const seen = new Set(current.map((f) => String(f).trim().toLowerCase()));
+      const add = list.filter((n) => { const k = n.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+      if (!add.length) return;
+      await writeService.updateSection(userId, 'diet', { dislikes: [...current, ...add] }, { source: 'manual', expectedVersion: hp?.version });
       return;
     } catch (err) {
       if (err instanceof writeService.VersionConflictError && attempt < 2) continue;
@@ -61,6 +67,90 @@ async function addFoodToAvoid(userId, name) {
  * availability per region rather than only per user.
  */
 const MEAL_REJECTION_REASONS = ['not_available', 'dont_know_it', 'too_expensive', 'dont_like'];
+
+/**
+ * Plan built from the Food DB (no AI). Never throws: any failure returns
+ * { ok: false, reason } and the caller falls back to the AI generator.
+ */
+async function tryFoodDbPlan(userData) {
+  const started = Date.now();
+  try {
+    const result = await dietPlanGenerator.generatePlan(userData, { previousFoodIds: userData.previousFoodIds || [] });
+    if (result.ok) {
+      console.log(`[DietGeneration] Food DB plan in ${Date.now() - started} ms (max day error ${result.stats.maxDayErrorPct.toFixed(1)}%)`);
+    } else {
+      console.log(`[DietGeneration] Food DB plan not possible (${result.reason}), using AI`);
+    }
+    return result;
+  } catch (err) {
+    console.error('[DietGeneration] Food DB plan failed, using AI:', err.message);
+    return { ok: false, reason: `error: ${err.message}` };
+  }
+}
+
+/**
+ * Food DB week with FOOD_DB_AI_SHARE of the meals written by the AI (services/foodDb/hybridPlan).
+ * Never throws. ok:false only when the DB itself cannot plan (the caller then uses the AI generator);
+ * an AI failure just means fewer AI meals.
+ */
+async function tryHybridPlan(userData, userId) {
+  const started = Date.now();
+  try {
+    const result = await hybridPlan.generateHybridPlan(userData, { previousFoodIds: userData.previousFoodIds || [], userId });
+    if (!result.ok) {
+      console.log(`[DietGeneration] Food DB plan not possible (${result.reason}), using AI`);
+      return result;
+    }
+    const s = result.stats;
+    console.log(`[DietGeneration] Hybrid plan in ${Date.now() - started} ms: ${s.aiMeals}/${s.aiSlotsAsked} AI meals, ${s.createdFoodIds.length} new food(s), max day error ${s.maxDayErrorPct.toFixed(1)}%`);
+    if (s.modelError) console.warn('[DietGeneration] AI meals skipped, DB plan used:', s.modelError);
+    if (s.aiKept.length) console.log('[DietGeneration] DB meal kept for:', s.aiKept.map((k) => `day ${k.day + 1} ${k.slot} (${k.reason})`).join('; '));
+    return result;
+  } catch (err) {
+    console.error('[DietGeneration] Hybrid plan failed, trying the DB alone:', err.message);
+    return tryFoodDbPlan(userData);
+  }
+}
+
+/** Plans whose meals carry `items` and DB nutrition (no calorie rescaling, DB-aware regeneration). */
+const DB_GENERATORS = new Set(['food_db', 'hybrid']);
+
+/** Fields saved on a finished plan, shared by the Food DB and AI paths. */
+function buildPlanDocument(planData, userData) {
+  return {
+    ...planData,
+    generator: DB_GENERATORS.has(planData.generator) ? planData.generator : 'ai',
+    status: 'completed',
+    inputData: {
+      age: userData.age,
+      gender: userData.gender,
+      weight: userData.weight,
+      height: userData.height,
+      currentBMI: userData.currentBMI,
+      bmiGoal: userData.bmiGoal,
+      targetWeight: userData.targetWeight,
+      dietaryPreference: userData.dietaryPreference,
+      occasion: userData.occasion || null,
+      activityLevel: userData.activityLevel,
+      fitnessGoals: userData.fitnessGoals,
+      medicalConditions: userData.medicalConditions,
+      allergies: userData.allergies,
+      dietaryDo: userData.foodPreferences?.dietaryDo || [],
+      dietaryDont: userData.foodPreferences?.dietaryDont || [],
+      hasReports: userData.hasReports,
+      lifestyle: userData.lifestyle,
+      alcoholSummary: userData.alcoholSummary
+    },
+    nutritionGoals: {
+      dailyCalorieTarget: userData.nutritionGoals.dailyCalories,
+      macroTargets: {
+        protein: userData.nutritionGoals.protein,
+        carbs: userData.nutritionGoals.carbs,
+        fats: userData.nutritionGoals.fats
+      }
+    }
+  };
+}
 
 /**
  * Generate personalized diet plan based on comprehensive health data
@@ -264,12 +354,55 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       });
     }
 
+    // Optional occasion/fasting context (e.g. Ramadan, Shravan month, a vrat/
+    // upvas day) — null unless the client explicitly passes one for this
+    // generation. Carried on userData so processDietInternal can persist it.
+    const occasion = typeof req.body?.occasion === 'string' && req.body.occasion.trim()
+      ? req.body.occasion.trim().slice(0, 100)
+      : null;
+    userData.occasion = occasion;
+    // Last plan's DB dishes, so this week's plan leans to different ones.
+    userData.previousFoodIds = dietPlanGenerator.planFoodIds(previousPlan);
+
+    // 3b. Food DB plan (no AI, well under a second), built in this request. The client already
+    // handles backgroundProcessing: false and shows the plan straight away. Whatever the DB cannot
+    // plan for (Jain, occasions, outside India, too few dishes) falls through to the AI below.
+    // With FOOD_DB_AI_SHARE > 0 the plan is hybrid: the DB check runs here (so a user the DB cannot
+    // serve goes straight to the AI), and the AI meals are added in the background job below.
+    if (dietPlanGenerator.isEnabled()) {
+      const db = await tryFoodDbPlan(userData);
+      if (db.ok && dietPlanGenerator.aiShare() > 0) {
+        // Hybrid: processDietInternal builds it (it needs a model call, so not in this request).
+      } else if (db.ok) {
+        await PersonalizedDietPlan.updateMany({ userId, isActive: true }, { isActive: false });
+        const dietPlan = await PersonalizedDietPlan.create({
+          userId,
+          isActive: true,
+          generatedAt: new Date(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          ...buildPlanDocument(db.plan, userData)
+        });
+        await cache.delete(`diet_plan:${userId}`);
+        await cache.delete(`dashboard:${userId}`);
+        return res.status(200).json({
+          success: true,
+          message: 'Diet plan ready',
+          dietPlan: dietPlan,
+          backgroundProcessing: false,
+          generator: 'food_db'
+        });
+      } else {
+        // Tell the background job not to try the DB again for the same inputs.
+        userData.foodDbSkipReason = db.reason;
+      }
+    }
+
     // 4. Deactivate ALL previous active plans immediately so getActiveDietPlan only sees the new one
     await PersonalizedDietPlan.updateMany(
       { userId, isActive: true },
       { isActive: false }
     );
-    
+
     // 5. Create a "generating" placeholder IMMEDIATELY
     const dietPlan = new PersonalizedDietPlan({
       userId: userId,
@@ -292,14 +425,6 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     // Prepare prompt extension for variety
     const isRegenerate = req.body?.isRegenerate || false;
 
-    // Optional occasion/fasting context (e.g. Ramadan, Shravan month, a vrat/
-    // upvas day) — null unless the client explicitly passes one for this
-    // generation. Carried on userData so processDietInternal can persist it.
-    const occasion = typeof req.body?.occasion === 'string' && req.body.occasion.trim()
-      ? req.body.occasion.trim().slice(0, 100)
-      : null;
-    userData.occasion = occasion;
-
     // Location is NOT added here. The location block is built once, inside the
     // prompt (services/dietRecommendationAI buildLocationInstructions). This
     // method used to append its own STATE/CITY FOCUS lines as well, so the
@@ -321,8 +446,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     }
     console.log('[DietGeneration] Placeholder saved: ', dietPlan._id);
 
-    // 4. INVALIDATE CACHE
-    const cache = require('../utils/cache');
+    // 4. INVALIDATE CACHE (module-level `cache`; a local require here used to shadow it for the whole function)
     await cache.delete(`diet_plan:${userId}`);
     await cache.delete(`dashboard:${userId}`);
 
@@ -369,9 +493,20 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
     if (!user) throw new Error('User not found');
 
     let aiDietPlan;
+    // Food DB first (the auto-after-report and QStash paths arrive here directly). Skipped when the
+    // request path already tried it for these same inputs.
+    // The share is read here, not from the request: the auto-after-report path never had a request.
+    if (dietPlanGenerator.isEnabled() && !userData.foodDbSkipReason) {
+      const db = dietPlanGenerator.aiShare() > 0
+        ? await tryHybridPlan(userData, userId)
+        : await tryFoodDbPlan(userData);
+      if (db.ok) aiDietPlan = db.plan;
+    }
     try {
-      aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
-      if (!aiDietPlan || typeof aiDietPlan !== 'object') throw new Error('Invalid AI response');
+      if (!aiDietPlan) {
+        aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
+        if (!aiDietPlan || typeof aiDietPlan !== 'object') throw new Error('Invalid AI response');
+      }
     } catch (aiError) {
       console.error('[BG-DIET] AI Error:', aiError.message);
 
@@ -403,46 +538,17 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
     // utils/mealPlanCalories). This only scaled days DOWN and only past +10%, so
     // an under-calorie plan for a user on a surplus goal was passed straight
     // through. Days too far off to scale honestly are logged, not faked.
+    // Not for Food DB plans: their grams already add up to the target, and scaling the numbers
+    // would make them disagree with the stored grams (and with what logging the meal records).
     const calorieCap = userData.nutritionGoals.dailyCalories;
-    if (calorieCap && aiDietPlan.mealPlan) {
+    if (calorieCap && aiDietPlan.mealPlan && !DB_GENERATORS.has(aiDietPlan.generator)) {
       const { scaled, unfixable } = normalizePlanCalories(aiDietPlan.mealPlan, calorieCap);
       if (scaled.length) console.log(`[BG-DIET] Scaled day(s) ${scaled.map(i => i + 1).join(', ')} onto the ${calorieCap} kcal target`);
       if (unfixable.length) console.warn(`[BG-DIET] Day(s) ${unfixable.map(i => i + 1).join(', ')} are too far from ${calorieCap} kcal to scale honestly (goal: ${userData.bmiGoal})`);
       aiDietPlan.dailyCalorieTarget = calorieCap;
     }
 
-    const finalData = {
-      ...aiDietPlan,
-      status: 'completed',
-      inputData: {
-        age: userData.age,
-        gender: userData.gender,
-        weight: userData.weight,
-        height: userData.height,
-        currentBMI: userData.currentBMI,
-        bmiGoal: userData.bmiGoal,
-        targetWeight: userData.targetWeight,
-        dietaryPreference: userData.dietaryPreference,
-        occasion: userData.occasion || null,
-        activityLevel: userData.activityLevel,
-        fitnessGoals: userData.fitnessGoals,
-        medicalConditions: userData.medicalConditions,
-        allergies: userData.allergies,
-        dietaryDo: userData.foodPreferences?.dietaryDo || [],
-        dietaryDont: userData.foodPreferences?.dietaryDont || [],
-        hasReports: userData.hasReports,
-        lifestyle: userData.lifestyle,
-        alcoholSummary: userData.alcoholSummary
-      },
-      nutritionGoals: {
-        dailyCalorieTarget: userData.nutritionGoals.dailyCalories,
-        macroTargets: {
-          protein: userData.nutritionGoals.protein,
-          carbs: userData.nutritionGoals.carbs,
-          fats: userData.nutritionGoals.fats
-        }
-      }
-    };
+    const finalData = buildPlanDocument(aiDietPlan, userData);
 
     const updatedPlan = await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, finalData, { new: true });
     
@@ -456,7 +562,7 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
     await notificationService.createNotification(userId, {
       type: 'diet_ready',
       title: 'Diet Plan Ready!',
-      message: 'Your personalized AI diet plan has been generated.',
+      message: 'Your personalized diet plan has been generated.',
       icon: '',
       priority: 'high',
       actionUrl: '/diet-plan'
@@ -593,22 +699,27 @@ exports.regenerateMealSlot = async (req, res) => {
     // plan's snapshot, so switching to non-veg takes effect on the next swap.
     const { prefs: currentPrefs } = reconcileFoodPreferences(diet.value, req.user.foodPreferences);
 
-    const rejectedName = dietPlan.mealPlan?.[mealType]?.[dayIndex]?.name;
+    // A Food DB meal is a combination ("Moong Dal Tadka, Lauki Sabzi and Chapati"): remember the
+    // dishes in it, not the combined title, so the same dal or sabzi does not come back next week
+    // paired with something else. Roti, rice and sides are never remembered (they are staples).
+    const rejectedMeal = dietPlan.mealPlan?.[mealType]?.[dayIndex];
+    const rejectedNames = rejectedMeal?.items?.length
+      ? rejectedMeal.items.filter((i) => dietPlanGenerator.DISH_ROLES.has(i.role)).map((i) => i.name).filter(Boolean)
+      : [rejectedMeal?.name].filter(Boolean);
     let foodsToAvoid = currentPrefs.foodsToAvoid || [];
 
-    if (reason && rejectedName) {
-      const alreadyAvoided = foodsToAvoid.some(
-        (f) => typeof f === 'string' && f.trim().toLowerCase() === rejectedName.trim().toLowerCase()
-      );
+    if (reason && rejectedNames.length) {
+      const known = new Set(foodsToAvoid.filter((f) => typeof f === 'string').map((f) => f.trim().toLowerCase()));
+      const newNames = rejectedNames.filter((n) => !known.has(n.trim().toLowerCase()));
 
-      if (!alreadyAvoided) {
-        foodsToAvoid = [...foodsToAvoid, rejectedName];
+      if (newNames.length) {
+        foodsToAvoid = [...foodsToAvoid, ...newNames];
         // Foods to avoid live in HealthProfile (diet.dislikes = old
         // foodPreferences.foodsToAvoid, 26 Nov). Read-modify-write on the fresh
         // profile with its version check; two quick rejections racing retry
         // instead of losing one.
-        await addFoodToAvoid(userId, rejectedName);
-        console.log(`[DietPlan] User ${userId} rejected "${rejectedName}" (${reason}) — added to foodsToAvoid`);
+        await addFoodToAvoid(userId, newNames);
+        console.log(`[DietPlan] User ${userId} rejected ${newNames.map((n) => `"${n}"`).join(', ')} (${reason}) — added to foodsToAvoid`);
       }
     }
 
@@ -637,6 +748,8 @@ exports.regenerateMealSlot = async (req, res) => {
       goal: targets.goal,
       tdee: targets.tdee,
       dailyCalories: dailyTarget,
+      // Used by the Food DB path (protein fit per meal); the AI path ignores it.
+      nutritionGoals: { dailyCalories: dailyTarget, protein: targets.proteinGoal },
     };
 
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
@@ -662,7 +775,39 @@ exports.regenerateMealSlot = async (req, res) => {
 
 async function processMealRegenInternal({ planId, mealType, dayIndex, remainingCalories, userData, avoidNames }) {
   try {
-    const newMeal = await dietRecommendationAI.regenerateSingleMeal({ mealType, remainingCalories, userData, avoidNames });
+    let newMeal = null;
+
+    // A Food DB or hybrid plan gets a replacement of the same kind: an AI-written meal (ai_db) is
+    // replaced by a new AI meal matched to the DB, a DB meal by a DB meal (no AI). Either way it
+    // has different dishes from the rest of the week for this meal type and the same calorie
+    // budget. Each step falls back to the next: AI meal → DB meal → the old free-form AI meal.
+    if (dietPlanGenerator.isEnabled()) {
+      const plan = await PersonalizedDietPlan.findById(planId).select('generator mealPlan userId').lean();
+      if (DB_GENERATORS.has(plan?.generator)) {
+        const excludeFoodIds = (plan.mealPlan?.[mealType] || [])
+          .flatMap((m) => (m?.items || []).filter((i) => dietPlanGenerator.DISH_ROLES.has(i.role)).map((i) => i.foodId));
+        const current = plan.mealPlan?.[mealType]?.[dayIndex];
+        if (current?.source === hybridPlan.AI_SOURCE && dietPlanGenerator.aiShare() > 0) {
+          try {
+            newMeal = await hybridPlan.generateHybridMeal(userData, {
+              mealPlan: plan.mealPlan, slot: mealType, dayIndex, budget: remainingCalories, excludeFoodIds, userId: plan.userId,
+            });
+          } catch (err) {
+            console.warn('[MealRegen] AI meal (DB-matched) failed, trying the DB:', err.message);
+          }
+        }
+        if (!newMeal) {
+          try {
+            newMeal = await dietPlanGenerator.generateMeal(userData, { slot: mealType, budget: remainingCalories, excludeFoodIds });
+          } catch (err) {
+            console.warn('[MealRegen] Food DB replacement failed, using AI:', err.message);
+          }
+        }
+        if (!newMeal) console.log(`[MealRegen] No Food DB replacement for ${mealType}, using AI`);
+      }
+    }
+
+    if (!newMeal) newMeal = await dietRecommendationAI.regenerateSingleMeal({ mealType, remainingCalories, userData, avoidNames });
     if (!newMeal || typeof newMeal.calories !== 'number') {
       throw new Error('AI did not return a valid meal');
     }
@@ -794,7 +939,9 @@ exports.getActiveDietPlan = async (req, res) => {
 
     res.json({
       success: true,
-      dietPlan,
+      // Meals with DB items get the main dish's approved photo (looked up now, so a photo approved
+      // after the plan was made still shows).
+      dietPlan: dietPlan,
       // `isStale` / `staleReason` are the original diet-type-only flag, kept
       // as-is for clients already reading it. `staleness` is the superset: it
       // also covers a changed goal or calorie target, with the old/new values.
@@ -860,7 +1007,7 @@ exports.getDietPlanById = async (req, res) => {
 
     res.json({
       success: true,
-      dietPlan
+      dietPlan: dietPlan
     });
   } catch (error) {
     console.error('Get diet plan by ID error:', error);

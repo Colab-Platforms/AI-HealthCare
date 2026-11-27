@@ -19,6 +19,7 @@ const { calculateDietQualityScore } = require('../services/dietQualityScoreServi
 const { buildNutritionInsight, buildNotLoggedInsight } = require('../services/nutritionInsightService');
 const { classifyCalendarBand } = require('../utils/calendarBand');
 const { getNutritionTrends: getNutritionTrendsData, NutritionTrendInputError } = require('../services/nutritionTrendService');
+const foodController = require('./foodController');
 const profileSync = require('../modules/health-profile/services/profileSync');
 const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 
@@ -35,6 +36,17 @@ const healthGoalProfileFacts = (healthGoal) => ({
   // never disagree (staging 26 Nov: goal "moderate", profile "sedentary").
   ...(healthGoal.activityLevel ? { lifestyle: { activityLevel: healthGoal.activityLevel } } : {}),
 });
+
+// Food photos are switched off: scan photos are still stored on QuickFoodCheck/FoodLog, but no
+// history read ever sends them back to the apps.
+const NO_PHOTOS = '-imageUrl -imageUrls';
+const withoutPhotos = (doc) => {
+  if (!doc) return doc;
+  const o = typeof doc.toObject === 'function' ? doc.toObject() : { ...doc };
+  delete o.imageUrl;
+  delete o.imageUrls;
+  return o;
+};
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -703,7 +715,7 @@ exports.getFoodLogs = async (req, res) => {
     if (mealType) query.mealType = mealType;
 
     const [foodLogs, total] = await Promise.all([
-      withTimeout(FoodLog.find(query).sort({ timestamp: -1 }).skip(skip).limit(pageSize).lean()),
+      withTimeout(FoodLog.find(query).select(NO_PHOTOS).sort({ timestamp: -1 }).skip(skip).limit(pageSize).lean()),
       FoodLog.countDocuments(query),
     ]);
 
@@ -740,7 +752,7 @@ exports.getTodayLogs = async (req, res) => {
         $gte: today,
         $lt: tomorrow
       }
-    }).sort({ timestamp: 1 }));
+    }).select(NO_PHOTOS).sort({ timestamp: 1 }));
 
     res.json({
       success: true,
@@ -793,7 +805,7 @@ exports.updateFoodLog = async (req, res) => {
 
     res.json({
       success: true,
-      foodLog,
+      foodLog: withoutPhotos(foodLog),
       message: 'Food log updated successfully'
     });
   } catch (error) {
@@ -2291,6 +2303,14 @@ exports.quickFoodCheck = async (req, res) => {
       });
     }
 
+    // ─── Food DB scan (docs/FOOD_DB_FLOW.md): small identify call → DB nutrition → rule warnings ───
+    // Off unless FOOD_DB_SCAN_ENABLED=true; the AI-only flow below stays unchanged until then.
+    if (foodController.isFoodDbScanEnabled()) {
+      return foodController.handleDbQuickCheck(req, res, {
+        imageInputs, foodDescription, additionalContext, quantity, analysisTier, searchKey,
+      });
+    }
+
     // ─── STEP 2 & 3: Upload ALL images to Cloudinary & run ONE AI Analysis call, in PARALLEL ───
     if (imageInputs.length > 0) {
       try {
@@ -2627,6 +2647,7 @@ exports.getQuickFoodChecks = async (req, res) => {
     }
 
     const checks = await QuickFoodCheck.find(query)
+      .select(NO_PHOTOS)
       .sort({ timestamp: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip));
@@ -2659,7 +2680,7 @@ exports.getQuickFoodCheck = async (req, res) => {
     const check = await QuickFoodCheck.findOne({
       _id: id,
       userId: req.user._id
-    });
+    }).select(NO_PHOTOS);
 
     if (!check) {
       return res.status(404).json({
@@ -2738,7 +2759,7 @@ exports.getFoodCheckHistory = async (req, res) => {
         $gte: targetDate,
         $lt: nextDate
       }
-    }).sort({ timestamp: -1 });
+    }).select(NO_PHOTOS).sort({ timestamp: -1 });
 
     // Calculate daily stats
     const stats = {
@@ -2780,7 +2801,7 @@ exports.getWeeklyFoodCheckSummary = async (req, res) => {
     const checks = await QuickFoodCheck.find({
       userId: req.user._id,
       timestamp: { $gte: startDate, $lte: endDate }
-    }).sort({ timestamp: -1 });
+    }).select(NO_PHOTOS).sort({ timestamp: -1 });
 
     // Group by date
     const byDate = {};
@@ -2826,37 +2847,8 @@ exports.getWeeklyFoodCheckSummary = async (req, res) => {
   }
 };
 
-// Get food image visually using Free AI Image Generation
+// Food photos are switched off: no name-based photo lookup. Kept so older app builds get a clean
+// "no image" answer (and show their placeholder) instead of an error.
 exports.getFoodImage = async (req, res) => {
-  try {
-    const { foodName } = req.query;
-
-    if (!foodName) {
-      return res.status(400).json({
-        success: false,
-        message: 'Food name is required'
-      });
-    }
-
-    // Using Bing Thumbnail API for highly accurate, free, lifetime image fetching
-    const cleanFoodName = foodName.replace(/[^a-zA-Z0-9 ]/g, '');
-    const encodedQuery = encodeURIComponent(cleanFoodName + ' food meal');
-    
-    // c=7 ensures proper cropping, w & h define quality constraints
-    const imageUrl = `https://tse1.mm.bing.net/th?q=${encodedQuery}&w=500&h=500&c=7&rs=1&p=0`;
-
-    res.json({
-      success: true,
-      imageUrl,
-      source: 'BingThumb'
-    });
-
-  } catch (error) {
-    console.error('Get food image error:', error);
-    res.json({
-      success: false,
-      message: 'Failed to generate food image',
-      error: error.message
-    });
-  }
+  res.json({ success: false, imageUrl: null, message: 'Food images are disabled' });
 };

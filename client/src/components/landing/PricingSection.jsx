@@ -6,7 +6,7 @@ const plans = [
   {
     id: "free",
     name: "Free",
-    tagline: "Ideal for getting started with your health journey — free for life.",
+    tagline: "Ideal for getting started with your health journey  free for life.",
     price: 0,
     billingCycle: "monthly", // matches the Free Plan doc's stored billingCycle; irrelevant since price is 0
     icon: Star,
@@ -16,6 +16,7 @@ const plans = [
       "Medical vault (secure document storage)",
       "Streaks, badges & health challenges",
       "Detailed nutrition logging & smart alerts",
+      "Goal planner",
     ],
   },
   {
@@ -33,7 +34,6 @@ const plans = [
       "AI food analysis",
       "AI medical report analysis",
       "Personalized meal recommendations",
-      "Goal planner",
     ],
   },
 ];

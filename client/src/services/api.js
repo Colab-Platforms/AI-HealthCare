@@ -550,3 +550,10 @@ export const shopAdminService = {
   customer: (userId) => api.get(`shop/admin/customers/${userId}`),
   refunds: (status) => api.get('shop/admin/refunds', { params: { status } }),
 };
+
+// Food DB admin (AI-added foods) — /api/admin/foods (docs/FOOD_DB_FLOW.md 8.4)
+export const foodAdminService = {
+  foods: (params) => api.get('admin/foods', { params }),
+  approveFood: (foodId) => api.post(`admin/foods/${foodId}/approve`),
+  rejectFood: (foodId, note) => api.post(`admin/foods/${foodId}/reject`, { note }),
+};

@@ -772,7 +772,7 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       latestGlucose, latestHbA1c, totalReports,
     ] = await Promise.all([
       HealthReport.find({ user: reqUser._id, status: { $in: ['completed', 'processing'] } }).sort({ createdAt: -1 }).limit(10).lean(),
-      FoodLog.find({ userId: reqUser._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).lean(),
+      FoodLog.find({ userId: reqUser._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).select('-imageUrl -imageUrls').lean(), // food photos are never shown
       NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
       NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
       User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle profile.age').lean().then(withProfile),

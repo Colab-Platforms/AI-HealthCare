@@ -1,0 +1,4493 @@
+{
+  "generatedAt": "2026-11-23T09:10:46.597Z",
+  "sources": {
+    "anuvaad": "Anuvaad_INDB_2024.11.xlsx",
+    "independent": "Indian_Food_DB_independent_schema.xlsx"
+  },
+  "counts": {
+    "sourceIndependentDishes": 537,
+    "sourceAnuvaadFoods": 1014,
+    "merged": 117,
+    "totalFoods": 1434,
+    "active": 1298,
+    "disabled": 136,
+    "bySource": {
+      "ind_schema": 420,
+      "merged": 117,
+      "anuvaad": 897
+    },
+    "byDietType": {
+      "vegan": 367,
+      "vegetarian": 832,
+      "eggetarian": 84,
+      "non_vegetarian": 151
+    },
+    "byCategory": {
+      "vegetable or paneer dish": 215,
+      "lentil or legume dish": 95,
+      "egg dish": 30,
+      "meat or fish curry": 57,
+      "meat or fish (dry)": 51,
+      "one-dish meal or breakfast item": 247,
+      "plain rice": 3,
+      "flatbread": 44,
+      "snack": 109,
+      "raita or curd side": 28,
+      "salad": 29,
+      "chutney or condiment": 107,
+      "soup": 61,
+      "dessert": 239,
+      "beverage": 65,
+      "other": 11,
+      "bakery": 43
+    },
+    "byCuisine": {
+      "indian": 1094,
+      "indo_chinese": 43,
+      "global": 297
+    },
+    "byAllergen": {
+      "milk": 424,
+      "tree_nuts": 67,
+      "soy": 63,
+      "mustard": 47,
+      "peanut": 32,
+      "sesame": 12,
+      "gluten": 391,
+      "egg": 92,
+      "shellfish": 14,
+      "fish": 27
+    },
+    "byTag": {
+      "contains_onion_garlic": 792,
+      "contains_root_veg": 850,
+      "goitrogen": 64,
+      "ghee_heavy": 113,
+      "spicy": 57,
+      "deep_fried": 118,
+      "fried": 137,
+      "red_meat": 46,
+      "processed": 48,
+      "refined_carb": 347,
+      "rice_based": 107,
+      "high_sugar": 227
+    },
+    "byFlag": {
+      "merged_duplicate": 117,
+      "ingredients_rescaled": 98,
+      "serving_corrected": 211,
+      "possible_duplicate": 3,
+      "oil_dominant": 106,
+      "serving_defaulted": 81,
+      "macros_inconsistent": 29,
+      "out_of_range": 25
+    },
+    "withGlycemicIndex": 1246,
+    "withIngredients": 535,
+    "withMicronutrients": 1014
+  },
+  "disabled": [
+    {
+      "foodId": "THF-00577",
+      "name": "Sesame Toast",
+      "source": "ASC046",
+      "reason": "oil-dominant: fat 49.38 g, carbs+protein 13.05 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00605",
+      "name": "Brown Sauce",
+      "source": "ASC078",
+      "reason": "kcal 109.18 vs macros 282.23; sodium 14174.59 > 10000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00606",
+      "name": "Clear Tomato Soup",
+      "source": "ASC079",
+      "reason": "kcal 80.07 vs macros 142.94; sodium 5135.74 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00607",
+      "name": "Lentil Soup",
+      "source": "ASC080",
+      "reason": "kcal 31.17 vs macros 159.48; sodium 10418.84 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00608",
+      "name": "Cream of Green Peas Soup",
+      "source": "ASC083",
+      "reason": "kcal 127.84 vs macros 188.54",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00609",
+      "name": "Cream of Spinach Soup",
+      "source": "ASC084",
+      "reason": "kcal 100.54 vs macros 154.43",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00610",
+      "name": "Cream of Mixed Vegetable Soup",
+      "source": "ASC085",
+      "reason": "kcal 59.65 vs macros 128.53; sodium 5655.45 > 5000",
+      "closestActive": {
+        "name": "Kadai Mixed Vegetable",
+        "foodId": "THF-00149",
+        "score": 0.809
+      }
+    },
+    {
+      "foodId": "THF-00611",
+      "name": "Minestrone Soup",
+      "source": "ASC088",
+      "reason": "kcal 42.66 vs macros 151.85; sodium 8875.06 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00612",
+      "name": "Egg Drop Soup",
+      "source": "ASC089",
+      "reason": "kcal 26.64 vs macros 177.8; sodium 12418.84 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00613",
+      "name": "Chinese Cabbage and Meat Ball Soup",
+      "source": "ASC090",
+      "reason": "oil-dominant: fat 56.57 g, carbs+protein 6.64 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00614",
+      "name": "French Onion Soup",
+      "source": "ASC091",
+      "reason": "kcal 55.61 vs macros 192.27; sodium 11202.89 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00616",
+      "name": "Talaumein Soup",
+      "source": "ASC093",
+      "reason": "kcal 35.63 vs macros 172.18; sodium 11088.14 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00618",
+      "name": "Cold Summer Garden Soup",
+      "source": "ASC095",
+      "reason": "kcal 49.19 vs macros 171.6; sodium 9919.63 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00622",
+      "name": "Spinach Poori",
+      "source": "ASC108",
+      "reason": "oil-dominant: fat 71.86 g, carbs+protein 9.18 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00623",
+      "name": "Methi Poori",
+      "source": "ASC109",
+      "reason": "oil-dominant: fat 74.6 g, carbs+protein 9.43 g",
+      "closestActive": {
+        "name": "Dahi Puri",
+        "foodId": "THF-00410",
+        "score": 0.842
+      }
+    },
+    {
+      "foodId": "THF-00624",
+      "name": "Dal Stuffed Poori",
+      "source": "ASC110",
+      "reason": "oil-dominant: fat 81.69 g, carbs+protein 12.22 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00625",
+      "name": "Potato Stuffed Poori",
+      "source": "ASC111",
+      "reason": "oil-dominant: fat 81.35 g, carbs+protein 10.92 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00668",
+      "name": "Besan Kadhi with Pakodies",
+      "source": "ASC168",
+      "reason": "oil-dominant: fat 42.59 g, carbs+protein 5.2 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00692",
+      "name": "Pea Kofta Curry",
+      "source": "ASC198",
+      "reason": "oil-dominant: fat 63.39 g, carbs+protein 6.18 g",
+      "closestActive": {
+        "name": "Lauki Kofta Curry",
+        "foodId": "THF-00077",
+        "score": 0.844
+      }
+    },
+    {
+      "foodId": "THF-00693",
+      "name": "Spinach Kofta Curry",
+      "source": "ASC199",
+      "reason": "oil-dominant: fat 61.49 g, carbs+protein 4.65 g",
+      "closestActive": {
+        "name": "Lauki Kofta Curry",
+        "foodId": "THF-00077",
+        "score": 0.806
+      }
+    },
+    {
+      "foodId": "THF-00694",
+      "name": "Paneer Kofta Curry",
+      "source": "ASC200",
+      "reason": "oil-dominant: fat 72.06 g, carbs+protein 5.66 g",
+      "closestActive": {
+        "name": "Lauki Kofta Curry",
+        "foodId": "THF-00077",
+        "score": 0.857
+      }
+    },
+    {
+      "foodId": "THF-00695",
+      "name": "Lotus Stem Kofta Curry",
+      "source": "ASC201",
+      "reason": "oil-dominant: fat 67.76 g, carbs+protein 5.97 g",
+      "closestActive": {
+        "name": "Lauki Kofta Curry",
+        "foodId": "THF-00077",
+        "score": 0.816
+      }
+    },
+    {
+      "foodId": "THF-00696",
+      "name": "Raw Banana Kofta Curry",
+      "source": "ASC202",
+      "reason": "oil-dominant: fat 67.98 g, carbs+protein 4.02 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00697",
+      "name": "Cauliflower Kofta Curry",
+      "source": "ASC203",
+      "reason": "oil-dominant: fat 69.62 g, carbs+protein 3.66 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00698",
+      "name": "Cabbage Kofta Curry",
+      "source": "ASC204",
+      "reason": "oil-dominant: fat 69.4 g, carbs+protein 3.85 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00699",
+      "name": "Spinach Paneer Kofta Curry",
+      "source": "ASC206",
+      "reason": "oil-dominant: fat 65.41 g, carbs+protein 4.37 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00700",
+      "name": "Vegetarian Egg Kofta Curry",
+      "source": "ASC207",
+      "reason": "oil-dominant: fat 67.24 g, carbs+protein 5.59 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00707",
+      "name": "Dum Aloo",
+      "source": "ASC214",
+      "reason": "oil-dominant: fat 74.01 g, carbs+protein 4.03 g",
+      "closestActive": {
+        "name": "Dahi Aloo",
+        "foodId": "THF-00080",
+        "score": 0.824
+      }
+    },
+    {
+      "foodId": "THF-00708",
+      "name": "Methi Chaman",
+      "source": "ASC216",
+      "reason": "oil-dominant: fat 50.91 g, carbs+protein 4.32 g",
+      "closestActive": {
+        "name": "Chana Dal Methi",
+        "foodId": "THF-00105",
+        "score": 0.815
+      }
+    },
+    {
+      "foodId": "THF-00709",
+      "name": "Jackfruit Sabzi",
+      "source": "ASC218",
+      "reason": "oil-dominant: fat 67.6 g, carbs+protein 4.09 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00712",
+      "name": "Paneer Makhana Korma",
+      "source": "ASC225",
+      "reason": "oil-dominant: fat 82.76 g, carbs+protein 7.87 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00719",
+      "name": "Mutton Chops",
+      "source": "ASC236",
+      "reason": "oil-dominant: fat 71.31 g, carbs+protein 5.51 g",
+      "closestActive": {
+        "name": "Mutton Bhuna",
+        "foodId": "THF-00185",
+        "score": 0.826
+      }
+    },
+    {
+      "foodId": "THF-00720",
+      "name": "Shammi Kebab",
+      "source": "ASC237",
+      "reason": "oil-dominant: fat 72.61 g, carbs+protein 8.06 g",
+      "closestActive": {
+        "name": "Shami Kebab",
+        "foodId": "THF-00517",
+        "score": 0.957
+      }
+    },
+    {
+      "foodId": "THF-00721",
+      "name": "Scotch Egg",
+      "source": "ASC238",
+      "reason": "oil-dominant: fat 72.62 g, carbs+protein 5.96 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00723",
+      "name": "Chicken Kebab",
+      "source": "ASC243",
+      "reason": "oil-dominant: fat 78.89 g, carbs+protein 4.82 g",
+      "closestActive": {
+        "name": "Kadai Chicken",
+        "foodId": "THF-00147",
+        "score": 0.885
+      }
+    },
+    {
+      "foodId": "THF-00725",
+      "name": "Fried Fish (Indian Style)",
+      "source": "ASC247",
+      "reason": "oil-dominant: fat 68.88 g, carbs+protein 9.75 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00726",
+      "name": "Fried Fish and Chips",
+      "source": "ASC248",
+      "reason": "oil-dominant: fat 69.69 g, carbs+protein 6.13 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00727",
+      "name": "Tomato Fish",
+      "source": "ASC249",
+      "reason": "oil-dominant: fat 51.91 g, carbs+protein 5.57 g",
+      "closestActive": {
+        "name": "Tomato Rice",
+        "foodId": "THF-00265",
+        "score": 0.864
+      }
+    },
+    {
+      "foodId": "THF-00749",
+      "name": "Dahi Vadas Bhalla",
+      "source": "ASC279",
+      "reason": "oil-dominant: fat 70.4 g, carbs+protein 8.45 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00750",
+      "name": "Gunjia",
+      "source": "ASC280",
+      "reason": "oil-dominant: fat 70.28 g, carbs+protein 8.66 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00807",
+      "name": "Ghujia Latika",
+      "source": "ASC347",
+      "reason": "oil-dominant: fat 78.93 g, carbs+protein 14.86 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00809",
+      "name": "Mal Pua",
+      "source": "ASC349",
+      "reason": "oil-dominant: fat 54.64 g, carbs+protein 19.27 g",
+      "closestActive": {
+        "name": "Malpua",
+        "foodId": "THF-00489",
+        "score": 0.923
+      }
+    },
+    {
+      "foodId": "THF-00811",
+      "name": "Cauliflower Pakora",
+      "source": "ASC353",
+      "reason": "oil-dominant: fat 71.86 g, carbs+protein 6.5 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00812",
+      "name": "Mixed Vegetable Pakora",
+      "source": "ASC354",
+      "reason": "oil-dominant: fat 71.86 g, carbs+protein 7.06 g",
+      "closestActive": {
+        "name": "Mixed Veg Pakora",
+        "foodId": "THF-00388",
+        "score": 0.842
+      }
+    },
+    {
+      "foodId": "THF-00813",
+      "name": "Methi Pakora",
+      "source": "ASC356",
+      "reason": "oil-dominant: fat 76.39 g, carbs+protein 6.74 g",
+      "closestActive": {
+        "name": "Methi Paratha",
+        "foodId": "THF-00289",
+        "score": 0.84
+      }
+    },
+    {
+      "foodId": "THF-00814",
+      "name": "Egg Pakora",
+      "source": "ASC357",
+      "reason": "oil-dominant: fat 75.86 g, carbs+protein 7.31 g",
+      "closestActive": {
+        "name": "Egg Korma",
+        "foodId": "THF-00157",
+        "score": 0.842
+      }
+    },
+    {
+      "foodId": "THF-00815",
+      "name": "Potato Bonda",
+      "source": "ASC360",
+      "reason": "oil-dominant: fat 67.8 g, carbs+protein 5.62 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00816",
+      "name": "Potato Samosa",
+      "source": "ASC361",
+      "reason": "oil-dominant: fat 59.19 g, carbs+protein 10.92 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00817",
+      "name": "Minced Meat Samosa",
+      "source": "ASC362",
+      "reason": "oil-dominant: fat 64.26 g, carbs+protein 10.57 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00818",
+      "name": "Paneer and Pea Samosa",
+      "source": "ASC363",
+      "reason": "oil-dominant: fat 63.65 g, carbs+protein 12.57 g",
+      "closestActive": {
+        "name": "Paneer Paratha",
+        "foodId": "THF-00288",
+        "score": 0.806
+      }
+    },
+    {
+      "foodId": "THF-00819",
+      "name": "Mathri",
+      "source": "ASC364",
+      "reason": "oil-dominant: fat 83.1 g, carbs+protein 14.07 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00820",
+      "name": "Khasta Kachori",
+      "source": "ASC365",
+      "reason": "oil-dominant: fat 72.27 g, carbs+protein 15.32 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00821",
+      "name": "Vegetable Cutlet",
+      "source": "ASC366",
+      "reason": "oil-dominant: fat 71.33 g, carbs+protein 5.93 g",
+      "closestActive": {
+        "name": "Vegetable Dalia",
+        "foodId": "THF-00372",
+        "score": 0.839
+      }
+    },
+    {
+      "foodId": "THF-00822",
+      "name": "Flattened Rice Cutlet",
+      "source": "ASC367",
+      "reason": "oil-dominant: fat 73.89 g, carbs+protein 9.15 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00823",
+      "name": "Peanut Cutlet",
+      "source": "ASC368",
+      "reason": "oil-dominant: fat 74 g, carbs+protein 8.31 g",
+      "closestActive": {
+        "name": "Peanut Chutney",
+        "foodId": "THF-00441",
+        "score": 0.889
+      }
+    },
+    {
+      "foodId": "THF-00824",
+      "name": "Fish Cutlet",
+      "source": "ASC369",
+      "reason": "oil-dominant: fat 70.11 g, carbs+protein 5.9 g",
+      "closestActive": {
+        "name": "Fish Curry",
+        "foodId": "THF-00179",
+        "score": 0.81
+      }
+    },
+    {
+      "foodId": "THF-00825",
+      "name": "Paneer Potato Cutlet",
+      "source": "ASC370",
+      "reason": "oil-dominant: fat 71.4 g, carbs+protein 7.7 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00826",
+      "name": "Spinach Chickpeas Cutlet",
+      "source": "ASC371",
+      "reason": "oil-dominant: fat 73.6 g, carbs+protein 6.37 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00827",
+      "name": "Cheese Toast",
+      "source": "ASC372",
+      "reason": "oil-dominant: fat 84.11 g, carbs+protein 7.47 g",
+      "closestActive": {
+        "name": "Cheese Dosa",
+        "foodId": "THF-00333",
+        "score": 0.87
+      }
+    },
+    {
+      "foodId": "THF-00828",
+      "name": "Vegetable Burger",
+      "source": "ASC375",
+      "reason": "oil-dominant: fat 50.63 g, carbs+protein 16.95 g",
+      "closestActive": {
+        "name": "Vegetable Upma",
+        "foodId": "THF-00360",
+        "score": 0.833
+      }
+    },
+    {
+      "foodId": "THF-00830",
+      "name": "Vegetable Seekh Kebab",
+      "source": "ASC377",
+      "reason": "oil-dominant: fat 73.72 g, carbs+protein 6.89 g",
+      "closestActive": {
+        "name": "Kerala Vegetable Stew",
+        "foodId": "THF-00072",
+        "score": 0.857
+      }
+    },
+    {
+      "foodId": "THF-00831",
+      "name": "Masala Vada",
+      "source": "ASC378",
+      "reason": "oil-dominant: fat 89.15 g, carbs+protein 5.75 g",
+      "closestActive": {
+        "name": "Rajma Masala",
+        "foodId": "THF-00119",
+        "score": 0.87
+      }
+    },
+    {
+      "foodId": "THF-00832",
+      "name": "Peanut Sago Vada",
+      "source": "ASC379",
+      "reason": "oil-dominant: fat 79.82 g, carbs+protein 8.15 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00833",
+      "name": "Vegeterian Scotch Egg",
+      "source": "ASC380",
+      "reason": "oil-dominant: fat 72.77 g, carbs+protein 6.8 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00834",
+      "name": "Spring Roll",
+      "source": "ASC383",
+      "reason": "oil-dominant: fat 64.63 g, carbs+protein 10.37 g",
+      "closestActive": {
+        "name": "Veg Spring Roll",
+        "foodId": "THF-00393",
+        "score": 0.846
+      }
+    },
+    {
+      "foodId": "THF-00853",
+      "name": "Cheese Balls",
+      "source": "ASC409",
+      "reason": "oil-dominant: fat 72.57 g, carbs+protein 7.02 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00899",
+      "name": "Soyabean Muthias",
+      "source": "ASC456",
+      "reason": "oil-dominant: fat 90.45 g, carbs+protein 6.16 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00900",
+      "name": "Soyabean Tikki",
+      "source": "ASC457",
+      "reason": "oil-dominant: fat 74.02 g, carbs+protein 7.92 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00901",
+      "name": "Soyabean Namak Paras",
+      "source": "ASC458",
+      "reason": "oil-dominant: fat 89.83 g, carbs+protein 7.3 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00903",
+      "name": "Spinach Peanut Namak Paras",
+      "source": "ASC460",
+      "reason": "oil-dominant: fat 78.51 g, carbs+protein 8.27 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00904",
+      "name": "Gram Flour and Semolina Chilla Pancake",
+      "source": "ASC461",
+      "reason": "oil-dominant: fat 80.04 g, carbs+protein 9.71 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00905",
+      "name": "Rice Moong Dal Cheela",
+      "source": "ASC462",
+      "reason": "oil-dominant: fat 82.44 g, carbs+protein 13.87 g",
+      "closestActive": {
+        "name": "Moong Dal Chilla",
+        "foodId": "THF-00349",
+        "score": 0.811
+      }
+    },
+    {
+      "foodId": "THF-00907",
+      "name": "Sweet Poori",
+      "source": "ASC464",
+      "reason": "oil-dominant: fat 79.63 g, carbs+protein 16.38 g",
+      "closestActive": {
+        "name": "Sev Puri",
+        "foodId": "THF-00408",
+        "score": 0.833
+      }
+    },
+    {
+      "foodId": "THF-00916",
+      "name": "Semolina Carrot Vada",
+      "source": "ASC473",
+      "reason": "oil-dominant: fat 74.07 g, carbs+protein 8.08 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00951",
+      "name": "Chat Masala",
+      "source": "BFP002",
+      "reason": "sodium 11873.64 > 5000",
+      "closestActive": {
+        "name": "Masala Chai",
+        "foodId": "THF-00492",
+        "score": 0.955
+      }
+    },
+    {
+      "foodId": "THF-00981",
+      "name": "Meat Consomme with Mutton",
+      "source": "BFP065",
+      "reason": "kcal 29.76 vs macros 184.6; sodium 12665.52 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00982",
+      "name": "Consomme au Julienne",
+      "source": "BFP066",
+      "reason": "kcal 27.76 vs macros 151.86; sodium 10208.47 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00983",
+      "name": "Consomme au Vermicelli",
+      "source": "BFP067",
+      "reason": "kcal 29.94 vs macros 182.94; sodium 12524.61 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00984",
+      "name": "Green Pea Soup",
+      "source": "BFP072",
+      "reason": "kcal 39.81 vs macros 174.86; sodium 10958.11 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00985",
+      "name": "Mixed Vegetable Soup",
+      "source": "BFP074",
+      "reason": "kcal 35.71 vs macros 149.62; sodium 9202.27 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00986",
+      "name": "Cheese Soup",
+      "source": "BFP075",
+      "reason": "kcal 41.13 vs macros 210.67; sodium 13695.35 > 5000",
+      "closestActive": {
+        "name": "Cheese Dosa",
+        "foodId": "THF-00333",
+        "score": 0.864
+      }
+    },
+    {
+      "foodId": "THF-00987",
+      "name": "Mulligatawny Soup",
+      "source": "BFP076",
+      "reason": "kcal 54.42 vs macros 197.52; sodium 11602.5 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00988",
+      "name": "Cream of Carrot Soup",
+      "source": "BFP079",
+      "reason": "kcal 59.77 vs macros 166.99; sodium 8694.79 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00989",
+      "name": "Cream of Broccoli Soup",
+      "source": "BFP080",
+      "reason": "kcal 56.14 vs macros 165.51; sodium 8792.43 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-00990",
+      "name": "Cream of Potato Soup",
+      "source": "BFP082",
+      "reason": "kcal 60.2 vs macros 165.41; sodium 8503.99 > 5000",
+      "closestActive": {
+        "name": "Cream of Mushroom Soup",
+        "foodId": "THF-00449",
+        "score": 0.806
+      }
+    },
+    {
+      "foodId": "THF-00991",
+      "name": "Almond Soup",
+      "source": "BFP087",
+      "reason": "kcal 78.65 vs macros 179.44; sodium 8376.94 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01000",
+      "name": "Bathua Poori",
+      "source": "BFP114",
+      "reason": "oil-dominant: fat 59.14 g, carbs+protein 16.2 g",
+      "closestActive": {
+        "name": "Bhel Puri",
+        "foodId": "THF-00407",
+        "score": 0.8
+      }
+    },
+    {
+      "foodId": "THF-01001",
+      "name": "Gram Flour Poori",
+      "source": "BFP115",
+      "reason": "oil-dominant: fat 71.51 g, carbs+protein 13.52 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01002",
+      "name": "Beetroot Poori",
+      "source": "BFP116",
+      "reason": "oil-dominant: fat 52.18 g, carbs+protein 14.2 g",
+      "closestActive": {
+        "name": "Beetroot Raita",
+        "foodId": "THF-00425",
+        "score": 0.815
+      }
+    },
+    {
+      "foodId": "THF-01003",
+      "name": "Peas Poori",
+      "source": "BFP117",
+      "reason": "oil-dominant: fat 57.69 g, carbs+protein 17.96 g",
+      "closestActive": {
+        "name": "Peas Pulao",
+        "foodId": "THF-00259",
+        "score": 0.824
+      }
+    },
+    {
+      "foodId": "THF-01004",
+      "name": "Peas Kachori",
+      "source": "BFP118",
+      "reason": "oil-dominant: fat 57.51 g, carbs+protein 16.46 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01008",
+      "name": "Minced Meat Pancake with Chicken",
+      "source": "BFP127",
+      "reason": "kcal 116.04 vs macros 175.08",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01014",
+      "name": "Mutton Pulao",
+      "source": "BFP141",
+      "reason": "kcal 130.77 vs macros 168.14",
+      "closestActive": {
+        "name": "Palak Mutton",
+        "foodId": "THF-00164",
+        "score": 0.917
+      }
+    },
+    {
+      "foodId": "THF-01015",
+      "name": "Chicken Pulao",
+      "source": "BFP142",
+      "reason": "kcal 108.24 vs macros 145.28",
+      "closestActive": {
+        "name": "Palak Chicken",
+        "foodId": "THF-00163",
+        "score": 0.923
+      }
+    },
+    {
+      "foodId": "THF-01023",
+      "name": "Spaghetti Bolognese",
+      "source": "BFP155",
+      "reason": "kcal 97.43 vs macros 163.15; sodium 5358.6 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01045",
+      "name": "Shahi Keema Kofta Curry",
+      "source": "BFP196",
+      "reason": "oil-dominant: fat 43.83 g, carbs+protein 5.87 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01048",
+      "name": "Indian Lamb and Egg Curry",
+      "source": "BFP201",
+      "reason": "oil-dominant: fat 34.7 g, carbs+protein 5.91 g",
+      "closestActive": {
+        "name": "Palak Egg Curry",
+        "foodId": "THF-00165",
+        "score": 0.862
+      }
+    },
+    {
+      "foodId": "THF-01049",
+      "name": "Soya Chunks Sweet and Sour",
+      "source": "BFP203",
+      "reason": "oil-dominant: fat 55.99 g, carbs+protein 6.12 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01053",
+      "name": "Vegetable Yakhni",
+      "source": "BFP207",
+      "reason": "oil-dominant: fat 43.8 g, carbs+protein 3.12 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01054",
+      "name": "Vegetarian Nargisi Kofta Curry",
+      "source": "BFP210",
+      "reason": "oil-dominant: fat 32.94 g, carbs+protein 8.87 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01061",
+      "name": "Chicken Sweet and Sour",
+      "source": "BFP221",
+      "reason": "oil-dominant: fat 47.59 g, carbs+protein 9.59 g",
+      "closestActive": {
+        "name": "Chicken Sweet Corn Soup",
+        "foodId": "THF-00453",
+        "score": 0.854
+      }
+    },
+    {
+      "foodId": "THF-01063",
+      "name": "Fish Finger",
+      "source": "BFP226",
+      "reason": "oil-dominant: fat 55.82 g, carbs+protein 10.13 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01071",
+      "name": "Potato Kofta Curry",
+      "source": "BFP246",
+      "reason": "oil-dominant: fat 49.08 g, carbs+protein 3.34 g",
+      "closestActive": {
+        "name": "Lauki Kofta Curry",
+        "foodId": "THF-00077",
+        "score": 0.829
+      }
+    },
+    {
+      "foodId": "THF-01072",
+      "name": "Yam Kofta Curry",
+      "source": "BFP249",
+      "reason": "oil-dominant: fat 33.84 g, carbs+protein 4.46 g",
+      "closestActive": {
+        "name": "Lauki Kofta Curry",
+        "foodId": "THF-00077",
+        "score": 0.875
+      }
+    },
+    {
+      "foodId": "THF-01073",
+      "name": "Jackfruit Kofta Curry",
+      "source": "BFP250",
+      "reason": "oil-dominant: fat 33.83 g, carbs+protein 3.97 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01083",
+      "name": "Crispy Okra Lady's Fingers",
+      "source": "BFP270",
+      "reason": "oil-dominant: fat 70.4 g, carbs+protein 6.26 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01086",
+      "name": "Jackfruit (Dry)",
+      "source": "BFP274",
+      "reason": "oil-dominant: fat 51.78 g, carbs+protein 5.49 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01087",
+      "name": "Yam Fried",
+      "source": "BFP275",
+      "reason": "oil-dominant: fat 51.79 g, carbs+protein 6.26 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01100",
+      "name": "Creamed Spinach and Mushroom",
+      "source": "BFP291",
+      "reason": "oil-dominant: fat 44.14 g, carbs+protein 5.45 g",
+      "closestActive": {
+        "name": "Cream of Mushroom Soup",
+        "foodId": "THF-00449",
+        "score": 0.814
+      }
+    },
+    {
+      "foodId": "THF-01175",
+      "name": "Masala Onion Pakora",
+      "source": "BFP415",
+      "reason": "oil-dominant: fat 57.61 g, carbs+protein 8.53 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01176",
+      "name": "Masala Green Chilli Pakora",
+      "source": "BFP416",
+      "reason": "oil-dominant: fat 71.01 g, carbs+protein 7.77 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01177",
+      "name": "Chicken Pakora",
+      "source": "BFP420",
+      "reason": "oil-dominant: fat 60.98 g, carbs+protein 10.58 g",
+      "closestActive": {
+        "name": "Chicken Korma",
+        "foodId": "THF-00155",
+        "score": 0.889
+      }
+    },
+    {
+      "foodId": "THF-01178",
+      "name": "Fish Pakora",
+      "source": "BFP421",
+      "reason": "oil-dominant: fat 59.52 g, carbs+protein 10.52 g",
+      "closestActive": {
+        "name": "Onion Pakora",
+        "foodId": "THF-00385",
+        "score": 0.826
+      }
+    },
+    {
+      "foodId": "THF-01179",
+      "name": "Paneer Cutlet",
+      "source": "BFP424",
+      "reason": "oil-dominant: fat 69.38 g, carbs+protein 12.21 g",
+      "closestActive": {
+        "name": "Chilli Paneer",
+        "foodId": "THF-00225",
+        "score": 0.846
+      }
+    },
+    {
+      "foodId": "THF-01180",
+      "name": "Poshtik Cutlet",
+      "source": "BFP427",
+      "reason": "oil-dominant: fat 50.94 g, carbs+protein 9.39 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01181",
+      "name": "Egg Cutlet",
+      "source": "BFP428",
+      "reason": "oil-dominant: fat 60.25 g, carbs+protein 8.22 g",
+      "closestActive": {
+        "name": "Veg Cutlet",
+        "foodId": "THF-00391",
+        "score": 0.9
+      }
+    },
+    {
+      "foodId": "THF-01182",
+      "name": "Minced Meat Cutlet",
+      "source": "BFP430",
+      "reason": "oil-dominant: fat 54.47 g, carbs+protein 10.71 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01183",
+      "name": "Vegetable Samosa",
+      "source": "BFP431",
+      "reason": "oil-dominant: fat 42.22 g, carbs+protein 15.43 g",
+      "closestActive": {
+        "name": "Vegetable Dalia",
+        "foodId": "THF-00372",
+        "score": 0.871
+      }
+    },
+    {
+      "foodId": "THF-01184",
+      "name": "Plain Urad Dal Vada",
+      "source": "BFP436",
+      "reason": "oil-dominant: fat 76.32 g, carbs+protein 14.09 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01185",
+      "name": "Masala Urad Dal Vada",
+      "source": "BFP437",
+      "reason": "oil-dominant: fat 71.62 g, carbs+protein 14.25 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01252",
+      "name": "Potato Aigrettes",
+      "source": "BFP539",
+      "reason": "oil-dominant: fat 54.24 g, carbs+protein 10.36 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01272",
+      "name": "Pearl Millet Mathri",
+      "source": "BFP564",
+      "reason": "oil-dominant: fat 83.12 g, carbs+protein 9.24 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01274",
+      "name": "Fermented Bengal Gram Vada",
+      "source": "BFP566",
+      "reason": "oil-dominant: fat 67.19 g, carbs+protein 12.73 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01313",
+      "name": "Mango Malpua",
+      "source": "OSR016",
+      "reason": "oil-dominant: fat 30.67 g, carbs+protein 14.49 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01358",
+      "name": "Fish Orly",
+      "source": "OSR063",
+      "reason": "oil-dominant: fat 58.18 g, carbs+protein 10.14 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01395",
+      "name": "Khakhra Chaat",
+      "source": "OSR108",
+      "reason": "oil-dominant: fat 30.65 g, carbs+protein 21.16 g",
+      "closestActive": {
+        "name": "Chana Chaat",
+        "foodId": "THF-00416",
+        "score": 0.833
+      }
+    },
+    {
+      "foodId": "THF-01396",
+      "name": "Banana Appam",
+      "source": "OSR110",
+      "reason": "oil-dominant: fat 42.53 g, carbs+protein 21.23 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01397",
+      "name": "Veg Manchurian",
+      "source": "OSR111",
+      "reason": "oil-dominant: fat 61.65 g, carbs+protein 7.71 g",
+      "closestActive": {
+        "name": "Veg Manchurian (Gravy)",
+        "foodId": "THF-00401",
+        "score": 0.824
+      }
+    },
+    {
+      "foodId": "THF-01401",
+      "name": "Spicy Corn Chaat",
+      "source": "OSR116",
+      "reason": "oil-dominant: fat 46.55 g, carbs+protein 16.06 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01403",
+      "name": "Banana Chips",
+      "source": "OSR119",
+      "reason": "oil-dominant: fat 70.46 g, carbs+protein 7.69 g",
+      "closestActive": {
+        "name": "Banana Shake",
+        "foodId": "THF-00505",
+        "score": 0.826
+      }
+    },
+    {
+      "foodId": "THF-01419",
+      "name": "Curried Cauliflower Soup",
+      "source": "OSR135",
+      "reason": "kcal 37.32 vs macros 127.29; sodium 7311.44 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01420",
+      "name": "Millet Soup",
+      "source": "OSR136",
+      "reason": "kcal 55.99 vs macros 191.05; sodium 10918.83 > 5000",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01427",
+      "name": "Sev",
+      "source": "OSR147",
+      "reason": "oil-dominant: fat 60.08 g, carbs+protein 17.99 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01428",
+      "name": "Papdi",
+      "source": "OSR148",
+      "reason": "oil-dominant: fat 72.11 g, carbs+protein 14.72 g",
+      "closestActive": null
+    },
+    {
+      "foodId": "THF-01430",
+      "name": "Bread Roll",
+      "source": "OSR152",
+      "reason": "oil-dominant: fat 40.25 g, carbs+protein 18.97 g",
+      "closestActive": {
+        "name": "Bread Upma",
+        "foodId": "THF-00368",
+        "score": 0.8
+      }
+    },
+    {
+      "foodId": "THF-01432",
+      "name": "Classic Seasoned Black Beans",
+      "source": "OSR154",
+      "reason": "kcal 28.78 vs macros 137.2; sodium 7989.07 > 5000",
+      "closestActive": null
+    }
+  ],
+  "merges": [
+    {
+      "foodId": "THF-00505",
+      "name": "Banana Shake",
+      "anuvaad": "Banana milkshake (Kele milkshake)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00504",
+      "name": "Mango Shake",
+      "anuvaad": "Mango milkshake (Aam milkshake)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00499",
+      "name": "Sweet Lassi",
+      "anuvaad": "Sweet Lassi (Meethi lassi)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00500",
+      "name": "Salted Lassi",
+      "anuvaad": "Lassi (salted)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00377",
+      "name": "Egg Sandwich",
+      "anuvaad": "Egg sandwich (Ande ka sandwich)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00352",
+      "name": "Boiled Egg",
+      "anuvaad": "Boiled egg (Ubla anda)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00356",
+      "name": "Scrambled Eggs",
+      "anuvaad": "Scrambled egg (Ande ki bhurji)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00353",
+      "name": "Plain Omelette",
+      "anuvaad": "Plain omelette/omlet",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00452",
+      "name": "Chicken Clear Soup",
+      "anuvaad": "Chicken consomme (Clear chicken soup)",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00449",
+      "name": "Cream of Mushroom Soup",
+      "anuvaad": "Cream of mushroom soup",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00453",
+      "name": "Chicken Sweet Corn Soup",
+      "anuvaad": "Chicken sweet corn soup",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00299",
+      "name": "Chapati (Roti)",
+      "anuvaad": "Chapati/Roti",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00284",
+      "name": "Plain Paratha",
+      "anuvaad": "Plain parantha/paratha",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00286",
+      "name": "Aloo Paratha",
+      "anuvaad": "Potato parantha/paratha (Aloo ka parantha/paratha)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00290",
+      "name": "Mooli Paratha",
+      "anuvaad": "Radish parantha/paratha (Mooli ka parantha/paratha)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00298",
+      "name": "Dal Paratha",
+      "anuvaad": "Dal parantha/paratha",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00294",
+      "name": "Matar Paratha",
+      "anuvaad": "Pea parantha/paratha (Matar ka parantha/paratha)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00296",
+      "name": "Keema Paratha",
+      "anuvaad": "Keema parantha/paratha",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00288",
+      "name": "Paneer Paratha",
+      "anuvaad": "Paneer parantha/paratha",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00313",
+      "name": "Puri",
+      "anuvaad": "Poori",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00260",
+      "name": "Paneer Pulao",
+      "anuvaad": "Paneer pulao",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00264",
+      "name": "Lemon Rice",
+      "anuvaad": "Lemon rice (Pulihora, Elumichai sadam, Chitranna)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00266",
+      "name": "Curd Rice",
+      "anuvaad": "Curd rice (Dahi bhaat/Dahi chawal/ Perugu annam/Daddojanam/Thayir saadam)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00315",
+      "name": "Naan",
+      "anuvaad": "Naan",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00314",
+      "name": "Bhatura",
+      "anuvaad": "Bhatura",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00323",
+      "name": "Idli",
+      "anuvaad": "Idli",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00328",
+      "name": "Masala Dosa",
+      "anuvaad": "Masala dosa",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00329",
+      "name": "Rava Dosa",
+      "anuvaad": "Semolina dosa (Suji/Rava dosa)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00339",
+      "name": "Tomato Onion Uttapam",
+      "anuvaad": "Onion tomato uttapam",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00398",
+      "name": "Paneer Kathi Roll",
+      "anuvaad": "Paneer kaathi roll",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00100",
+      "name": "Chana Dal Lauki",
+      "anuvaad": "Split bengal gram with bottle gourd (Channa dal with ghiya/lauki)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00119",
+      "name": "Rajma Masala",
+      "anuvaad": "Kidney bean curry (Rajmah curry)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00063",
+      "name": "Baingan Bharta",
+      "anuvaad": "Brinjal bhartha (Baingan ka bhartha)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00222",
+      "name": "Matar Paneer",
+      "anuvaad": "Pea paneer curry (Matar paneer)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00223",
+      "name": "Matar Mushroom",
+      "anuvaad": "Pea mushroom curry (Matar mushroom)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00183",
+      "name": "Paneer Curry",
+      "anuvaad": "Paneer curry",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00077",
+      "name": "Lauki Kofta Curry",
+      "anuvaad": "Ghiya/Lauki Kofta Curry",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00160",
+      "name": "Palak Paneer",
+      "anuvaad": "Spinach paneer (Palak paneer)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00064",
+      "name": "Sarson ka Saag",
+      "anuvaad": "Sarson ka saag",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00068",
+      "name": "Avial",
+      "anuvaad": "Avial",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00219",
+      "name": "Shahi Paneer",
+      "anuvaad": "Shahi paneer",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00211",
+      "name": "Methi Malai Paneer",
+      "anuvaad": "Methi malai paneer",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00225",
+      "name": "Chilli Paneer",
+      "anuvaad": "Chilli paneer",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00143",
+      "name": "Kadai Paneer",
+      "anuvaad": "Kadhai Paneer",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00164",
+      "name": "Palak Mutton",
+      "anuvaad": "Spinach mutton (Palak mutton)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00174",
+      "name": "Mutton Do Pyaza",
+      "anuvaad": "Mutton do piaza",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00177",
+      "name": "Chicken Curry",
+      "anuvaad": "Chicken curry",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00514",
+      "name": "Tandoori Chicken",
+      "anuvaad": "Tandoori chicken",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00141",
+      "name": "Butter Chicken",
+      "anuvaad": "Butter chicken",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00226",
+      "name": "Chilli Chicken",
+      "anuvaad": "Chilli chicken",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00179",
+      "name": "Fish Curry",
+      "anuvaad": "Fish curry (Machli curry)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00239",
+      "name": "Fish Tikka",
+      "anuvaad": "Fish tikka",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00433",
+      "name": "Sprouts Salad",
+      "anuvaad": "Sprouted moong salad",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00422",
+      "name": "Onion Tomato Raita",
+      "anuvaad": "Tomato onion raita (Tamatar aur pyaaz ka raita)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00424",
+      "name": "Lauki Raita",
+      "anuvaad": "Bottle gourd raita (Ghiya/Lauki ka raita)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00420",
+      "name": "Cucumber Raita",
+      "anuvaad": "Cucumber raita (Kheere ka raita)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00427",
+      "name": "Aloo Raita",
+      "anuvaad": "Potato raita (Aloo ka raita)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00419",
+      "name": "Boondi Raita",
+      "anuvaad": "Boondi raita",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00471",
+      "name": "Phirni",
+      "anuvaad": "Phirni",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00466",
+      "name": "Suji Halwa",
+      "anuvaad": "Semolina halwa (Suji ka halwa)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00465",
+      "name": "Gajar Halwa",
+      "anuvaad": "Carrot halwa (Gajar ka halwa)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00467",
+      "name": "Moong Dal Halwa",
+      "anuvaad": "Moong dal halwa",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00485",
+      "name": "Coconut Barfi",
+      "anuvaad": "Coconut burfi (Nariyal ki burfi)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00480",
+      "name": "Besan Ladoo",
+      "anuvaad": "Gram flour ladoo (Besan ladoo)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00482",
+      "name": "Til Ladoo",
+      "anuvaad": "Sesame ladoo (Til ke ladoo)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00387",
+      "name": "Aloo Pakora",
+      "anuvaad": "Potato pakora/pakoda (Aloo pakoda)",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00385",
+      "name": "Onion Pakora",
+      "anuvaad": "Onion pakora/pakoda (Pyaaz ke pakode)",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00389",
+      "name": "Palak Pakora",
+      "anuvaad": "Spinach pakora/pakoda (Palak pakoda)",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00390",
+      "name": "Bread Pakora",
+      "anuvaad": "Bread pakora/pakoda",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00386",
+      "name": "Paneer Pakora",
+      "anuvaad": "Paneer pakora/pakoda",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00237",
+      "name": "Paneer Tikka",
+      "anuvaad": "Paneer shaslik/tikka",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00490",
+      "name": "Peanut Chikki",
+      "anuvaad": "Peanut brittle (Moongfali ki chikki)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00441",
+      "name": "Peanut Chutney",
+      "anuvaad": "Peanut chutney (Mungfali ki chutney)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00437",
+      "name": "Coconut Chutney",
+      "anuvaad": "Coconut chutney (Nariyal ki chutney)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00273",
+      "name": "Vegetable Khichdi",
+      "anuvaad": "Vegetable khichdi/khichri",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00274",
+      "name": "Dalia Khichdi",
+      "anuvaad": "Cracked wheat khichri/khichdi (Dalia khichri/khichdi)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00361",
+      "name": "Semiya Upma",
+      "anuvaad": "Vermicelli upma (Semiya/Seviyan upma)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00368",
+      "name": "Bread Upma",
+      "anuvaad": "Bread upma",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00360",
+      "name": "Vegetable Upma",
+      "anuvaad": "Vegetable upma",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00349",
+      "name": "Moong Dal Chilla",
+      "anuvaad": "Moong dal stuffed cheela/chilla (Moong dal ka cheela/chilla)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00348",
+      "name": "Paneer Stuffed Chilla",
+      "anuvaad": "Paneer stuffed cheela/chilla",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00450",
+      "name": "Palak Soup",
+      "anuvaad": "Spinach soup (Palak ka soup)",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00289",
+      "name": "Methi Paratha",
+      "anuvaad": "Methi parantha/paratha",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00259",
+      "name": "Peas Pulao",
+      "anuvaad": "Peas pulao (Matar pulao)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00327",
+      "name": "Plain Dosa",
+      "anuvaad": "Plain dosa",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00343",
+      "name": "Appam",
+      "anuvaad": "Appam",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00131",
+      "name": "Lemon Rasam",
+      "anuvaad": "Rasam with lemon (Nimmakaya rasam/Nimmakaya charu/Elumichai rasam/Nimbe hannina saaru)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00087",
+      "name": "Sabut Moong Dal Tadka",
+      "anuvaad": "Green gram whole with baghar (Sabut moong dal with tadka)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00156",
+      "name": "Mutton Korma",
+      "anuvaad": "Mutton korma",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00515",
+      "name": "Mutton Seekh Kebab",
+      "anuvaad": "Mutton seekh kebab",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00161",
+      "name": "Palak Mushroom",
+      "anuvaad": "Spinach mushroom (Palak mushroom)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00155",
+      "name": "Chicken Korma",
+      "anuvaad": "Chicken korma",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00180",
+      "name": "Prawn Curry",
+      "anuvaad": "Prawn curry (with coconut) (Jhinga curry)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00176",
+      "name": "Egg Curry",
+      "anuvaad": "Egg curry (Anda curry)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00080",
+      "name": "Dahi Aloo",
+      "anuvaad": "Curd with potatoes (Dahi aloo)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00426",
+      "name": "Carrot Raita",
+      "anuvaad": "Carrot raita (Gajar ka raita)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00373",
+      "name": "Sabudana Vada",
+      "anuvaad": "Sago cutlet/vadas (Sabudana cutlet/vadas)",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00351",
+      "name": "Khaman Dhokla",
+      "anuvaad": "Khaman (dhokla)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00443",
+      "name": "Coriander Chutney",
+      "anuvaad": "Coriander chutney (Hare dhaniye ki chutney)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00276",
+      "name": "Palak Khichdi",
+      "anuvaad": "Spinach khichri (Palak khichri/khichdi)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00324",
+      "name": "Rava Idli",
+      "anuvaad": "Semolina idli (Suji/Rava idli)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00440",
+      "name": "Tomato Chutney",
+      "anuvaad": "Tomato chutney (Tamatar ki chutney)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00506",
+      "name": "Thandai",
+      "anuvaad": "Thandai",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00472",
+      "name": "Shrikhand",
+      "anuvaad": "Sweetened yogurt (Shrikhand)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00168",
+      "name": "Chicken Handi",
+      "anuvaad": "Handi chicken",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00171",
+      "name": "Paneer Do Pyaza",
+      "anuvaad": "Paaner do pyaza",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00190",
+      "name": "Paneer Lababdar",
+      "anuvaad": "Paneer lababdar",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00367",
+      "name": "Sabudana Khichdi",
+      "anuvaad": "Sago khitchdi/khichri (Sabudana khitchdi/khichri)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00347",
+      "name": "Besan Chilla",
+      "anuvaad": "Gram flour chilla/cheela (Besan chilla/cheela)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00341",
+      "name": "Pesarattu",
+      "anuvaad": "Moong bean dosa (Pesarattu)",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00311",
+      "name": "Methi Thepla",
+      "anuvaad": "Methi thepla",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00407",
+      "name": "Bhel Puri",
+      "anuvaad": "Bhel puri",
+      "score": 1,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00448",
+      "name": "Lemon Coriander Soup",
+      "anuvaad": "Lemon coriander soup",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00118",
+      "name": "Dal Makhani",
+      "anuvaad": "Dal makhani",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00134",
+      "name": "Dal Dhokli",
+      "anuvaad": "Dal dhokli",
+      "score": 1,
+      "macrosFrom": "anuvaad"
+    },
+    {
+      "foodId": "THF-00444",
+      "name": "Tomato Soup",
+      "anuvaad": "Cream of tomato soup",
+      "score": 0.971,
+      "macrosFrom": "ind_schema"
+    },
+    {
+      "foodId": "THF-00423",
+      "name": "Pudina Raita",
+      "anuvaad": "Mint raita (Pudinay ka raita)",
+      "score": 0.96,
+      "macrosFrom": "anuvaad"
+    }
+  ],
+  "mergedButAnuvaadValuesRejected": [
+    {
+      "name": "Chicken Clear Soup",
+      "anuvaad": "Chicken consomme (Clear chicken soup)"
+    },
+    {
+      "name": "Cream of Mushroom Soup",
+      "anuvaad": "Cream of mushroom soup"
+    },
+    {
+      "name": "Chicken Sweet Corn Soup",
+      "anuvaad": "Chicken sweet corn soup"
+    },
+    {
+      "name": "Puri",
+      "anuvaad": "Poori"
+    },
+    {
+      "name": "Paneer Pulao",
+      "anuvaad": "Paneer pulao"
+    },
+    {
+      "name": "Bhatura",
+      "anuvaad": "Bhatura"
+    },
+    {
+      "name": "Tomato Onion Uttapam",
+      "anuvaad": "Onion tomato uttapam"
+    },
+    {
+      "name": "Lauki Kofta Curry",
+      "anuvaad": "Ghiya/Lauki Kofta Curry"
+    },
+    {
+      "name": "Chilli Paneer",
+      "anuvaad": "Chilli paneer"
+    },
+    {
+      "name": "Boondi Raita",
+      "anuvaad": "Boondi raita"
+    },
+    {
+      "name": "Aloo Pakora",
+      "anuvaad": "Potato pakora/pakoda (Aloo pakoda)"
+    },
+    {
+      "name": "Onion Pakora",
+      "anuvaad": "Onion pakora/pakoda (Pyaaz ke pakode)"
+    },
+    {
+      "name": "Palak Pakora",
+      "anuvaad": "Spinach pakora/pakoda (Palak pakoda)"
+    },
+    {
+      "name": "Bread Pakora",
+      "anuvaad": "Bread pakora/pakoda"
+    },
+    {
+      "name": "Paneer Pakora",
+      "anuvaad": "Paneer pakora/pakoda"
+    },
+    {
+      "name": "Palak Soup",
+      "anuvaad": "Spinach soup (Palak ka soup)"
+    },
+    {
+      "name": "Sabudana Vada",
+      "anuvaad": "Sago cutlet/vadas (Sabudana cutlet/vadas)"
+    },
+    {
+      "name": "Bhel Puri",
+      "anuvaad": "Bhel puri"
+    },
+    {
+      "name": "Tomato Soup",
+      "anuvaad": "Cream of tomato soup"
+    }
+  ],
+  "possibleDuplicates": [
+    {
+      "anuvaad": "Mushroom matar",
+      "similarTo": "Matar Mushroom",
+      "score": 1
+    },
+    {
+      "anuvaad": "Pineapple milkshake (Ananas milkshake)",
+      "similarTo": "Banana Shake",
+      "score": 0.968
+    },
+    {
+      "anuvaad": "Stuffed brinjal (Bharwa baingan)",
+      "similarTo": "Baingan Bharta",
+      "score": 0.964
+    }
+  ],
+  "servingFixes": [
+    {
+      "foodId": "THF-00539",
+      "name": "Instant Coffee",
+      "unit": "tea cup",
+      "derivedGrams": 450,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00543",
+      "name": "Fruit Punch with Fresh Juices",
+      "unit": "tall glass",
+      "derivedGrams": 544,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00544",
+      "name": "Fruit Punch with Squashes",
+      "unit": "tall glass",
+      "derivedGrams": 503,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00549",
+      "name": "Summer Cooler",
+      "unit": "tall glass",
+      "derivedGrams": 495,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00576",
+      "name": "Classic Club Sandwich",
+      "unit": "triangle",
+      "derivedGrams": 224,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00578",
+      "name": "Cracked Wheat Porridge",
+      "unit": "bowl",
+      "derivedGrams": 403,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00589",
+      "name": "Stuffed Egg Omelette",
+      "unit": "omelette",
+      "derivedGrams": 262,
+      "usedGrams": 90,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00595",
+      "name": "Brown Stock",
+      "unit": "cup",
+      "derivedGrams": 486,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00596",
+      "name": "Vegetable Stock",
+      "unit": "cup",
+      "derivedGrams": 415,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00597",
+      "name": "Chicken Stock",
+      "unit": "cup",
+      "derivedGrams": 376,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00598",
+      "name": "White Sauce (Thin)",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00599",
+      "name": "White Sauce (Medium)",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00600",
+      "name": "White Sauce (Thick)",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00601",
+      "name": "Cheese Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00602",
+      "name": "Egg Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00603",
+      "name": "Mushroom Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00604",
+      "name": "Mustard Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00605",
+      "name": "Brown Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00608",
+      "name": "Cream of Green Peas Soup",
+      "unit": "soup bowl",
+      "derivedGrams": 409,
+      "usedGrams": 220,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00609",
+      "name": "Cream of Spinach Soup",
+      "unit": "soup bowl",
+      "derivedGrams": 463,
+      "usedGrams": 220,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00613",
+      "name": "Chinese Cabbage and Meat Ball Soup",
+      "unit": "soup bowl",
+      "derivedGrams": 465,
+      "usedGrams": 220,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00622",
+      "name": "Spinach Poori",
+      "unit": "poori",
+      "derivedGrams": 135,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00623",
+      "name": "Methi Poori",
+      "unit": "poori",
+      "derivedGrams": 130,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00624",
+      "name": "Dal Stuffed Poori",
+      "unit": "poori",
+      "derivedGrams": 119,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00625",
+      "name": "Potato Stuffed Poori",
+      "unit": "poori",
+      "derivedGrams": 119,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00641",
+      "name": "Classic Italian Pasta",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00642",
+      "name": "Pasta Spinach Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00643",
+      "name": "Pasta Cheese Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00648",
+      "name": "Spaghetti and Cheese Balls in Tomato Sauce",
+      "unit": "plate",
+      "derivedGrams": 966,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00650",
+      "name": "Pasta Hot Pot",
+      "unit": "plate",
+      "derivedGrams": 831,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00651",
+      "name": "Chicken Lasagne",
+      "unit": "plate",
+      "derivedGrams": 514,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00653",
+      "name": "Makki ki Roti",
+      "unit": "roti",
+      "derivedGrams": 85,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00668",
+      "name": "Besan Kadhi with Pakodies",
+      "unit": "bowl",
+      "derivedGrams": 587,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00692",
+      "name": "Pea Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 780,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00693",
+      "name": "Spinach Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 806,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00694",
+      "name": "Paneer Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 701,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00695",
+      "name": "Lotus Stem Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 731,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00696",
+      "name": "Raw Banana Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 727,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00697",
+      "name": "Cauliflower Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 711,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00698",
+      "name": "Cabbage Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 713,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00699",
+      "name": "Spinach Paneer Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 763,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00700",
+      "name": "Vegetarian Egg Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 741,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00703",
+      "name": "Baked Vegetables with Spinach",
+      "unit": "bowl",
+      "derivedGrams": 424,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00706",
+      "name": "Baked Brinjal in Tomato Sauce",
+      "unit": "bowl",
+      "derivedGrams": 431,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00707",
+      "name": "Dum Aloo",
+      "unit": "bowl",
+      "derivedGrams": 671,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00708",
+      "name": "Methi Chaman",
+      "unit": "bowl",
+      "derivedGrams": 1001,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00712",
+      "name": "Paneer Makhana Korma",
+      "unit": "bowl",
+      "derivedGrams": 607,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00720",
+      "name": "Shammi Kebab",
+      "unit": "kabab",
+      "derivedGrams": 171,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00721",
+      "name": "Scotch Egg",
+      "unit": "piece",
+      "derivedGrams": 342,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00723",
+      "name": "Chicken Kebab",
+      "unit": "kabab",
+      "derivedGrams": 124,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00725",
+      "name": "Fried Fish (Indian Style)",
+      "unit": "piece",
+      "derivedGrams": 354,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00726",
+      "name": "Fried Fish and Chips",
+      "unit": "fillet",
+      "derivedGrams": 698,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00727",
+      "name": "Tomato Fish",
+      "unit": "bowl",
+      "derivedGrams": 968,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00729",
+      "name": "Tandoori Fish",
+      "unit": "piece",
+      "derivedGrams": 234,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00742",
+      "name": "Mayonnaise",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00743",
+      "name": "Low Calorie Quick Mayonnaise",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00744",
+      "name": "Thousand Island Dressing",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00749",
+      "name": "Dahi Vadas Bhalla",
+      "unit": "vada",
+      "derivedGrams": 172,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00751",
+      "name": "Saunth Chutney with Tamarind",
+      "unit": "teaspoon",
+      "derivedGrams": 18,
+      "usedGrams": 5,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00752",
+      "name": "Rice Kheer",
+      "unit": "bowl",
+      "derivedGrams": 401,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00760",
+      "name": "Moong Dal Kheer",
+      "unit": "bowl",
+      "derivedGrams": 405,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00768",
+      "name": "Chocolate Ice Cream",
+      "unit": "ice-cream cup",
+      "derivedGrams": 371,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00769",
+      "name": "Mango Ice Cream",
+      "unit": "ice-cream cup",
+      "derivedGrams": 456,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00770",
+      "name": "Fruit Ice Cream",
+      "unit": "ice-cream cup",
+      "derivedGrams": 321,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00771",
+      "name": "Caramel Ice Cream",
+      "unit": "ice-cream cup",
+      "derivedGrams": 271,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00790",
+      "name": "Queen of Pudding",
+      "unit": "large slice",
+      "derivedGrams": 326,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00793",
+      "name": "Stewed Apple with Custard",
+      "unit": "piece",
+      "derivedGrams": 283,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00794",
+      "name": "Apple Snowballs",
+      "unit": "piece",
+      "derivedGrams": 260,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00799",
+      "name": "Bottle Gourd Burfi",
+      "unit": "burfi",
+      "derivedGrams": 72,
+      "usedGrams": 30,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00806",
+      "name": "Milk Cake",
+      "unit": "slice",
+      "derivedGrams": 287,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00811",
+      "name": "Cauliflower Pakora",
+      "unit": "plate",
+      "derivedGrams": 675,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00812",
+      "name": "Mixed Vegetable Pakora",
+      "unit": "plate",
+      "derivedGrams": 675,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00813",
+      "name": "Methi Pakora",
+      "unit": "plate",
+      "derivedGrams": 634,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00814",
+      "name": "Egg Pakora",
+      "unit": "plate",
+      "derivedGrams": 645,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00821",
+      "name": "Vegetable Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 338,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00822",
+      "name": "Flattened Rice Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 331,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00823",
+      "name": "Peanut Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 339,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00824",
+      "name": "Fish Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 349,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00825",
+      "name": "Paneer Potato Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 343,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00826",
+      "name": "Spinach Chickpeas Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 328,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00828",
+      "name": "Vegetable Burger",
+      "unit": "burger",
+      "derivedGrams": 515,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00830",
+      "name": "Vegetable Seekh Kebab",
+      "unit": "kabab",
+      "derivedGrams": 165,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00831",
+      "name": "Masala Vada",
+      "unit": "vada",
+      "derivedGrams": 270,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00832",
+      "name": "Peanut Sago Vada",
+      "unit": "vada",
+      "derivedGrams": 306,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00833",
+      "name": "Vegeterian Scotch Egg",
+      "unit": "piece",
+      "derivedGrams": 334,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00837",
+      "name": "Curd Dip",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00838",
+      "name": "Short Crust Pastry",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00845",
+      "name": "Cottage Cheese Pie",
+      "unit": "pie",
+      "derivedGrams": 340,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00846",
+      "name": "Minced Meat Pie",
+      "unit": "pie",
+      "derivedGrams": 354,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00847",
+      "name": "Apple Cinnamon Pie",
+      "unit": "slice",
+      "derivedGrams": 177,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00848",
+      "name": "Lemon Meringue Pie",
+      "unit": "slice",
+      "derivedGrams": 157,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00849",
+      "name": "Chocolate Meringue Pie",
+      "unit": "slice",
+      "derivedGrams": 184,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00850",
+      "name": "Choux Pastry",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00854",
+      "name": "Flaky Pastry",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00872",
+      "name": "Sponge Cake",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00877",
+      "name": "Pineapple Cake",
+      "unit": "slice",
+      "derivedGrams": 513,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00878",
+      "name": "Glace Icing",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00879",
+      "name": "Royal Icing",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00880",
+      "name": "American Frosting",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00881",
+      "name": "Gum Icing",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00904",
+      "name": "Gram Flour and Semolina Chilla Pancake",
+      "unit": "cheela",
+      "derivedGrams": 150,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00907",
+      "name": "Sweet Poori",
+      "unit": "poori",
+      "derivedGrams": 153,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00916",
+      "name": "Semolina Carrot Vada",
+      "unit": "vada",
+      "derivedGrams": 163,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00918",
+      "name": "Channa Murmura Premix",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00919",
+      "name": "Cracked Wheat and Green Gram Dal Premix",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00920",
+      "name": "Rice Flakes and Roasted Channa",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00921",
+      "name": "Spinach Soup in Milk",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00922",
+      "name": "Vegetable Soup",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00923",
+      "name": "Mashed Banana with Milk",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00924",
+      "name": "Poha with Curd",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00925",
+      "name": "Potato with Curd",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00926",
+      "name": "Sweet Wheat Porridge",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00927",
+      "name": "Moong Dal Mixture",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00928",
+      "name": "Stewed Apple",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00929",
+      "name": "Lemon Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00930",
+      "name": "Orange Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00931",
+      "name": "Lichi Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00932",
+      "name": "Mango Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00933",
+      "name": "Pineapple Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00934",
+      "name": "Lemon and Ginger Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00935",
+      "name": "Apple Jam",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00936",
+      "name": "Plum Jam",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00937",
+      "name": "Pineapple Jam",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00938",
+      "name": "Guava Jelly",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00939",
+      "name": "Orange Marmalade",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00940",
+      "name": "Carrot Murabba",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00941",
+      "name": "Gooseberry Marmalade",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00942",
+      "name": "Ginger Candy",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00943",
+      "name": "Mango Pickle",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00944",
+      "name": "Mixed Vegetable Pickle",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00945",
+      "name": "Sweet Lemon Pickle",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00946",
+      "name": "Plum Chutney",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00947",
+      "name": "Raw Mango Chutney",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00948",
+      "name": "Tomato Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00949",
+      "name": "Tomato Puree",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00950",
+      "name": "Garam Masala",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00951",
+      "name": "Chat Masala",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00952",
+      "name": "Kashmiri Masala",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00953",
+      "name": "Rasam Powder",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00954",
+      "name": "Sambar Powder",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00963",
+      "name": "Mintade",
+      "unit": "glass",
+      "derivedGrams": 570,
+      "usedGrams": 250,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00978",
+      "name": "Mixed Stock",
+      "unit": "cup",
+      "derivedGrams": 910,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00979",
+      "name": "Meat Stock",
+      "unit": "cup",
+      "derivedGrams": 870,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00980",
+      "name": "White Stock",
+      "unit": "cup",
+      "derivedGrams": 765,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00981",
+      "name": "Meat Consomme with Mutton",
+      "unit": "bowl",
+      "derivedGrams": 620,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00982",
+      "name": "Consomme au Julienne",
+      "unit": "bowl",
+      "derivedGrams": 770,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00983",
+      "name": "Consomme au Vermicelli",
+      "unit": "bowl",
+      "derivedGrams": 627,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00984",
+      "name": "Green Pea Soup",
+      "unit": "bowl",
+      "derivedGrams": 556,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00985",
+      "name": "Mixed Vegetable Soup",
+      "unit": "bowl",
+      "derivedGrams": 441,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00986",
+      "name": "Cheese Soup",
+      "unit": "bowl",
+      "derivedGrams": 445,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00988",
+      "name": "Cream of Carrot Soup",
+      "unit": "bowl",
+      "derivedGrams": 466,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00989",
+      "name": "Cream of Broccoli Soup",
+      "unit": "bowl",
+      "derivedGrams": 461,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00990",
+      "name": "Cream of Potato Soup",
+      "unit": "bowl",
+      "derivedGrams": 476,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00991",
+      "name": "Almond Soup",
+      "unit": "bowl",
+      "derivedGrams": 477,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-00996",
+      "name": "Tartare Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00997",
+      "name": "Barbeque Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-00998",
+      "name": "Bread Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01000",
+      "name": "Bathua Poori",
+      "unit": "poori",
+      "derivedGrams": 91,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01001",
+      "name": "Gram Flour Poori",
+      "unit": "poori",
+      "derivedGrams": 75,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01002",
+      "name": "Beetroot Poori",
+      "unit": "poori",
+      "derivedGrams": 103,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01003",
+      "name": "Peas Poori",
+      "unit": "poori",
+      "derivedGrams": 84,
+      "usedGrams": 25,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01005",
+      "name": "Pizza",
+      "unit": "slice",
+      "derivedGrams": 297,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01014",
+      "name": "Mutton Pulao",
+      "unit": "plate",
+      "derivedGrams": 663,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01015",
+      "name": "Chicken Pulao",
+      "unit": "plate",
+      "derivedGrams": 668,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01016",
+      "name": "Mexican Rice",
+      "unit": "plate",
+      "derivedGrams": 518,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01017",
+      "name": "Plain Khitchdi",
+      "unit": "small bowl",
+      "derivedGrams": 574,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01019",
+      "name": "Masala Dosa Mixed Vegetable Fillings",
+      "unit": "dosa",
+      "derivedGrams": 277,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01024",
+      "name": "Meat and Macaroni Casserole",
+      "unit": "small casserole dish",
+      "derivedGrams": 400,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01025",
+      "name": "Spaghetti with Meat Balls and Tomato Sauce",
+      "unit": "shallow dish",
+      "derivedGrams": 556,
+      "usedGrams": 200,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01027",
+      "name": "Lasagne with Meat Sauce",
+      "unit": "dish",
+      "derivedGrams": 1775,
+      "usedGrams": 200,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01028",
+      "name": "Lasagne with Vegetables",
+      "unit": "dish",
+      "derivedGrams": 1757,
+      "usedGrams": 200,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01029",
+      "name": "Green Chilli Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01030",
+      "name": "Home Made Plain Noodles",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01032",
+      "name": "Dal Moong",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01033",
+      "name": "Cumin Seeds Baghar",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01034",
+      "name": "Onion Tomato Baghar",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01035",
+      "name": "Mustard Seeds Baghar",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01038",
+      "name": "Arhar with Spinach",
+      "unit": "curry bowl",
+      "derivedGrams": 403,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01041",
+      "name": "Urad Sabut Special",
+      "unit": "bowl",
+      "derivedGrams": 442,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01045",
+      "name": "Shahi Keema Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 617,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01048",
+      "name": "Indian Lamb and Egg Curry",
+      "unit": "kofta",
+      "derivedGrams": 391,
+      "usedGrams": 30,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01049",
+      "name": "Soya Chunks Sweet and Sour",
+      "unit": "bowl",
+      "derivedGrams": 462,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01053",
+      "name": "Vegetable Yakhni",
+      "unit": "bowl",
+      "derivedGrams": 574,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01054",
+      "name": "Vegetarian Nargisi Kofta Curry",
+      "unit": "kofta",
+      "derivedGrams": 399,
+      "usedGrams": 30,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01061",
+      "name": "Chicken Sweet and Sour",
+      "unit": "bowl",
+      "derivedGrams": 562,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01063",
+      "name": "Fish Finger",
+      "unit": "fillet",
+      "derivedGrams": 444,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01065",
+      "name": "Baked Stuffed Fish",
+      "unit": "fish",
+      "derivedGrams": 608,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01066",
+      "name": "Fish Pie",
+      "unit": "pie",
+      "derivedGrams": 306,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01071",
+      "name": "Potato Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 1020,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01072",
+      "name": "Yam Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 750,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01073",
+      "name": "Jackfruit Kofta Curry",
+      "unit": "bowl",
+      "derivedGrams": 750,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01081",
+      "name": "Peas Brinjal Bhartha",
+      "unit": "small bowl",
+      "derivedGrams": 262,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01083",
+      "name": "Crispy Okra Lady's Fingers",
+      "unit": "small bowl",
+      "derivedGrams": 343,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01086",
+      "name": "Jackfruit (Dry)",
+      "unit": "bowl",
+      "derivedGrams": 483,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01087",
+      "name": "Yam Fried",
+      "unit": "bowl",
+      "derivedGrams": 483,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01090",
+      "name": "Vegetables Stir Fry",
+      "unit": "small bowl",
+      "derivedGrams": 389,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01100",
+      "name": "Creamed Spinach and Mushroom",
+      "unit": "bowl",
+      "derivedGrams": 595,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01113",
+      "name": "Frozen Frosty Fruit Salad",
+      "unit": "slice",
+      "derivedGrams": 233,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01115",
+      "name": "Mayonnaise Without Eggs",
+      "unit": "cup",
+      "derivedGrams": 387,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01142",
+      "name": "Hot Cherry Sauce",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01159",
+      "name": "Gulab Jamun with Milk Powder",
+      "unit": "piece",
+      "derivedGrams": 302,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01160",
+      "name": "Chum Chum",
+      "unit": "piece",
+      "derivedGrams": 312,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01161",
+      "name": "Dil Bahar",
+      "unit": "piece",
+      "derivedGrams": 312,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01162",
+      "name": "Rasbhari",
+      "unit": "piece",
+      "derivedGrams": 312,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01163",
+      "name": "Rajbogh",
+      "unit": "piece",
+      "derivedGrams": 315,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01164",
+      "name": "Rasgulla",
+      "unit": "piece",
+      "derivedGrams": 342,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01165",
+      "name": "Rasmalai",
+      "unit": "piece",
+      "derivedGrams": 317,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01179",
+      "name": "Paneer Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 181,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01180",
+      "name": "Poshtik Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 241,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01181",
+      "name": "Egg Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 203,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01182",
+      "name": "Minced Meat Cutlet",
+      "unit": "cutlet",
+      "derivedGrams": 233,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01196",
+      "name": "Mayonnaise Vegetable Dip",
+      "unit": "tablespoon",
+      "derivedGrams": 43,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01204",
+      "name": "Rolled Sandwich",
+      "unit": "sandwich",
+      "derivedGrams": 22,
+      "usedGrams": 130,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01229",
+      "name": "Orange Biscuit",
+      "unit": "biscuit",
+      "derivedGrams": 61,
+      "usedGrams": 10,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01231",
+      "name": "Coffee Drops",
+      "unit": "small",
+      "derivedGrams": 12,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01240",
+      "name": "Cheese Straws",
+      "unit": "straw",
+      "derivedGrams": 10,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01243",
+      "name": "Fruit Flan",
+      "unit": "flan",
+      "derivedGrams": 465,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01244",
+      "name": "Orange Cream Flan",
+      "unit": "flan",
+      "derivedGrams": 404,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01246",
+      "name": "Apple Banana Pie",
+      "unit": "pie",
+      "derivedGrams": 389,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01247",
+      "name": "Lemon Chiffon Pie",
+      "unit": "pie",
+      "derivedGrams": 536,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01248",
+      "name": "Orange Chiffon Pie",
+      "unit": "pie",
+      "derivedGrams": 698,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01264",
+      "name": "Rice Dal Porridge",
+      "unit": "(none)",
+      "derivedGrams": 33,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01275",
+      "name": "Poshtik Namak Paras",
+      "unit": "piece",
+      "derivedGrams": 13,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01277",
+      "name": "Besan Bathua Chilla",
+      "unit": "cheela",
+      "derivedGrams": 30,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01286",
+      "name": "Apple Jelly",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01287",
+      "name": "Marmalade",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01288",
+      "name": "Plum Squash",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01289",
+      "name": "Lemon Green Chilli Pickle",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01290",
+      "name": "Brinjal Pickle",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01291",
+      "name": "Sweet and Sour Tomato Pickle",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01292",
+      "name": "Jhatpat Achar with Carrot",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01293",
+      "name": "Tomato Ketchup",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01296",
+      "name": "Creamed Spinach",
+      "unit": "small bowl",
+      "derivedGrams": 386,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01301",
+      "name": "Sattu Drink",
+      "unit": "glass",
+      "derivedGrams": 534,
+      "usedGrams": 250,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01304",
+      "name": "Apple Oats Chia Seed Smoothie",
+      "unit": "glass",
+      "derivedGrams": 629,
+      "usedGrams": 250,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01305",
+      "name": "Nannari Sharbat",
+      "unit": "cup",
+      "derivedGrams": 1115,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01309",
+      "name": "Coconut Kheer",
+      "unit": "bowl",
+      "derivedGrams": 650,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01313",
+      "name": "Mango Malpua",
+      "unit": "piece",
+      "derivedGrams": 393,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01315",
+      "name": "Kiwi Granola Pudding",
+      "unit": "bowl",
+      "derivedGrams": 524,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01317",
+      "name": "Lotus Seed Halwa",
+      "unit": "piece",
+      "derivedGrams": 362,
+      "usedGrams": 50,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01326",
+      "name": "Kidney Bean Sandwich with Cottage Cheese",
+      "unit": "triangle",
+      "derivedGrams": 240,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01327",
+      "name": "Finger Millet Biscuit",
+      "unit": "biscuit",
+      "derivedGrams": 75,
+      "usedGrams": 10,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01328",
+      "name": "Buttermilk Biscuit",
+      "unit": "biscuit",
+      "derivedGrams": 128,
+      "usedGrams": 10,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01329",
+      "name": "Lemon Cookies",
+      "unit": "cookie",
+      "derivedGrams": 157,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01330",
+      "name": "Sweet Potato Biscuit",
+      "unit": "biscuit",
+      "derivedGrams": 151,
+      "usedGrams": 10,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01332",
+      "name": "Pumpkin Cookies",
+      "unit": "cookie",
+      "derivedGrams": 85,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01333",
+      "name": "Greenpea Cookies",
+      "unit": "cookie",
+      "derivedGrams": 76,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01334",
+      "name": "Sunflower Cookies",
+      "unit": "cookie",
+      "derivedGrams": 183,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01335",
+      "name": "Cardamom Cookies",
+      "unit": "cookie",
+      "derivedGrams": 219,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01336",
+      "name": "Hazelnut Cookies",
+      "unit": "cookie",
+      "derivedGrams": 86,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01337",
+      "name": "Milk Cookies",
+      "unit": "cookie",
+      "derivedGrams": 125,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01338",
+      "name": "Cranberry Cookies",
+      "unit": "cookie",
+      "derivedGrams": 186,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01339",
+      "name": "Olive Biscuit",
+      "unit": "biscuit",
+      "derivedGrams": 47,
+      "usedGrams": 10,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01340",
+      "name": "Tutti Fruitti Biscuit",
+      "unit": "biscuit",
+      "derivedGrams": 109,
+      "usedGrams": 10,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01341",
+      "name": "Peach Blueberry Preserves",
+      "unit": "half-pints",
+      "derivedGrams": 386,
+      "usedGrams": 280,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01342",
+      "name": "Pear Preserves",
+      "unit": "half-pints",
+      "derivedGrams": 596,
+      "usedGrams": 280,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01343",
+      "name": "Starfruit Preserves",
+      "unit": "jar",
+      "derivedGrams": 162,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01344",
+      "name": "Gooseberry Pickle",
+      "unit": "jar",
+      "derivedGrams": 23,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01345",
+      "name": "Lotus Stem Pickle",
+      "unit": "jar",
+      "derivedGrams": 393,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01347",
+      "name": "Garlic Pickle",
+      "unit": "jar",
+      "derivedGrams": 51,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01348",
+      "name": "Fermented Bamboo Shoot Pickle",
+      "unit": "jar",
+      "derivedGrams": 136,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01349",
+      "name": "Sweet Peach Pickle",
+      "unit": "jar",
+      "derivedGrams": 242,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01350",
+      "name": "Pickled Mustard Greens",
+      "unit": "jar",
+      "derivedGrams": 1175,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01352",
+      "name": "Green Tomato Pickle",
+      "unit": "jar",
+      "derivedGrams": 64,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01353",
+      "name": "Pickled Cabbage",
+      "unit": "jar",
+      "derivedGrams": 259,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01354",
+      "name": "Coconut Pickle",
+      "unit": "jar",
+      "derivedGrams": 28,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01358",
+      "name": "Fish Orly",
+      "unit": "fillet",
+      "derivedGrams": 294,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01359",
+      "name": "Hariyali Fish Tikka",
+      "unit": "kebab",
+      "derivedGrams": 179,
+      "usedGrams": 40,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01364",
+      "name": "Egg in a Pepper",
+      "unit": "egg",
+      "derivedGrams": 582,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01368",
+      "name": "Cabbage Manchurian",
+      "unit": "bowl",
+      "derivedGrams": 740,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01369",
+      "name": "Gobi 65",
+      "unit": "plate",
+      "derivedGrams": 858,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01373",
+      "name": "Schezwan Chutney",
+      "unit": "box",
+      "derivedGrams": 757,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01374",
+      "name": "Bengal 5 Spice Blend",
+      "unit": "(none)",
+      "derivedGrams": null,
+      "usedGrams": 15,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01376",
+      "name": "Dates Chutney",
+      "unit": "small bowl",
+      "derivedGrams": 264,
+      "usedGrams": 120,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01385",
+      "name": "Masala Souffle",
+      "unit": "souffle dish",
+      "derivedGrams": 1485,
+      "usedGrams": 200,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01387",
+      "name": "Tamarind Chutney",
+      "unit": "ml",
+      "derivedGrams": 4,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01388",
+      "name": "Pav Bhaji Masala",
+      "unit": "gm",
+      "derivedGrams": 1,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01389",
+      "name": "Green Chutney",
+      "unit": "glass jar",
+      "derivedGrams": 24,
+      "usedGrams": 15,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01392",
+      "name": "Rice Puttu",
+      "unit": "puttu",
+      "derivedGrams": 420,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01395",
+      "name": "Khakhra Chaat",
+      "unit": "plate",
+      "derivedGrams": 835,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01396",
+      "name": "Banana Appam",
+      "unit": "appam",
+      "derivedGrams": 290,
+      "usedGrams": 70,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01398",
+      "name": "Pav Bhaji",
+      "unit": "(none)",
+      "derivedGrams": 581,
+      "usedGrams": 100,
+      "flag": "serving_defaulted"
+    },
+    {
+      "foodId": "THF-01401",
+      "name": "Spicy Corn Chaat",
+      "unit": "plate",
+      "derivedGrams": 554,
+      "usedGrams": 300,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01405",
+      "name": "Mango Cheesecake",
+      "unit": "slice",
+      "derivedGrams": 174,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01409",
+      "name": "Honey Cake",
+      "unit": "slice",
+      "derivedGrams": 164,
+      "usedGrams": 35,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01411",
+      "name": "Tutti Frutti Cake",
+      "unit": "cake",
+      "derivedGrams": 848,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01415",
+      "name": "Baked Potato Soup",
+      "unit": "bowl",
+      "derivedGrams": 524,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01418",
+      "name": "Paneer Soup",
+      "unit": "bowl",
+      "derivedGrams": 611,
+      "usedGrams": 180,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01419",
+      "name": "Curried Cauliflower Soup",
+      "unit": "cup",
+      "derivedGrams": 348,
+      "usedGrams": 150,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01426",
+      "name": "Gujarati Handvo",
+      "unit": "cake",
+      "derivedGrams": 697,
+      "usedGrams": 80,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01429",
+      "name": "Jowar Dosa",
+      "unit": "dosa",
+      "derivedGrams": 33,
+      "usedGrams": 100,
+      "flag": "serving_corrected"
+    },
+    {
+      "foodId": "THF-01430",
+      "name": "Bread Roll",
+      "unit": "bread roll",
+      "derivedGrams": 121,
+      "usedGrams": 60,
+      "flag": "serving_corrected"
+    }
+  ]
+}

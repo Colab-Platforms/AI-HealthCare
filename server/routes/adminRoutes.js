@@ -93,6 +93,9 @@ router.put('/food-cache/:id', updateCachedFood);
 router.delete('/food-cache/clear-all', clearAllCachedFoods);
 router.delete('/food-cache/:id', deleteCachedFood);
 
+// Food reference DB review: ai_pending queue, edit/approve/reject/merge (docs/FOOD_DB_FLOW.md 8.4)
+router.use('/foods', require('./adminFoodRoutes'));
+
 // Claude AI Usage & Cost Tracking
 router.get('/usage/summary',        getSummary);
 router.get('/usage/cost-over-time', getCostOverTime);

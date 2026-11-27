@@ -46,6 +46,7 @@ const AdminAppVersion = lazy(() => import("./pages/AdminAppVersion"));
 const AdminShop = lazy(() => import("./pages/AdminShop"));
 const AdminShopOrder = lazy(() => import("./pages/AdminShopOrder"));
 const AdminShopCustomer = lazy(() => import("./pages/AdminShopCustomer"));
+const AdminFoodData = lazy(() => import("./pages/AdminFoodData"));
 // const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
@@ -725,6 +726,16 @@ export default function PrivateApp() {
                   <AdminRoute>
                     <Layout isAdmin>
                       <AdminShopOrder />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/food-data"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminFoodData />
                     </Layout>
                   </AdminRoute>
                 }

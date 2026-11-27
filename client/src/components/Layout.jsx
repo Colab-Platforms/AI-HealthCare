@@ -73,7 +73,8 @@ const adminExtraNavItems = [
   { path: "/admin", icon: LayoutDashboard, label: "Admin Panel" },
   { path: "/admin/support", icon: MessageCircle, label: "Support Tickets" },
   { path: "/admin/app-version", icon: Smartphone, label: "App Version" },
-  { path: "/admin/shop", icon: ShoppingBag, label: "Shop" }
+  { path: "/admin/shop", icon: ShoppingBag, label: "Shop" },
+  { path: "/admin/food-data", icon: Apple, label: "Food Data" }
 ];
 
 export default function Layout({
