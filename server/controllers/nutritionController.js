@@ -453,6 +453,22 @@ exports.analyzeFood = async (req, res) => {
 };
 
 // Log a meal
+// Meal x health profile (activityGuard/foodRules): allergy, diet, restrictions,
+// medicine-food, and the day's sugar / salt for diabetes / BP / kidney. Only
+// for meals logged now: a back-dated meal gets no "for the rest of today".
+const MEAL_GUARD_WINDOW_MS = 24 * 3600 * 1000;
+function guardLoggedMeal(user, foodLog, daySummary) {
+  const { getActivityGuard } = require('../modules/health-profile/services/activityGuard/guardService');
+  if (Math.abs(Date.now() - new Date(foodLog.timestamp).getTime()) > MEAL_GUARD_WINDOW_MS) return Promise.resolve({ alerts: [], coach: null });
+  const t = foodLog.totalNutrition || {};
+  return getActivityGuard().checkMeal(user, {
+    mealType: foodLog.mealType,
+    dishes: (foodLog.foodItems || []).map((i) => ({ name: i.name, ingredients: (i.ingredients || []).map((g) => g.name) })),
+    totals: { sugar: t.sugar, sodium: t.sodium, protein: t.protein },
+    day: daySummary ? { sugar: daySummary.totalSugar, sodium: daySummary.totalSodium } : null,
+  }, { mode: 'logged' });
+}
+
 exports.logMeal = async (req, res) => {
   try {
     const analysisTier = req.nutritionAnalysisTier || 'full';
@@ -658,7 +674,9 @@ exports.logMeal = async (req, res) => {
     }
 
     // Update daily summary
-    await updateDailySummary(req.user._id, foodLog.timestamp);
+    const daySummary = await updateDailySummary(req.user._id, foodLog.timestamp);
+    // Health-profile check on what was eaten + the day so far (never fails the log).
+    const guardPromise = guardLoggedMeal(req.user, foodLog, daySummary);
 
     // Log activity
     await logActivity(req.user._id, 'LOG_MEAL', 'nutrition', { 
@@ -674,10 +692,15 @@ exports.logMeal = async (req, res) => {
       return null;
     });
 
+    const guard = await guardPromise;
+
     res.json({
       success: true,
       foodLog,
       gamification: gamificationResult,
+      // Additive: coach != null -> open the coach with coach.text.
+      profileAlerts: guard.alerts,
+      coach: guard.coach,
       message: 'Meal logged successfully'
     });
   } catch (error) {
@@ -993,9 +1016,14 @@ exports.setHealthGoal = async (req, res) => {
     cache.delete(`dashboard:${req.user._id}`);
     cache.delete(`health_goal:${req.user._id}`);
 
+    const goalGuard = await require('../modules/health-profile/services/activityGuard/guardService').getActivityGuard().checkGoal(req.user, healthGoal);
+
     res.json({
       success: true,
       healthGoal,
+      // Additive: what the health profile says about this goal; coach != null -> open the coach.
+      profileAlerts: goalGuard.alerts,
+      coach: goalGuard.coach,
       message: 'Health goal set successfully'
     });
   } catch (error) {
@@ -1130,9 +1158,13 @@ exports.updateHealthGoal = async (req, res) => {
     cache.delete(`dashboard:${req.user._id}`);
     cache.delete(`health_goal:${req.user._id}`);
 
+    const goalGuard = await require('../modules/health-profile/services/activityGuard/guardService').getActivityGuard().checkGoal(req.user, healthGoal);
+
     res.json({
       success: true,
       healthGoal,
+      profileAlerts: goalGuard.alerts,
+      coach: goalGuard.coach,
       message: 'Health goal updated successfully'
     });
   } catch (error) {
@@ -2459,10 +2491,19 @@ exports.quickFoodCheck = async (req, res) => {
       await foodCheck.save();
     }
 
+    // Health-profile check before eating (allergy / diet / medicine-food), every tier.
+    const scanGuard = await require('../modules/health-profile/services/activityGuard/guardService').getActivityGuard().checkMeal(req.user, {
+      dishes: (foodCheck.dishes && foodCheck.dishes.length ? foodCheck.dishes : [{ name: foodCheck.foodName }])
+        .map((d) => ({ name: d.name, ingredients: (d.ingredients || []).map((g) => g?.name || g) })),
+      totals: { sugar: nutrition?.sugar, sodium: nutrition?.sodium, protein: nutrition?.protein },
+    }, { mode: 'precheck' });
+
     if (analysisTier === 'basic') {
       return res.json({
         success: true,
         analysisTier,
+        profileAlerts: scanGuard.alerts,
+        coach: scanGuard.coach,
         data: {
           _id: foodCheck._id,
           analysisTier,
@@ -2483,6 +2524,8 @@ exports.quickFoodCheck = async (req, res) => {
     res.json({
       success: true,
       data: normalizeAnalysisResult(foodCheck),
+      profileAlerts: scanGuard.alerts,
+      coach: scanGuard.coach,
       isCached: false,
       message: 'Analysis complete and cached'
     });

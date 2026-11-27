@@ -115,6 +115,11 @@ exports.handleDbQuickCheck = async (req, res, { imageInputs, foodDescription, ad
       imageUrls = [`data:${imageInputs[0].mediaType};base64,${imageInputs[0].data}`];
     }
     const scanType = imageInputs.length > 1 ? 'multi_image' : (imageInputs.length === 1 ? 'image' : 'text');
+    // Health-profile check before eating (allergy / diet / medicine-food); runs alongside the save.
+    const guardPromise = require('../modules/health-profile/services/activityGuard/guardService').getActivityGuard().checkMeal(req.user, {
+      dishes: result.dishes.map((d) => ({ name: d.name, ingredients: (d.ingredients || []).map((g) => g?.name || g) })),
+      totals: { sugar: result.nutrition?.sugar, sodium: result.nutrition?.sodium, protein: result.protein },
+    }, { mode: 'precheck' });
     const foodCheck = await QuickFoodCheck.create({
       userId,
       analysisTier,
@@ -166,6 +171,8 @@ exports.handleDbQuickCheck = async (req, res, { imageInputs, foodDescription, ad
         scanType,
         timestamp: foodCheck.timestamp,
       },
+      // Additive: coach != null -> open the coach with coach.text (serious alerts only on a scan).
+      ...(await guardPromise.then((g) => ({ profileAlerts: g.alerts, coach: g.coach }))),
       message: 'Analysis complete',
     });
   } catch (error) {

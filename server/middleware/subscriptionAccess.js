@@ -55,17 +55,30 @@ exports.requireActiveSubscription = (req, res, next) => {
 // All features are plain access flags now — no numeric usage limits (Pro/Pro Plus
 // both get unlimited use of every paid feature; abuse protection is handled by
 // rate-limit middleware like `aiLimiter`, not a monthly ceiling here).
+// A lapsed paid subscription (cancelled, or period end passed) must not keep
+// granting paid-tier access just because `subscription.plan` wasn't reset —
+// fall back to the free plan's entitlement the moment it's no longer active.
+const effectivePlan = async (user) => {
+  const sub = user?.subscription || { plan: FREE_PLAN_KEY, billingCycle: 'monthly' };
+  const entitled = sub.plan === FREE_PLAN_KEY || isEntitled(sub);
+  const key = entitled ? sub.plan : FREE_PLAN_KEY;
+  return { key, plan: await getCachedPlan(key, sub.billingCycle || 'monthly') };
+};
+
+// Same decision as requireFeature, as a boolean (for optional extras in a
+// response, e.g. "open the coach"). Never throws.
+exports.hasFeature = async (user, featureKey) => {
+  try {
+    const { plan } = await effectivePlan(user);
+    return plan?.features?.[featureKey] === true;
+  } catch {
+    return false;
+  }
+};
+
 exports.requireFeature = (featureKey) => {
   return async (req, res, next) => {
-    const sub = req.user.subscription || { plan: FREE_PLAN_KEY, billingCycle: 'monthly' };
-
-    // A lapsed paid subscription (cancelled, or period end passed) must not keep
-    // granting paid-tier access just because `subscription.plan` wasn't reset —
-    // fall back to the free plan's entitlement the moment it's no longer active.
-    const entitled = sub.plan === FREE_PLAN_KEY || isEntitled(sub);
-    const effectivePlanKey = entitled ? sub.plan : FREE_PLAN_KEY;
-
-    const plan = await getCachedPlan(effectivePlanKey, sub.billingCycle || 'monthly');
+    const { key: effectivePlanKey, plan } = await effectivePlan(req.user);
     if (!plan) {
       return res.status(403).json({ success: false, message: 'No active plan found for this account.' });
     }

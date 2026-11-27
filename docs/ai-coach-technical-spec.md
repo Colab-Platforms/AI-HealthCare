@@ -564,6 +564,40 @@ All tools take `userId` from `req.user`, never from the LLM.
 - `POST /api/coach/opener`: only when the coach screen opens. `{ success, opener: { text, language, question } | null, reason? }`; show `opener.text` as the first coach bubble and save it to history; `null` → nothing (`reason`: disabled, already_today, chatted_today, nothing_to_say, error).
 - Env (Vercel AND Render): `AI_COACH_V2=true`, `HEALTH_PROFILE_WRITES=true`, `ANTHROPIC_API_KEY` starting `sk-ant` (otherwise V2 silently falls back to the old chat).
 
+### Activity guard: coach speaks up when a workout clashes with the profile (27 Nov)
+
+What: when the user picks or logs a workout that clashes with their HealthProfile (e.g. painkiller + hard run, knee injury + running, heart condition + HIIT, fever + workout), the coach opens by itself with a short note: why (the profile fact) + one safe alternative. Never blocks the workout, never diagnoses, never says to stop a medicine.
+
+Design:
+- `modules/health-profile/services/activityGuard/exerciseRules.js`: pure rules, no DB, no model, so same input gives the same alerts in under 1 ms. Inputs: medicines (by class: painkiller, paracetamol / tramadol, insulin / sulfonylurea, beta blocker, blood thinner, diuretic, quinolone antibiotic, sedating), conditions (same matching as meal plans: `safetyConstraints.CONDITION_RULES`), injuries (`fitness.limitations`, by body part vs the activity), disabilities, age (65+, under 16), uncontrolled diabetes, symptoms mentioned in chat in the last 3 days (red flags override every other tip). 28 rules, levels `important` / `caution`.
+- `.../activityGuard/guardService.js`: profile (the 10 s cache `protect` already filled) + symptoms + coach state read in parallel → rules → cooldown (same alert again only after 20 h, `important` after 6 h) → atomic claim in `coach_states` (`activityAlert`, `alertLog`), so two quick requests never open the coach twice. Time budget 1.5 s: past it the alerts still return, only the coach part is dropped. Any error gives no alert, never a failed request.
+- Coach opens only if `AI_COACH_V2=true`, the plan has `aiHealthCoach`, and health consent isn't withdrawn. The alerts themselves are returned to everyone (safety isn't paywalled).
+- Chat follow-up: the alert is kept for 3 h; the coach prompt gets it, so "kyu?" / "but I feel fine" is answered about it.
+- Measured on staging: warm ~50-80 ms, cold first call ~750 ms; 5 parallel requests → coach opened once.
+
+API (Flutter):
+- `POST /api/exercise/check { activityType, intensity?, duration? }`: call when the user picks an activity (before starting). `200 { success, alerts: [{ code, level, message }], coach: { open, text, language, codes, alertId } | null }`.
+- `POST /api/exercise/log`: same two fields added to its response: `profileAlerts`, `coach`. Only for workouts logged now (back-dated over 24 h: no check).
+- App: `coach != null` → open the coach screen with `coach.text` as the first coach bubble and save it to chat history like any assistant message (same as the opener). `coach == null` but `alerts` not empty → optional small info icon with the messages; never a popup.
+
+Same guard, all food + supplements + goals (27 Nov, second pass):
+
+| Where | Rules file | When the coach opens | API fields added |
+| --- | --- | --- | --- |
+| `POST /api/nutrition/log-meal` | `foodRules.js` (allergy incl. ingredients, intolerance, veg / egg / vegan / Jain clash, restrictions, foods to avoid, celiac, diabetes sugar + BP / heart / kidney salt for the DAY so far, kidney protein, gout, warfarin + greens, grapefruit, alcohol + medicine) | any new alert | `profileAlerts`, `coach` |
+| `POST /api/nutrition/quick-check` (AI and food DB scan) | same | only `important` (allergy / celiac): the scan screen already shows its own warnings | `profileAlerts`, `coach` (top level) |
+| 7-day plan: generate | `planCheck.fixPlan` | — | a dish that must not be served (allergy, celiac, diet type, Jain, restriction, intolerance, foods to avoid) is swapped for the nearest clean day of the same slot; stored as `profileCheck: { checkedAt, fixed[], remaining }` |
+| 7-day plan: `GET /api/diet-recommendations/diet-plan/active` (+ the sync food-DB generate response) | `planCheck.checkPlan` against the CURRENT profile (an allergy added later still shows) | once per plan | per meal `profileWarnings: [String]`, `profileAlerts`, `coach` |
+| `POST /api/supplements` (routine add) | `supplementRules.js` (St John's wort, potassium + BP medicine / kidney, vitamin K + warfarin, fish oil / vit E / curcumin + blood thinner, minerals / biotin + thyroid tablet, ashwagandha, berberine / methi + insulin, kidney, liver, stimulants + BP / heart / anxiety, sedatives, fish / shellfish / milk / soy source vs allergy, lactose, veg capsule) | any new alert | `profileAlerts`, `coach` (next to `data`) |
+| AI supplement suggestions: generate + active | same | once per suggestion set | per supplement `profileWarnings`, `profileAlerts`, `coach` |
+| `POST /api/nutrition/goals`, `PUT /api/nutrition/goals` | `goalRules.js` (eating disorder, underweight target, teen, insulin / sulfonylurea, fast loss with diabetes / heart / kidney, 65+, kidney + gain, very low calories) | any new alert | `profileAlerts`, `coach` |
+
+- One condition matcher for everything: `safetyConstraints.CONDITION_RULES` (merged with the food DB's `mealWarnings` patterns; `mealWarnings` now reads them from there). Fixed on the way: "heartburn" was read as heart disease in both.
+- Dish names are read with the food DB classifier (`foodDb/classify.js`), not a second word list.
+- `profileWarnings` on plan meals / supplements are English; the coach note follows the chat language.
+- Tests: `tests/activityGuard.test.js`, `tests/activityGuardFood.test.js` (51). Checked on staging (Sushila: meal, supplement, goal; 5 parallel requests → one coach note). Found on real data and fixed: "Shellfish" allergy was read as a fish allergy.
+
+
 ### Health profile API contract (built 23 Nov)
 
 Sections: scalar `basic | body | lifestyle | diet | fitness | goals | coachPreferences`; lists `conditions | medications | allergies | surgeries | familyHistory` (field names: section 4 / `models/HealthProfile.js`).

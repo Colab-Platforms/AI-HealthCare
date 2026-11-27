@@ -20,16 +20,13 @@ const { resolveDietaryPreference } = require('../../utils/dietaryPreference');
 const NONE_TEXT = /^(none|no|nil|na|n\/a|nothing|none of these|other|-)$/i;
 const AVOID_PREFIX = /^(no|avoid|avoiding|less|without|zero|limit|stop|skip)\s+/i;
 
-const CONDITION_PATTERNS = [
-  ['diabetes', /diabet|\bsugar\b|t[12]\s?dm|\bdm\b|insulin resist/i],
-  ['hypertension', /hypertens|high\s*(bp|blood\s*pressure)|\bbp\b/i],
-  ['high_cholesterol', /cholesterol|lipid|triglycer/i],
-  ['heart_disease', /heart|cardiac|coronary|\bcad\b|angina|stroke/i],
-  ['pcos', /pcos|pcod|polycystic/i],
-  ['thyroid', /thyroid/i],
-  ['gut_health', /\bgut\b|\bibs\b|acidity|gerd|reflux|gastritis|ulcer|bloat|indigestion|colitis|crohn/i],
-  ['kidney', /kidney|renal|\bckd\b/i],
-];
+// Condition matching comes from ONE place (health-profile safetyConstraints,
+// 27 Nov) so the meal scan, meal plans, the coach and the activity guard
+// always agree on what a condition is. Keys mapped to this file's names.
+const SHARED_KEY = { diabetes: 'diabetes', hypertension: 'hypertension', cholesterol: 'high_cholesterol', heart: 'heart_disease', pcos: 'pcos', thyroid: 'thyroid', gut: 'gut_health', kidney: 'kidney' };
+const CONDITION_PATTERNS = require('../../modules/health-profile/services/safetyConstraints').CONDITION_RULES
+  .filter((r) => SHARED_KEY[r.key])
+  .map((r) => [SHARED_KEY[r.key], r.re]);
 
 const MEDICATION_PATTERNS = [
   ['anticoagulant', /warfarin|acenocoumarol|acitrom|coumadin|nicoumalone|blood thinner/i],

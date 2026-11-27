@@ -152,6 +152,76 @@ function buildPlanDocument(planData, userData) {
   };
 }
 
+// ── Health-profile check of the 7-day plan (activityGuard/planCheck, 27 Nov) ──
+// At generation: a dish the user must not eat (allergy, diet type, restriction,
+// foods to avoid) is swapped for a clean dish of the same slot. Never throws:
+// a failed check leaves the plan as generated.
+async function applyProfileCheck(userId, doc) {
+  try {
+    const { loadProfile } = require('../modules/health-profile/services/profileReadService');
+    const { foodFacts } = require('../modules/health-profile/services/activityGuard/foodRules');
+    const { fixPlan } = require('../modules/health-profile/services/activityGuard/planCheck');
+    const { mealPlan, fixed, remaining } = fixPlan(doc.mealPlan, foodFacts(await loadProfile(userId)));
+    if (fixed.length) console.log(`[DietPlan] ${userId}: swapped ${fixed.length} dish(es) that clash with the health profile`);
+    return { ...doc, mealPlan, profileCheck: { checkedAt: new Date(), fixed, remaining: remaining.length } };
+  } catch (err) {
+    console.error(`[DietPlan] profile check failed for ${userId}: ${err.message}`);
+    return doc;
+  }
+}
+
+// On read: the stored plan against the CURRENT profile (an allergy added
+// after the plan was made still shows). Adds per-meal `profileWarnings`, the
+// alerts, and the coach note (once per plan). Never throws.
+async function planProfileView(user, dietPlan) {
+  const json = typeof dietPlan.toJSON === 'function' ? dietPlan.toJSON() : { ...dietPlan };
+  try {
+    const { loadProfile } = require('../modules/health-profile/services/profileReadService');
+    const { foodFacts } = require('../modules/health-profile/services/activityGuard/foodRules');
+    const P = require('../modules/health-profile/services/activityGuard/planCheck');
+    const { getActivityGuard } = require('../modules/health-profile/services/activityGuard/guardService');
+    const issues = P.checkPlan(json.mealPlan, foodFacts(await loadProfile(user._id)));
+    const byOption = P.warningsByOption(issues);
+    for (const slot of P.SLOTS) {
+      (json.mealPlan?.[slot] || []).forEach((opt, i) => {
+        if (opt && byOption[`${slot}:${i}`]) opt.profileWarnings = byOption[`${slot}:${i}`];
+      });
+    }
+    const guard = await getActivityGuard().checkPlan(user, {
+      planId: json._id,
+      alerts: P.planAlerts({ issues, fixed: json.profileCheck?.fixed || [] }),
+    });
+    return { dietPlan: json, profileAlerts: guard.alerts, coach: guard.coach };
+  } catch (err) {
+    console.error(`[DietPlan] profile view failed for ${user._id}: ${err.message}`);
+    return { dietPlan: json, profileAlerts: [], coach: null };
+  }
+}
+
+// AI supplement suggestions checked against the CURRENT profile: per-supplement
+// `profileWarnings`, alerts, and a coach note once per suggestion set. Never throws.
+async function supplementProfileView(user, rec) {
+  const json = typeof rec.toJSON === 'function' ? rec.toJSON() : { ...rec };
+  try {
+    const { loadProfile } = require('../modules/health-profile/services/profileReadService');
+    const R = require('../modules/health-profile/services/activityGuard/supplementRules');
+    const { getActivityGuard } = require('../modules/health-profile/services/activityGuard/guardService');
+    const facts = R.supplementFacts(await loadProfile(user._id));
+    const alerts = [];
+    const seen = new Set();
+    for (const sup of json.supplements || []) {
+      const found = R.checkSupplement({ name: sup.name }, facts);
+      if (found.length) sup.profileWarnings = found.map((a) => a.text.english);
+      for (const a of found) if (!seen.has(a.code)) { seen.add(a.code); alerts.push(a); }
+    }
+    const guard = await getActivityGuard().checkSupplementPlan(user, { recId: json._id, alerts });
+    return { recommendations: json, profileAlerts: guard.alerts, coach: guard.coach };
+  } catch (err) {
+    console.error(`[Supplements] profile view failed for ${user._id}: ${err.message}`);
+    return { recommendations: json, profileAlerts: [], coach: null };
+  }
+}
+
 /**
  * Generate personalized diet plan based on comprehensive health data
  */
@@ -380,14 +450,15 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
           isActive: true,
           generatedAt: new Date(),
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          ...buildPlanDocument(db.plan, userData)
+          ...(await applyProfileCheck(userId, buildPlanDocument(db.plan, userData)))
         });
         await cache.delete(`diet_plan:${userId}`);
         await cache.delete(`dashboard:${userId}`);
+        const view = await planProfileView(req.user, dietPlan);
         return res.status(200).json({
           success: true,
           message: 'Diet plan ready',
-          dietPlan: dietPlan,
+          ...view,
           backgroundProcessing: false,
           generator: 'food_db'
         });
@@ -548,7 +619,7 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
       aiDietPlan.dailyCalorieTarget = calorieCap;
     }
 
-    const finalData = buildPlanDocument(aiDietPlan, userData);
+    const finalData = await applyProfileCheck(userId, buildPlanDocument(aiDietPlan, userData));
 
     const updatedPlan = await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, finalData, { new: true });
     
@@ -940,8 +1011,9 @@ exports.getActiveDietPlan = async (req, res) => {
     res.json({
       success: true,
       // Meals with DB items get the main dish's approved photo (looked up now, so a photo approved
-      // after the plan was made still shows).
-      dietPlan: dietPlan,
+      // after the plan was made still shows). profileAlerts / coach / per-meal profileWarnings:
+      // the plan checked against the current health profile (additive).
+      ...(await planProfileView(req.user, dietPlan)),
       // `isStale` / `staleReason` are the original diet-type-only flag, kept
       // as-is for clients already reading it. `staleness` is the superset: it
       // also covers a changed goal or calorie target, with the old/new values.
@@ -1128,7 +1200,7 @@ exports.generateSupplementRecommendations = async (req, res) => {
     res.json({
       success: true,
       message: 'Supplement recommendations generated successfully',
-      recommendations
+      ...(await supplementProfileView(req.user, recommendations))
     });
 
   } catch (error) {
@@ -1163,7 +1235,7 @@ exports.getActiveSupplementRecommendations = async (req, res) => {
 
     res.json({
       success: true,
-      recommendations
+      ...(await supplementProfileView(req.user, recommendations))
     });
 
   } catch (error) {

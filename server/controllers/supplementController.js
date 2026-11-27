@@ -7,7 +7,7 @@ const { SupplementError } = supplementService;
 const handle = (label, fn) => async (req, res) => {
     try {
         const data = await fn(req);
-        res.status(data && data.__status ? data.__status : 200).json({ success: true, data: data && data.__status ? data.body : data });
+        res.status(data && data.__status ? data.__status : 200).json({ success: true, data: data && data.__status ? data.body : data, ...(data && data.__extra) });
     } catch (err) {
         if (err instanceof SupplementError) {
             return res.status(err.status).json({ success: false, message: err.message, ...(err.details && { errors: err.details }) });
@@ -17,12 +17,18 @@ const handle = (label, fn) => async (req, res) => {
     }
 };
 
-const created = (body) => ({ __status: 201, body });
+const created = (body, extra) => ({ __status: 201, body, __extra: extra });
 
 exports.getCatalog = handle('getCatalog', () => supplementService.getCatalog());
 
-exports.createSupplement = handle('createSupplement', async (req) =>
-    created(await supplementService.createSupplement(req.user._id, req.body)));
+// Adding a supplement is checked against the health profile (medicine
+// interactions, allergy source, diet): additive profileAlerts / coach fields.
+exports.createSupplement = handle('createSupplement', async (req) => {
+    const dto = await supplementService.createSupplement(req.user._id, req.body);
+    const { getActivityGuard } = require('../modules/health-profile/services/activityGuard/guardService');
+    const guard = await getActivityGuard().checkSupplement(req.user, { name: dto.name, ingredients: [dto.strength, dto.form].filter((x) => typeof x === 'string') });
+    return created(dto, { profileAlerts: guard.alerts, coach: guard.coach });
+});
 
 exports.listSupplements = handle('listSupplements', (req) =>
     supplementService.listSupplements(req.user._id, req.query.tab));

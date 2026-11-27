@@ -70,6 +70,23 @@ const coachStateSchema = new mongoose.Schema({
         items: { type: [mongoose.Schema.Types.Mixed], default: undefined }, // [{ target, value, historyId }]
         savedAt: Date,
     },
+    // Activity guard (health-profile/services/activityGuard, 27 Nov): the last
+    // alert the coach raised about something the user did (e.g. a workout that
+    // clashes with a medicine), so the chat knows what "kyu?" refers to; and
+    // when each alert code last went out (cooldown). Written only by the
+    // guard with targeted updates; the chat graph reads activityAlert and
+    // never writes either field.
+    activityAlert: {
+        kind: { type: String, enum: ['exercise', 'meal', 'meal_plan', 'supplement', 'goal'] },
+        activityType: String,
+        codes: { type: [String], default: undefined },
+        text: { type: String, maxlength: 2000 },
+        at: Date,
+    },
+    alertLog: {
+        type: [new mongoose.Schema({ code: { type: String, required: true }, at: { type: Date, required: true } }, { _id: false })],
+        default: undefined,
+    },
 }, { timestamps: true, collection: 'coach_states' });
 
 module.exports = mongoose.models.CoachState || mongoose.model('CoachState', coachStateSchema);

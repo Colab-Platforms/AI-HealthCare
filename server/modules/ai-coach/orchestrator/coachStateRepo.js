@@ -35,6 +35,8 @@ function fromDoc(doc) {
         lastOpenerAt: doc.lastOpenerAt || null,
         pendingOffer: doc.pendingOffer?.kind ? doc.pendingOffer : null,
         pendingLog: doc.pendingLog?.entries?.length ? doc.pendingLog : null,
+        // Read-only here (not in KEYS): the activity guard owns this field.
+        activityAlert: doc.activityAlert?.text ? doc.activityAlert : null,
     };
 }
 

@@ -18,6 +18,17 @@ const HealthGoal = require('../models/HealthGoal');
 const { withProfile } = require('../modules/health-profile/services/profileReadService'); // health facts from HealthProfile (only source)
 // Lines of exercise precautions ([] when none or unavailable): additive to the response.
 const { exercisePrecautions } = require('../modules/health-profile/services/safetyConstraints');
+const { getActivityGuard } = require('../modules/health-profile/services/activityGuard/guardService');
+
+// Profile check for a workout logged now (not a back-dated one: "rest today"
+// makes no sense for last week). Started before the save so it runs in
+// parallel; never fails the request.
+const RECENT_WORKOUT_MS = 24 * 3600 * 1000;
+const NO_GUARD = { alerts: [], coach: null };
+function guardLoggedWorkout(user, log) {
+  if (Math.abs(Date.now() - new Date(log.timestamp).getTime()) > RECENT_WORKOUT_MS) return Promise.resolve(NO_GUARD);
+  return getActivityGuard().checkExercise(user, { activityType: log.activityType, intensity: log.intensity, duration: log.duration }, { mode: 'logged' });
+}
 
 const DEFAULT_WEEKLY_GOAL = { weeklyMinutesTarget: 150, weeklyCaloriesTarget: 2000, weeklyDistanceKmTarget: 10 };
 
@@ -177,6 +188,8 @@ exports.logExercise = async (req, res) => {
       })()
     });
 
+    const guardPromise = guardLoggedWorkout(req.user, exerciseLog);
+
     await exerciseLog.save();
 
     await updateDailyExerciseSummary(req.user._id, exerciseLog.timestamp);
@@ -203,10 +216,15 @@ exports.logExercise = async (req, res) => {
         return null;
       });
 
+    const guard = await guardPromise;
+
     res.json({
       success: true,
       exerciseLog,
       gamification: gamificationResult,
+      // Health-profile check (additive): coach != null -> open the coach with coach.text.
+      profileAlerts: guard.alerts,
+      coach: guard.coach,
       message: 'Exercise logged successfully'
     });
   } catch (error) {
@@ -217,6 +235,25 @@ exports.logExercise = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Before a workout: does it clash with the health profile? The app calls this
+// when the user picks an activity (before starting / before saving).
+//   POST /api/exercise/check { activityType, intensity?, duration? }
+//   200 { success, alerts: [{ code, level, message }], coach: { open, text, language, codes, alertId } | null }
+exports.checkExercise = async (req, res) => {
+  const { activityType, intensity, duration } = req.body || {};
+  if (!activityType || !isValidActivityId(activityType)) {
+    return res.status(400).json({ success: false, message: `Unknown activity type: ${activityType}` });
+  }
+  if (intensity && !['low', 'medium', 'high'].includes(intensity)) {
+    return res.status(400).json({ success: false, message: 'intensity must be low, medium or high' });
+  }
+  if (duration !== undefined && !isValidDurationMinutes(duration)) {
+    return res.status(400).json({ success: false, message: DURATION_ERROR });
+  }
+  const result = await getActivityGuard().checkExercise(req.user, { activityType, intensity: intensity || 'medium', duration }, { mode: 'precheck' });
+  res.json({ success: true, ...result });
 };
 
 // Preview computed HR (avg/min/max/zones) for a time window from wearable data,

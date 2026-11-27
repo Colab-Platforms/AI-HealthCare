@@ -23,6 +23,15 @@ const { pickGapQuestion } = require('./gapEngine');
 const { pickCheckIn, isRelated, inQuestionCooldown, LAST_ASK_KEY } = require('./checkIns');
 const { runSpecialists } = require('../specialists');
 const { buildRequest, streamAnswer } = require('../response/responseGenerator');
+
+// The activity guard's last alert (e.g. "painkiller + this workout"), if it
+// went out in the last 3 h: the user's next message is likely about it.
+const ACTIVITY_ALERT_WINDOW_MS = 3 * 3600 * 1000;
+function recentActivityAlert(coachState, now = new Date()) {
+    const a = coachState && coachState.activityAlert;
+    if (!a || !a.text || !a.at) return null;
+    return new Date(now).getTime() - new Date(a.at).getTime() <= ACTIVITY_ALERT_WINDOW_MS ? a : null;
+}
 const { triageFacts, isYes, isNo, isUndo, describeFact, specifyQuestion, specifyQuestionAlt, SPECIFIC_TARGETS, UNDO_WINDOW_MS, CONFIRM_WINDOW_MS } = require('../tools/profileTools');
 const { parseSymptomReply } = require('../tools/symptomTools');
 const { applyRoutingRules, mergeRouting } = require('./routingRules');
@@ -800,6 +809,7 @@ async function respondNode(state, config) {
     // chat -> no data at all; specific -> only the asked-for numbers.
     const scoped = scopeData({ classification: state.classification, specialistResults: state.specialistResults || [], targets: state.targets });
     const request = buildRequest({
+        activityAlert: recentActivityAlert(state.coachState, state.now),
         message: state.message,
         history: state.history,
         userName: state.userName,

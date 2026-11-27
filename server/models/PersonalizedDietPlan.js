@@ -152,6 +152,10 @@ const personalizedDietPlanSchema = new mongoose.Schema({
 
   avoidSuggestions: [String],
 
+  // Health-profile check at generation (activityGuard/planCheck, 27 Nov):
+  // { checkedAt, fixed: [{ slot, dayIndex, from, to }], remaining: Number }
+  profileCheck: { type: mongoose.Schema.Types.Mixed },
+
   // User feedback
   userRating: {
     type: Number,

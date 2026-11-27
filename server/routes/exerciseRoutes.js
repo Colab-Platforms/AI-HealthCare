@@ -21,6 +21,7 @@ router.get('/goals', apiLimiter, exerciseController.getFitnessGoal);
 router.put('/goals', apiLimiter, exerciseController.upsertFitnessGoal);
 
 // Exercise Logging
+router.post('/check', apiLimiter, exerciseController.checkExercise);
 router.post('/log', exerciseController.logExercise);
 router.get('/logs', heavyReadLimiter, exerciseController.getExerciseLogs);
 router.get('/logs/today', apiLimiter, exerciseController.getTodayLogs);

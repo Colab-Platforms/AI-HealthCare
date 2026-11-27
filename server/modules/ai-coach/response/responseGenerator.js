@@ -79,7 +79,7 @@ function findingsBlock(results) {
 /**
  * @returns { system, messages } for client.messages.stream
  */
-function buildRequest({ message, history = [], userName, profileContext, classification = {}, specialistResults = [], gapQuestion = null, confirmFacts = [], savedFacts = [], undoneCount = 0, targets = null, checkInInstruction = null, activeSymptoms = [], symptomChanges = [], mealOffer = false, savedMealPatterns = null, mealPrefDeclined = false, foodToConfirm = null, loggedFood = null, foodLogDeclined = false, exerciseCaution = false, fallCaution = false, droppedRequest = null, replyMode = 'coaching', focusMetrics = [], unavailableMetrics = [], logsToConfirm = null, logNeeds = null, logsDeclined = false }) {
+function buildRequest({ message, history = [], userName, profileContext, classification = {}, specialistResults = [], gapQuestion = null, confirmFacts = [], savedFacts = [], undoneCount = 0, targets = null, checkInInstruction = null, activeSymptoms = [], symptomChanges = [], mealOffer = false, savedMealPatterns = null, mealPrefDeclined = false, foodToConfirm = null, loggedFood = null, foodLogDeclined = false, exerciseCaution = false, fallCaution = false, droppedRequest = null, replyMode = 'coaching', focusMetrics = [], unavailableMetrics = [], logsToConfirm = null, logNeeds = null, logsDeclined = false, activityAlert = null }) {
     const hinglish = ['hinglish', 'hindi'].includes(classification.language);
     const turns = history.slice(-HISTORY_TURNS * 2)
         .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
@@ -114,6 +114,11 @@ function buildRequest({ message, history = [], userName, profileContext, classif
     }
     if (classification.timeframe && classification.timeframe !== 'unspecified') data.push(`The user means: ${classification.timeframe}`);
     if (classification.symptoms?.length) data.push(`Symptoms mentioned: ${classification.symptoms.join(', ')}`);
+    if (activityAlert) {
+        data.push(`Shortly before this message the app showed the user this note from you, based on their health profile and what they were doing:
+"${activityAlert.text.slice(0, 1500)}"
+If the message is about it ("why?", "kya karu?", "but I feel fine"), explain simply with the same facts and give one safe alternative. Don't repeat the whole note, don't add new medical claims, don't diagnose, and never tell them to stop or change a medicine.`);
+    }
     if (exerciseCaution) {
         data.push('The user has chest pain or breathlessness after exercise. Advise no workout today: rest, water, light walking only once it settles, and to see a doctor if it keeps coming back with exercise. Do not diagnose. A fixed line about when to call 112 is added after your reply, so do not write your own emergency instructions.');
     }
