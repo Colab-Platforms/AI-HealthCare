@@ -238,9 +238,20 @@ const applyShopifyOrder = async (order, node) => {
             const hasRefund = (current.refunds || []).some((r) => r.kind === 'order' && r.status !== 'failed');
             if (!hasRefund) {
                 await Order.updateOne({ _id: order._id, cancelledAt: null }, { $set: { cancelledAt: new Date(), cancelledBy: 'store' } });
-                const r = await refunds.requestRefund({ orderId: order._id, source: 'store_cancel', reason: 'Cancelled by the store', requestedBy: 'shopify' });
-                current = r.order;
-                changes.push('refund:requested');
+                if (current.paymentMethod === 'prepaid') {
+                    const r = await refunds.requestRefund({ orderId: order._id, source: 'store_cancel', reason: 'Cancelled by the store', requestedBy: 'shopify' });
+                    current = r.order;
+                    changes.push('refund:requested');
+                } else {
+                    // COD marked paid (cash taken): there is no online payment to
+                    // refund, so flag it for ops to refund by hand instead of failing.
+                    await Order.updateOne(
+                        { _id: order._id, 'review.reasons': { $ne: 'cod_refund_manual' } },
+                        { $set: { 'review.needed': true, 'review.flaggedAt': new Date() }, $push: { 'review.reasons': 'cod_refund_manual' } }
+                    );
+                    alert(current, 'store cancelled a paid COD order: refund the cash by hand');
+                    changes.push('review:cod_refund_manual');
+                }
             }
         }
         await reservations.release(order._id);

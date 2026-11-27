@@ -60,9 +60,14 @@ router.post('/webhooks', async (req, res) => {
     // take.health app orders (tagged take-app): shipped / delivered / cancelled /
     // COD paid -> our Order (fetch-back, never the payload). Card offer below
     // still sees the order topics it uses, unless SHOP_APP_ORDERS_CARD_OFFER=false.
+    // A failure here must not block the card offer (else a cancelled order keeps
+    // its free Take+): the offer still runs, then we answer 500 so Shopify
+    // retries the app-order part. The retry skips the offer (same webhook id).
+    let shopError = null;
     if (shopOrderSync.isOrderLifecycleTopic(topic)) {
+        let appOrder = null;
         try {
-            const appOrder = await shopOrderSync.findAppOrder(topic, req.body);
+            appOrder = await shopOrderSync.findAppOrder(topic, req.body);
             if (appOrder) {
                 const r = await shopOrderSync.handleWebhook(appOrder, topic, req.body);
                 console.log(`[Shopify webhook] ${topic} app order ${appOrder.internalOrderId} -> ${r.ignored ? `ignored (${r.ignored})` : (r.changes.join(', ') || 'no change')}`);
@@ -72,7 +77,10 @@ router.post('/webhooks', async (req, res) => {
             }
         } catch (error) {
             console.error(`[Shopify webhook] ${topic} app order update failed:`, error.message);
-            return res.status(500).json({ received: false }); // Shopify retries; applying is idempotent
+            if (!OFFER_TOPICS.has(topic) || (appOrder && !shopConfig.appOrdersGetCardOffer())) {
+                return res.status(500).json({ received: false }); // Shopify retries; applying is idempotent
+            }
+            shopError = error;
         }
     }
 
@@ -90,6 +98,7 @@ router.post('/webhooks', async (req, res) => {
             : result.ignored ? `ignored${typeof result.ignored === 'string' ? ` (${result.ignored})` : ''}`
                 : `eligible=${result.eligible} granted=${Boolean(result.granted)} revoked=${Boolean(result.revoked)}`;
         console.log(`[Shopify webhook] ${topic} ${result.orderName || '-'} -> ${outcome}`);
+        if (shopError) return res.status(500).json({ received: false }); // offer done; retry is for the app order
         res.status(200).json({ received: true, ...result });
     } catch (error) {
         console.error(`[Shopify webhook] ${topic} processing failed:`, error.message);

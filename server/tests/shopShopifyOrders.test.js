@@ -499,6 +499,36 @@ test('webhook: store cancels a PREPAID order -> refund requested for admin appro
     assert.equal(get(o).refunds.length, 1);
 });
 
+test('webhook: store cancels a COD order already marked paid -> flagged for manual refund, no crash, card offer runs', async () => {
+    const o = await syncedOrder({ paymentMethod: 'cod', paymentStatus: 'cod_pending', payment: undefined });
+    shopify.markPaid(o.internalOrderId);
+    await shopifyWebhook('orders/paid', { id: Number(o.shopifyOrderId), tags: `take-app, ${o.internalOrderId}, COD` });
+    assert.equal(get(o).paymentStatus, 'paid');
+    shopify.cancel(o.internalOrderId);
+    const r = await shopifyWebhook('orders/cancelled', { id: Number(o.shopifyOrderId), tags: `take-app, ${o.internalOrderId}, COD` });
+    assert.equal(r.status, 200);
+    const after = get(o);
+    assert.equal(after.fulfillmentStatus, 'cancelled');
+    assert.equal(after.cancelledBy, 'store');
+    assert.equal((after.refunds || []).length, 0, 'no online refund for cash');
+    assert.equal(after.review.needed, true);
+    assert.deepEqual(after.review.reasons, ['cod_refund_manual']);
+    assert.deepEqual(offerCalls, ['orders/paid', 'orders/cancelled']);
+    await shopifyWebhook('orders/cancelled', { id: Number(o.shopifyOrderId), tags: `take-app, ${o.internalOrderId}, COD` }); // replay
+    assert.deepEqual(get(o).review.reasons, ['cod_refund_manual']);
+});
+
+test('webhook: app-order update fails -> card offer still runs, 500 so Shopify retries the app order', async () => {
+    const o = await syncedOrder();
+    shopify.cancel(o.internalOrderId);
+    for (let i = 0; i < 5; i += 1) shopify.state.next.push({ op: 'fetch', status: 500, body: {} });
+    const r = await shopifyWebhook('orders/cancelled', { id: Number(o.shopifyOrderId), tags: `take-app, ${o.internalOrderId}` });
+    assert.equal(r.status, 500);
+    assert.deepEqual(offerCalls, ['orders/cancelled']);
+    assert.equal(get(o).fulfillmentStatus, 'unfulfilled', 'app order untouched until the retry');
+    shopify.state.next.length = 0;
+});
+
 test('webhook: orders/create for our order heals a sync that never got recorded', async () => {
     const o = confirmedOrder();
     shopify.state.next.push({ op: 'create', createThenFail: true, status: 502 });
