@@ -604,17 +604,19 @@ Sections: scalar `basic | body | lifestyle | diet | fitness | goals | coachPrefe
 
 | Call | Body | Notes |
 | --- | --- | --- |
-| `GET /` | | `{ profile, version, updatedAt, exists, readOnly }`. Keep `version` for the next write |
+| `GET /` | | `{ profile, version, updatedAt, exists, readOnly, completeness }`. Keep `version` for the next write |
 | `PATCH /:section` | `{ data: { weightKg: 74 }, version? }` | `null` or `""` clears a field |
 | `POST /:section/items` | `{ item: { allergen: "Peanut", severity: "severe" }, version? }` | Same key (case-insensitive) updates the existing item. Returns `itemId` |
 | `PATCH /:section/items/:itemId` | `{ data: { severity: "mild" }, version? }` | |
 | `DELETE /:section/items/:itemId` | `{ version? }` | Removing the last item sets state `missing` |
 | `POST /:section/none` | `{ version? }` | "I have none". 400 while items exist |
-| `GET /completeness` | | `{ percent, answered, total, missingCritical, missing: [{ field, priority }] }` |
+| `GET /completeness` | | `{ percent, answered, total, missingCritical, sections: [{ key, label, percent, answered, total, missing }], missing: [{ field, priority, section, editSection, label }] }` (27 Nov: sections + labels; intolerances, mentalHealth, disabilities now count) |
 | `GET /history` | `?field=body.weightKg&limit=20&before=<id>` | Newest first; `nextBefore` for the next page |
 | `POST /undo/:historyId` | | Only the latest change of a field can be undone |
 
-Every write returns `{ success, changed, profile, version, updatedAt }` (no second GET needed). Errors: `400` bad input (`PROFILE_INVALID_INPUT`), `404` not found, `409` stale `version` (`PROFILE_VERSION_CONFLICT`: reload, then retry), `429` too many writes (30/min), `500` generic. Never send `source`, `verified`, `updatedAt`, `_id` or `meta`: 400.
+Every write returns `{ success, changed, profile, version, updatedAt, completeness }` (no second GET needed).
+
+**Profile completeness (27 Nov).** `completeness` on `GET /` and every write = `{ percent, missingCritical, sections: [{ key, label: { english, hinglish }, percent }], next }`; `next` is the most important missing field `{ field, priority, section, editSection, label }` or `null`. App: progress bar from `percent`, per-section bars from `sections` (basic, body, medical, lifestyle, diet, goals, fitness), "Next: <label>" button opening `editSection` (list sections → add item / "none"; scalar → that form), red banner while `missingCritical > 0`. Full list of missing fields: `GET /completeness`. Weights critical 3 / important 2 / optional 1; a list answered "none" counts as answered. Pure function (`services/completeness.js`), no extra DB read. Errors: `400` bad input (`PROFILE_INVALID_INPUT`), `404` not found, `409` stale `version` (`PROFILE_VERSION_CONFLICT`: reload, then retry), `429` too many writes (30/min), `500` generic. Never send `source`, `verified`, `updatedAt`, `_id` or `meta`: 400.
 | GET / PATCH | `/api/coach/symptoms(/:id)` | protect, consent |
 | POST | `/api/coach/feedback` | protect, consent |
 | POST | `/api/coach/internal/post-chat` | verifyQStash |

@@ -79,6 +79,7 @@ function createHealthProfileController({
     repo = require('../services/profileRepo').mongoRepo,
     sideEffects = require('../services/profileSideEffects').createProfileSideEffects(),
     completeness = require('../services/completeness').computeCompleteness,
+    completenessSummary = require('../services/completeness').completenessSummary,
     logger = console,
 } = {}) {
     const { toView } = require('../services/profileContextService');
@@ -101,7 +102,8 @@ function createHealthProfileController({
     // fresh profile so the app never needs a second GET.
     async function respondWrite(req, res, result, extra = {}) {
         if (result.changed) await sideEffects.afterProfileChange(req.user._id, result.sections || []);
-        return res.json({ success: true, changed: Boolean(result.changed), ...extra, ...toView(result.profile) });
+        const view = toView(result.profile);
+        return res.json({ success: true, changed: Boolean(result.changed), ...extra, ...view, completeness: completenessSummary(view.profile) });
     }
 
     const opts = (req) => ({ source: 'manual', expectedVersion: parseVersion(req.body) });
@@ -110,7 +112,7 @@ function createHealthProfileController({
         getProfile: handle(async (req, res) => {
             const result = await read.getProfile(req.user._id);
             if (!result) return res.status(404).json({ success: false, code: 'PROFILE_NOT_FOUND', message: 'User not found' });
-            return res.json({ success: true, ...result });
+            return res.json({ success: true, ...result, completeness: completenessSummary(result.profile) });
         }),
 
         getCompleteness: handle(async (req, res) => {

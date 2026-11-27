@@ -103,6 +103,17 @@ test('GET completeness: lists missing fields, most important first; "none" count
     const after = await call('getCompleteness');
     assert.ok(!after.body.missing.some((m) => m.field === 'medications'));
     assert.ok(after.body.percent > before.body.percent);
+    assert.ok(Array.isArray(after.body.sections) && after.body.sections.length === 7);
+});
+
+test('GET profile and writes return a completeness block that moves after a save', async () => {
+    const { call } = setup();
+    const got = await call('getProfile');
+    assert.equal(typeof got.body.completeness.percent, 'number');
+    assert.equal(got.body.completeness.sections.length, 7);
+    const saved = await call('markNone', { params: { section: 'medications' } });
+    assert.ok(saved.body.completeness.percent > got.body.completeness.percent);
+    assert.notEqual(saved.body.completeness.next?.field, 'medications');
 });
 
 // ── PATCH /:section ────────────────────────────────────────────────────────
@@ -278,6 +289,7 @@ test('completeness: empty profile is 0%, fully answered is 100%', () => {
         body: { heightCm: 175, weightKg: 70 },
         allergies: { state: 'none' }, medications: { state: 'none' }, conditions: { state: 'has_items' },
         familyHistory: { state: 'none' }, surgeries: { state: 'none' },
+        intolerances: { state: 'none' }, mentalHealth: { state: 'none' }, disabilities: { state: 'none' },
         diet: { preference: 'vegetarian' }, goals: { primary: ['Better Sleep'] },
         lifestyle: { activityLevel: 'sedentary', smoking: 'no', alcohol: 'no', sleepHours: 7, stressLevel: 'low', profession: 'desk_job' },
         fitness: { experience: 'beginner' },
@@ -285,6 +297,46 @@ test('completeness: empty profile is 0%, fully answered is 100%', () => {
     const c = computeCompleteness(full);
     assert.equal(c.percent, 100);
     assert.deepEqual(c.missing, []);
+    assert.ok(c.sections.every((s) => s.percent === 100 && s.missing.length === 0));
+});
+
+test('completeness: per-section percent, labels and edit section on missing fields', () => {
+    const c = computeCompleteness({
+        basic: { age: 30, gender: 'female' }, body: { heightCm: 160, weightKg: 55 },
+        allergies: { state: 'none' }, medications: { state: 'missing' }, conditions: { state: 'has_items' },
+    });
+    const sec = Object.fromEntries(c.sections.map((s) => [s.key, s]));
+    assert.deepEqual(c.sections.map((s) => s.key), ['basic', 'body', 'medical', 'lifestyle', 'diet', 'goals', 'fitness']);
+    assert.equal(sec.body.percent, 100);
+    assert.equal(sec.basic.percent, Math.round((6 / 7) * 100)); // age 3 + gender 3 of 7 (blood group 1 missing)
+    assert.equal(sec.lifestyle.percent, 0);
+    assert.ok(sec.medical.missing.includes('medications') && sec.medical.missing.includes('mentalHealth'));
+    const med = c.missing[0];
+    assert.equal(med.field, 'medications');
+    assert.equal(med.editSection, 'medications');
+    assert.ok(med.label.english && med.label.hinglish);
+    assert.equal(c.missing.find((m) => m.field === 'lifestyle.smoking').editSection, 'lifestyle');
+    assert.equal(c.missingCritical, 1);
+});
+
+test('completeness: new sections (intolerances, mental health, disabilities) count; "none" answers them', () => {
+    const base = { allergies: { state: 'none' } };
+    const before = computeCompleteness(base);
+    const after = computeCompleteness({ ...base, intolerances: { state: 'none' }, mentalHealth: { state: 'has_items' }, disabilities: { state: 'none' } });
+    for (const f of ['intolerances', 'mentalHealth', 'disabilities']) {
+        assert.ok(before.missing.some((m) => m.field === f));
+        assert.ok(!after.missing.some((m) => m.field === f));
+    }
+    assert.ok(after.percent > before.percent);
+});
+
+test('completeness: summary for profile responses has percent, sections and next step', () => {
+    const { completenessSummary } = require('../modules/health-profile/services/completeness');
+    const s = completenessSummary({ allergies: { state: 'none' } });
+    assert.equal(typeof s.percent, 'number');
+    assert.equal(s.sections.length, 7);
+    assert.equal(s.next.field, 'medications');
+    assert.equal(completenessSummary(null).percent, 0);
 });
 
 // ── DPDPA ──────────────────────────────────────────────────────────────────

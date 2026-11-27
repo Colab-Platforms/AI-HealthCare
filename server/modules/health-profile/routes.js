@@ -1,7 +1,7 @@
 // Health profile routes, mounted at /api/health-profile.
 //
 //   GET    /                               full profile + version
-//   GET    /completeness                   percent + missing fields (most important first)
+//   GET    /completeness                   percent, per-section percent, missing fields with labels (most important first)
 //   GET    /history?field=&before=&limit=  change log, newest first
 //   PATCH  /:section                       basic | body | lifestyle | diet | fitness | goals | coachPreferences
 //   POST   /:section/items                 conditions | medications | allergies | surgeries | familyHistory
