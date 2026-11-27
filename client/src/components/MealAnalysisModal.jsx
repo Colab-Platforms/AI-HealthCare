@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Zap, CheckCircle2, Lightbulb, FlaskConical, Utensils, Plus, Info, Flame, Heart, Activity, TrendingUp } from 'lucide-react';
-import { ImageWithFallback } from './ImageWithFallback';
 
 // Circular score gauge
 function ScoreCircle({ score, size = 72 }) {
@@ -151,10 +150,6 @@ export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
   const carbs = meal.totalNutrition?.carbs || meal.foodItems?.[0]?.nutrition?.carbs || meal.foodItem?.nutrition?.carbs || meal.nutrition?.carbs || meal.carbs || 0;
   const fats = meal.totalNutrition?.fats || meal.foodItems?.[0]?.nutrition?.fats || meal.foodItem?.nutrition?.fats || meal.nutrition?.fats || meal.fats || 0;
 
-  // Get the stored image URL(s) — a multi-photo scan has one photo per (roughly) dish
-  const storedImage = meal.imageUrl || meal.image || meal.foodItems?.[0]?.imageUrl || null;
-  const imageGallery = meal.imageUrls?.length > 0 ? meal.imageUrls : storedImage ? [storedImage] : [];
-
   // Extract ALL micronutrients from all sources
   const allMicronutrients = extractAllMicronutrients(meal);
 
@@ -237,51 +232,6 @@ export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
 
         {/* ─── SCROLLABLE BODY ─── */}
         <div className="overflow-y-auto flex-1 scrollbar-hide px-6 pb-6 space-y-4">
-
-          {/* ─── FOOD IMAGE(S) ─── */}
-          {imageGallery.length > 1 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="grid grid-cols-3 gap-2"
-            >
-              {imageGallery.map((src, i) => (
-                <div key={i} className="relative h-24 md:h-28 rounded-2xl overflow-hidden shadow-md">
-                  <ImageWithFallback src={src} query={foodName} alt={`Dish photo ${i + 1}`} className="w-full h-full object-cover" />
-                  {i === 0 && (
-                    <div className="absolute top-1.5 left-1.5">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-md text-[7px] font-black text-slate-700 uppercase tracking-wider shadow-sm border border-white/60">
-                        <Sparkles className="w-2.5 h-2.5 text-emerald-500" /> Analyzed
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="relative w-full h-52 md:h-56 rounded-[1.5rem] overflow-hidden shadow-lg"
-            >
-              {/* Use storedImage first for consistency, fallback to name-based search */}
-              <ImageWithFallback
-                src={storedImage}
-                query={foodName}
-                alt={foodName}
-                className="w-full h-full object-cover"
-              />
-              {(meal.source === 'ai_vision' || meal._isImageAnalysis) && (
-                <div className="absolute top-4 left-4">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-[9px] font-black text-slate-700 uppercase tracking-wider shadow-md border border-white/60">
-                    <Sparkles className="w-3 h-3 text-emerald-500" /> Analyzed Image
-                  </span>
-                </div>
-              )}
-            </motion.div>
-          )}
 
           {/* ─── MACROS CARD ─── */}
           <motion.div 

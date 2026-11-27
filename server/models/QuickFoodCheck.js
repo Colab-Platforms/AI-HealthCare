@@ -19,6 +19,7 @@ const quickFoodCheckSchema = new mongoose.Schema({
   protein: Number,
   carbs: Number,
   fats: Number,
+  fiber: Number,
   nutrition: {
     calories: Number,
     protein: Number,
@@ -26,7 +27,14 @@ const quickFoodCheckSchema = new mongoose.Schema({
     fats: Number,
     fiber: Number,
     sugar: Number,
-    sodium: Number
+    sodium: Number,
+    // Food DB scan only (same names as FoodLog: saturatedFat in g; the rest in mg)
+    saturatedFat: Number,
+    cholesterol: Number,
+    potassium: Number,
+    calcium: Number,
+    iron: Number,
+    vitaminC: Number
   },
   healthScore: {
     type: Number,
@@ -99,10 +107,27 @@ const quickFoodCheckSchema = new mongoose.Schema({
       fats: Number,
       fiber: Number,
       sugar: Number,
-      sodium: Number
+      sodium: Number,
+      // Food DB scan only (same names as FoodLog: saturatedFat in g; the rest in mg)
+      saturatedFat: Number,
+      cholesterol: Number,
+      potassium: Number,
+      calcium: Number,
+      iron: Number,
+      vitaminC: Number
     },
-    healthScore: Number
+    healthScore: Number,
+    // Food DB scan (docs/FOOD_DB_FLOW.md section 7.2) — absent on AI-only scans
+    foodId: String,
+    grams: Number,
+    matchScore: Number,
+    source: { type: String, enum: ['food_db', 'ai_fallback'] },
+    dataStatus: String,
+    glycemicIndex: Number,
+    allergens: [String]
   }],
+  // Where the nutrition came from: 'ai' = the original AI-only flow; the rest = Food DB scan
+  source: { type: String, enum: ['ai', 'food_db', 'ai_fallback', 'mixed'], default: 'ai' },
   scanType: {
     type: String,
     enum: ['barcode', 'image', 'multi_image', 'text'],

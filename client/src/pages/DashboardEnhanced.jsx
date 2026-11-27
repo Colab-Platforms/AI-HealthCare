@@ -80,7 +80,6 @@ import {
   Bar,
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
-import { getFoodImage } from "../services/imageService";
 import api, { nutritionService, dietRecommendationService, gamificationService } from "../services/api";
 import HealthShareCard from "../components/HealthShareCard";
 import { ImageWithFallback } from "../components/ImageWithFallback";
@@ -220,20 +219,6 @@ const NutrientMacroCompact = ({
 );
 
 const MealGallaryCard = ({ item, mealType, onClick }) => {
-  const [image, setImage] = useState(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    if (item?.name) {
-      getFoodImage(item.name).then((img) => {
-        if (isMounted && img) setImage(img);
-      });
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, [item?.name]);
-
   const tag =
     item?.tag ||
     (item?.calories < 200
@@ -244,27 +229,12 @@ const MealGallaryCard = ({ item, mealType, onClick }) => {
 
   return (
     <div
-      onClick={() => onClick && onClick({ ...item, image })}
+      onClick={() => onClick && onClick(item)}
       className={`min-w-[180px] rounded-[2.2rem] p-4 group transition-all border flex flex-col snap-start cursor-pointer bg-white border-slate-50/50 hover:bg-white hover:shadow-xl hover:shadow-slate-100`}
     >
       <div className="relative h-40 mb-3">
         <div className="w-full h-full rounded-[1.5rem] overflow-hidden bg-slate-50">
-          {image ? (
-            <img
-              src={item?.imageUrl || image}
-              alt={item?.name}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src =
-                  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80";
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-200">
-              <Utensils className="w-8 h-8 opacity-10" />
-            </div>
-          )}
+          <ImageWithFallback className="w-full h-full" />
         </div>
         <div className="absolute top-2.5 right-2.5 px-2.5 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black text-black shadow-sm flex items-center gap-1">
           {item?.totalNutrition?.calories ||
@@ -571,20 +541,6 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
         </div>
 
         <div className="px-8 overflow-y-auto pb-8 scrollbar-hide">
-          {/* Main Image */}
-          <div className="relative h-64 rounded-3xl overflow-hidden mb-8 border border-slate-100">
-            <ImageWithFallback
-              src={meal.image || data.imageUrl}
-              foodName={meal.name}
-              className="w-full h-full object-cover"
-            />
-            {(meal.image || data.imageUrl) && (
-              <div className="absolute bottom-4 right-4 px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-black shadow-sm border border-white">
-                Analyzed Image
-              </div>
-            )}
-          </div>
-
           {/* Macros Grid */}
           <div className="grid grid-cols-4 gap-4 p-6 bg-[#FDFDFD] rounded-[32px] border border-slate-100 shadow-sm mb-6">
             <div className="text-center">
@@ -2572,7 +2528,6 @@ export default function DashboardEnhanced() {
                               item?.name ||
                               item?.foodItems?.[0]?.name ||
                               "food";
-                            const bingThumb = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(foodName + " indian food")}&w=400&h=400&c=7&o=5&pid=Api&mkt=en-IN`;
                             return (
                               <div
                                 key={idx}
@@ -2580,14 +2535,7 @@ export default function DashboardEnhanced() {
                               >
                                 {/* Meal Image Floating */}
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[102px] h-[100px] z-20 rounded-full border-[3px] border-white shadow-xl overflow-hidden bg-white group-hover:scale-105 transition-transform duration-500">
-                                  <img
-                                    src={item?.imageUrl || bingThumb}
-                                    alt={foodName}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.target.src = bingThumb;
-                                    }}
-                                  />
+                                  <ImageWithFallback className="w-full h-full" />
                                 </div>
                                 {/* Content Card */}
                                 <div className="liquid-glass-inner absolute bottom-0 left-0 w-full h-[126px] rounded-[22px] pt-[52px] px-4 pb-3 z-10 text-left">
@@ -3060,7 +3008,6 @@ export default function DashboardEnhanced() {
                 .slice(0, 8)
                 .map((meal, idx) => {
                   const foodName = meal.name || meal.foodItems?.[0]?.name || "Meal";
-                  const bingThumb = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(foodName + " indian food")}&w=400&h=300&c=7&o=5&pid=Api`;
                   const calories = meal.totalNutrition?.calories || meal.calories || 200;
                   const protein = meal.totalNutrition?.protein || meal.protein || 0;
                   const mealTypeColors = {
@@ -3082,13 +3029,7 @@ export default function DashboardEnhanced() {
                     >
                       {/* Image */}
                       <div className="relative h-[110px] overflow-hidden">
-                        <img
-                          src={meal.imageUrl || bingThumb}
-                          alt={foodName}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => { e.target.src = bingThumb; }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                        <ImageWithFallback className="w-full h-full" />
                         <div className="absolute top-2 left-2">
                           <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-sm"
                             style={{ background: typeColor.bg, color: typeColor.text, border: `1px solid ${typeColor.text}30` }}>

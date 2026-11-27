@@ -1,0 +1,1634 @@
+{
+  "generatedAt": "2026-11-25T11:06:55.652Z",
+  "mode": "apply",
+  "options": {
+    "apply": true,
+    "force": false,
+    "retryMissing": false,
+    "all": true,
+    "limit": 200,
+    "foodIds": [],
+    "sources": [
+      "wikimedia",
+      "openverse",
+      "pexels"
+    ],
+    "delayMs": 1500,
+    "minMatch": 0.6
+  },
+  "counts": {
+    "error": 22,
+    "missing": 22,
+    "uploaded": 26
+  },
+  "foods": [
+    {
+      "foodId": "THF-00075",
+      "name": "Gatte ki Sabzi",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg/960px-Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg/960px-Gatte_ki_sabzi_served_with_aamras_and_garlic_chutney.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00120",
+      "name": "Punjabi Chole Masala",
+      "category": "lentil or legume dish",
+      "hitCount": 0,
+      "candidatesSeen": 7,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Punjabi_Chole_Masala.JPG/960px-Punjabi_Chole_Masala.JPG: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Punjabi_Chole_Masala.JPG/960px-Punjabi_Chole_Masala.JPG - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00198",
+      "name": "Mutton Chettinad",
+      "category": "meat or fish curry",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Mutton_Chettinad.jpg/960px-Mutton_Chettinad.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Mutton_Chettinad.jpg/960px-Mutton_Chettinad.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00212",
+      "name": "Methi Malai Chicken",
+      "category": "meat or fish curry",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Methi_Malai_Chicken.jpg/500px-Methi_Malai_Chicken.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Methi_Malai_Chicken.jpg/500px-Methi_Malai_Chicken.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00362",
+      "name": "Oats Upma",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Oats_Upma...yummy.jpg/960px-Oats_Upma...yummy.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Oats_Upma...yummy.jpg/960px-Oats_Upma...yummy.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00404",
+      "name": "Hara Bhara Kebab",
+      "category": "snack",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Hara_Bhara_kebab_with_cheese.jpg/500px-Hara_Bhara_kebab_with_cheese.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Hara_Bhara_kebab_with_cheese.jpg/500px-Hara_Bhara_kebab_with_cheese.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00645",
+      "name": "Vegetable Chowmein",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 10,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Vegetable_Chowmein_Served_in_a_Bowl.jpg/960px-Vegetable_Chowmein_Served_in_a_Bowl.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Vegetable_Chowmein_Served_in_a_Bowl.jpg/960px-Vegetable_Chowmein_Served_in_a_Bowl.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00658",
+      "name": "Whole Moong",
+      "category": "lentil or legume dish",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Moong_Dal_%285194456370%29.jpg/960px-Moong_Dal_%285194456370%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Moong_Dal_%285194456370%29.jpg/960px-Moong_Dal_%285194456370%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00675",
+      "name": "Potato Fenugreek",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 9,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg/960px-Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg/960px-Methi_Bhaji_%28Fenugreek_leaves_with_potato%29_%281303338041%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00682",
+      "name": "Stuffed Okra",
+      "category": "vegetable or paneer dish",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {
+        "licence not allowed": 2,
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg/960px-Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg/960px-Stuffed_Okra_Recipe_From_Indian_Cuisine_By_Sonia_Goyal.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00837",
+      "name": "Curd Dip",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg/500px-Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg/500px-Melt_in_your_mouth_prime_rib_dip_with_caramelized_onions_and_provolone_%26_a_side_of_fried_cheese_curds._Yum._From_The_Koch_at_Anaheim_Packing_House._%2814628765822%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00866",
+      "name": "Fruit Loaf",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 11,
+      "rejected": {
+        "licence not allowed": 2,
+        "too small": 2
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg/500px-Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg/500px-Bernhard_Wiegandt%2C_A_Brazilian_woman_carrying_a_basket_of_fruit_on_her_head%2C_with_Sugar_Loaf_beyond.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-00887",
+      "name": "Sweet and Salty Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-00923",
+      "name": "Mashed Banana with Milk",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {
+        "licence not allowed": 3
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg/500px-Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg/500px-Nilusak_is_a_traditional_Filipino_delicacy_made_by_mashing_boiled_root_crops_such_as_bananas_%28usually_saba%29%2C_cassava%2C_or_sweet_potatoes._The_mashed_mixture_is_sweetened_with_sugar_and_sometimes_enriched_with_butter%2C_condensed_milk.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01020",
+      "name": "Masala Dosa Paneer Fillings",
+      "category": "one-dish meal or breakfast item",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/e/eb/PANEER_MASALA_DOSA_-_Mini_MADRAS_2026-05-03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original: Error in loading https://upload.wikimedia.org/wikipedia/commons/e/eb/PANEER_MASALA_DOSA_-_Mini_MADRAS_2026-05-03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01123",
+      "name": "Mango Raita",
+      "category": "raita or curd side",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "title mentions \"menu\"": 1,
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Mango_Raita.jpg/500px-Mango_Raita.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Mango_Raita.jpg/500px-Mango_Raita.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01159",
+      "name": "Gulab Jamun with Milk Powder",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {
+        "title mentions \"market\"": 1,
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Milk_Powder_Gulab_Jamun_by_Preeti_Tamilarasan.jpg/500px-Milk_Powder_Gulab_Jamun_by_Preeti_Tamilarasan.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Milk_Powder_Gulab_Jamun_by_Preeti_Tamilarasan.jpg/500px-Milk_Powder_Gulab_Jamun_by_Preeti_Tamilarasan.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01192",
+      "name": "Gun Powder Chutney",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Parappu_Podi_-_Gun_Powder.jpg/960px-Parappu_Podi_-_Gun_Powder.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Parappu_Podi_-_Gun_Powder.jpg/960px-Parappu_Podi_-_Gun_Powder.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01230",
+      "name": "Gingerman Biscuit",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Eat Me",
+        "matchScore": 1,
+        "precision": 0,
+        "license": "by-sa",
+        "creator": "nefasth",
+        "imageUrl": "https://live.staticflickr.com/7005/6559254097_6ae5ae5b2a.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/60567679@N06/6559254097",
+        "width": 500,
+        "height": 500,
+        "query": "Gingerman Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603705/takehealth/food_db/THF-01230.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01231",
+      "name": "Coffee Drops",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Helicopter Drops Retardant on Coffee Pot Fire",
+        "matchScore": 1,
+        "precision": 0.333,
+        "license": "pdm",
+        "creator": null,
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d2/Helicopter_Drops_Retardant_on_Coffee_Pot_Fire.jpg/1280px-Helicopter_Drops_Retardant_on_Coffee_Pot_Fire.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Helicopter_Drops_Retardant_on_Coffee_Pot_Fire.jpg",
+        "width": 2600,
+        "height": 1874,
+        "query": "Coffee Drops",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603711/takehealth/food_db/THF-01231.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/Coffee_beans_at_Le_Caf%C3%A9_Alain_Ducasse%2C_Coal_Drops_Yard%2C_King%27s_Cross_%2846731227721%29.jpg/1280px-Coffee_beans_at_Le_Caf%C3%A9_Alain_Ducasse%2C_Coal_Drops_Yard%2C_King%27s_Cross_%2846731227721%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Coffee_beans_at_Le_Caf%C3%A9_Alain_Ducasse,_Coal_Drops_Yard,_King%27s_Cross_(46731227721).jpg",
+          "license": "by",
+          "creator": "Bex Walton from London, England",
+          "title": "Coffee beans at Le Café Alain Ducasse, Coal Drops Yard, King's Cross (46731227721)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/Yemen_filter_coffee_at_Le_Caf%C3%A9_Alain_Ducasse%2C_Coal_Drops_Yard%2C_King%27s_Cross_%2845815690105%29.jpg/1280px-Yemen_filter_coffee_at_Le_Caf%C3%A9_Alain_Ducasse%2C_Coal_Drops_Yard%2C_King%27s_Cross_%2845815690105%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Yemen_filter_coffee_at_Le_Caf%C3%A9_Alain_Ducasse,_Coal_Drops_Yard,_King%27s_Cross_(45815690105).jpg",
+          "license": "by",
+          "creator": "Bex Walton from London, England",
+          "title": "Yemen filter coffee at Le Café Alain Ducasse, Coal Drops Yard, King's Cross (45815690105)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01232",
+      "name": "Christmas Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Christmas biscuits 01",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Wald1siedel",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Christmas_biscuits_01.JPG/1280px-Christmas_biscuits_01.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_biscuits_01.JPG",
+        "width": 3214,
+        "height": 2442,
+        "query": "Christmas Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603715/takehealth/food_db/THF-01232.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Christmas_biscuits_03.JPG/1280px-Christmas_biscuits_03.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_biscuits_03.JPG",
+          "license": "by-sa",
+          "creator": "Wald1siedel",
+          "title": "Christmas biscuits 03",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Christmas_biscuits_02.JPG/1280px-Christmas_biscuits_02.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_biscuits_02.JPG",
+          "license": "by-sa",
+          "creator": "Wald1siedel",
+          "title": "Christmas biscuits 02",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/661_Christmas_biscuits.JPG/500px-661_Christmas_biscuits.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:661_Christmas_biscuits.JPG",
+          "license": "by-sa",
+          "creator": "EinPole",
+          "title": "661 Christmas biscuits",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01233",
+      "name": "Christmas Wreath Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01234",
+      "name": "Christmas Bell Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {
+        "odd aspect ratio": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01235",
+      "name": "Christmas Star Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 10,
+      "rejected": {
+        "licence not allowed": 5
+      },
+      "errors": [
+        "openverse \"Christmas Star Biscuit\": api.openverse.org: ECONNABORTED",
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/661_Christmas_biscuits.JPG/500px-661_Christmas_biscuits.JPG: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/661_Christmas_biscuits.JPG/500px-661_Christmas_biscuits.JPG - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Christmas fare - mince pies, chocolate biscuits and chocolate-dipped strawberries",
+        "matchScore": 0.667,
+        "precision": 0.25,
+        "license": "by",
+        "creator": "Sandy Austin",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Christmas_fare_-_mince_pies%2C_chocolate_biscuits_and_chocolate-dipped_strawberries.jpg/1280px-Christmas_fare_-_mince_pies%2C_chocolate_biscuits_and_chocolate-dipped_strawberries.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Christmas_fare_-_mince_pies,_chocolate_biscuits_and_chocolate-dipped_strawberries.jpg",
+        "width": 2560,
+        "height": 1920,
+        "query": "Christmas Star Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603817/takehealth/food_db/THF-01235.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/661_Christmas_biscuits.JPG/500px-661_Christmas_biscuits.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:661_Christmas_biscuits.JPG",
+          "license": "by-sa",
+          "creator": "EinPole",
+          "title": "661 Christmas biscuits",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01236",
+      "name": "Christmas Tree Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "too small": 2,
+        "title mentions \"tree\"": 2,
+        "licence not allowed": 2,
+        "title mentions \"shop\"": 1
+      },
+      "errors": [
+        "openverse \"Christmas Tree Biscuit\": api.openverse.org: ECONNABORTED",
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/661_Christmas_biscuits.JPG/500px-661_Christmas_biscuits.JPG: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/661_Christmas_biscuits.JPG/500px-661_Christmas_biscuits.JPG - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01237",
+      "name": "Chocolate Cream Shells",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 10,
+      "rejected": {
+        "licence not allowed": 5
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Avocado Ice Cream Dessert @ Seviche, Louisville, KY - Avocado ice cream, dulce de leche, bourbon truffle \"pit\" chocolate shell, coffee pine nut soil (2013-05-18 by Navin75)",
+        "matchScore": 1,
+        "precision": 0.143,
+        "license": "by-sa",
+        "creator": "Navin75",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Avocado_Ice_Cream_Dessert_%40_Seviche%2C_Louisville%2C_KY_-_Avocado_ice_cream%2C_dulce_de_leche%2C_bourbon_truffle_%22pit%22_chocolate_shell%2C_coffee_pine_nut_soil_%282013-05-18_by_Navin75%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Avocado_Ice_Cream_Dessert_@_Seviche,_Louisville,_KY_-_Avocado_ice_cream,_dulce_de_leche,_bourbon_truffle_%22pit%22_chocolate_shell,_coffee_pine_nut_soil_(2013-05-18_by_Navin75).jpg",
+        "width": 4608,
+        "height": 3456,
+        "query": "Chocolate Cream Shells",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603896/takehealth/food_db/THF-01237.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Liat_Portal_for_Foodie_Disorder_-_Chocolate_coated_ice_cream_bar_with_bite_taken.jpg/1280px-Liat_Portal_for_Foodie_Disorder_-_Chocolate_coated_ice_cream_bar_with_bite_taken.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Chocolate_coated_ice_cream_bar_with_bite_taken.jpg",
+          "license": "by-sa",
+          "creator": "HaJunkiyada",
+          "title": "Liat Portal for Foodie Disorder - Chocolate coated ice cream bar with bite taken",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01238",
+      "name": "Jelly Biscuit",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "title mentions \"label\"": 1,
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Biscuits with Jalapeno Jelly (2690725731)",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "Mack Male from Edmonton, AB, Canada",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/Biscuits_with_Jalapeno_Jelly_%282690725731%29.jpg/1280px-Biscuits_with_Jalapeno_Jelly_%282690725731%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Biscuits_with_Jalapeno_Jelly_(2690725731).jpg",
+        "width": 3264,
+        "height": 2448,
+        "query": "Jelly Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603900/takehealth/food_db/THF-01238.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Polish_biscuits_with_jelly_and_chocolate.JPG/1280px-Polish_biscuits_with_jelly_and_chocolate.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Polish_biscuits_with_jelly_and_chocolate.JPG",
+          "license": "by-sa",
+          "creator": "MOs810",
+          "title": "Polish biscuits with jelly and chocolate",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Biscuit_with_sausage%2C_egg%2C_cheese_and_jelly.jpg/1280px-Biscuit_with_sausage%2C_egg%2C_cheese_and_jelly.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Biscuit_with_sausage,_egg,_cheese_and_jelly.jpg",
+          "license": "by",
+          "creator": "jeffreyw",
+          "title": "Biscuit with sausage, egg, cheese and jelly",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Sausainiai_su_%C5%BE%C4%97le_%28Lithuanian_biscuits_with_jelly%29.jpg/1280px-Sausainiai_su_%C5%BE%C4%97le_%28Lithuanian_biscuits_with_jelly%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sausainiai_su_%C5%BE%C4%97le_(Lithuanian_biscuits_with_jelly).jpg",
+          "license": "by-sa",
+          "creator": "Bearas",
+          "title": "Sausainiai su žėle (Lithuanian biscuits with jelly)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01239",
+      "name": "Cherry and Walnut Cookies",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {
+        "title mentions \"drawing\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Tea with Dried cherries, walnuts, nuts, cookies abd dates (14172786389)",
+        "matchScore": 0.667,
+        "precision": 0.25,
+        "license": "by",
+        "creator": "Nahid V from Göteborg, Sweden",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b3/Tea_with_Dried_cherries%2C_walnuts%2C_nuts%2C_cookies_abd_dates_%2814172786389%29.jpg/1280px-Tea_with_Dried_cherries%2C_walnuts%2C_nuts%2C_cookies_abd_dates_%2814172786389%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tea_with_Dried_cherries,_walnuts,_nuts,_cookies_abd_dates_(14172786389).jpg",
+        "width": 5184,
+        "height": 3456,
+        "query": "Cherry and Walnut Cookies",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603927/takehealth/food_db/THF-01239.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/1627/25388047105_3a24c50387_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/63311602@N08/25388047105",
+          "license": "by",
+          "creator": "loustejskal.com",
+          "title": "Sundae Service with hot fudge, caramel, maraschino and Luxardo cherries, hazelnuts, cookies, walnuts, banana, pineapple, whipped cream at Maple & Ash",
+          "matchScore": 0.667
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01240",
+      "name": "Cheese Straws",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Cheese straws (78098634)",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by",
+        "creator": "Andy / Andrew Fogg from near Cambridge, UK",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/Cheese_straws_%2878098634%29.jpg/1280px-Cheese_straws_%2878098634%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cheese_straws_(78098634).jpg",
+        "width": 2592,
+        "height": 1944,
+        "query": "Cheese Straws",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795603933/takehealth/food_db/THF-01240.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/Cheese-straws-01.jpg/1280px-Cheese-straws-01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cheese-straws-01.jpg",
+          "license": "by",
+          "creator": "gkrew",
+          "title": "Cheese-straws-01",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/Palmier_and_Cheese_Straw_-_Real_P%C3%A2tisserie_2023-09-16.jpg/1280px-Palmier_and_Cheese_Straw_-_Real_P%C3%A2tisserie_2023-09-16.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Palmier_and_Cheese_Straw_-_Real_P%C3%A2tisserie_2023-09-16.jpg",
+          "license": "cc0",
+          "creator": "Andy Li",
+          "title": "Palmier and Cheese Straw - Real Pâtisserie 2023-09-16",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Cheese_Straw_-_GAIL%27s_Bakery_2025-12-21.jpg/1280px-Cheese_Straw_-_GAIL%27s_Bakery_2025-12-21.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cheese_Straw_-_GAIL%27s_Bakery_2025-12-21.jpg",
+          "license": "cc0",
+          "creator": "Andy Li",
+          "title": "Cheese Straw - GAIL's Bakery 2025-12-21",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01241",
+      "name": "Butterfly Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 8,
+      "rejected": {
+        "licence not allowed": 4,
+        "title mentions \"market\"": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01242",
+      "name": "Flan Pastry",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"box\"": 1
+      },
+      "errors": [
+        "openverse \"Flan Pastry\": api.openverse.org: ECONNABORTED"
+      ],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01243",
+      "name": "Fruit Flan",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Flans de fromage blanc au fruit de la passion (3)",
+        "matchScore": 1,
+        "precision": 0.25,
+        "license": "by",
+        "creator": "muriel amaury",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Flans_de_fromage_blanc_au_fruit_de_la_passion_%283%29.jpg/1280px-Flans_de_fromage_blanc_au_fruit_de_la_passion_%283%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Flans_de_fromage_blanc_au_fruit_de_la_passion_(3).jpg",
+        "width": 3072,
+        "height": 2304,
+        "query": "Fruit Flan",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604083/takehealth/food_db/THF-01243.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4e/Flans_de_fromage_blanc_au_fruit_de_la_passion_%282%29.jpg/1280px-Flans_de_fromage_blanc_au_fruit_de_la_passion_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Flans_de_fromage_blanc_au_fruit_de_la_passion_(2).jpg",
+          "license": "by",
+          "creator": "muriel amaury",
+          "title": "Flans de fromage blanc au fruit de la passion (2)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Flans_de_fromage_blanc_au_fruit_de_la_passion_%281%29.jpg/1280px-Flans_de_fromage_blanc_au_fruit_de_la_passion_%281%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Flans_de_fromage_blanc_au_fruit_de_la_passion_(1).jpg",
+          "license": "by",
+          "creator": "muriel amaury",
+          "title": "Flans de fromage blanc au fruit de la passion (1)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01244",
+      "name": "Orange Cream Flan",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 3,
+      "rejected": {
+        "title mentions \"drawing\"": 2
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Pumpkin Ginger Flan with Cream",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by",
+        "creator": "Lori L. Stalteri",
+        "imageUrl": "https://live.staticflickr.com/8057/8210069820_8d38f16dcf_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/69655432@N00/8210069820",
+        "width": 1024,
+        "height": 1009,
+        "query": "Orange Cream Flan",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604106/takehealth/food_db/THF-01244.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01245",
+      "name": "Fruit Puree Tart",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 6,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "FORAGED MUSHROOM TART PORCINI MASCARPONE / CHESTNUT PUREE / MATSUTAKE",
+        "matchScore": 0.667,
+        "precision": 0.25,
+        "license": "by",
+        "creator": "T.Tseng",
+        "imageUrl": "https://live.staticflickr.com/7511/15929573255_825e29ec37_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/68147320@N02/15929573255",
+        "width": 1024,
+        "height": 768,
+        "query": "Fruit Puree Tart",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604128/takehealth/food_db/THF-01245.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01246",
+      "name": "Apple Banana Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 16,
+      "rejected": {
+        "licence not allowed": 9,
+        "too small": 3,
+        "title mentions \"raw\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Banana pumpkin, and lattice apple pie",
+        "matchScore": 1,
+        "precision": 0.6,
+        "license": "by",
+        "creator": "Librarian Avenger",
+        "imageUrl": "https://live.staticflickr.com/2715/4182153339_0bfd1a9bdb_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/32112542@N00/4182153339",
+        "width": 1024,
+        "height": 768,
+        "query": "Apple Banana Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604206/takehealth/food_db/THF-01246.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/2636/4195907764_7488ddcd03_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/26226522@N08/4195907764",
+          "license": "by-sa",
+          "creator": "[puamelia]",
+          "title": "BANANA CREAM PIE & WHISKEY APPLE PIE / Bubby's",
+          "matchScore": 1
+        },
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/5526/12443283135_33012230da.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/67839741@N06/12443283135",
+          "license": "by",
+          "creator": "L.A. Foodie",
+          "title": "Banana cream pie from The Apple Pan is the star of the new radio spot that L.A Foodie produced for KCRW! Evan Kleiman from KCRW'S Good Food takes Ben & Drew on a adventure in her magical flying tote bag. Hear the whole dang thing right now at LAFoodie.com",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01247",
+      "name": "Lemon Chiffon Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Meyer_Lemon_Chiffon_Pie_%2816479119915%29.jpg/500px-Meyer_Lemon_Chiffon_Pie_%2816479119915%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Meyer_Lemon_Chiffon_Pie_%2816479119915%29.jpg/500px-Meyer_Lemon_Chiffon_Pie_%2816479119915%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01248",
+      "name": "Orange Chiffon Pie",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Orange Chiffon Birthday Cake",
+        "matchScore": 0.667,
+        "precision": 0.5,
+        "license": "by",
+        "creator": "eekim",
+        "imageUrl": "https://live.staticflickr.com/4004/4408312037_12e2fa13ed_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/63669472@N00/4408312037",
+        "width": 1024,
+        "height": 768,
+        "query": "Orange Chiffon Pie",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604278/takehealth/food_db/THF-01248.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01249",
+      "name": "Cream Buns",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Cream_bun.jpg/960px-Cream_bun.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Cream_bun.jpg/960px-Cream_bun.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Cream seafood soup and bun",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "Peachyeung316",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Cream_seafood_soup_and_bun.jpg/1280px-Cream_seafood_soup_and_bun.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cream_seafood_soup_and_bun.jpg",
+        "width": 6000,
+        "height": 4000,
+        "query": "Cream Buns",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604306/takehealth/food_db/THF-01249.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Cream_bun.jpg/960px-Cream_bun.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cream_bun.jpg",
+          "license": "cc0",
+          "creator": "Madhumitha Tamil",
+          "title": "Cream bun",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/Cream_filled_bun_of_Shimizuya.jpg/1280px-Cream_filled_bun_of_Shimizuya.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cream_filled_bun_of_Shimizuya.jpg",
+          "license": "by",
+          "creator": "ノボホショコロトソ",
+          "title": "Cream filled bun of Shimizuya",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Italian_Cream_Bun_%27Maritozzo%27_-_Caff%C3%A8_Nero_2025-01-05.jpg/1280px-Italian_Cream_Bun_%27Maritozzo%27_-_Caff%C3%A8_Nero_2025-01-05.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Italian_Cream_Bun_%27Maritozzo%27_-_Caff%C3%A8_Nero_2025-01-05.jpg",
+          "license": "cc0",
+          "creator": "Andy Li",
+          "title": "Italian Cream Bun 'Maritozzo' - Caffè Nero 2025-01-05",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01251",
+      "name": "Choux Swans",
+      "category": "other",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Swan choux pastry",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by-sa",
+        "creator": "06Ivonne",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Swan_choux_pastry.jpg/1280px-Swan_choux_pastry.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Swan_choux_pastry.jpg",
+        "width": 2304,
+        "height": 3072,
+        "query": "Choux Swans",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604311/takehealth/food_db/THF-01251.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Choux_pastry_swans.jpg/500px-Choux_pastry_swans.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Choux_pastry_swans.jpg",
+          "license": "by",
+          "creator": "Foodista",
+          "title": "Choux pastry swans",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01253",
+      "name": "Cream Horns",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 14,
+      "rejected": {
+        "title mentions \"shop\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Cream horns",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by",
+        "creator": "Ralph Daily",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Cream_horns.jpg/1280px-Cream_horns.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cream_horns.jpg",
+        "width": 2848,
+        "height": 4288,
+        "query": "Cream Horns",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604316/takehealth/food_db/THF-01253.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Cream_horns_%2815466292759%29.jpg/1280px-Cream_horns_%2815466292759%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cream_horns_(15466292759).jpg",
+          "license": "by",
+          "creator": "jeffreyw",
+          "title": "Cream horns (15466292759)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Creamy_horn_bread.jpg/1280px-Creamy_horn_bread.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Creamy_horn_bread.jpg",
+          "license": "cc0",
+          "creator": "Fumikas Sagisavas",
+          "title": "Creamy horn bread",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01257",
+      "name": "Pearl Millet Infant Food",
+      "category": "other",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01261",
+      "name": "Shishu Ahar",
+      "category": "other",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01263",
+      "name": "Banana Groundnut Paste",
+      "category": "other",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01269",
+      "name": "Spinach Peanut Burfi",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01270",
+      "name": "Split Bengal Gram Burfi",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01271",
+      "name": "Chickpea Flour Cookies",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/e/ea/Chickpea_Flour_Cookies_%285879409335%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/e/ea/Chickpea_Flour_Cookies_%285879409335%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01273",
+      "name": "Sesame Biscuit",
+      "category": "bakery",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "too small": 1,
+        "title mentions \"shop\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Sesame Biscuit 20230613 143219",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "pdm",
+        "creator": "Franklin Rainier",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/34/Sesame_Biscuit_20230613_143219.jpg/1280px-Sesame_Biscuit_20230613_143219.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sesame_Biscuit_20230613_143219.jpg",
+        "width": 4000,
+        "height": 3000,
+        "query": "Sesame Biscuit",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604438/takehealth/food_db/THF-01273.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e4/Sesame_biscuits.jpg/1280px-Sesame_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sesame_biscuits.jpg",
+          "license": "cc0",
+          "creator": "GeorgeTan#5 signs off",
+          "title": "Sesame biscuits",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6d/Tilkut_~_Sweet_savoury_made_from_jaggery_paste_%26_sesame_seeds_biscuits.jpg/1280px-Tilkut_~_Sweet_savoury_made_from_jaggery_paste_%26_sesame_seeds_biscuits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tilkut_~_Sweet_savoury_made_from_jaggery_paste_%26_sesame_seeds_biscuits.jpg",
+          "license": "by-sa",
+          "creator": "Jagisnowjughead",
+          "title": "Tilkut ~ Sweet savoury made from jaggery paste & sesame seeds biscuits",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01276",
+      "name": "Soya Chikki",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01278",
+      "name": "Wheat Flour and Nuts Ladoos",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01280",
+      "name": "Atta Dal Burfi",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01281",
+      "name": "Soya Roti",
+      "category": "flatbread",
+      "hitCount": 0,
+      "candidatesSeen": 4,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Soya_Chunks_and_Roti.jpg/960px-Soya_Chunks_and_Roti.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Soya_Chunks_and_Roti.jpg/960px-Soya_Chunks_and_Roti.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01286",
+      "name": "Apple Jelly",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Fresh crab apple Jelly",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "cc0",
+        "creator": "Nutrition, Food Safety & Health",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Fresh_crab_apple_Jelly.jpg/1280px-Fresh_crab_apple_Jelly.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fresh_crab_apple_Jelly.jpg",
+        "width": 2448,
+        "height": 2766,
+        "query": "Apple Jelly",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604502/takehealth/food_db/THF-01286.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Apple_and_grape_jelly_%283984569750%29.jpg/500px-Apple_and_grape_jelly_%283984569750%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_and_grape_jelly_(3984569750).jpg",
+          "license": "by",
+          "creator": "Nic from England",
+          "title": "Apple and grape jelly (3984569750)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/98/Calorie_Mate%2C_Jelly%2C_Apple_Flavor.jpg/1280px-Calorie_Mate%2C_Jelly%2C_Apple_Flavor.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Calorie_Mate,_Jelly,_Apple_Flavor.jpg",
+          "license": "by-sa",
+          "creator": "Mj-bird",
+          "title": "Calorie Mate, Jelly, Apple Flavor",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Stacked_jars_of_crab_apple_jelly_%2810289733585%29.jpg/1280px-Stacked_jars_of_crab_apple_jelly_%2810289733585%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stacked_jars_of_crab_apple_jelly_(10289733585).jpg",
+          "license": "by",
+          "creator": "Rebecca Siegel",
+          "title": "Stacked jars of crab apple jelly (10289733585)",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01287",
+      "name": "Marmalade",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 11,
+      "rejected": {
+        "too small": 4
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Homemade marmalade, England",
+        "matchScore": 1,
+        "precision": 0.5,
+        "license": "by-sa",
+        "creator": "Amanda Slater",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Homemade_marmalade%2C_England.jpg/1280px-Homemade_marmalade%2C_England.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Homemade_marmalade,_England.jpg",
+        "width": 2736,
+        "height": 3648,
+        "query": "Marmalade",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604506/takehealth/food_db/THF-01287.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Heuchera_marmalade_02.JPG/1280px-Heuchera_marmalade_02.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Heuchera_marmalade_02.JPG",
+          "license": "by-sa",
+          "creator": "Dominicus Johannes Bergsma",
+          "title": "Heuchera marmalade 02",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/Limequat_marmalade_%288449071197%29.jpg/1280px-Limequat_marmalade_%288449071197%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Limequat_marmalade_(8449071197).jpg",
+          "license": "by",
+          "creator": "Leslie Seaton from Seattle, WA, USA",
+          "title": "Limequat marmalade (8449071197)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Apple_marmalade_01.JPG/1280px-Apple_marmalade_01.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_marmalade_01.JPG",
+          "license": "by-sa",
+          "creator": "Andrey Korzun",
+          "title": "Apple marmalade 01",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01288",
+      "name": "Plum Squash",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 22,
+      "rejected": {
+        "too small": 2,
+        "licence not allowed": 3,
+        "title mentions \"label\"": 1,
+        "title mentions \"farm\"": 6,
+        "title mentions \"market\"": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Berries, plums, squash",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by",
+        "creator": "WordRidden",
+        "imageUrl": "https://live.staticflickr.com/8456/8042919190_fb4d3af0dc_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/97844767@N00/8042919190",
+        "width": 1024,
+        "height": 768,
+        "query": "Plum Squash",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604519/takehealth/food_db/THF-01288.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "openverse",
+          "imageUrl": "https://live.staticflickr.com/7318/9544485294_d96abc08e5_b.jpg",
+          "sourceUrl": "https://www.flickr.com/photos/53326337@N00/9544485294",
+          "license": "by-sa",
+          "creator": "quinn.anya",
+          "title": "Not to scale",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01289",
+      "name": "Lemon Green Chilli Pickle",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {
+        "title mentions \"restaurant\"": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/6/61/Lemon_pickle_made_from_lemon%2C_mustard%2C_ginger%2C_green_chillies_%26_salt.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/6/61/Lemon_pickle_made_from_lemon%2C_mustard%2C_ginger%2C_green_chillies_%26_salt.jpg - 429 Too Many Requests"
+      ],
+      "result": "error"
+    },
+    {
+      "foodId": "THF-01290",
+      "name": "Brinjal Pickle",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 21,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "Brinjal Pickle - Patak's orginal",
+        "matchScore": 1,
+        "precision": 0.4,
+        "license": "by-sa",
+        "creator": "LoopZilla",
+        "imageUrl": "https://live.staticflickr.com/12/68771462_a1b7558b58_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/24987280@N00/68771462",
+        "width": 548,
+        "height": 1024,
+        "query": "Brinjal Pickle",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604567/takehealth/food_db/THF-01290.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01291",
+      "name": "Sweet and Sour Tomato Pickle",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 5,
+      "rejected": {
+        "licence not allowed": 1
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01292",
+      "name": "Jhatpat Achar with Carrot",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01293",
+      "name": "Tomato Ketchup",
+      "category": "chutney or condiment",
+      "hitCount": 0,
+      "candidatesSeen": 13,
+      "rejected": {
+        "too small": 1,
+        "title mentions \"packet\"": 1
+      },
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Heinz_Tomato_Ketchup_%281831635183%29.jpg/960px-Heinz_Tomato_Ketchup_%281831635183%29.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Heinz_Tomato_Ketchup_%281831635183%29.jpg/960px-Heinz_Tomato_Ketchup_%281831635183%29.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Heinz tomato ketchup (319485478)",
+        "matchScore": 1,
+        "precision": 0.667,
+        "license": "by",
+        "creator": "Ben Sutherland from Crystal Palace, London, UK",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Heinz_tomato_ketchup_%28319485478%29.jpg/1280px-Heinz_tomato_ketchup_%28319485478%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Heinz_tomato_ketchup_(319485478).jpg",
+        "width": 2048,
+        "height": 1536,
+        "query": "Tomato Ketchup",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604641/takehealth/food_db/THF-01293.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Heinz_Tomato_Ketchup_%281831635183%29.jpg/960px-Heinz_Tomato_Ketchup_%281831635183%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Heinz_Tomato_Ketchup_(1831635183).jpg",
+          "license": "by-sa",
+          "creator": "jill, jellidonut... whatever from Seattle WA, USA",
+          "title": "Heinz Tomato Ketchup (1831635183)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Tesco_Tomato_ketchup_%282129136012%29.jpg/330px-Tesco_Tomato_ketchup_%282129136012%29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tesco_Tomato_ketchup_(2129136012).jpg",
+          "license": "by",
+          "creator": "Andy / Andrew Fogg from near Cambridge, UK",
+          "title": "Tesco Tomato ketchup (2129136012)",
+          "matchScore": 1
+        },
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/Heinz_Tomato_Ketchup_with_fries.jpg/1280px-Heinz_Tomato_Ketchup_with_fries.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Heinz_Tomato_Ketchup_with_fries.jpg",
+          "license": "by-sa",
+          "creator": "theimpulsivebuy",
+          "title": "Heinz Tomato Ketchup with fries",
+          "matchScore": 1
+        }
+      ]
+    },
+    {
+      "foodId": "THF-01297",
+      "name": "Mango Milkshake with Ice Cream",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Mango Mastani and Mango Ice-Cream",
+        "matchScore": 0.75,
+        "precision": 0.75,
+        "license": "by-sa",
+        "creator": "Kannan",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Mango_Mastani_and_Mango_Ice-Cream.jpg/1280px-Mango_Mastani_and_Mango_Ice-Cream.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mango_Mastani_and_Mango_Ice-Cream.jpg",
+        "width": 1632,
+        "height": 918,
+        "query": "Mango Milkshake with Ice Cream",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604667/takehealth/food_db/THF-01297.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01298",
+      "name": "Pineapple Milkshake with Ice Cream",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01299",
+      "name": "Orange Milkshake with Ice Cream",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01300",
+      "name": "Woodapple Juice",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Woodapple juice 14",
+        "matchScore": 1,
+        "precision": 1,
+        "license": "by-sa",
+        "creator": "Xufanc",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Woodapple_juice_14.jpg/1280px-Woodapple_juice_14.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Woodapple_juice_14.jpg",
+        "width": 1314,
+        "height": 1075,
+        "query": "Woodapple Juice",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604712/takehealth/food_db/THF-01300.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01301",
+      "name": "Sattu Drink",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {
+        "too small": 2
+      },
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01302",
+      "name": "Apple and Honey Sorbet",
+      "category": "dessert",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {
+        "too small": 1
+      },
+      "errors": [],
+      "result": "uploaded",
+      "chosen": {
+        "source": "openverse",
+        "provider": "flickr",
+        "title": "sho shaun hergatt butterscotch parfait candied honey crisp, green apple sorbet",
+        "matchScore": 1,
+        "precision": 0.273,
+        "license": "by",
+        "creator": "goodiesfirst",
+        "imageUrl": "https://live.staticflickr.com/4063/4344761821_fa3139964c_b.jpg",
+        "sourceUrl": "https://www.flickr.com/photos/49215102@N00/4344761821",
+        "width": 1000,
+        "height": 666,
+        "query": "Apple and Honey Sorbet",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604732/takehealth/food_db/THF-01302.jpg"
+      },
+      "alternatives": []
+    },
+    {
+      "foodId": "THF-01303",
+      "name": "Cucumber Sharbat",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01304",
+      "name": "Apple Oats Chia Seed Smoothie",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 0,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01305",
+      "name": "Nannari Sharbat",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 2,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01306",
+      "name": "Semolina Milk Drink",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 1,
+      "rejected": {},
+      "errors": [],
+      "result": "missing"
+    },
+    {
+      "foodId": "THF-01307",
+      "name": "Saffron Milk",
+      "category": "beverage",
+      "hitCount": 0,
+      "candidatesSeen": 15,
+      "rejected": {},
+      "errors": [
+        "download/upload https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg/500px-Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg: Error in loading https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg/500px-Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg - 429 Too Many Requests"
+      ],
+      "result": "uploaded",
+      "chosen": {
+        "source": "wikimedia",
+        "provider": "wikimedia",
+        "title": "Lactarius deliciosus (saffron milk caps), Corryong May 1963",
+        "matchScore": 1,
+        "precision": 0.286,
+        "license": "by",
+        "creator": "Jack Bain",
+        "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Lactarius_deliciosus_%28saffron_milk_caps%29%2C_Corryong_May_1963.jpg/1280px-Lactarius_deliciosus_%28saffron_milk_caps%29%2C_Corryong_May_1963.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lactarius_deliciosus_(saffron_milk_caps),_Corryong_May_1963.jpg",
+        "width": 5000,
+        "height": 3340,
+        "query": "Saffron Milk",
+        "cloudinaryUrl": "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1795604814/takehealth/food_db/THF-01307.jpg"
+      },
+      "alternatives": [
+        {
+          "source": "wikimedia",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg/500px-Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Saffron_Milk_Cap_-_geograph.org.uk_-_596877.jpg",
+          "license": "by-sa",
+          "creator": "David Baird",
+          "title": "Saffron Milk Cap - geograph.org.uk - 596877",
+          "matchScore": 1
+        }
+      ]
+    }
+  ]
+}

@@ -401,6 +401,7 @@ try {
     { path: "/api/chat", module: "./routes/chatHistoryRoutes" },
     { path: "/api/translate", module: "./routes/translateRoutes" },
     { path: "/api/food-safety", module: "./routes/foodSafetyRoutes" },
+    { path: "/api/foods", module: "./routes/foodRoutes" }, // Food reference DB: search (docs/FOOD_DB_FLOW.md)
     { path: "/api/documents", module: "./routes/documentRoutes" },
     { path: "/api/v1/vault", module: "./routes/vaultRoutes" },
     { path: "/api/privacy",   module: "./routes/privacyRoutes" },

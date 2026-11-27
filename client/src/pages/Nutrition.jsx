@@ -1616,12 +1616,8 @@ function Nutrition() {
             >
               {/* Image & Close Button */}
               <div className="h-56 relative shrink-0">
-                <img
-                  src={selectedRecipeSuggestion.image}
-                  alt={selectedRecipeSuggestion.name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                {/* Food photos are switched off: plain header instead of a dish photo */}
+                <div className="w-full h-full bg-gradient-to-br from-emerald-700 to-emerald-900" />
                 <button
                   onClick={() => setSelectedRecipeSuggestion(null)}
                   className="absolute top-6 right-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 hover:bg-white/40 transition-all"

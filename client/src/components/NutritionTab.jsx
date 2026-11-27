@@ -590,7 +590,7 @@ export function NutritionTab({
                           onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.55)"}
                         >
                           <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0">
-                            <ImageWithFallback src={log.imageUrl || log.foodItems?.[0]?.imageUrl} query={getLogDisplayName(log)} alt={getLogDisplayName(log)} className="w-full h-full object-cover" />
+                            <ImageWithFallback className="w-full h-full" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[13px] font-black text-[#0d2b22] truncate">{getLogDisplayName(log)}</p>
@@ -755,7 +755,7 @@ export function NutritionTab({
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-lg rounded-[40px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col" style={glassStyle}>
               <div className="relative h-[200px] shrink-0">
                 <button onClick={() => setShowRecipe(false)} className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center"><X size={20} /></button>
-                <ImageWithFallback src={currentSuggestion.image} alt={currentSuggestion.title} className="w-full h-full object-cover" />
+                <ImageWithFallback className="w-full h-full" />
               </div>
               <div className="flex-1 overflow-y-auto p-8">
                 <h2 className="text-[24px] font-black text-[#1a2138] dark:text-white mb-3">{currentSuggestion.title}</h2>
