@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import SEO from "../hooks/useSEO";
 
 const CarouselItems = () => (
   <>
@@ -113,6 +114,7 @@ export default function WaitlistPage() {
       className="min-h-screen overflow-hidden bg-[#0a0d16] bg-cover bg-no-repeat text-white"
       style={{ backgroundImage: "url(/waitlist/image.png)", backgroundPosition: "center 72%" }}
     >
+      <SEO pageName="waitlist" />
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col items-center justify-between px-4 py-8 sm:px-8 lg:px-12">
         <div className="w-full max-w-[1560px]">
           <div className="relative mb-10 flex justify-center">

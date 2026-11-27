@@ -1,6 +1,3 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -10,11 +7,20 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const initFirebase = () => {
+const loadFirebase = async () => {
+  const [{ initializeApp, getApps }, messaging] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/messaging'),
+  ]);
+  return { initializeApp, getApps, ...messaging };
+};
+
+const initFirebase = async () => {
   if (!firebaseConfig.projectId) {
     console.error('❌ Firebase: VITE_FIREBASE_PROJECT_ID is missing from .env');
     return null;
   }
+  const { initializeApp, getApps } = await loadFirebase();
   // Prevent duplicate app initialization on hot reload
   return getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 };
@@ -43,7 +49,7 @@ export const requestNotificationPermission = async () => {
       return null;
     }
 
-    const fbApp = initFirebase();
+    const fbApp = await initFirebase();
     if (!fbApp) return null;
 
     // Check existing permission state before prompting
@@ -66,6 +72,7 @@ export const requestNotificationPermission = async () => {
     const swReg = await registerSW();
     if (!swReg) return null;
 
+    const { getMessaging, getToken } = await loadFirebase();
     const messaging = getMessaging(fbApp);
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
@@ -88,13 +95,15 @@ export const requestNotificationPermission = async () => {
 };
 
 export const onForegroundMessage = (callback) => {
-  try {
-    const fbApp = initFirebase();
-    if (!fbApp) return () => {};
-    const messaging = getMessaging(fbApp);
-    return onMessage(messaging, callback);
-  } catch (e) {
-    console.error('❌ onForegroundMessage error:', e.message);
-    return () => {};
-  }
+  let unsubscribe = () => {};
+  loadFirebase()
+    .then(async ({ getMessaging, onMessage }) => {
+      const fbApp = await initFirebase();
+      if (!fbApp) return;
+      unsubscribe = onMessage(getMessaging(fbApp), callback);
+    })
+    .catch((e) => {
+      console.error('❌ onForegroundMessage error:', e.message);
+    });
+  return () => unsubscribe();
 };

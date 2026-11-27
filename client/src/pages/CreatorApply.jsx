@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import SEO from "../hooks/useSEO";
 import { creatorService } from "../services/api";
 
 const CONTENT_CATEGORIES = [
@@ -231,6 +232,7 @@ export default function CreatorApply() {
   if (submitted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white px-4">
+        <SEO pageName="creator" />
         <div className="max-w-md text-center">
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-900/5 text-3xl">
             🎉
@@ -253,6 +255,7 @@ export default function CreatorApply() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO pageName="creator" />
       {/* Hero */}
       <div
         className="relative flex w-full items-center justify-center overflow-hidden bg-black px-4 text-center"

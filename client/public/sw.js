@@ -43,7 +43,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ── PWA Cache ──────────────────────────────────────────────────────────────
-const CACHE_NAME = 'takehealth-v2';
+const CACHE_NAME = 'takehealth-v3';
 const urlsToCache = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import SEO from '../hooks/useSEO';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   Activity, TrendingUp, FileText, Calendar, Apple, Dumbbell, Pill, AlertCircle,
@@ -524,6 +525,7 @@ export default function DemoPreview() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <SEO pageName="demo" />
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
         {view === 'dashboard' && <DashboardView />}

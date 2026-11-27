@@ -9,17 +9,19 @@ import {
 } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import PageLoader from "./components/PageLoader";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import LandingPage from "./pages/LandingPage";
 import UpdatedLandingPage from "./pages/UpdatedLandingPage";
-import WaitlistPage from "./pages/Waitlist";
-import WaitlistThankYou from "./pages/WaitlistThankYou";
-import WaitlistJoin from "./pages/WaitlistJoin";
 import HelpWidget from "./components/HelpWidget";
 import { isPublicPath } from "./utils/publicPaths";
-import DiabetesLanding from "./pages/DiabetesLanding";
-import WeightLossLanding from "./pages/WeightLossLanding";
+import { isSpaPath } from "./seo/site";
+import NotFound from "./pages/NotFound";
+
+const Login = lazy(() => import("./pages/Login"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const WaitlistPage = lazy(() => import("./pages/Waitlist"));
+const WaitlistThankYou = lazy(() => import("./pages/WaitlistThankYou"));
+const WaitlistJoin = lazy(() => import("./pages/WaitlistJoin"));
+const DiabetesLanding = lazy(() => import("./pages/DiabetesLanding"));
+const WeightLossLanding = lazy(() => import("./pages/WeightLossLanding"));
 
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
@@ -35,6 +37,16 @@ const CreatorApply = lazy(() => import("./pages/CreatorApply"));
 
 // Lazy load the PrivateApp which contains all heavy providers and routes
 const PrivateApp = lazy(() => import("./PrivateApp"));
+
+function SpaGate() {
+  const { pathname } = useLocation();
+  if (!isSpaPath(pathname)) return <NotFound />;
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <PrivateApp />
+    </Suspense>
+  );
+}
 
 export default function App() {
   const { user, isAdmin, isDoctor } = useAuth();
@@ -146,15 +158,9 @@ export default function App() {
           <Route path="/demo" element={<DemoPreview />} />
           <Route path="/creator" element={<CreatorApply />} />
 
-          {/* All other routes go to the heavy PrivateApp */}
-          <Route
-            path="/*"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <PrivateApp />
-              </Suspense>
-            }
-          />
+          {/* Signed-in routes stay a SPA. Unknown URLs render NotFound
+              without loading PrivateApp. Vercel returns HTTP 404 for those. */}
+          <Route path="/*" element={<SpaGate />} />
         </Routes>
       </Suspense>
 

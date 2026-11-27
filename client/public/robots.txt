@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /onboarding
+Disallow: /upload
+Disallow: /reports
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /*.json
+
+Sitemap: https://www.take.health/sitemap.xml

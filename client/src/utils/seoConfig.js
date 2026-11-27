@@ -1,12 +1,15 @@
 /**
  * SEO Configuration for all pages
- * Centralized meta information for consistency across the site
+ * Centralized meta information for consistency across the site.
+ * Canonicals use VITE_SITE_URL (see src/seo/siteUrl.js), never VITE_API_URL.
  */
 
-const baseURL = import.meta.env.VITE_API_URL || "https://take.health";
-const siteName = "take.health";
+import { absoluteUrl, getPublicPageByName, getSiteUrl } from "../seo/site";
+
+const baseURL = getSiteUrl();
+const siteName = "TAKE.Health";
 const siteDescription =
-  "AI-powered healthcare platform for medical report analysis, vitamin deficiency detection, personalized diet plans, and supplement recommendations.";
+  "Take Health brings your lab reports, daily habits and long-term trends into one place, and explains what they mean.";
 const siteKeywords =
   "health, AI healthcare, medical analysis, vitamin deficiency, diet plans, supplements, health tracking, glucose monitoring";
 
@@ -17,9 +20,8 @@ export const seoConfig = {
     description: siteDescription,
     keywords: siteKeywords,
     language: "en",
-    author: "take.health",
-    email: "support@take.health",
-    phone: "+1-800-HEALTH-1",
+    author: "TAKE.Health",
+    email: "support@takelimited.com",
   },
 
   pages: {
@@ -408,13 +410,59 @@ export const seoConfig = {
     },
 
     notFound: {
-      title: "Page Not Found | take.health",
+      title: "Page Not Found | TAKE.Health",
       description: "The page you're looking for could not be found.",
       keywords: "404, not found, error",
       noindex: true,
     },
   },
 };
+
+for (const page of [
+  "home",
+  "howItWorks",
+  "about",
+  "privacyPolicy",
+  "termsAndConditions",
+  "manufacturerDetails",
+  "deleteAccount",
+  "demo",
+  "support",
+]) {
+  const entry = getPublicPageByName(page);
+  if (!entry) continue;
+  seoConfig.pages[page] = {
+    ...seoConfig.pages[page],
+    title: entry.title,
+    description: entry.description,
+    path: entry.path,
+    canonical: absoluteUrl(entry.canonicalPath || entry.path),
+    image: `${baseURL}/og-home.jpg`,
+    noindex: entry.index === false,
+  };
+}
+
+for (const pageName of [
+  "waitlist",
+  "waitlistJoin",
+  "waitlistThankYou",
+  "creator",
+  "diabetesLanding",
+  "weightLoss",
+  "updatedLanding",
+  "oldLanding",
+]) {
+  const entry = getPublicPageByName(pageName);
+  if (!entry) continue;
+  seoConfig.pages[pageName] = {
+    title: entry.title,
+    description: entry.description,
+    path: entry.path,
+    canonical: absoluteUrl(entry.canonicalPath || entry.path),
+    image: `${baseURL}/og-home.jpg`,
+    noindex: entry.index === false,
+  };
+}
 
 /**
  * Get page SEO config

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import SEO from "../hooks/useSEO";
 
 const CONFETTI_COLORS = ["#4872ff", "#6d54eb", "#2dd4bf", "#f59e0b", "#f472b6", "#34d399"];
 
@@ -63,6 +64,7 @@ export default function WaitlistThankYou() {
       className="flex min-h-screen items-center justify-center bg-[#0a0d16] px-4"
       style={{ backgroundImage: "url(/waitlist/image.png)", backgroundSize: "cover", backgroundPosition: "center 72%" }}
     >
+      <SEO pageName="waitlistThankYou" />
       <div className="relative w-full max-w-[440px] overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,#1C2C4C_0%,#3A4D78_100%)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:p-8">
         <div className="relative flex flex-col items-center py-4 text-center">
           <div className="pointer-events-none absolute inset-x-0 -top-4 h-0">
@@ -83,9 +85,9 @@ export default function WaitlistThankYou() {
           <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-3xl">
             🎉
           </span>
-          <h2 className="mt-5 text-2xl font-bold tracking-tight text-white sm:text-[28px]">
+          <h1 className="mt-5 text-2xl font-bold tracking-tight text-white sm:text-[28px]">
             Congratulations!
-          </h2>
+          </h1>
           <p className="mt-3 text-sm leading-relaxed text-white/60 sm:text-base">
             You're on the waitlist. We'll email you as soon as it's your turn to get early access.
           </p>

@@ -1,3 +1,4 @@
+import SEO from "../hooks/useSEO";
 import Hero from "../components/diabetes-landing/Hero";
 import UpdatedNavbar from "../components/landing/landing-components/UpdatedNavbar";
 import UpdatedFooter from "../components/landing/landing-components/UpdatedFooter";
@@ -9,6 +10,7 @@ import FAQs from "../components/diabetes-landing/FAQs";
 const DiabetesLanding = () => {
   return (
     <section className="bg-white text-landing-text">
+      <SEO pageName="diabetesLanding" />
       <UpdatedNavbar />
       <Hero />
       <Features />
